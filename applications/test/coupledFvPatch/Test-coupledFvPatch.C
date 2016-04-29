@@ -34,6 +34,7 @@ Description
 #include "coupledFvPatch.H"
 #include "coupledFvPatchFields.H"
 #include "volFields.H"
+#include "syncTools.H"
 
 using namespace Foam;
 
@@ -44,6 +45,15 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
+
+    const globalMeshData& gd = mesh.globalData();
+    const mapDistribute& edgeMap = gd.globalEdgeSlavesMap();
+
+    labelField vals(identity(mesh.nEdges()));
+    syncTools::syncEdgeList(mesh, vals, maxEqOp<label>(), labelMin);
+
+    Pout<< "vals" << endl;
+
 
     Info<< "Reading field p\n" << endl;
     volScalarField p

@@ -1,3 +1,4 @@
+globalMeshData.C
 Test-coupledFvPatch.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-coupledFvPatch
