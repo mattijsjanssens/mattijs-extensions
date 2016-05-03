@@ -59,38 +59,18 @@ actions
         source  boxToCell;
         sourceInfo
         {
-            box (1 -100 -100)(100 100 100);
+            boxes
+            (
+                (1 0.7 -100)(100 100 100)
+                (1 -100 -100)(100 0.3 100)
+            );
         }
     }
-//     {
-//         name    c1;
-//         type    cellSet;
-//         action  invert;
-//     }
-// 
-//     // Get all faces in cellSet
-//     {
-//         name    f1;
-//         type    faceSet;
-//         action  new;
-//         source  cellToFace;
-//         sourceInfo
-//         {
-//             set     c1;
-//             option  all;
-//         }
-//     }
-// 
-//     // Remove boundary faces
-//     {
-//         name    f1;
-//         type    faceSet;
-//         action  delete;
-//         source  boundaryToFace;
-//         sourceInfo
-//         {
-//         }
-//     }
+    {
+        name    c1;
+        type    cellSet;
+        action  invert;
+    }
 );
 
 // ************************************************************************* //

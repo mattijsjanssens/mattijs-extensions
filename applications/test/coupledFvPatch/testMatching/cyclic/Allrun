@@ -8,6 +8,12 @@ runApplication blockMesh
 
 runApplication topoSet
 
-runApplication removeFaces f0
+runApplication removeFaces f0 -overwrite
+
+runApplication -s 2 topoSet
+
+runApplication subsetMesh -patch walls2 c1 -overwrite
+
+runApplication icoFoam
 
 #------------------------------------------------------------------------------
