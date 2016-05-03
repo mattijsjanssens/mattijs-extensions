@@ -1,0 +1,4 @@
+findRefCell.C
+icoFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/icoFoam_with_multipleRefCells
