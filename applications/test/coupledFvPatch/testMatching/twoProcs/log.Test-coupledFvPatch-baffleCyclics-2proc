@@ -1,0 +1,85 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev.feature-ACMI                      |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : dev.feature-ACMI-c8ff51b887b2
+Exec   : /home/mattijs/OpenFOAM/mattijs-dev.feature-ACMI/platforms/linux64GccDPInt32Opt/bin/Test-coupledFvPatch -parallel
+Date   : May 03 2016
+Time   : 12:55:24
+Host   : "bb"
+PID    : 14536
+Case   : /home/mattijs/OpenFOAM/mattijs-extensions/applications/test/coupledFvPatch/testMatching/twoProcs
+nProcs : 2
+Slaves : 1("bb.14537")
+Pstream initialized with:
+    floatTransfer      : 0
+    nProcsSimpleSum    : 0
+    commsType          : nonBlocking
+    polling iterations : 0
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Overriding DebugSwitches according to controlDict
+    globalIndexAndTransform 1;
+
+Create mesh for time = 0
+
+[0] vals
+[0] map.subMap():
+[0] 2
+[0] (
+[0] 4(0 1 2 3)
+[0] 0()
+[0] )
+[0] 
+[0] map.constructMap():
+[0] 2
+[0] (
+[0] 4(0 1 2 3)
+[0] 4(4 7 6 5)
+[0] )
+[0] 
+[0] point:0 at:(1 0 0)
+[0] cpPointI:4 at:(1 0 0)
+[0] 
+[0] point:1 at:(1 1 0)
+[0] cpPointI:5 at:(1 1 0)
+[0] 
+[1] vals
+[1] map.subMap():
+[1] 2
+[1] (
+[1] 4(0 1 2 3)
+[1] 4(0 1 2 3)
+[1] )
+[1] 
+[1] map.constructMap():
+[1] 2
+[1] (
+[1] 0()
+[1] 4(0 1 2 3)
+[1] )
+[1] 
+[1] point:0 at:(1 0 0)
+[1] 
+[1] point:1 at:(1 0 1)
+[1] 
+[1] point:2 at:(1 1 1)
+[1] 
+[1] point:3 at:(1 1 0)
+[1] 
+[0] point:2 at:(1 1 1)
+[0] cpPointI:6 at:(1 1 1)
+[0] 
+[0] point:3 at:(1 0 1)
+[0] cpPointI:7 at:(1 0 1)
+[0] 
+Finalising parallel run

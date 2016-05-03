@@ -15,6 +15,11 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+DebugSwitches
+{
+    globalIndexAndTransform 1;
+}
+
 application     simpleFoam;
 
 startFrom       startTime;

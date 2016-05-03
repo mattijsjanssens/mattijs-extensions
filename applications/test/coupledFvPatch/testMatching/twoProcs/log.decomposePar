@@ -1,0 +1,58 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev.feature-ACMI                      |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : dev.feature-ACMI-c8ff51b887b2
+Exec   : decomposePar
+Date   : May 03 2016
+Time   : 12:48:45
+Host   : "bb"
+PID    : 13940
+Case   : /home/mattijs/OpenFOAM/mattijs-extensions/applications/test/coupledFvPatch/testMatching/processor
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Overriding DebugSwitches according to controlDict
+    globalIndexAndTransform 1;
+
+
+
+Decomposing mesh region0
+
+Create mesh
+
+Calculating distribution of cells
+Selecting decompositionMethod hierarchical
+
+Finished decomposition in 0 s
+
+Calculating original mesh data
+
+Distributing cells to processors
+
+Distributing faces to processors
+
+Distributing points to processors
+
+Constructing processor meshes
+
+
+--> FOAM FATAL IO ERROR: 
+cannot find file
+
+file: /home/mattijs/OpenFOAM/mattijs-extensions/applications/test/coupledFvPatch/testMatching/processor/processor0/system/controlDict at line 0.
+
+    From function regIOobject::readStream()
+    in file db/regIOobject/regIOobjectRead.C at line 72.
+
+FOAM exiting
+

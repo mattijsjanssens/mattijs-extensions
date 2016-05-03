@@ -624,15 +624,15 @@ void Foam::globalMeshData::calcPointConnectivity
                 );
                 // Add transform to connectivity
                 const labelPair& n = myData[pTransformSlaves[i]];
-                label proci = globalIndexAndTransform::processor(n);
-                label index = globalIndexAndTransform::index(n);
-                pConnectivity[connI++] = globalIndexAndTransform::encode
-                (
-                    proci,
-                    index,
-                    transformI
-                );
-            }
+            label proci = globalIndexAndTransform::processor(n);
+            label index = globalIndexAndTransform::index(n);
+            pConnectivity[connI++] = globalIndexAndTransform::encode
+            (
+                proci,
+                index,
+                transformI
+            );
+        }
 
             // Put back in slots
             forAll(pSlaves, i)

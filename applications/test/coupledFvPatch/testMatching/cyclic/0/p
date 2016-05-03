@@ -9,46 +9,39 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    location    "system";
-    object      controlDict;
+    class       volScalarField;
+    object      p;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-DebugSwitches
+dimensions      [0 2 -2 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
 {
-    globalIndexAndTransform 1;
+    //- Set patchGroups for constraint patches
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    left1
+    {
+        type            zeroGradient;
+    }
+
+    right2
+    {
+        type            uniformFixedValue;
+        uniformValue    0;
+    }
+
+    walls1
+    {
+        type            zeroGradient;
+    }
+    walls2
+    {
+        type            zeroGradient;
+    }
 }
-
-application     icoFoam;
-
-startFrom       startTime;
-
-startTime       0;
-
-stopAt          endTime;
-
-endTime         0.5;
-
-deltaT          0.005;
-
-writeControl    timeStep;
-
-writeInterval   20;
-
-purgeWrite      0;
-
-writeFormat     ascii;
-
-writePrecision  6;
-
-writeCompression off;
-
-timeFormat      general;
-
-timePrecision   6;
-
-runTimeModifiable true;
-
 
 // ************************************************************************* //
