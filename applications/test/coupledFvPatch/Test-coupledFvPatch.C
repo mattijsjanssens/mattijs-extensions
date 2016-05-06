@@ -46,84 +46,6 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-const globalMeshData& gd = mesh.globalData();
-{
-    //const mapDistribute& edgeMap = gd.globalEdgeSlavesMap();
-
-    labelField vals(identity(mesh.nEdges()));
-    syncTools::syncEdgeList(mesh, vals, maxEqOp<label>(), labelMin);
-    Pout<< "vals" << endl;
-}
-
-{
-    const labelListList& pbf = gd.globalPointSlaves();
-    const labelListList& pbtf = gd.globalPointTransformedSlaves();
-    const indirectPrimitivePatch& cpp = gd.coupledPatch();
-    const mapDistribute& map = gd.globalPointSlavesMap();
-
-Pout<< "map.subMap():" << map.subMap() << endl;
-Pout<< "map.constructMap():" << map.constructMap() << endl;
-
-
-    pointField localPoints(cpp.localPoints());
-    map.distribute(localPoints);
-
-
-    forAll(pbf, pointI)
-    {
-        Pout<< "point:" << pointI << " at:" << localPoints[pointI]
-            << endl;
-        const labelList& pSlaves = pbf[pointI];
-        forAll(pSlaves, i)
-        {
-            label cpPointI = pSlaves[i];
-            Pout<< "cpPointI:" << cpPointI
-                << " at:" << localPoints[cpPointI]
-                << endl;
-        }
-        const labelList& pTrafoSlaves = pbtf[pointI];
-        forAll(pTrafoSlaves, i)
-        {
-            label cpPointI = pTrafoSlaves[i];
-            Pout<< "trafo cpPointI:" << cpPointI
-                << " at:" << localPoints[cpPointI]
-                << endl;
-        }
-        Pout<< endl;
-    }
-    return 0;
-}
-
-{
-    const labelListList& pbf = gd.globalPointBoundaryFaces();
-    const labelListList& pbtf = gd.globalPointTransformedBoundaryFaces();
-    //const mapDistribute& map = gd.globalPointBoundaryFacesMap();
-    const indirectPrimitivePatch& cpp = gd.coupledPatch();
-    forAll(pbf, pointI)
-    {
-        Pout<< "point:" << pointI << " at:" << cpp.localPoints()[pointI]
-            << endl;
-        const labelList& pFaces = pbf[pointI];
-        forAll(pFaces, i)
-        {
-            label faceI = pFaces[i];
-            Pout<< "face:" << faceI
-                << " at:" << mesh.faceCentres()[faceI]
-                << endl;
-        }
-        const labelList& pTrafoFaces = pbtf[pointI];
-        forAll(pTrafoFaces, i)
-        {
-            label faceI = pTrafoFaces[i];
-            Pout<< "trafo face:" << faceI
-                << " at:" << mesh.faceCentres()[faceI]
-                << endl;
-        }
-        Pout<< endl;
-    }
-}
-return 0;
-
     Info<< "Reading field p\n" << endl;
     volScalarField p
     (
@@ -146,7 +68,7 @@ return 0;
             const coupledFvPatch& fvp =
                 refCast<const coupledFvPatch>(fvbm[patchI]);
 
-            Pout<< "Patch:" << fvp.name() << nl
+            Pout<< "Patch:" << fvp.name() << " type:" << fvp.type() << nl
                 << incrIndent
                 << indent << "Cf:" << fvp.Cf() << nl
                 << indent << "Cn:" << fvp.Cn() << nl
@@ -156,33 +78,39 @@ return 0;
                 << indent << "delta:" << fvp.delta() << nl
                 << indent << "weights:" << fvp.weights() << nl
                 << indent << "deltaCoeffs:" << fvp.deltaCoeffs() << nl
-
                 << indent << "forwardT:" << fvp.forwardT() << nl
                 << indent << "reverseT:" << fvp.reverseT() << nl
                 << decrIndent
                 << endl;
 
 
-            const coupledFvPatchScalarField& pf =
-                refCast<const coupledFvPatchScalarField>
-                (
-                    p.boundaryField()[patchI]
-                );
+//             const coupledFvPatchScalarField& pf =
+//                 refCast<const coupledFvPatchScalarField>
+//                 (
+//                     p.boundaryField()[patchI]
+//                 );
+            const fvPatchScalarField& pf = p.boundaryField()[patchI];
 
-            Pout<< "PatchField:" << pf.type() << nl
-                << incrIndent
-                << indent << "value:" << pf << nl
-                << indent << "snGrad:" << pf.snGrad() << nl
-                << indent << "patchInternalField:"
-                << pf.patchInternalField() << nl
-                << indent << "patchNeighbourField:"
-                << pf.patchNeighbourField() << nl
-                << indent << "gradientInternalCoeffs:"
-                << pf.gradientInternalCoeffs() << nl
-                << indent << "gradientBoundaryCoeffs:"
-                << pf.gradientBoundaryCoeffs() << nl
-                << decrIndent
+            Pout<< "PatchField:" << pf.type() << endl;
+
+
+            Pout<< incrIndent
+                << indent << "value:" << static_cast<const scalarField&>(pf)
                 << endl;
+
+//             Pout<< indent << "snGrad:" << pf.snGrad() << nl
+//                 << indent << "patchInternalField:"
+//                 << pf.patchInternalField() << nl
+//                 << indent << "patchNeighbourField:"
+//                 << pf.patchNeighbourField() << endl;
+// 
+// 
+//             Pout<< indent << "gradientInternalCoeffs:"
+//                 << pf.gradientInternalCoeffs() << nl
+//                 << indent << "gradientBoundaryCoeffs:"
+//                 << pf.gradientBoundaryCoeffs() << nl
+//                 << decrIndent
+//                 << endl;
         }
     }
 
