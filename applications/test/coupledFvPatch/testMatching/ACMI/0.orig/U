@@ -1,0 +1,46 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    //- Set patchGroups for constraint patches. Note: after definition
+    //  or walls since used inside ACMI
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    left1
+    {
+        type            uniformFixedValue;
+        uniformValue    constant (0.1 0 0);
+    }
+    "(walls.*)"
+    {
+        type            noSlip;
+    }
+    wall
+    {
+        type            noSlip;
+    }
+    right2
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

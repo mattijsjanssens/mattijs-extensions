@@ -14,6 +14,11 @@ runApplication -s 2 topoSet
 
 runApplication subsetMesh -patch walls2 c1 -overwrite
 
+runApplication createPatch -overwrite
+
+
+rm -rf 0 && cp -rf 0.orig 0
+
 runApplication icoFoam
 
 #------------------------------------------------------------------------------
