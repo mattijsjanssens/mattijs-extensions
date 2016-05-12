@@ -35,6 +35,7 @@ Description
 #include "coupledFvPatchFields.H"
 #include "volFields.H"
 #include "syncTools.H"
+#include "correctedSnGrad.H"
 
 using namespace Foam;
 
@@ -59,6 +60,9 @@ int main(int argc, char *argv[])
         ),
         mesh
     );
+
+    const surfaceScalarField& deltaCoeffs =
+        fv::correctedSnGrad<scalar>(mesh).deltaCoeffs(p);
 
     const fvBoundaryMesh& fvbm = mesh.boundary();
     forAll(fvbm, patchI)
@@ -93,26 +97,41 @@ int main(int argc, char *argv[])
 
             Pout<< "PatchField:" << pf.type() << endl;
 
+            const fvsPatchScalarField& pDeltaCoeffs =
+            deltaCoeffs.boundaryField()[patchI];
+
 
             Pout<< incrIndent
                 << indent << "value:" << static_cast<const scalarField&>(pf)
                 << endl;
 
-//             Pout<< indent << "snGrad:" << pf.snGrad() << nl
-//                 << indent << "patchInternalField:"
-//                 << pf.patchInternalField() << nl
-//                 << indent << "patchNeighbourField:"
-//                 << pf.patchNeighbourField() << endl;
-// 
-// 
-//             Pout<< indent << "gradientInternalCoeffs:"
-//                 << pf.gradientInternalCoeffs() << nl
-//                 << indent << "gradientBoundaryCoeffs:"
-//                 << pf.gradientBoundaryCoeffs() << nl
-//                 << decrIndent
-//                 << endl;
+             Pout<< indent << "snGrad:" << pf.snGrad(pDeltaCoeffs) << nl
+                 << indent << "patchInternalField:"
+                 << pf.patchInternalField() << nl
+                 << indent << "patchNeighbourField:"
+                 << pf.patchNeighbourField() << endl;
+ 
+ 
+             Pout<< indent << "gradientInternalCoeffs:"
+                 << pf.gradientInternalCoeffs(pDeltaCoeffs) << nl
+                 << indent << "gradientBoundaryCoeffs:"
+                 << pf.gradientBoundaryCoeffs(pDeltaCoeffs) << nl
+                 << decrIndent
+                 << endl;
         }
     }
+
+    volVectorField gradP("gradP", fvc::grad(p));
+    Pout<< "gradP:" << gradP << endl;
+    Info<< "Writing " << gradP.name() << " to " << runTime.timeName() << endl;
+    gradP.write();
+
+
+    runTime++;
+    Info<< "Writing p to " << runTime.timeName() << endl;
+    p.correctBoundaryConditions();
+    p.write();
+
 
     Info<< "end" << endl;
 }

@@ -137,25 +137,49 @@ Foam::tmp<Foam::Field<Type>>
 Foam::cyclicACMIFvPatchField<Type>::patchNeighbourField() const
 {
     const Field<Type>& iField = this->primitiveField();
-    const labelUList& nbrFaceCellsCoupled =
-        cyclicACMIPatch_.cyclicACMIPatch().neighbPatch().faceCells();
-    const labelUList& faceCellsNonOverlap =
-        cyclicACMIPatch_.cyclicACMIPatch().nonOverlapPatch().faceCells();
+//    const labelUList& nbrFaceCellsCoupled =
+//        cyclicACMIPatch_.cyclicACMIPatch().neighbPatch().faceCells();
+//     const labelUList& faceCellsNonOverlap =
+//         cyclicACMIPatch_.cyclicACMIPatch().nonOverlapPatch().faceCells();
+// 
+//     Field<Type> pnfCoupled(iField, nbrFaceCellsCoupled);
+//     Field<Type> pfNonOverlap(iField, faceCellsNonOverlap);
+// 
+//     tmp<Field<Type>> tpnf
+//     (
+//         new Field<Type>
+//         (
+//             cyclicACMIPatch_.interpolate
+//             (
+//                 pnfCoupled,
+//                 pfNonOverlap
+//             )
+//         )
+//     );
 
-    Field<Type> pnfCoupled(iField, nbrFaceCellsCoupled);
-    Field<Type> pfNonOverlap(iField, faceCellsNonOverlap);
-
-    tmp<Field<Type>> tpnf
+//MEJ: unweighted
+const cyclicACMIPolyPatch& cpp = cyclicACMIPatch_.cyclicACMIPatch();
+tmp<Field<Type>> tpnf
+(
+    cyclicACMIPatch_.interpolate
     (
-        new Field<Type>
+        Field<Type>
         (
-            cyclicACMIPatch_.interpolate
-            (
-                pnfCoupled,
-                pfNonOverlap
-            )
+            iField,
+            cpp.neighbPatch().faceCells()
         )
-    );
+    )
+);
+if (cpp.owner())
+{
+    const AMIPatchToPatchInterpolation& AMI = cpp.AMI();
+    tpnf.ref() /= AMI.srcWeightsSum();
+}
+else
+{
+    const AMIPatchToPatchInterpolation& AMI = cpp.neighbPatch().AMI();
+    tpnf.ref() /= AMI.tgtWeightsSum();
+}
 
     if (doTransform())
     {
@@ -207,10 +231,12 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
     const Pstream::commsTypes
 ) const
 {
+    const cyclicACMIPolyPatch& cpp = cyclicACMIPatch_.cyclicACMIPatch();
+
     // note: only applying coupled contribution
 
     const labelUList& nbrFaceCellsCoupled =
-        cyclicACMIPatch_.cyclicACMIPatch().neighbPatch().faceCells();
+        cpp.neighbPatch().faceCells();
 
     scalarField pnf(psiInternal, nbrFaceCellsCoupled);
 
@@ -220,6 +246,18 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
     const labelUList& faceCells = cyclicACMIPatch_.faceCells();
 
     pnf = cyclicACMIPatch_.interpolate(pnf);
+
+//MEJ
+if (cpp.owner())
+{
+    const AMIPatchToPatchInterpolation& AMI = cpp.AMI();
+    pnf /= AMI.srcWeightsSum();
+}
+else
+{
+    const AMIPatchToPatchInterpolation& AMI = cpp.neighbPatch().AMI();
+    pnf /= AMI.tgtWeightsSum();
+}
 
     forAll(faceCells, elemI)
     {
@@ -237,10 +275,11 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
     const Pstream::commsTypes
 ) const
 {
+    const cyclicACMIPolyPatch& cpp = cyclicACMIPatch_.cyclicACMIPatch();
+
     // note: only applying coupled contribution
 
-    const labelUList& nbrFaceCellsCoupled =
-        cyclicACMIPatch_.cyclicACMIPatch().neighbPatch().faceCells();
+    const labelUList& nbrFaceCellsCoupled = cpp.neighbPatch().faceCells();
 
     Field<Type> pnf(psiInternal, nbrFaceCellsCoupled);
 
@@ -250,6 +289,19 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
     const labelUList& faceCells = cyclicACMIPatch_.faceCells();
 
     pnf = cyclicACMIPatch_.interpolate(pnf);
+
+//MEJ
+if (cpp.owner())
+{
+    const AMIPatchToPatchInterpolation& AMI = cpp.AMI();
+    pnf /= AMI.srcWeightsSum();
+}
+else
+{
+    const AMIPatchToPatchInterpolation& AMI = cpp.neighbPatch().AMI();
+    pnf /= AMI.tgtWeightsSum();
+}
+
 
     forAll(faceCells, elemI)
     {
@@ -272,14 +324,21 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicACMIFvPatchField<Type>::snGrad
 template<class Type>
 void Foam::cyclicACMIFvPatchField<Type>::updateCoeffs()
 {
-    // update non-overlap patch - some will implement updateCoeffs, and
-    // others will implement evaluate
+//     // update non-overlap patch - some will implement updateCoeffs, and
+//     // others will implement evaluate
+// 
+//     // scale neighbour field by (1 - mask)
+// 
+//     const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
+//     const fvPatchField<Type>& npf = nonOverlapPatchField();
+// 
+// Pout<< "From ACMI:" << this->patch().name() << " updating patch "
+//     << npf.patch().name() << " with weights:" << 1.0-mask << endl;
+// 
+//     const_cast<fvPatchField<Type>&>(npf).updateCoeffs(1.0 - mask);
 
-    // scale neighbour field by (1 - mask)
-
-    const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
-    const fvPatchField<Type>& npf = nonOverlapPatchField();
-    const_cast<fvPatchField<Type>&>(npf).updateCoeffs(1.0 - mask);
+//MEJ
+coupledFvPatchField<Type>::updateCoeffs();
 }
 
 
@@ -289,21 +348,35 @@ void Foam::cyclicACMIFvPatchField<Type>::initEvaluate
     const Pstream::commsTypes comms
 )
 {
-    // update non-overlap patch (if not already updated by updateCoeffs)
+//     // update non-overlap patch (if not already updated by updateCoeffs)
+// 
+//     // scale neighbour field by (1 - mask)
+// 
+//     fvPatchField<Type>& npf =
+//         const_cast<fvPatchField<Type>&>(nonOverlapPatchField());
+// 
+//     if (!npf.updated())
+//     {
+//         const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
+// 
+//         npf.evaluate(comms);
+// 
+//         npf *= 1.0 - mask;
+//     }
 
-    // scale neighbour field by (1 - mask)
+//MEJ
 
+    // Make sure nonOverlap is already done (if it is after me in the
+    // list of patches)
     fvPatchField<Type>& npf =
         const_cast<fvPatchField<Type>&>(nonOverlapPatchField());
 
     if (!npf.updated())
     {
-        const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
-
         npf.evaluate(comms);
-
-        npf *= 1.0 - mask;
     }
+
+    coupledFvPatchField<Type>::initEvaluate(comms);
 }
 
 
@@ -313,19 +386,24 @@ void Foam::cyclicACMIFvPatchField<Type>::evaluate
     const Pstream::commsTypes comms
 )
 {
-    // blend contributions from the coupled and non-overlap patches
+//     // blend contributions from the coupled and non-overlap patches
+// 
+//     // neighbour patch field is updated via updateCoeffs or initEvaluate
+//     // and is already scaled by (1 - mask)
+//     const fvPatchField<Type>& npf = nonOverlapPatchField();
+// 
+//     coupledFvPatchField<Type>::evaluate(comms);
+//     const Field<Type>& cpf = *this;
+// 
+//     const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
+//     Field<Type>::operator=(mask*cpf + npf);
+// 
+//     fvPatchField<Type>::evaluate();
 
-    // neighbour patch field is updated via updateCoeffs or initEvaluate
-    // and is already scaled by (1 - mask)
-    const fvPatchField<Type>& npf = nonOverlapPatchField();
 
+//MEJ
     coupledFvPatchField<Type>::evaluate(comms);
-    const Field<Type>& cpf = *this;
 
-    const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
-    Field<Type>::operator=(mask*cpf + npf);
-
-    fvPatchField<Type>::evaluate();
 }
 
 

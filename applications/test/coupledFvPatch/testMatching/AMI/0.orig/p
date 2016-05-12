@@ -17,12 +17,25 @@ FoamFile
 
 dimensions      [0 2 -2 0 0 0 0];
 
-internalField   uniform 0;
+internalField   //uniform 0;
+                nonuniform List<scalar> 2(33 44);
 
 boundaryField
 {
     //- Set patchGroups for constraint patches
     #includeEtc "caseDicts/setConstraintTypes"
+
+    couple1
+    {
+        type            cyclicAMI;
+        value           uniform 40.3333;    // linear interpolate to be
+                                            // consistent with cyclic
+    }
+    couple2
+    {
+        type            cyclicAMI;
+        value           uniform 40.3333;
+    }
 
     left1
     {

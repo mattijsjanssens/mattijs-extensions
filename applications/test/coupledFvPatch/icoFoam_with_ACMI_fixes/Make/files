@@ -1,0 +1,14 @@
+cyclicACMIGAMGInterface.C
+cyclicACMIGAMGInterfaceField.C
+cyclicACMILduInterface.C
+cyclicACMILduInterfaceField.C
+cyclicACMIPolyPatch.C
+cyclicACMIPointPatch.C
+cyclicACMIPointPatchFields.C
+cyclicACMIFvPatch.C
+cyclicACMIFvPatchFields.C
+cyclicACMIFvsPatchFields.C
+
+icoFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/icoFoam_with_ACMI_fixes

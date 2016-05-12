@@ -43,7 +43,7 @@ void Foam::cyclicACMIFvPatch::updateAreas() const
 {
     if (cyclicACMIPolyPatch_.updated())
     {
-Pout<< "** updating areas" << endl;
+Pout<< "** updating areas patch:" << patch().name() << endl;
         // Set Sf and magSf for both sides' coupled and non-overlapping patches
 
         // owner couple
@@ -70,6 +70,15 @@ Pout<< "** updating areas" << endl;
             nbrNonOverlapPatch.patch().faceAreas();
         const_cast<scalarField&>(nbrNonOverlapPatch.magSf()) =
             mag(nbrNonOverlapPatch.patch().faceAreas());
+
+Pout<< "** areas patch now : Sf:" << Sf()
+    << " magSf:" << magSf() << endl;
+Pout<< "** areas nonOverlapPatch now : Sf:" << nonOverlapPatch.Sf()
+    << " magSf:" << nonOverlapPatch.magSf() << endl;
+Pout<< "** areas nbrACMI now : Sf:" << nbrACMI.Sf()
+    << " magSf:" << nbrACMI.magSf() << endl;
+Pout<< "** areas nbrNonOverlapPatch now : Sf:" << nbrNonOverlapPatch.Sf()
+    << " magSf:" << nbrNonOverlapPatch.magSf() << endl;
 
         // set the updated flag
         cyclicACMIPolyPatch_.setUpdated(false);

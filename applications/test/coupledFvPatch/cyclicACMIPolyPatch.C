@@ -38,7 +38,7 @@ namespace Foam
     addToRunTimeSelectionTable(polyPatch, cyclicACMIPolyPatch, dictionary);
 }
 
-const Foam::scalar Foam::cyclicACMIPolyPatch::tolerance_ = 1e-6;
+const Foam::scalar Foam::cyclicACMIPolyPatch::tolerance_ = 1e-10;
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
