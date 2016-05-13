@@ -276,32 +276,42 @@ public:
             inline const scalarField& mask() const;
 
 
-            // Interpolations
+//             // Interpolations
+// 
+//                 //- Interpolate field
+//                 template<class Type>
+//                 tmp<Field<Type>> interpolate
+//                 (
+//                     const Field<Type>& fldCouple,
+//                     const Field<Type>& fldNonOverlap
+//                 ) const;
+// 
+//                 //- Interpolate tmp field
+//                 template<class Type>
+//                 tmp<Field<Type>> interpolate
+//                 (
+//                     const tmp<Field<Type>>& tFldCouple,
+//                     const tmp<Field<Type>>& tFldNonOverlap
+//                 ) const;
+// 
+//                 //- Low-level interpolate List
+//                 template<class Type, class CombineOp>
+//                 void interpolate
+//                 (
+//                     const UList<Type>& fldCouple,
+//                     const UList<Type>& fldNonOverlap,
+//                     const CombineOp& cop,
+//                     List<Type>& result
+//                 ) const;
+
+
 
                 //- Interpolate field
                 template<class Type>
                 tmp<Field<Type>> interpolate
                 (
                     const Field<Type>& fldCouple,
-                    const Field<Type>& fldNonOverlap
-                ) const;
-
-                //- Interpolate tmp field
-                template<class Type>
-                tmp<Field<Type>> interpolate
-                (
-                    const tmp<Field<Type>>& tFldCouple,
-                    const tmp<Field<Type>>& tFldNonOverlap
-                ) const;
-
-                //- Low-level interpolate List
-                template<class Type, class CombineOp>
-                void interpolate
-                (
-                    const UList<Type>& fldCouple,
-                    const UList<Type>& fldNonOverlap,
-                    const CombineOp& cop,
-                    List<Type>& result
+                    const bool normaliseWeights
                 ) const;
 
 

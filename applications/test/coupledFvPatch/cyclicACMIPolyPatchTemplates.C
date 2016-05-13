@@ -23,64 +23,108 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+// template<class Type>
+// Foam::tmp<Foam::Field<Type>> Foam::cyclicACMIPolyPatch::interpolate
+// (
+//     const Field<Type>& fldCouple,
+//     const Field<Type>& fldNonOverlap
+// ) const
+// {
+//     // Note: do not scale AMI field as face areas have already been taken into
+//     // account
+// 
+//     if (owner())
+//     {
+//         return
+//             AMI().interpolateToSource(fldCouple)
+//           + (1.0 - AMI().srcWeightsSum())*fldNonOverlap;
+//     }
+//     else
+//     {
+//         return
+//             neighbPatch().AMI().interpolateToTarget(fldCouple)
+//           + (1.0 - neighbPatch().AMI().tgtWeightsSum())*fldNonOverlap;
+//     }
+// }
+// 
+// 
+// template<class Type>
+// Foam::tmp<Foam::Field<Type>> Foam::cyclicACMIPolyPatch::interpolate
+// (
+//     const tmp<Field<Type>>& tFldCouple,
+//     const tmp<Field<Type>>& tFldNonOverlap
+// ) const
+// {
+//     return interpolate(tFldCouple(), tFldNonOverlap());
+// }
+// 
+// 
+// template<class Type, class CombineOp>
+// void Foam::cyclicACMIPolyPatch::interpolate
+// (
+//     const UList<Type>& fldCouple,
+//     const UList<Type>& fldNonOverlap,
+//     const CombineOp& cop,
+//     List<Type>& result
+// ) const
+// {
+//     // Note: do not scale AMI field as face areas have already been taken into
+//     // account
+// 
+//     if (owner())
+//     {
+//         AMI().interpolateToSource(fldCouple, cop, result);
+//         result += (1.0 - AMI().srcWeightsSum())*fldNonOverlap;
+//     }
+//     else
+//     {
+//         neighbPatch().AMI().interpolateToTarget(fldCouple, cop, result);
+//         result += (1.0 - neighbPatch().AMI().tgtWeightsSum())*fldNonOverlap;
+//     }
+// }
+
+
 template<class Type>
 Foam::tmp<Foam::Field<Type>> Foam::cyclicACMIPolyPatch::interpolate
 (
     const Field<Type>& fldCouple,
-    const Field<Type>& fldNonOverlap
+    const bool normaliseWeights
 ) const
 {
-    // Note: do not scale AMI field as face areas have already been taken into
-    // account
+    tmp<Field<Type>> tres(this->cyclicAMIPolyPatch::interpolate(fldCouple));
+    Field<Type>& res = tres.ref();
 
-    if (owner())
+    if (normaliseWeights)
     {
-        return
-            AMI().interpolateToSource(fldCouple)
-          + (1.0 - AMI().srcWeightsSum())*fldNonOverlap;
+        if (owner())
+        {
+            const scalarListList& srcWeights = AMI().srcWeights();
+            const scalarList& srcWeightsSum = AMI().srcWeightsSum();
+
+            forAll(srcWeights, i)
+            {
+                if (srcWeights[i].size())
+                {
+                    res[i] /= srcWeightsSum[i];
+                }
+            }
+        }
+        else
+        {
+            const AMIPatchToPatchInterpolation& nbrAMI = neighbPatch().AMI();
+            const scalarListList& tgtWeights = nbrAMI.tgtWeights();
+            const scalarList& tgtWeightsSum = nbrAMI.tgtWeightsSum();
+
+            forAll(tgtWeights, i)
+            {
+                if (tgtWeights[i].size())
+                {
+                    res[i] /= tgtWeightsSum[i];
+                }
+            }
+        }
     }
-    else
-    {
-        return
-            neighbPatch().AMI().interpolateToTarget(fldCouple)
-          + (1.0 - neighbPatch().AMI().tgtWeightsSum())*fldNonOverlap;
-    }
-}
-
-
-template<class Type>
-Foam::tmp<Foam::Field<Type>> Foam::cyclicACMIPolyPatch::interpolate
-(
-    const tmp<Field<Type>>& tFldCouple,
-    const tmp<Field<Type>>& tFldNonOverlap
-) const
-{
-    return interpolate(tFldCouple(), tFldNonOverlap());
-}
-
-
-template<class Type, class CombineOp>
-void Foam::cyclicACMIPolyPatch::interpolate
-(
-    const UList<Type>& fldCouple,
-    const UList<Type>& fldNonOverlap,
-    const CombineOp& cop,
-    List<Type>& result
-) const
-{
-    // Note: do not scale AMI field as face areas have already been taken into
-    // account
-
-    if (owner())
-    {
-        AMI().interpolateToSource(fldCouple, cop, result);
-        result += (1.0 - AMI().srcWeightsSum())*fldNonOverlap;
-    }
-    else
-    {
-        neighbPatch().AMI().interpolateToTarget(fldCouple, cop, result);
-        result += (1.0 - neighbPatch().AMI().tgtWeightsSum())*fldNonOverlap;
-    }
+    return tres;
 }
 
 

@@ -177,32 +177,8 @@ public:
             template<class Type>
             tmp<Field<Type>> interpolate
             (
-                const Field<Type>& fldCoupled
-            ) const
-            {
-                updateAreas();
-
-                return
-                    cyclicACMIPolyPatch_.cyclicAMIPolyPatch::interpolate
-                    (
-                        fldCoupled
-                    );
-            }
-
-            template<class Type>
-            tmp<Field<Type>> interpolate
-            (
-                const tmp<Field<Type>>& tfldCoupled
-            ) const
-            {
-                return interpolate(tfldCoupled());
-            }
-
-            template<class Type>
-            tmp<Field<Type>> interpolate
-            (
                 const Field<Type>& fldCoupled,
-                const Field<Type>& fldNonOverlap
+                const bool normaliseWeights
             ) const
             {
                 updateAreas();
@@ -211,26 +187,53 @@ public:
                     cyclicACMIPolyPatch_.interpolate
                     (
                         fldCoupled,
-                        fldNonOverlap
+                        normaliseWeights
                     );
             }
 
             template<class Type>
             tmp<Field<Type>> interpolate
             (
-                const tmp<Field<Type>>& tFldCoupled,
-                const tmp<Field<Type>>& tFldNonOverlap
+                const tmp<Field<Type>>& tfldCoupled,
+                const bool normaliseWeights
             ) const
             {
-                updateAreas();
-
-                return
-                    cyclicACMIPolyPatch_.interpolate
-                    (
-                        tFldCoupled,
-                        tFldNonOverlap
-                    );
+                return interpolate(tfldCoupled(), normaliseWeights);
             }
+
+//             template<class Type>
+//             tmp<Field<Type>> interpolate
+//             (
+//                 const Field<Type>& fldCoupled,
+//                 const Field<Type>& fldNonOverlap
+//             ) const
+//             {
+//                 updateAreas();
+// 
+//                 return
+//                     cyclicACMIPolyPatch_.interpolate
+//                     (
+//                         fldCoupled,
+//                         fldNonOverlap
+//                     );
+//             }
+// 
+//             template<class Type>
+//             tmp<Field<Type>> interpolate
+//             (
+//                 const tmp<Field<Type>>& tFldCoupled,
+//                 const tmp<Field<Type>>& tFldNonOverlap
+//             ) const
+//             {
+//                 updateAreas();
+// 
+//                 return
+//                     cyclicACMIPolyPatch_.interpolate
+//                     (
+//                         tFldCoupled,
+//                         tFldNonOverlap
+//                     );
+//             }
 
 
         // Interface transfer functions

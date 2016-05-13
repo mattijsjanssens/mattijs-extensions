@@ -167,19 +167,10 @@ tmp<Field<Type>> tpnf
         (
             iField,
             cpp.neighbPatch().faceCells()
-        )
+        ),
+        true
     )
 );
-if (cpp.owner())
-{
-    const AMIPatchToPatchInterpolation& AMI = cpp.AMI();
-    tpnf.ref() /= AMI.srcWeightsSum();
-}
-else
-{
-    const AMIPatchToPatchInterpolation& AMI = cpp.neighbPatch().AMI();
-    tpnf.ref() /= AMI.tgtWeightsSum();
-}
 
     if (doTransform())
     {
@@ -245,19 +236,7 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
 
     const labelUList& faceCells = cyclicACMIPatch_.faceCells();
 
-    pnf = cyclicACMIPatch_.interpolate(pnf);
-
-//MEJ
-if (cpp.owner())
-{
-    const AMIPatchToPatchInterpolation& AMI = cpp.AMI();
-    pnf /= AMI.srcWeightsSum();
-}
-else
-{
-    const AMIPatchToPatchInterpolation& AMI = cpp.neighbPatch().AMI();
-    pnf /= AMI.tgtWeightsSum();
-}
+    pnf = cyclicACMIPatch_.interpolate(pnf, true);
 
     forAll(faceCells, elemI)
     {
@@ -288,19 +267,7 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
 
     const labelUList& faceCells = cyclicACMIPatch_.faceCells();
 
-    pnf = cyclicACMIPatch_.interpolate(pnf);
-
-//MEJ
-if (cpp.owner())
-{
-    const AMIPatchToPatchInterpolation& AMI = cpp.AMI();
-    pnf /= AMI.srcWeightsSum();
-}
-else
-{
-    const AMIPatchToPatchInterpolation& AMI = cpp.neighbPatch().AMI();
-    pnf /= AMI.tgtWeightsSum();
-}
+    pnf = cyclicACMIPatch_.interpolate(pnf, true);
 
 
     forAll(faceCells, elemI)

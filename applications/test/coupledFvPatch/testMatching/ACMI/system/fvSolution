@@ -21,6 +21,11 @@ solvers
     {
         solver          PCG;
         preconditioner  DIC;
+
+        //solver           GAMG;
+        //smoother         GaussSeidel;
+        //nCellsInCoarsestLevel 10;
+
         tolerance       1e-06;
         relTol          0.05;
     }

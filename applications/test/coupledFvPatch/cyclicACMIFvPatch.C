@@ -116,21 +116,12 @@ if (cyclicACMIPolyPatch_.owner())
         // not affected by the amount of overlap with the nonOverlapPatch
         scalarField nbrDeltas
         (
-            interpolate(nbrPatch.nf() & nbrPatch.coupledFvPatch::delta())
+            interpolate
+            (
+                nbrPatch.nf() & nbrPatch.coupledFvPatch::delta(),
+                true
+            )
         );
-
-if (cyclicACMIPolyPatch_.owner())
-{
-    const AMIPatchToPatchInterpolation& AMI = cyclicACMIPolyPatch_.AMI();
-    nbrDeltas /= AMI.srcWeightsSum();
-}
-else
-{
-    const AMIPatchToPatchInterpolation& AMI =
-        nbrPatch.cyclicACMIPolyPatch_.AMI();
-    nbrDeltas /= AMI.tgtWeightsSum();
-}
-
 
 
 {
@@ -185,22 +176,10 @@ Foam::tmp<Foam::vectorField> Foam::cyclicACMIFvPatch::delta() const
         (
             interpolate
             (
-                nbrPatchCoupled.coupledFvPatch::delta()
+                nbrPatchCoupled.coupledFvPatch::delta(),
+                true
             )
         );
-
-        if (cyclicACMIPolyPatch_.owner())
-        {
-            const AMIPatchToPatchInterpolation& AMI =
-                cyclicACMIPolyPatch_.AMI();
-            nbrPatchD /= AMI.srcWeightsSum();
-        }
-        else
-        {
-            const AMIPatchToPatchInterpolation& AMI =
-                nbrPatchCoupled.cyclicACMIPolyPatch_.AMI();
-            nbrPatchD /= AMI.tgtWeightsSum();
-        }
 
 
         tmp<vectorField> tpdv(new vectorField(patchD.size()));
