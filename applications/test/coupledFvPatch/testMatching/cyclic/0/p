@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  dev.feature-ACMI                      |
+|  \\    /   O peration     | Version:  dev                                   |
 |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -17,20 +17,26 @@ FoamFile
 
 dimensions      [0 2 -2 0 0 0 0];
 
-internalField   uniform 0;
+internalField   //uniform 0;
+                nonuniform List<scalar> 2(33 44);
 
 boundaryField
 {
-    //- Set patchGroups for constraint patches
-    #includeEtc "caseDicts/setConstraintTypes"
-
     left1
     {
         type            zeroGradient;
     }
+    right1
+    {
+        type            cyclic;
+    }
     walls1
     {
         type            zeroGradient;
+    }
+    left2
+    {
+        type            cyclic;
     }
     right2
     {
@@ -41,6 +47,10 @@ boundaryField
     walls2
     {
         type            zeroGradient;
+    }
+    frontAndBack
+    {
+        type            empty;
     }
 }
 

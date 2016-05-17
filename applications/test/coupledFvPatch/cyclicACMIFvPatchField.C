@@ -340,6 +340,7 @@ void Foam::cyclicACMIFvPatchField<Type>::initEvaluate
 
     if (!npf.updated())
     {
+        Pout<< "*** updating nonOverlap " << npf.patch().name() << endl;
         npf.evaluate(comms);
     }
 
@@ -452,6 +453,9 @@ void Foam::cyclicACMIFvPatchField<Type>::manipulateMatrix
     fvMatrix<Type>& matrix
 )
 {
+Pout<< "**** manipulateMatrix " << this->patch().name() << endl;
+
+
     const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
 
     // nothing to be done by the AMI, but re-direct to non-overlap patch

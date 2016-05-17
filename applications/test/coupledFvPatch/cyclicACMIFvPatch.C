@@ -110,6 +110,10 @@ if (cyclicACMIPolyPatch_.owner())
     DebugVar(AMI.tgtMagSf());
     DebugVar(AMI.tgtWeights());
     DebugVar(AMI.tgtWeightsSum());
+
+    DebugVar(AMI.interpolateToSource(vectorField(nbrPatch.patch().faceAreas())));
+    DebugVar(AMI.interpolateToTarget(vectorField(patch().faceAreas())));
+
 }
 
         // These deltas are of the cyclic part alone - they are
@@ -139,9 +143,15 @@ DebugVar(nbrDeltas);
             scalar di = deltas[facei];
             scalar dni = nbrDeltas[facei];
 
-            w[facei] = dni/(di + dni);
+            if (dni < 1e-10)
+            {
+                w[facei] = 1.0;
+            }
+            else
+            {
+                w[facei] = dni/(di + dni);
+            }
         }
-
 DebugVar(patch().name());
 DebugVar(Cf());
 DebugVar(nf());

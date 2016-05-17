@@ -37,10 +37,10 @@ inline bool Foam::cyclicACMIPolyPatch::updated() const
 }
 
 
-inline const Foam::vectorField& Foam::cyclicACMIPolyPatch::faceAreas0() const
-{
-    return faceAreas0_;
-}
+//inline const Foam::vectorField& Foam::cyclicACMIPolyPatch::faceAreas0() const
+//{
+//    return faceAreas0_;
+//}
 
 
 inline const Foam::word& Foam::cyclicACMIPolyPatch::nonOverlapPatchName() const
