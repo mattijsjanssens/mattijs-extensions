@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+actions
+(
+    // Load initial cellSet
+    {
+        name    c0;
+        type    cellSet;
+        action  new;
+        source  regionToCell;
+        sourceInfo
+        {
+            insidePoints ((0.5 0.5 0.5)); // points inside region to select
+        }
+    }
+
+    // Get all faces in cellSet
+    {
+        name    f0;
+        type    faceSet;
+        action  new;
+        source  boxToFace;
+        sourceInfo
+        {
+            box (-100 -100 -100)(1 100 100);
+        }
+    }
+
+    // Remove boundary faces
+    {
+        name    f0;
+        type    faceSet;
+        action  delete;
+        source  boundaryToFace;
+        sourceInfo
+        {
+        }
+    }
+
+    // Determine inverse cellSet
+    {
+        name    c1;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            boxes
+            (
+                (1 0.7 -100)(100 100 100)
+                (1 -100 -100)(100 0.3 100)
+            );
+        }
+    }
+    {
+        name    c1;
+        type    cellSet;
+        action  invert;
+    }
+);
+
+// ************************************************************************* //
