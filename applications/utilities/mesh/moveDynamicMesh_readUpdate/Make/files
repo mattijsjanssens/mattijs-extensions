@@ -1,0 +1,15 @@
+AMIInterpolationName.C
+cyclicAMIFvPatch.C
+cyclicAMIFvPatchFields.C
+cyclicAMIFvsPatchFields.C
+cyclicAMIGAMGInterface.C
+cyclicAMIGAMGInterfaceField.C
+cyclicAMILduInterface.C
+cyclicAMILduInterfaceField.C
+cyclicAMIPointPatch.C
+cyclicAMIPointPatchFields.C
+cyclicAMIPolyPatch.C
+
+moveDynamicMesh.C
+
+EXE = $(FOAM_USER_APPBIN)/moveDynamicMesh_readUpdate
