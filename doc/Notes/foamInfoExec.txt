@@ -1,0 +1,10 @@
+foamInfoExec:
+
+- add option to change dictionary entries
+
+foamInfoExec -dict system/fvSolution  -set solvers.p.preconditioner "DILU"
+
+- add option to add dictionary entries? foamInfoExec -add ...
+
+- rename foamInfoExec to foamDict
+- remove -times option

@@ -1,0 +1,22 @@
+- coincident baffles:
+    - some mechanism of referring to one another
+    - some mechanism to adjust both areas to add up to ok
+- HGW: use new patchType, store neighbourPatchName.
+- the only combinations are
+    - wall + coupled
+    - patch + coupled
+    - patch + patch (e.g. switching wall patch to outlet)
+    - wall + patch
+
+
+- tracking:
+    - on cyclicAMI: needs triangle-triangle intersection storage to quickly
+      determine:
+        - other side processor
+        - other side face
+        - other side triangle
+
+    - on cyclicACMI: same but nonOverlap part needs to know about overlap part
+    - on conincident baffles: same. We need to know which side to interrogate.
+
+- cutting: needs triangle-triangle (or poly-poly) intersection.

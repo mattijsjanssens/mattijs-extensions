@@ -1,0 +1,67 @@
+- Find names of proc boundaries:
+    grep procBoundary processor*/2/polyMesh/boundary
+
+- Sort into two parts according to whether source < destination
+  (i.e. owner()) 
+
+- Use createPatch:
+
+
+    {
+        // Name of new patch
+        name cyc_half0;
+
+        // Dictionary to construct new patch from
+        patchInfo
+        {
+            type cyclicAMI;
+            neighbourPatch cyc_half1;
+
+            // Optional: explicitly set transformation tensor.
+            // Used when matching and synchronising points.
+            transform translational;
+            separationVector (0 0 0);
+        }
+
+        // How to construct: either from 'patches' or 'set'
+        constructFrom patches;
+
+        // If constructFrom = patches : names of patches. Wildcards allowed.
+        patches (procBoundary0to1  procBoundary0to2  procBoundary1to2  procBoundary1to3  procBoundary2to3);
+
+        // If constructFrom = set : name of faceSet
+        set f0;
+    }
+    {
+        // Name of new patch
+        name cyc_half1;
+
+        // Dictionary to construct new patch from
+        patchInfo
+        {
+            type cyclicAMI;
+            neighbourPatch cyc_half0;
+
+            // Optional: explicitly set transformation tensor.
+            // Used when matching and synchronising points.
+            transform translational;
+            separationVector (0 0 0);
+        }
+
+        // How to construct: either from 'patches' or 'set'
+        constructFrom patches;
+
+        // If constructFrom = patches : names of patches. Wildcards allowed.
+        patches ( procBoundary1to0 procBoundary2to0 procBoundary2to1 procBoundary3to1 procBoundary3to2);
+
+        // If constructFrom = set : name of faceSet
+        set f0;
+    }
+
+- check e.g. with moveDynamicMesh -checkAMI
+
+- problem: weights not 1.
+    -> faceAreaWeightAMI uses average normal and does not pre-filter faces
+       so picks up e.g. faces at 90 degrees to source face.
+    -> uses 'fan' decomposition but face-centre area normalisation.
+    -> normalisation has to move into AMIMethod.
