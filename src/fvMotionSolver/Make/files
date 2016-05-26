@@ -1,0 +1,7 @@
+fvMotionSolvers  =  fvMotionSolvers
+fvMotionSolversDisplacement  =  fvMotionSolvers/displacement
+fvMotionSolversDisplacementFrozenLaplacian  =  fvMotionSolvers/displacement/frozenLaplacian
+
+$(fvMotionSolversDisplacementFrozenLaplacian)/displacementFrozenLaplacianFvMotionSolver.C
+
+LIB = $(FOAM_LIBBIN)/libfrozenFvMotionSolvers

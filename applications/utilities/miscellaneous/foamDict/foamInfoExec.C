@@ -33,12 +33,31 @@ Description
 #include "Time.H"
 #include "dictionary.H"
 #include "IFstream.H"
+#include "OFstream.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-word oldScope
+// Converts old scope syntax to new syntex
+word scope(const fileName& entryName)
+{
+    if (entryName.find(':') != string::npos)
+    {
+        wordList entryNames(entryName.components(':'));
+
+        word entry(entryNames[0]);
+        for (label i = 1; i < entryNames.size(); i++)
+        {
+            entry += word('.') + entryNames[i];
+        }
+        return entry;
+    }
+    else
+    {
+        return entryName;
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -47,88 +66,71 @@ int main(int argc, char *argv[])
     argList::noBanner();
     argList::validArgs.append("dictionary");
     argList::addBoolOption("keywords", "report keywords");
-    argList::addOption("entry", "name", "report the named entry");
-    argList::addOption("set", "name", "value", "sets the named entry");
+    argList::addOption("entry", "name", "report/select the named entry");
+    //argList::addOption("set", "name", "value", "sets the named entry");
+    argList::addOption("value", "value", "value for the selected entry");
 
     #include "setRootCase.H"
 
     fileName dictFileName(args.rootPath()/args.caseName()/args[1]);
 
-    IFstream dictFile(dictFileName);
+    autoPtr<IFstream> dictFile(new IFstream(dictFileName));
 
-    if (dictFile.good())
+    if (dictFile().good())
     {
-        dictionary dict(dictFile);
+        bool changed = false;
+
+        // Read but preserve headers
+        dictionary dict;
+        dict.read(dictFile(), true);
 
         if (args.optionFound("entry"))
         {
-            fileName entryName(args.option("entry"));
+            word entryName(scope(args.option("entry")));
 
             const entry* entPtr = NULL;
 
-            if (entryName.find('.') != string::npos)
-            {
-                // New syntax
-                entPtr = dict.lookupScopedEntryPtr
-                (
-                    entryName,
-                    false,
-                    true            // wildcards
-                );
-            }
-            else
-            {
-                // Old syntax
-                wordList entryNames(entryName.components(':'));
-                if (dict.found(entryNames[0]))
-                {
-                    entPtr = &dict.lookupEntry
-                    (
-                        entryNames[0],
-                        false,
-                        true            // wildcards
-                    );
-
-                    for (int i=1; i<entryNames.size(); ++i)
-                    {
-                        if (entPtr->dict().found(entryNames[i]))
-                        {
-                            entPtr = &entPtr->dict().lookupEntry
-                            (
-                                entryNames[i],
-                                false,
-                                true    // wildcards
-                            );
-                        }
-                        else
-                        {
-                            FatalErrorInFunction
-                                << "Cannot find sub-entry " << entryNames[i]
-                                << " in entry " << args["entry"]
-                                << " in dictionary " << dictFileName;
-                            FatalError.exit(3);
-                        }
-                    }
-                }
-            }
-
+            entPtr = dict.lookupScopedEntryPtr
+            (
+                entryName,
+                false,
+                true            // wildcards
+            );
 
             if (entPtr)
             {
-                if (args.optionFound("keywords"))
+                if (args.optionFound("value"))
                 {
-                    /*
-                    if (ent[1] != token::BEGIN_BLOCK)
-                    {
-                        FatalErrorInFunction
-                            << "Cannot find entry "
-                            << args["entry"]
-                            << " in dictionary " << dictFileName
-                            << " is not a sub-dictionary";
-                        FatalError.exit(4);
-                    }
-                    */
+                    Info<< "Old value:" << endl;
+                    Info<< *entPtr << endl;
 
+                    string valStr(args.option("value"));
+                    valStr = string(entPtr->keyword()) + ' ' + valStr;
+
+                    DebugVar(valStr);
+                    IStringStream str(valStr);
+                    autoPtr<entry> ePtr(entry::New(str));
+                    DebugVar(ePtr());
+
+//                     primitiveEntry& e =
+//                         const_cast<primitiveEntry&>
+//                         (
+//                             dynamic_cast<const primitiveEntry&>
+//                             (
+//                                 *entPtr
+//                             )
+//                         );
+// 
+//                     e.read(dict, str);
+// 
+//                     Info<< "New value:" << endl;
+//                     Info<< e << endl;
+// 
+//                     changed = true;
+
+                }
+                else if (args.optionFound("keywords"))
+                {
                     const dictionary& dict = entPtr->dict();
                     forAllConstIter(dictionary, dict, iter)
                     {
@@ -160,6 +162,13 @@ int main(int argc, char *argv[])
         {
             Info<< dict;
         }
+
+        if (changed)
+        {
+            dictFile.clear();
+            OFstream os(dictFileName);
+            dict.write(os, false);
+        }
     }
     else
     {
@@ -167,7 +176,6 @@ int main(int argc, char *argv[])
             << "Cannot open file " << dictFileName;
         FatalError.exit(1);
     }
-}
 
     return 0;
 }

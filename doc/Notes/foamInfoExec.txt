@@ -1,10 +1,20 @@
 foamInfoExec:
 
 - add option to change dictionary entries
+    foamInfoExec -dict system/fvSolution  -set solvers.p.preconditioner "DILU"
 
-foamInfoExec -dict system/fvSolution  -set solvers.p.preconditioner "DILU"
+But: options only have on argument. So:
+    foamInfoExec -dict system/fvSolution  -set '(solvers.p.preconditioner "DILU")'
+
+- add option to set value:
+
+    - Select entry:
+        foamInfoExec -dict controlDict -entry startTime
+    - Change entry:
+        foamInfoExec -dict controlDict -entry startTime -value 1.0;
+
 
 - add option to add dictionary entries? foamInfoExec -add ...
 
-- rename foamInfoExec to foamDict
-- remove -times option
+- rename foamInfoExec to foamDict or foamDictionary (e.g. changeDictionary)
+OK- remove -times option

@@ -1,0 +1,32 @@
+cclic baffles / coincident cyclics.
+
+- mapDistribute does not do anything with them:
+    - both local
+    - no transformation
+
+- the master point does something like:
+    forAll(slaves, pointI)
+    {
+        // Set master info
+        info[pointI] = ...
+
+        // Add contributions from slave slots
+        ..
+
+        // Push back master info into slave slots
+        info[slaves[i]] = info[pointI];
+    }
+
+    // Send back to originating processor
+    map.reverseDistribute(info);
+
+- this will e.g.
+    - on the master point: correctly update the slave data
+    - but then the slave point will overwrite the information
+
+- above will correctly work though as long as it is done in
+  two passes:
+
+    - all points set their own information
+    - masters update their own and local-slave information
+    - and push this back (for remote coupled faces)
