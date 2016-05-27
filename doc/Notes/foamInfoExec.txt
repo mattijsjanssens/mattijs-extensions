@@ -9,9 +9,11 @@ But: options only have on argument. So:
 - add option to set value:
 
     - Select entry:
+        foamInfoExec -dict controlDict -keywords
+        foamInfoExec -dict controlDict -entry solvers -keywords
         foamInfoExec -dict controlDict -entry startTime
-    - Change entry:
-        foamInfoExec -dict controlDict -entry startTime -value 1.0;
+        foamInfoExec -dict controlDict -entry startTime -set 1.0
+        foamInfoExec -dict controlDict -entry startTime -add 1.0
 
 
 - add option to add dictionary entries? foamInfoExec -add ...
