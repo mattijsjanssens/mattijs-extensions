@@ -1,0 +1,16 @@
+stringOps.C
+codedFixedValuePointPatchFields.C
+/*
+codedFixedValueFvPatchFields.C
+codedMixedFvPatchFields.C
+*/
+
+codeStream.C
+codedBase.C
+codedFunctionObject.C
+dynamicCode.C
+dynamicCodeContext.C
+
+Test-codedFunctionObject.C
+
+EXE = $(FOAM_USER_APPBIN)/Test-codedFunctionObject
