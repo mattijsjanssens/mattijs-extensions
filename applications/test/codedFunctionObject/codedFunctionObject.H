@@ -75,7 +75,7 @@ SourceFiles
 #define functionObjects_codedFunctionObject_H
 
 #include "functionObject.H"
-#include "codedBase.H"
+//#include "codedBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -89,7 +89,7 @@ namespace Foam
 class codedFunctionObject
 :
     public functionObject,
-    public codedBase
+//    public codedBase
 {
 protected:
 
@@ -103,11 +103,9 @@ protected:
 
         word name_;
 
-//         string codeData_;
-//         string codeRead_;
-//         string codeExecute_;
-//         string codeWrite_;
-//         string codeEnd_;
+        //- Dynamic code rewriting and compiling engine
+        dynamicCode dynCode_;
+
 
         //- Underlying functionObject
         mutable autoPtr<functionObject> redirectFunctionObjectPtr_;

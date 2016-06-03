@@ -185,6 +185,9 @@ public:
             const word& codeDirName = ""
         );
 
+        //- Construct null; use reset function to set codeName, codeDirName
+        dynamicCode();
+
 
     // Member functions
 
@@ -252,6 +255,9 @@ public:
 
         //- Clear files and reset variables to specified context
         void reset(const dynamicCodeContext&);
+
+        //- Clear files and reset code path
+        void reset(const word& codeName, const word& codeDirName);
 
 
         //- Add a file template name, which will be found and filtered and

@@ -119,7 +119,7 @@ Foam::codedFunctionObject::codedFunctionObject
 )
 :
     functionObject(name),
-    codedBase(),
+    //codedBase(),
     time_(time),
     dict_(dict)
 {
@@ -190,7 +190,7 @@ bool Foam::codedFunctionObject::read(const dictionary& dict)
 
 
     // Extract all filter variables from dictionary and calculate sha1.
-    context_.clear();
+    dynCode_.clear();
 
     //- Note: could assume all strings in dictionary are filter variables
     //        but this would also include e.g. the write settings

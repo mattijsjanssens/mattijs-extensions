@@ -323,13 +323,15 @@ Foam::dynamicCode::dynamicCode(const word& codeName, const word& codeDirName)
     codeName_(codeName),
     codeDirName_(codeDirName)
 {
-    if (codeDirName_.empty())
-    {
-        codeDirName_ = codeName_;
-    }
-
-    clear();
+    reset(codeName, codeDirName);
 }
+
+
+Foam::dynamicCode::dynamicCode()
+:
+    codeRoot_(stringOps::expand("$FOAM_CASE")/topDirName),
+    libSubDir_(stringOps::expand("platforms/$WM_OPTIONS/lib"))
+{}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -362,13 +364,24 @@ void Foam::dynamicCode::clear()
 }
 
 
-void Foam::dynamicCode::reset
-(
-    const dynamicCodeContext& context
-)
+void Foam::dynamicCode::reset(const dynamicCodeContext& context)
 {
     clear();
     setFilterContext(context);
+}
+
+
+void Foam::dynamicCode::reset(const word& codeName, const word& codeDirName)
+{
+    clear();
+
+    codeName_ = codeName;
+    codeDirName_ = codeDirName;
+
+    if (codeDirName_.empty())
+    {
+        codeDirName_ = codeName_;
+    }
 }
 
 
