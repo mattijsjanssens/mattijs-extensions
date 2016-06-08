@@ -257,9 +257,7 @@ class globalMeshData
 
         // Global edge addressing
 
-            //- Calculate connected points. For every coupled point the
-            //  set of connected points (including itself) and their
-            //  respective transforms
+            //- Calculate connected points
             void calcPointConnectivity(List<labelPairList>&) const;
 
             //- Calculate pointEdges and pointPoints addressing

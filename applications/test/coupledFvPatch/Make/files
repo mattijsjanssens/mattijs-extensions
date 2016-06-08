@@ -1,5 +1,7 @@
 polyMesh.C
 
+fvPatchFields.C
+
 cyclicACMIGAMGInterface.C
 cyclicACMIGAMGInterfaceField.C
 cyclicACMILduInterface.C

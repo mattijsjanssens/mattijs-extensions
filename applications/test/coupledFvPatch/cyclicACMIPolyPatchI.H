@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2013 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -35,12 +35,6 @@ inline bool Foam::cyclicACMIPolyPatch::updated() const
 {
     return updated_;
 }
-
-
-//inline const Foam::vectorField& Foam::cyclicACMIPolyPatch::faceAreas0() const
-//{
-//    return faceAreas0_;
-//}
 
 
 inline const Foam::word& Foam::cyclicACMIPolyPatch::nonOverlapPatchName() const
@@ -77,6 +71,12 @@ inline const Foam::scalarField& Foam::cyclicACMIPolyPatch::mask() const
     {
         return neighbPatch().tgtMask();
     }
+}
+
+
+inline Foam::scalar Foam::cyclicACMIPolyPatch::tolerance()
+{
+    return tolerance_;
 }
 
 

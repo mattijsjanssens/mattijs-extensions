@@ -174,66 +174,31 @@ public:
             //- Return delta (P to N) vectors across coupled patch
             virtual tmp<vectorField> delta() const;
 
+            //- Interpolate (make sure to have uptodate areas)
             template<class Type>
             tmp<Field<Type>> interpolate
             (
-                const Field<Type>& fldCoupled,
-                const bool normaliseWeights
+                const Field<Type>& fld
             ) const
             {
                 updateAreas();
 
                 return
-                    cyclicACMIPolyPatch_.interpolate
+                    cyclicACMIPolyPatch_.cyclicAMIPolyPatch::interpolate
                     (
-                        fldCoupled,
-                        normaliseWeights
+                        fld
                     );
             }
 
+            //- Interpolate (make sure to have uptodate areas)
             template<class Type>
             tmp<Field<Type>> interpolate
             (
-                const tmp<Field<Type>>& tfldCoupled,
-                const bool normaliseWeights
+                const tmp<Field<Type>>& tfld
             ) const
             {
-                return interpolate(tfldCoupled(), normaliseWeights);
+                return interpolate(tfld());
             }
-
-//             template<class Type>
-//             tmp<Field<Type>> interpolate
-//             (
-//                 const Field<Type>& fldCoupled,
-//                 const Field<Type>& fldNonOverlap
-//             ) const
-//             {
-//                 updateAreas();
-// 
-//                 return
-//                     cyclicACMIPolyPatch_.interpolate
-//                     (
-//                         fldCoupled,
-//                         fldNonOverlap
-//                     );
-//             }
-// 
-//             template<class Type>
-//             tmp<Field<Type>> interpolate
-//             (
-//                 const tmp<Field<Type>>& tFldCoupled,
-//                 const tmp<Field<Type>>& tFldNonOverlap
-//             ) const
-//             {
-//                 updateAreas();
-// 
-//                 return
-//                     cyclicACMIPolyPatch_.interpolate
-//                     (
-//                         tFldCoupled,
-//                         tFldNonOverlap
-//                     );
-//             }
 
 
         // Interface transfer functions

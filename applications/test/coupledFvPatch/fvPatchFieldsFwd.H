@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,7 +23,32 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+#ifndef fvPatchFieldsFwd_H
+#define fvPatchFieldsFwd_H
 
+#include "fieldTypes.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+template<class Type> class fvPatchField;
+
+typedef fvPatchField<scalar> fvPatchScalarField;
+typedef fvPatchField<vector> fvPatchVectorField;
+typedef fvPatchField<sphericalTensor> fvPatchSphericalTensorField;
+typedef fvPatchField<symmTensor> fvPatchSymmTensorField;
+typedef fvPatchField<tensor> fvPatchTensorField;
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
 
 // ************************************************************************* //

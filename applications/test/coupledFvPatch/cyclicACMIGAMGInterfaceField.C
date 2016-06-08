@@ -108,44 +108,14 @@ void Foam::cyclicACMIGAMGInterfaceField::updateInterfaceMatrix
     // Transform according to the transformation tensors
     transformCoupleField(pnf, cmpt);
 
-
-    // Move explicit normalisation into cyclicPolyPatch
     if (cyclicACMIInterface_.owner())
     {
-        const AMIPatchToPatchInterpolation& AMI = cyclicACMIInterface_.AMI();
-
-        pnf = AMI.interpolateToSource(pnf);
-
-        const scalarListList& srcWeights = AMI.srcWeights();
-        const scalarList& srcWeightsSum = AMI.srcWeightsSum();
-
-        forAll(srcWeights, i)
-        {
-            if (srcWeights[i].size())
-            {
-                pnf[i] /= srcWeightsSum[i];
-            }
-        }
+        pnf = cyclicACMIInterface_.AMI().interpolateToSource(pnf);
     }
     else
     {
-        const AMIPatchToPatchInterpolation& AMI =
-            cyclicACMIInterface_.neighbPatch().AMI();
-
-        pnf = AMI.interpolateToTarget(pnf);
-
-        const scalarListList& tgtWeights = AMI.tgtWeights();
-        const scalarList& tgtWeightsSum = AMI.tgtWeightsSum();
-
-        forAll(tgtWeights, i)
-        {
-            if (tgtWeights[i].size())
-            {
-                pnf[i] /= tgtWeightsSum[i];
-            }
-        }
+        pnf = cyclicACMIInterface_.neighbPatch().AMI().interpolateToTarget(pnf);
     }
-
 
     const labelUList& faceCells = cyclicACMIInterface_.faceCells();
 

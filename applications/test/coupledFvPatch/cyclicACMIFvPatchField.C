@@ -137,40 +137,18 @@ Foam::tmp<Foam::Field<Type>>
 Foam::cyclicACMIFvPatchField<Type>::patchNeighbourField() const
 {
     const Field<Type>& iField = this->primitiveField();
-//    const labelUList& nbrFaceCellsCoupled =
-//        cyclicACMIPatch_.cyclicACMIPatch().neighbPatch().faceCells();
-//     const labelUList& faceCellsNonOverlap =
-//         cyclicACMIPatch_.cyclicACMIPatch().nonOverlapPatch().faceCells();
-// 
-//     Field<Type> pnfCoupled(iField, nbrFaceCellsCoupled);
-//     Field<Type> pfNonOverlap(iField, faceCellsNonOverlap);
-// 
-//     tmp<Field<Type>> tpnf
-//     (
-//         new Field<Type>
-//         (
-//             cyclicACMIPatch_.interpolate
-//             (
-//                 pnfCoupled,
-//                 pfNonOverlap
-//             )
-//         )
-//     );
-
-//MEJ: unweighted
-const cyclicACMIPolyPatch& cpp = cyclicACMIPatch_.cyclicACMIPatch();
-tmp<Field<Type>> tpnf
-(
-    cyclicACMIPatch_.interpolate
+    const cyclicACMIPolyPatch& cpp = cyclicACMIPatch_.cyclicACMIPatch();
+    tmp<Field<Type>> tpnf
     (
-        Field<Type>
+        cyclicACMIPatch_.interpolate
         (
-            iField,
-            cpp.neighbPatch().faceCells()
-        ),
-        true
-    )
-);
+            Field<Type>
+            (
+                iField,
+                cpp.neighbPatch().faceCells()
+            )
+        )
+    );
 
     if (doTransform())
     {
@@ -236,7 +214,7 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
 
     const labelUList& faceCells = cyclicACMIPatch_.faceCells();
 
-    pnf = cyclicACMIPatch_.interpolate(pnf, true);
+    pnf = cyclicACMIPatch_.interpolate(pnf);
 
     forAll(faceCells, elemI)
     {
@@ -267,8 +245,7 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
 
     const labelUList& faceCells = cyclicACMIPatch_.faceCells();
 
-    pnf = cyclicACMIPatch_.interpolate(pnf, true);
-
+    pnf = cyclicACMIPatch_.interpolate(pnf);
 
     forAll(faceCells, elemI)
     {
@@ -453,9 +430,6 @@ void Foam::cyclicACMIFvPatchField<Type>::manipulateMatrix
     fvMatrix<Type>& matrix
 )
 {
-Pout<< "**** manipulateMatrix " << this->patch().name() << endl;
-
-
     const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
 
     // nothing to be done by the AMI, but re-direct to non-overlap patch
