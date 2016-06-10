@@ -1,0 +1,18 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+runApplication topoSet
+runApplication subsetMesh -overwrite c0 -patch walls
+
+# split the mesh to generate the ACMI coupled patches
+runApplication createBaffles -overwrite
+
+cp -r 0.orig 0 > /dev/null 2>&1
+runApplication setFields
+runApplication `getApplication`
+
+#------------------------------------------------------------------------------
