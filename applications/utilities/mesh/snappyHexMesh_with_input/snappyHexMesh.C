@@ -987,7 +987,14 @@ int main(int argc, char *argv[])
 
 
     bool singleRegionName(meshDict.lookupOrDefault("singleRegionName", true));
-    bool prefixSurfaceName(meshDict.lookupOrDefault("prefixSurfaceName", true));
+    bool prefixSurfaceName
+    (
+        meshDict.lookupOrDefault
+        (
+            "prefixRegionWithSurfaceName",
+            true
+        )
+    );
 
     searchableSurfaces::namingType namingRule;
     if (!prefixSurfaceName)
