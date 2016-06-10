@@ -1,0 +1,651 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : dev-1387f95858bd
+Exec   : moveDynamicMesh -parallel -checkAMI -noFunctionObjects
+Date   : May 20 2016
+Time   : 12:46:49
+Host   : "dm"
+PID    : 28254
+Case   : /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse
+nProcs : 4
+Slaves : 
+3
+(
+"dm.28255"
+"dm.28256"
+"dm.28257"
+)
+
+Pstream initialized with:
+    floatTransfer      : 0
+    nProcsSimpleSum    : 0
+    commsType          : nonBlocking
+    polling iterations : 0
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create mesh for time = 2
+
+Selecting dynamicFvMesh staticFvMesh
+Writing VTK files with weights of AMI patches.
+
+
+PIMPLE: Operating solver in PISO mode
+
+Time = 3
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+AMI: Creating addressing and weights between 2571 source faces and 2571 target faces
+AMI: Patch source sum(weights) min/max/average = 0.987346, 1.18815, 1.00101
+AMI: Patch target sum(weights) min/max/average = 0, 2.00351, 1.00086
+ExecutionTime = 0.22 s  ClockTime = 1 s
+
+Time = 4
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 0.36 s  ClockTime = 1 s
+
+Time = 5
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 0.49 s  ClockTime = 1 s
+
+Time = 6
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 0.62 s  ClockTime = 1 s
+
+Time = 7
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 0.75 s  ClockTime = 1 s
+
+Time = 8
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 0.88 s  ClockTime = 1 s
+
+Time = 9
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.01 s  ClockTime = 1 s
+
+Time = 10
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.14 s  ClockTime = 2 s
+
+Time = 11
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.27 s  ClockTime = 2 s
+
+Time = 12
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.48 s  ClockTime = 2 s
+
+Time = 13
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.61 s  ClockTime = 2 s
+
+Time = 14
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.74 s  ClockTime = 2 s
+
+Time = 15
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 1.88 s  ClockTime = 2 s
+
+Time = 16
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2 s  ClockTime = 2 s
+
+Time = 17
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.14 s  ClockTime = 3 s
+
+Time = 18
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.27 s  ClockTime = 3 s
+
+Time = 19
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.4 s  ClockTime = 3 s
+
+Time = 20
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.53 s  ClockTime = 3 s
+
+Time = 21
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.66 s  ClockTime = 3 s
+
+Time = 22
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.79 s  ClockTime = 3 s
+
+Time = 23
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 2.96 s  ClockTime = 3 s
+
+Time = 24
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 3.09 s  ClockTime = 4 s
+
+Time = 25
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 3.22 s  ClockTime = 4 s
+
+Time = 26
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 3.35 s  ClockTime = 4 s
+
+Time = 27
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 3.48 s  ClockTime = 4 s
+
+Time = 28
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.
+  <<Number of duplicate (not baffle) faces found: 1. This might indicate a problem.
+  <<Number of faces with non-consecutive shared points: 2. This might indicate a problem.
+    Mesh topology OK.
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Mesh geometry OK.
+Mesh OK.
+Calculating AMI weights between owner patch: cyc_half0 and neighbour patch: cyc_half1
+ExecutionTime = 3.62 s  ClockTime = 4 s
+
+Time = 29
+PIMPLE: iteration 1
+    Point usage OK.
+    Upper triangular ordering OK.
+    Topological cell zip-up check OK.
+    Face vertices OK.

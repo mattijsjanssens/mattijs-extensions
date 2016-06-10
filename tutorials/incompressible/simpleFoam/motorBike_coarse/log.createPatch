@@ -1,0 +1,106 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : dev-1387f95858bd
+Exec   : createPatch -parallel -overwrite
+Date   : May 20 2016
+Time   : 12:27:27
+Host   : "dm"
+PID    : 27240
+Case   : /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse
+nProcs : 4
+Slaves : 
+3
+(
+"dm.27241"
+"dm.27242"
+"dm.27243"
+)
+
+Pstream initialized with:
+    floatTransfer      : 0
+    nProcsSimpleSum    : 0
+    commsType          : nonBlocking
+    polling iterations : 0
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create polyMesh for time = 2
+
+Reading createPatchDict
+
+Adding new patch cyc_half0 as patch 67 from 
+{
+    type            cyclicAMI;
+    neighbourPatch  cyc_half1;
+    transform       translational;
+    separationVector ( 0 0 0 );
+}
+
+Adding new patch cyc_half1 as patch 68 from 
+{
+    type            cyclicAMI;
+    neighbourPatch  cyc_half0;
+    transform       translational;
+    separationVector ( 0 0 0 );
+}
+
+
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary1to2
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary1to3
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary2to3
+Moving faces from patch procBoundary0to1 to patch 67
+Moving faces from patch procBoundary0to2 to patch 67
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary1to0
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary2to0
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary2to1
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary3to1
+--> FOAM Warning : 
+    From function Foam::labelHashSet Foam::polyBoundaryMesh::patchSet(const Foam::UList<Foam::wordRe>&, bool, bool) const
+    in file meshes/polyMesh/polyBoundaryMesh/polyBoundaryMesh.C at line 794
+    Cannot find any patch or group names matching procBoundary3to2
+
+Doing topology modification to order faces.
+
+Not synchronising points.
+
+Removing patches with no faces in them.
+
+Removing empty processor patch procBoundary0to1 at position 69
+Removing empty processor patch procBoundary0to2 at position 70
+Removing patches.
+Writing repatched mesh to 2
+
+End
+
+Finalising parallel run

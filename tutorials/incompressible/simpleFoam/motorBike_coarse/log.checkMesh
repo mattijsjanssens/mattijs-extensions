@@ -1,0 +1,176 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : dev-1387f95858bd
+Exec   : checkMesh -parallel -time 2
+Date   : May 20 2016
+Time   : 12:29:10
+Host   : "dm"
+PID    : 27379
+Case   : /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse
+nProcs : 4
+Slaves : 
+3
+(
+"dm.27380"
+"dm.27381"
+"dm.27382"
+)
+
+Pstream initialized with:
+    floatTransfer      : 0
+    nProcsSimpleSum    : 0
+    commsType          : nonBlocking
+    polling iterations : 0
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create polyMesh for time = 2
+
+Time = 2
+
+Mesh stats
+    points:           38711
+    faces:            97388
+    internal faces:   87736
+    cells:            29644
+    faces per cell:   6.24491
+    boundary patches: 69
+    point zones:      0
+    face zones:       0
+    cell zones:       0
+
+Overall number of cells of each type:
+    hexahedra:     26591
+    prisms:        24
+    wedges:        0
+    pyramids:      0
+    tet wedges:    4
+    tetrahedra:    0
+    polyhedra:     3025
+    Breakdown of polyhedra by number of faces:
+        faces   number of cells
+            4   75
+            5   181
+            6   581
+            9   1925
+           12   179
+           15   78
+           18   6
+
+Checking topology...
+    Boundary definition OK.
+    Cell to face addressing OK.
+    Point usage OK.
+    Upper triangular ordering OK.
+    Face vertices OK.
+   *Number of regions: 5
+    The mesh has multiple regions which are not connected by any face.
+  <<Writing region information to "2/cellToRegion"
+  <<Writing region 0 with 7417 cells to cellSet region0
+  <<Writing region 1 with 7408 cells to cellSet region1
+  <<Writing region 2 with 7371 cells to cellSet region2
+  <<Writing region 3 with 36 cells to cellSet region3
+  <<Writing region 4 with 7412 cells to cellSet region4
+
+Checking basic patch addressing...
+                   Patch    Faces   Points
+            frontAndBack      320      396
+                   inlet       64       90
+                  outlet       64       90
+               lowerWall     1605     1895
+               upperWall      160      220
+    motorBike_frt-fairing:001%1      256      513
+    motorBike_windshield:002%2        4       12
+    motorBike_rr-wh-rim:005%5        7       20
+    motorBike_rr-wh-rim:010%10       36       96
+    motorBike_fr-wh-rim:011%11       27       81
+    motorBike_fr-wh-brake-disk:012%12        1        4
+    motorBike_frame:016-shadow%13        1        4
+    motorBike_rear-susp:014%14       32       89
+    motorBike_rear-susp:014-shadow%15       12       36
+    motorBike_frame:016%16        1        4
+    motorBike_rr-wh-rim:005-shadow%17        2        6
+    motorBike_rr-wh-chain-hub:022%22        3        9
+    motorBike_rearseat%24       29       48
+    motorBike_frt-fairing%25       46       93
+    motorBike_windshield%26       22       56
+    motorBike_headlights%27       14       30
+    motorBike_driversseat%28       14       31
+    motorBike_rear-body%29      151      218
+    motorBike_fuel-tank%30       33       58
+    motorBike_exhaust%31      116      195
+    motorBike_rr-wh-rim%32       95      175
+    motorBike_fr-mud-guard%33       29       78
+    motorBike_fr-wh-rim%34       18       48
+    motorBike_fr-wh-brake-disk%35       27       66
+    motorBike_fr-brake-caliper%36        4       14
+    motorBike_fr-wh-tyre%37       91      171
+      motorBike_hbars%38       32       54
+    motorBike_fr-forks%39       84      136
+      motorBike_chain%40       15       41
+    motorBike_rr-wh-tyre%41      125      242
+    motorBike_square-dial%42        1        4
+    motorBike_round-dial%43        1        4
+    motorBike_dial-holder%44        5       20
+    motorBike_rear-susp%45       83      167
+    motorBike_rear-brake-lights%46        7       16
+    motorBike_rear-light-bracket%47        8       20
+      motorBike_frame%48       50      120
+    motorBike_rear-mud-guard%49       39       86
+    motorBike_rear-susp-spring-damp%50        1        4
+    motorBike_fairing-inner-plate%51       23       51
+    motorBike_clutch-housing%52       15       32
+    motorBike_radiator%53       21       48
+     motorBike_engine%56       47      102
+    motorBike_rear-shock-link%57        3       10
+    motorBike_rear-brake-fluid-pot-bracket%58        5       10
+    motorBike_rear-brake-fluid-pot%59        2        6
+    motorBike_footpeg%60        3       10
+    motorBike_rr-wh-chain-hub%61        6       16
+    motorBike_rear-brake-caliper%62        5       13
+    motorBike_rider-helmet%65       51       95
+    motorBike_rider-visor%66       16       33
+    motorBike_rider-boots%67       64      100
+    motorBike_rider-gloves%68       22       40
+    motorBike_rider-body%69      302      405
+    motorBike_frame:0%70        2        7
+    motorBike_frt-fairing:001-shadow%74      125      346
+    motorBike_windshield-shadow%75       19       53
+    motorBike_fr-mud-guard-shadow%81       13       45
+    motorBike_fr-wh-brake-disk-shadow%83        9       29
+    motorBike_rear-mud-guard-shadow%84       15       48
+    motorBike_radiator-shadow%86        2        7
+    motorBike_rr-wh-chain-hub-shadow%89        5       16
+               cyc_half0     2571     2922
+               cyc_half1     2571     2922
+
+Checking geometry...
+    Overall domain bounding box (-5 -4 0) (15 4 8)
+    Mesh has 3 geometric (non-empty/wedge) directions (1 1 1)
+    Mesh has 3 solution (non-empty) directions (1 1 1)
+    Boundary openness (1.94613e-16 2.88223e-17 2.28833e-17) OK.
+    Max cell openness = 4.25646e-16 OK.
+    Max aspect ratio = 6.77337 OK.
+    Minimum face area = 0.000134032. Maximum face area = 1.00076.  Face area magnitudes OK.
+    Min volume = 2.52584e-05. Max volume = 1.00068.  Total volume = 1279.56.  Cell volumes OK.
+    Mesh non-orthogonality Max: 60.9221 average: 9.54578
+    Non-orthogonality check OK.
+    Face pyramids OK.
+    Max skewness = 2.67897 OK.
+    Coupled point location match (average 0) OK.
+
+Mesh OK.
+
+End
+
+Finalising parallel run

@@ -1,0 +1,83 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : dev-1387f95858bd
+Exec   : surfaceFeatureExtract
+Date   : May 20 2016
+Time   : 12:01:27
+Host   : "dm"
+PID    : 12453
+Case   : /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Reading surfaceFeatureExtractDict
+
+Surface            : "motorBike.obj"
+
+
+Feature line extraction is only valid on closed manifold surfaces.
+Statistics:
+Triangles    : 331653
+Vertices     : 132871
+Bounding Box : (-0.291665 -0.350289 -4.232e-05) (1.75115 0.332267 1.35152)
+
+
+Constructing feature set from included angle 150
+Selecting edges purely based on geometric tests: no
+Removing all non-manifold edges (edges with > 2 connected faces) unless they cross multiple regions
+
+Initial feature set:
+    feature points : 2292
+    feature edges  : 20867
+    of which
+        region edges   : 8678
+        external edges : 2966
+        internal edges : 9223
+
+
+Final feature set:
+    points : 20665
+    of which
+        convex             : 586
+        concave            : 509
+        mixed              : 1197
+        non-feature        : 18373
+    edges  : 20867
+    of which
+        external edges     : 7171
+        internal edges     : 10915
+        flat edges         : 95
+        open edges         : 49
+        multiply connected : 2637
+
+Writing extendedFeatureEdgeMesh to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike.extendedFeatureEdgeMesh"
+
+Writing extendedEdgeMesh components to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike"
+Writing convex feature points to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_convexFeaturePts.obj"
+Writing concave feature points to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_concaveFeaturePts.obj"
+Writing mixed feature points to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_mixedFeaturePts.obj"
+Writing mixed feature point structure to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_mixedFeaturePtsStructure.obj"
+Writing external edges to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_externalEdges.obj"
+Writing internal edges to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_internalEdges.obj"
+Writing flat edges to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_flatEdges.obj"
+Writing open edges to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_openEdges.obj"
+Writing multiple edges to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_multipleEdges.obj"
+Writing region edges to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_regionEdges.obj"
+Writing edge directions to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/extendedFeatureEdgeMesh/motorBike_edgeDirections.obj"
+
+Writing featureEdgeMesh to "/home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/incompressible/simpleFoam/motorBike_coarse/constant/triSurface/motorBike.eMesh"
+
+ExecutionTime = 3.83 s  ClockTime = 4 s
+
+End
+
