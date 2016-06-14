@@ -1,0 +1,81 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     pimpleDyMFoam;
+
+startFrom       startTime;  //latestTime;
+
+startTime       0;
+
+stopAt          writeNow;   //endTime;
+
+endTime         2;  //5;
+
+deltaT          0.005;
+
+writeControl    adjustableRunTime;
+
+writeInterval   0.05;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+adjustTimeStep  true;
+
+maxCo           0.5;
+
+functions
+{
+    phi
+    {
+        type            surfaceRegion;
+        libs ("libfieldFunctionObjects.so");
+
+        enabled         true;
+        writeControl    timeStep;
+
+        // Output to log&file (true) or to file only
+        log             true;
+
+        // Output field values as well
+        writeFields     false;
+
+        // Type of region: patch/faceZone/sampledSurface
+        regionType      patch;
+
+        // if patch or faceZone: name of patch or faceZone
+        name      outlet;
+
+        // Operation: areaAverage/sum/weightedAverage ...
+        operation       sum;
+
+        fields          (phi);
+    }
+}
+
+// ************************************************************************* //
