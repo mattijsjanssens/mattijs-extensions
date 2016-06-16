@@ -1,0 +1,216 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     |
+#   \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#-------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     wmakeQueue
+#
+# Usage
+#     wmakeQueue COMMAND
+#         (start WM_NCOMPPROCS instances of daemon)
+#         run 'COMMAND'
+#
+# Description
+#     Scheduler for parallel compilations using wmake.
+#
+#     Sources the relevant cshrc/bashrc if not set.
+#
+#     WM_PROJECT_DIR, WM_PROJECT and WM_PROJECT_VERSION will have been set
+#     before calling this routine.
+#     FOAM_INST_DIR may possibly have been set (to find installation)
+#
+#-------------------------------------------------------------------------------
+set -u
+
+Script=${0##*/}
+
+[ -n "$WM_PROJECT" ] || {
+    echo "$Script : No OpenFOAM installed. Exiting"
+    exit 1
+}
+
+
+lockDir=$HOME/.$WM_PROJECT/.queue
+pendingDir=$lockDir/pending
+runningDir=$lockDir/running
+
+# Make sure directories exist
+mkdir -p $pendingDir
+mkdir -p $runningDir
+
+
+if [ $# -eq 0 ]
+then
+
+    # Stats
+    echo "$Script : Pending : `ls -1 $pendingDir | wc -l`"
+    echo "$Script : Running : `ls -1 $runningDir | wc -l`"
+
+elif [ $# -eq 2 -a "$1" = "-run" -o "$1" = "-stop" ]
+then
+
+    # Run mode
+
+    serverNo=$2
+    serverLock=$lockDir/${Script}_${serverNo}.pid
+    runLock=$lockDir/lock
+
+    echo "$Script : Server $serverNo lock $serverLock"
+
+    # Clean up on termination and on Ctrl-C
+    trap 'rm -f $runLock $serverLock 2>/dev/null; exit 0' EXIT TERM INT
+
+    while true
+    do
+
+        #- Check if any pending job
+        #echo "Checking for $runLock"
+        lockfile $runLock
+	    job=`ls -1 $pendingDir | head -1`
+        if [ "$job" ]
+        then
+            mv $pendingDir/$job $runningDir
+        fi
+        rm -f $runLock
+
+        #- Execute job
+        if [ "$job" ]
+        then
+            #echo "$Script : Server $serverNo found job $job"
+            sh $runningDir/$job
+            rm $runningDir/$job # Note: could make removal dependent on success
+        else
+            if [ "$1" = "-stop" ]
+            then
+                echo "$Script : Server $serverNo exiting server"
+                rm -f $runLock $serverLock 2>/dev/null
+                exit 0
+            else
+                sleep 1
+            fi
+        fi
+
+    done
+    exit 0
+
+elif [ $# -eq 1 -a "$1" = "-kill" ]
+then
+
+    #nProcs=${WM_NCOMPPROCS:=1}
+    #for serverNo in `seq 1 $nProcs`
+    #do
+    #    serverLock=$lockDir/${Script}_${serverNo}.pid
+    #    pid=`cat $serverLock` && kill -TERM $pid
+    #done
+    killall -TERM ${Script}
+    rm $pendingDir/* 2>/dev/null
+    rm $runningDir/* 2>/dev/null
+    exit 0
+
+else
+
+    # Start instances of running script
+    nProcs=${WM_NCOMPPROCS:=1}
+    for serverNo in `seq 1 $nProcs`
+    do
+        serverLock=$lockDir/${Script}_${serverNo}.pid
+
+        #echo "$Script : Checking server lock file $serverLock"
+        if lockfile -r0 $serverLock 2>/dev/null
+        then
+            $0 -run $serverNo </dev/null &
+            pid=$!
+            echo "$Script : Started server $serverNo with $pid"
+            chmod +w $serverLock && echo "$pid" > $serverLock && chmod -w $serverLock
+        else
+            # Already running?
+            pid=`cat $serverLock` && (kill -0 $pid || rm -f $serverLock)
+        fi
+    done
+
+
+    # Where to source WM_PROJECT settings in a remote shell
+    # This code tries to figure out which cshrc or bashrc to execute.
+    # !! Assumes remote computer running same shell and startup files
+    # in same location
+
+    sourceFoam=false    # Fallback command
+    case $SHELL in
+    */csh | */tcsh )    # [t]csh vs bash|ksh|sh
+        shellRc=cshrc
+        ;;
+    *)
+        shellRc=bashrc
+        ;;
+    esac
+
+    # Check ~/.$WM_PROJECT/$WM_PROJECT_VERSION/
+    # Check ~/.$WM_PROJECT/
+    # Check <installedProject>/etc/
+    if [ "$WM_PROJECT" ]
+    then
+        for i in \
+            $HOME/.$WM_PROJECT/$WM_PROJECT_VERSION \
+            $HOME/.$WM_PROJECT \
+            $WM_PROJECT_DIR/etc \
+            ;
+        do
+            if [ -f "$i/$shellRc" ]
+            then
+                sourceFoam="$i/$shellRc"
+                break
+            fi
+        done
+    fi
+
+    # Construct test string for remote execution.
+    # Source WM_PROJECT settings if WM_PROJECT environment not set.
+    # Attempt to preserve the installation directory 'FOAM_INST_DIR'
+    # Use FOAM_SETTINGS to pass command-line settings
+    case $sourceFoam in
+    */bashrc)
+        if [ "$FOAM_INST_DIR" ]
+        then
+            sourceFoam='[ "$WM_PROJECT" ] || '"FOAM_INST_DIR=$FOAM_INST_DIR . $sourceFoam $FOAM_SETTINGS"
+        else
+            sourceFoam='[ "$WM_PROJECT" ] || '". $sourceFoam $FOAM_SETTINGS"
+        fi
+        ;;
+
+    */cshrc)
+        # TODO: csh equivalent to bash code (preserving FOAM_INST_DIR)
+        sourceFoam='if ( ! $?WM_PROJECT ) source '"$sourceFoam $FOAM_SETTINGS"
+        ;;
+    esac
+
+    # Quote double-quotes for remote command line
+    rcmd=$(echo $* | sed -e s/\"/\'\"\'/g)
+    # The same, without forking (not ksh, maybe not /bin/sh either)
+    # rcmd=$(while [ "$#" -gt 0 ]; do echo "${1//\"/'\"'}"; shift; done)
+
+    #echo "Writing script $pendingDir/$$ with $rcmd"
+    echo "$sourceFoam 2>/dev/null; cd $PWD && echo \"$rcmd\" && $rcmd" > $pendingDir/$$
+
+fi
+
+#------------------------------------------------------------------------------
