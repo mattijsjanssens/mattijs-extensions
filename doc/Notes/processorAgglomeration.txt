@@ -13,5 +13,8 @@ Us:
 - then decide if processor agglomeration
 - re-decompose into wanted number of processors (is given?)
 
-- to start: work out 
-
+- to start: write test app:
+- construct fvMatrix (=lduMatrix)
+- add lduMatrix::distribute(const mapDistributePolyMesh&)
+- and see if we can move lduMatrix across processors
+- and solve it
