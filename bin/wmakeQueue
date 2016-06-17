@@ -85,9 +85,16 @@ then
 elif [ $# -eq 1 -a "$1" = "-info" ]
 then
 
-    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
-    echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
-    echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+    while true
+    do
+        echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
+        echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
+        echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+        tput cuu1 && tput el1
+        tput cuu1 && tput el1
+        tput cuu1 && tput el1
+        sleep 1
+    done
 
 elif [ $# -eq 1 -a "$1" = "-kill" ]
 then
