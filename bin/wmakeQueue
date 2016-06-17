@@ -49,6 +49,7 @@ Script=${0##*/}
     exit 1
 }
 
+nProcs=${WM_NCOMPPROCS:=1}
 
 lockDir=$HOME/.$WM_PROJECT/.queue
 pendingDir=$lockDir/pending
@@ -62,12 +63,53 @@ mkdir -p $runningDir
 if [ $# -eq 0 ]
 then
 
-    # Stats
+    # Wait for finishing
     echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
     echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
     echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
 
-elif [ $# -eq 2 -a "$1" = "-run" -o "$1" = "-stop" ]
+    echo "$Script : Waiting for servers to finish"
+    while true
+    do
+        serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
+
+        [ "$serverLocks" ] || exit 0
+
+        for serverLock in $serverLocks
+        do
+            pid=`cat $serverLock` && (kill -0 $pid || rm -f $serverLock)
+        done
+        sleep 5
+    done
+
+elif [ $# -eq 1 -a "$1" = "-info" ]
+then
+
+    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
+    echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
+    echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+
+elif [ $# -eq 1 -a "$1" = "-kill" ]
+then
+
+    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
+    echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
+    echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+    echo "$Script : Killing servers"
+
+    # Try nicely
+    serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
+    for serverLock in $serverLocks
+    do
+        pid=`cat $serverLock 2>/dev/null` && kill -TERM $pid
+    done
+    # Cleanup
+    rm $pendingDir/* 2>/dev/null
+    rm $runningDir/* 2>/dev/null
+    # Try not so nicely - also kills script itself
+    killall -TERM ${Script}
+
+elif [ $# -eq 2 -a "$1" = "-run" ]
 then
 
     # Run mode
@@ -89,7 +131,7 @@ then
         #- Check if any pending job
         #echo "$Script : Server $serverNo checking for $runLock"
         lockfile $runLock
-	    job=`ls -1 $pendingDir | head -1`
+	    job=`ls -1tr $pendingDir | head -1`
         if [ "$job" ]
         then
             mv $pendingDir/$job $runningDir
@@ -104,45 +146,26 @@ then
             sh $runningDir/$job
             rm $runningDir/$job # Note: could make removal dependent on success
         else
-            if [ "$1" = "-stop" -o "$found" = "false" ]
+            if [ "$found" = "false" ]
             then
-                echo "$Script : Server $serverNo exiting server"
+                echo "$Script : Server $serverNo exiting since no pending jobs"
                 rm -f $runLock $serverLock 2>/dev/null
                 exit 0
             else
 
                 # No job. Sleep a bit and then if still no jobs exit.
-                echo "$Script : Server $serverNo : no jobs found." \
-                    " Sleeping and retesting"
+                #echo "$Script : Server $serverNo : no jobs found." \
+                #    " Sleeping and retesting"
                 sleep 10
                 found=false
             fi
         fi
 
     done
-    exit 0
-
-elif [ $# -eq 1 -a "$1" = "-kill" ]
-then
-
-    # Try nicely
-    nProcs=${WM_NCOMPPROCS:=1}
-    for serverNo in `seq 1 $nProcs`
-    do
-        serverLock=$lockDir/${Script}_${serverNo}.pid
-        pid=`cat $serverLock 2>/dev/null` && kill -TERM $pid
-    done
-    # Cleanup
-    rm $pendingDir/* 2>/dev/null
-    rm $runningDir/* 2>/dev/null
-    # Try not so nicely - also kills script itself
-    killall -TERM ${Script}
-    exit 0
 
 else
 
     # Start instances of running script
-    nProcs=${WM_NCOMPPROCS:=1}
     for serverNo in `seq 1 $nProcs`
     do
         serverLock=$lockDir/${Script}_${serverNo}.pid

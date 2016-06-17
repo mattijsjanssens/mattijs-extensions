@@ -1,0 +1,17 @@
+Dune:
+- move parts of processors to other processors
+- just use e.g. parMetis on the coarsened matrix
+
+Us:
+- probably move parts of processors as well
+- two issues:
+    - agglomeration not synchronised so more and more processor interfaces
+    - also processor interface always at same processor so error always
+      in the same place
+
+- do local agglomeration first
+- then decide if processor agglomeration
+- re-decompose into wanted number of processors (is given?)
+
+- to start: work out 
+
