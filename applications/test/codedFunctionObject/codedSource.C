@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2012-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2012-2015 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,52 +23,16 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "makeFvOption.H"
 #include "CodedSource.H"
-#include "stringOps.H"
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-template<class Type>
-bool Foam::fv::CodedSource<Type>::read(const dictionary& dict)
-{
-    if (cellSetOption::read(dict))
-    {
-        coeffs_.lookup("fields") >> fieldNames_;
-        applied_.setSize(fieldNames_.size(), false);
-
-        // Backward compatibility
-        if (dict.found("redirectType"))
-        {
-            dict.lookup("redirectType") >> name_;
-        }
-        else
-        {
-            dict.lookup("name") >> name_;
-        }
-
-        // Compilation options
-        context_.addFilterVariable(false, dict, "codeOptions");
-        context_.addFilterVariable(false, dict, "codeLibs");
-
-        // From looking through the functionObjectTemplate*[CH] :
-        context_.addFilterVariables
-        (
-            dynamicCode::resolveTemplate(codeTemplateC),
-            dict
-        );
-        context_.addFilterVariables
-        (
-            dynamicCode::resolveTemplate(codeTemplateH),
-            dict
-        );
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
+makeFvOption(CodedSource, scalar);
+makeFvOption(CodedSource, vector);
+makeFvOption(CodedSource, sphericalTensor);
+makeFvOption(CodedSource, symmTensor);
+makeFvOption(CodedSource, tensor);
 
 
 // ************************************************************************* //

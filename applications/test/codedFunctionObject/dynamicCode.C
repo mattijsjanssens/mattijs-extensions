@@ -98,7 +98,6 @@ Foam::word Foam::dynamicCode::libraryBaseName(const fileName& libPath)
 }
 
 
-
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 void Foam::dynamicCode::copyAndFilter
@@ -327,13 +326,6 @@ Foam::dynamicCode::dynamicCode(const word& codeName, const word& codeDirName)
 }
 
 
-Foam::dynamicCode::dynamicCode()
-:
-    codeRoot_(stringOps::expand("$FOAM_CASE")/topDirName),
-    libSubDir_(stringOps::expand("platforms/$WM_OPTIONS/lib"))
-{}
-
-
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::fileName Foam::dynamicCode::codeRelPath() const
@@ -354,8 +346,6 @@ void Foam::dynamicCode::clear()
     copyFiles_.clear();
     createFiles_.clear();
     filterVars_.clear();
-    filterVars_.set("typeName", codeName_);
-    filterVars_.set("SHA1sum", SHA1Digest().str());
 
     // Provide default Make/options
     makeOptions_ =
@@ -373,10 +363,10 @@ void Foam::dynamicCode::reset(const dynamicCodeContext& context)
 
 void Foam::dynamicCode::reset(const word& codeName, const word& codeDirName)
 {
-    clear();
-
     codeName_ = codeName;
     codeDirName_ = codeDirName;
+
+    clear();
 
     if (codeDirName_.empty())
     {
@@ -412,12 +402,12 @@ void Foam::dynamicCode::setFilterContext
     const dynamicCodeContext& context
 )
 {
-//    filterVars_.set("localCode", context.filterVars()["localCode"]);
-//    filterVars_.set("code", context.filterVars()["code"]);
-//    filterVars_.set("codeInclude", context.filterVars()["codeInclude"]);
-//    filterVars_.set("SHA1sum", context.sha1().str());
-
-    filterVars_ = context.filterVars();
+    filterVars_.set("typeName", codeName_);
+    forAllConstIter(HashTable<string>, context.filterVars(), iter)
+    {
+        filterVars_.set(iter.key(), iter());
+    }
+    // Calculate an up to date sha1
     filterVars_.set("SHA1sum", context.sha1().str());
 }
 

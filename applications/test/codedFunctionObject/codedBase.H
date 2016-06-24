@@ -59,7 +59,6 @@ class codedBase
         //- Previously loaded library
         mutable fileName oldLibPath_;
 
-
     // Private Member Functions
 
         //- Global loader/unloader function type

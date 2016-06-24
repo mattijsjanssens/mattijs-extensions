@@ -75,7 +75,7 @@ SourceFiles
 #define functionObjects_codedFunctionObject_H
 
 #include "functionObject.H"
-//#include "codedBase.H"
+#include "codedBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -89,7 +89,7 @@ namespace Foam
 class codedFunctionObject
 :
     public functionObject,
-//    public codedBase
+    public codedBase
 {
 protected:
 
@@ -102,10 +102,6 @@ protected:
         dictionary dict_;
 
         word name_;
-
-        //- Dynamic code rewriting and compiling engine
-        dynamicCode dynCode_;
-
 
         //- Underlying functionObject
         mutable autoPtr<functionObject> redirectFunctionObjectPtr_;
@@ -140,6 +136,15 @@ private:
 
 public:
 
+    // Static data members
+
+        //- Name of the C code template to be used
+        static const word codeTemplateC;
+
+        //- Name of the H code template to be used
+        static const word codeTemplateH;
+
+
     //- Runtime type information
     TypeName("coded");
 
@@ -167,12 +172,12 @@ public:
         //- Called at each ++ or += of the time-loop.
         //  postProcess overrides the usual executeControl behaviour and
         //  forces execution (used in post-processing mode)
-        virtual bool execute(const bool postProcess = false);
+        virtual bool execute();
 
         //- Called at each ++ or += of the time-loop.
         //  postProcess overrides the usual writeControl behaviour and
         //  forces writing always (used in post-processing mode)
-        virtual bool write(const bool postProcess = false);
+        virtual bool write();
 
         //- Called when Time::run() determines that the time-loop exits.
         //  By default it simply calls execute().

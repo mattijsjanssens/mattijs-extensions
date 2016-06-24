@@ -1,6 +1,0 @@
-/* dynamicCode:
- * SHA1 = cf39816173bc28982edc0a1a61d510e46926e5c7
- */
-fixedValuePointPatchFieldTemplate.C
-
-LIB = $(PWD)/../platforms/$(WM_OPTIONS)/lib/librampedFixedValue_cf39816173bc28982edc0a1a61d510e46926e5c7
