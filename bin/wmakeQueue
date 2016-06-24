@@ -251,7 +251,9 @@ else
     # rcmd=$(while [ "$#" -gt 0 ]; do echo "${1//\"/'\"'}"; shift; done)
 
     #echo "Writing script $pendingDir/$$ with $rcmd"
+    lockfile $runLock
     echo "$sourceFoam 2>/dev/null; cd $PWD && echo \"$rcmd\" && $rcmd" > $pendingDir/$$
+    rm -f $runLock
 
 fi
 
