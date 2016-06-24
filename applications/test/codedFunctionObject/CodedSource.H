@@ -143,10 +143,6 @@ protected:
 
         word name_;
 
-        string codeCorrect_;
-        string codeAddSup_;
-        string codeSetValue_;
-
         //- Underlying functionObject
         mutable autoPtr<option> redirectFvOptionPtr_;
 
@@ -170,6 +166,15 @@ protected:
 
 
 public:
+
+    // Static data members
+
+        //- Name of the C code template to be used
+        static const word codeTemplateC;
+
+        //- Name of the H code template to be used
+        static const word codeTemplateH;
+
 
     //- Runtime type information
     TypeName("coded");

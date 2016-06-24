@@ -99,7 +99,7 @@ private:
         void operator=(const dynamicCode&);
 
 
-public: //protected:
+protected:
 
     // Static data members
 
@@ -119,10 +119,6 @@ public: //protected:
             OSstream&,
             const HashTable<string>& mapping
         );
-
-        //- Resolve code-templates via the codeTemplateEnvName
-        //  alternatively in the codeTemplateDirName via Foam::findEtcFile
-        static fileName resolveTemplate(const fileName& templateName);
 
         //- Resolve code-templates via the codeTemplateEnvName
         //  alternatively in the codeTemplateDirName via Foam::findEtcFile
@@ -184,9 +180,6 @@ public:
             const word& codeName,
             const word& codeDirName = ""
         );
-
-        //- Construct null; use reset function to set codeName, codeDirName
-        dynamicCode();
 
 
     // Member functions
@@ -259,6 +252,9 @@ public:
         //- Clear files and reset code path
         void reset(const word& codeName, const word& codeDirName);
 
+        //- Resolve code-templates via the codeTemplateEnvName
+        //  alternatively in the codeTemplateDirName via Foam::findEtcFile
+        static fileName resolveTemplate(const fileName& templateName);
 
         //- Add a file template name, which will be found and filtered and
         //  compiled

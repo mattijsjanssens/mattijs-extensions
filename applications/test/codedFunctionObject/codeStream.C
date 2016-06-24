@@ -150,10 +150,10 @@ Foam::functionEntries::codeStream::getFunction
                 dynCode.setMakeOptions
                 (
                     "EXE_INC = -g \\\n"
-                  + context.filterVars()["codeOptions"]
+                  + context.filterVar("codeOptions")
                   + "\n\nLIB_LIBS = \\\n"
                   + "    -lOpenFOAM \\\n"
-                  + context.filterVars()["codeLibs"]
+                  + context.filterVar("codeLibs")
                 );
 
                 if (!dynCode.copyOrCreateFiles(true))

@@ -24,13 +24,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "codedFunctionObject.H"
-#include "volFields.H"
-#include "dictionary.H"
 #include "Time.H"
-#include "SHA1Digest.H"
 #include "dynamicCode.H"
 #include "dynamicCodeContext.H"
-//#include "stringOps.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -47,6 +43,13 @@ namespace Foam
     );
 }
 
+const Foam::word Foam::codedFunctionObject::codeTemplateC
+    = "functionObjectTemplate.C";
+
+const Foam::word Foam::codedFunctionObject::codeTemplateH
+    = "functionObjectTemplate.H";
+
+
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 void Foam::codedFunctionObject::prepare
@@ -59,10 +62,10 @@ void Foam::codedFunctionObject::prepare
     dynCode.setFilterVariable("typeName", name_);
 
     // Compile filtered C template
-    dynCode.addCompileFile("functionObjectTemplate.C");
+    dynCode.addCompileFile(codeTemplateC);
 
     // Copy filtered H template
-    dynCode.addCopyFile("functionObjectTemplate.H");
+    dynCode.addCopyFile(codeTemplateH);
 
     // Debugging: make BC verbose
     // dynCode.setFilterVariable("verbose", "true");
@@ -75,12 +78,12 @@ void Foam::codedFunctionObject::prepare
         "EXE_INC = -g \\\n"
         "-I$(LIB_SRC)/finiteVolume/lnInclude \\\n"
         "-I$(LIB_SRC)/meshTools/lnInclude \\\n"
-      + context.filterVars()["codeOptions"]
+      + context.filterVar("codeOptions")
       + "\n\nLIB_LIBS = \\\n"
       + "    -lOpenFOAM \\\n"
       + "    -lfiniteVolume \\\n"
       + "    -lmeshTools \\\n"
-      + context.filterVars()["codeLibs"]
+      + context.filterVar("codeLibs")
     );
 }
 
@@ -119,12 +122,13 @@ Foam::codedFunctionObject::codedFunctionObject
 )
 :
     functionObject(name),
-    //codedBase(),
+    codedBase(),
     time_(time),
     dict_(dict)
 {
     read(dict_);
 
+    updateLibrary(name_, context_);
     redirectFunctionObject();
 }
 
@@ -155,17 +159,17 @@ Foam::functionObject& Foam::codedFunctionObject::redirectFunctionObject() const
 }
 
 
-bool Foam::codedFunctionObject::execute(const bool postProcess)
+bool Foam::codedFunctionObject::execute()
 {
     updateLibrary(name_, context_);
-    return redirectFunctionObject().execute(postProcess);
+    return redirectFunctionObject().execute();
 }
 
 
-bool Foam::codedFunctionObject::write(const bool postProcess)
+bool Foam::codedFunctionObject::write()
 {
     updateLibrary(name_, context_);
-    return redirectFunctionObject().write(postProcess);
+    return redirectFunctionObject().write();
 }
 
 
@@ -188,26 +192,21 @@ bool Foam::codedFunctionObject::read(const dictionary& dict)
         dict.lookup("name") >> name_;
     }
 
-
-    // Extract all filter variables from dictionary and calculate sha1.
-    dynCode_.clear();
-
-    //- Note: could assume all strings in dictionary are filter variables
-    //        but this would also include e.g. the write settings
-    //context_.read(dict);
-
-    // From looking through functionObjectTemplate.[CH] :
-
+    // Compilation options
     context_.addFilterVariable(false, dict, "codeOptions");
     context_.addFilterVariable(false, dict, "codeLibs");
 
-    context_.addFilterVariable(true, dict, "codeInclude");
-    context_.addFilterVariable(true, dict, "codeData");
-    context_.addFilterVariable(true, dict, "localCode");
-    context_.addFilterVariable(true, dict, "codeRead");
-    context_.addFilterVariable(true, dict, "codeExecute");
-    context_.addFilterVariable(true, dict, "codeWrite");
-    context_.addFilterVariable(true, dict, "codeEnd");
+    // From looking through the functionObjectTemplate*[CH] :
+    context_.addFilterVariables
+    (
+        dynamicCode::resolveTemplate(codeTemplateC),
+        dict
+    );
+    context_.addFilterVariables
+    (
+        dynamicCode::resolveTemplate(codeTemplateH),
+        dict
+    );
 
     updateLibrary(name_, context_);
     return redirectFunctionObject().read(dict);

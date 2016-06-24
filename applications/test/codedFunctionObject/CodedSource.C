@@ -29,6 +29,17 @@ License
 #include "dynamicCode.H"
 #include "dynamicCodeContext.H"
 
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+template<class Type>
+const Foam::word Foam::fv::CodedSource<Type>::codeTemplateC
+    = "codedFvOptionTemplate.C";
+
+template<class Type>
+const Foam::word Foam::fv::CodedSource<Type>::codeTemplateH
+    = "codedFvOptionTemplate.H";
+
+
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 template<class Type>
@@ -45,16 +56,10 @@ void Foam::fv::CodedSource<Type>::prepare
     dynCode.setFilterVariable("TemplateType", sourceType);
     dynCode.setFilterVariable("SourceType", sourceType + "Source");
 
-    //dynCode.removeFilterVariable("code");
-    dynCode.setFilterVariable("codeCorrect", codeCorrect_);
-    dynCode.setFilterVariable("codeAddSup", codeAddSup_);
-    dynCode.setFilterVariable("codeSetValue", codeSetValue_);
+    dynCode.addCompileFile(codeTemplateC);
 
-    // compile filtered C template
-    dynCode.addCompileFile("codedFvOptionTemplate.C");
-
-    // copy filtered H template
-    dynCode.addCopyFile("codedFvOptionTemplate.H");
+    // Copy filtered H template
+    dynCode.addCopyFile(codeTemplateH);
 
     // debugging: make BC verbose
     //         dynCode.setFilterVariable("verbose", "true");
@@ -63,19 +68,19 @@ void Foam::fv::CodedSource<Type>::prepare
 
     // define Make/options
     dynCode.setMakeOptions
-        (
-            "EXE_INC = -g \\\n"
-            "-I$(LIB_SRC)/finiteVolume/lnInclude \\\n"
-            "-I$(LIB_SRC)/meshTools/lnInclude \\\n"
-            "-I$(LIB_SRC)/sampling/lnInclude \\\n"
-            + context.options()
-            + "\n\nLIB_LIBS = \\\n"
-            + "    -lmeshTools \\\n"
-            + "    -lfvOptions \\\n"
-            + "    -lsampling \\\n"
-            + "    -lfiniteVolume \\\n"
-            + context.libs()
-        );
+    (
+        "EXE_INC = -g \\\n"
+        "-I$(LIB_SRC)/finiteVolume/lnInclude \\\n"
+        "-I$(LIB_SRC)/meshTools/lnInclude \\\n"
+        "-I$(LIB_SRC)/sampling/lnInclude \\\n"
+        + context.filterVar("codeOptions")
+        + "\n\nLIB_LIBS = \\\n"
+        + "    -lmeshTools \\\n"
+        + "    -lfvOptions \\\n"
+        + "    -lsampling \\\n"
+        + "    -lfiniteVolume \\\n"
+        + context.filterVar("codeLibs")
+    );
 }
 
 
@@ -157,7 +162,7 @@ void Foam::fv::CodedSource<Type>::correct
             << ">::correct for source " << name_ << endl;
     }
 
-    updateLibrary(name_);
+    updateLibrary(name_, context_);
     redirectFvOption().correct(field);
 }
 
@@ -175,7 +180,7 @@ void Foam::fv::CodedSource<Type>::addSup
             << ">::addSup for source " << name_ << endl;
     }
 
-    updateLibrary(name_);
+    updateLibrary(name_, context_);
     redirectFvOption().addSup(eqn, fieldi);
 }
 
@@ -194,7 +199,7 @@ void Foam::fv::CodedSource<Type>::addSup
             << ">::addSup for source " << name_ << endl;
     }
 
-    updateLibrary(name_);
+    updateLibrary(name_, context_);
     redirectFvOption().addSup(rho, eqn, fieldi);
 }
 
@@ -212,7 +217,7 @@ void Foam::fv::CodedSource<Type>::constrain
             << ">::constrain for source " << name_ << endl;
     }
 
-    updateLibrary(name_);
+    updateLibrary(name_, context_);
     redirectFvOption().constrain(eqn, fieldi);
 }
 
