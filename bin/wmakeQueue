@@ -77,7 +77,7 @@ then
 
         for serverLock in $serverLocks
         do
-            pid=`cat $serverLock` && (kill -0 $pid || rm -f $serverLock)
+            pid=`cat $serverLock 2> /dev/null` && (kill -0 "$pid" || rm -f $serverLock)
         done
         sleep 5
     done
@@ -90,10 +90,10 @@ then
         echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
         echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
         echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
-        tput cuu1 && tput el1
-        tput cuu1 && tput el1
-        tput cuu1 && tput el1
-        sleep 1
+        sleep 2
+        tput cuu1 && tput el && tput el1
+        tput cuu1 && tput el && tput el1
+        tput cuu1 && tput el && tput el1
     done
 
 elif [ $# -eq 1 -a "$1" = "-kill" ]
@@ -108,7 +108,7 @@ then
     serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
     for serverLock in $serverLocks
     do
-        pid=`cat $serverLock 2>/dev/null` && kill -TERM $pid
+        pid=`cat $serverLock 2>/dev/null` && kill -TERM "$pid"
     done
     # Cleanup
     rm $pendingDir/* 2>/dev/null
@@ -125,7 +125,7 @@ then
     serverLock=$lockDir/${Script}_${serverNo}.pid
     runLock=$lockDir/lock
 
-    echo "$Script : Server $serverNo lock $serverLock"
+    #echo "$Script : Server $serverNo lock $serverLock"
 
     # Clean up on termination and on Ctrl-C
     trap 'rm -f $runLock $serverLock 2>/dev/null; exit 0' EXIT TERM INT
@@ -186,7 +186,7 @@ else
             chmod +w $serverLock && echo "$pid" > $serverLock && chmod -w $serverLock
         else
             # Already running?
-            pid=`cat $serverLock` && (kill -0 $pid || rm -f $serverLock)
+            pid=`cat $serverLock 2>/dev/null` && (kill -0 "$pid" || rm -f $serverLock)
         fi
     done
 
