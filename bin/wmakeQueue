@@ -55,6 +55,9 @@ lockDir=$HOME/.$WM_PROJECT/.queue
 pendingDir=$lockDir/pending
 runningDir=$lockDir/running
 
+runLock=$lockDir/lock
+
+
 # Make sure directories exist
 mkdir -p $pendingDir
 mkdir -p $runningDir
@@ -123,7 +126,6 @@ then
 
     serverNo=$2
     serverLock=$lockDir/${Script}_${serverNo}.pid
-    runLock=$lockDir/lock
 
     #echo "$Script : Server $serverNo lock $serverLock"
 
@@ -251,7 +253,9 @@ else
     # rcmd=$(while [ "$#" -gt 0 ]; do echo "${1//\"/'\"'}"; shift; done)
 
     #echo "Writing script $pendingDir/$$ with $rcmd"
+    lockfile $runLock
     echo "$sourceFoam 2>/dev/null; cd $PWD && echo \"$rcmd\" && $rcmd" > $pendingDir/$$
+    rm -f $runLock
 
 fi
 
