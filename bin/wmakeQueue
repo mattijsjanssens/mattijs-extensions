@@ -40,7 +40,57 @@
 #     FOAM_INST_DIR may possibly have been set (to find installation)
 #
 #-------------------------------------------------------------------------------
-set -u
+#set -u
+
+usage() {
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage: ${0##*/} [OPTION] <command>
+options:
+  -info             continuously show current jobs and servers
+  -kill             kill servers; clear current jobs
+  -run <server>     (used internally: spawn server)
+  -help             print the usage
+
+* Queueing scheduler for threaded compilation. Gets passed a command to
+execute. This scheduler can be used in compiling OpenFOAM by setting
+the WM_SCHEDULER variable. If no command gets passed it will wait until
+all the scheduled commands have been executed.
+
+
+Typical usage for compiling OpenFOAM:
+
+- Make sure all lnInclude directories are uptodate:
+    ./Allwmake -update
+
+- Compile all with this scheduler:
+    wmake -queue
+
+
+Above commands wrap up the individual steps:
+- Make sure all lnInclude directories are uptodate:
+    wmakeLnIncludeAll
+- Compile all 'objects' with this scheduler and wait for completion
+    (export WM_SCHEDULER=$0 && wmake -all objects; WM_SCHEDULER)
+- Do all linkage
+    wmake -all
+
+
+Operation:
+It maintains two directories in ~.\$WM_PROJECT/.queue,
+one of pending jobs and one of running jobs. The command that gets passed
+as argument gets written as a shell script to the pending directory. The
+server (this script with -run argument; \$WM_NCOMPPROCS servers automatically
+started) picks up a job script from the pending/ directory, moves it to
+the running/ directory and executes it. Each server will stop if there are
+no more jobs in the pending/ directory.
+
+USAGE
+    exit 1
+}
+
 
 Script=${0##*/}
 
@@ -48,13 +98,16 @@ Script=${0##*/}
     echo "$Script : No OpenFOAM installed. Exiting"
     exit 1
 }
+[ -n "$WM_NCOMPPROCS" ] || {
+    echo "$Script : Environment variable WM_NCOMPPROCS needs to be set to the" \
+        "number of desired compilation servers. Exiting."
+    exit 1
+}
 
-nProcs=${WM_NCOMPPROCS:=1}
-
+# Location of queue
 lockDir=$HOME/.$WM_PROJECT/.queue
 pendingDir=$lockDir/pending
 runningDir=$lockDir/running
-
 runLock=$lockDir/lock
 
 
@@ -63,71 +116,78 @@ mkdir -p $pendingDir
 mkdir -p $runningDir
 
 
-if [ $# -eq 0 ]
-then
 
-    # Wait for finishing
-    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
-    echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
-    echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+# Parse options. Handle the simple ones inline.
+serverNo=''
 
-    echo "$Script : Waiting for servers to finish"
-    while true
-    do
-        serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+    -h | -help)
+        usage
+        ;;
+    -info)
 
-        [ "$serverLocks" ] || exit 0
-
-        for serverLock in $serverLocks
+        while true
         do
-            pid=`cat $serverLock 2> /dev/null` && (kill -0 "$pid" || rm -f $serverLock)
+            echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
+            echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
+            echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+            sleep 1
+            tput cuu1 && tput el && tput el1
+            tput cuu1 && tput el && tput el1
+            tput cuu1 && tput el && tput el1
         done
-        sleep 5
-    done
+        exit 0
+        ;;
+    -kill)
 
-elif [ $# -eq 1 -a "$1" = "-info" ]
-then
-
-    while true
-    do
         echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
         echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
         echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
-        sleep 1
-        tput cuu1 && tput el && tput el1
-        tput cuu1 && tput el && tput el1
-        tput cuu1 && tput el && tput el1
-    done
+        echo "$Script : Killing servers"
 
-elif [ $# -eq 1 -a "$1" = "-kill" ]
-then
+        # Try nicely
+        serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
+        for serverLock in $serverLocks
+        do
+            pid=`cat $serverLock 2>/dev/null` && kill -TERM "$pid"
+        done
+        # Cleanup
+        rm $pendingDir/* 2>/dev/null
+        rm $runningDir/* 2>/dev/null
+        for serverLock in $serverLocks
+        do
+            rm -f $serverLock
+        done
 
-    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
-    echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
-    echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
-    echo "$Script : Killing servers"
+        # Try not so nicely - also kills script itself
+        killall -TERM ${Script}
+        exit 0
+        ;;
+    -run)
+        [ "$#" -ge 2 ] || usage "'$1' option requires an argument"
+        serverNo=$2
+        shift 2
+        ;;
+    -*)
+        usage "unknown option: '$*'"
+        break
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
 
-    # Try nicely
-    serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
-    for serverLock in $serverLocks
-    do
-        pid=`cat $serverLock 2>/dev/null` && kill -TERM "$pid"
-    done
-    # Cleanup
-    rm $pendingDir/* 2>/dev/null
-    rm $runningDir/* 2>/dev/null
-    # Try not so nicely - also kills script itself
-    killall -TERM ${Script}
 
-elif [ $# -eq 2 -a "$1" = "-run" ]
+
+if [ -n "$serverNo" ]
 then
 
     # Run mode
 
-    serverNo=$2
     serverLock=$lockDir/${Script}_${serverNo}.pid
-
-    #echo "$Script : Server $serverNo lock $serverLock"
 
     # Clean up on termination and on Ctrl-C
     trap 'rm -f $runLock $serverLock 2>/dev/null; exit 0' EXIT TERM INT
@@ -172,10 +232,31 @@ then
 
     done
 
+elif [ $# -eq 0 ]
+then
+
+    # Wait for finishing
+    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
+    echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
+    echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
+
+    echo "$Script : Waiting for servers to finish"
+    while true
+    do
+        serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
+
+        [ "$serverLocks" ] || exit 0
+
+        for serverLock in $serverLocks
+        do
+            pid=`cat $serverLock 2> /dev/null` && (kill -0 "$pid" || rm -f $serverLock)
+        done
+    done
+
 else
 
     # Start instances of running script
-    for serverNo in `seq 1 $nProcs`
+    for serverNo in `seq 1 $WM_NCOMPPROCS`
     do
         serverLock=$lockDir/${Script}_${serverNo}.pid
 
@@ -186,6 +267,10 @@ else
             pid=$!
             echo "$Script : Started server $serverNo with $pid, lock $serverLock"
             chmod +w $serverLock && echo "$pid" > $serverLock && chmod -w $serverLock
+
+            # Force creation of single server only to avoid too many being
+            # started.
+            break
         else
             # Already running?
             pid=`cat $serverLock 2>/dev/null` && (kill -0 "$pid" || rm -f $serverLock)
