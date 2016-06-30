@@ -93,7 +93,7 @@ then
         echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
         echo "$Script : Jobs running : `ls -1 $runningDir | wc -l`"
         echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
-        sleep 2
+        sleep 1
         tput cuu1 && tput el && tput el1
         tput cuu1 && tput el && tput el1
         tput cuu1 && tput el && tput el1
@@ -253,9 +253,10 @@ else
     # rcmd=$(while [ "$#" -gt 0 ]; do echo "${1//\"/'\"'}"; shift; done)
 
     #echo "Writing script $pendingDir/$$ with $rcmd"
-    lockfile $runLock
-    echo "$sourceFoam 2>/dev/null; cd $PWD && echo \"$rcmd\" && $rcmd" > $pendingDir/$$
-    rm -f $runLock
+    #lockfile $runLock
+    file="$pendingDir/$$_${RANDOM}"
+    echo "$sourceFoam 2>/dev/null; cd $PWD && echo \"$rcmd\" && $rcmd" > "$file"
+    #rm -f $runLock
 
 fi
 
