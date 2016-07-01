@@ -148,17 +148,17 @@ MAKE
     for j in $jobs
     do
         echo "\$(lockDir)/running/${j}:\$(lockDir)/pending/${j}" >> $makefile
-        echo "	mv \$< \$@" >> $makefile
-        echo "	sh \$@" >> $makefile
+        echo "	@mv \$< \$@" >> $makefile
+        echo "	@sh \$@" >> $makefile
         #echo "	rm \$@" >> $makefile
         echo "" >> $makefile
     done
 
-    echo "Running with $WM_NCOMPROCS processors makefile $makefile"
-#    make -j $WM_NCOMPROCS -f $makefile
-#
-#    echo "Clearing finished jobs $runningDir"
-#    rm $runningDir/* 2>/dev/null
+    echo "Running with $WM_NCOMPPROCS processors makefile $makefile"
+    make -j $WM_NCOMPPROCS -f $makefile
+
+    echo "Clearing finished jobs $runningDir"
+    rm $runningDir/* 2>/dev/null
 
 else
 
