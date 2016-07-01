@@ -1,0 +1,232 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     |
+#   \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#-------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     wmakeQueue
+#
+# Usage
+#     wmakeQueue COMMAND
+#         (start WM_NCOMPPROCS instances of daemon)
+#         run 'COMMAND'
+#
+# Description
+#     Scheduler for parallel compilations using wmake.
+#
+#     Sources the relevant cshrc/bashrc if not set.
+#
+#     WM_PROJECT_DIR, WM_PROJECT and WM_PROJECT_VERSION will have been set
+#     before calling this routine.
+#     FOAM_INST_DIR may possibly have been set (to find installation)
+#
+#-------------------------------------------------------------------------------
+#set -u
+
+usage() {
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage: ${0##*/} [OPTION] <command>
+
+* Queueing scheduler for threaded compilation. Gets passed a command to
+execute. This scheduler can be used in compiling OpenFOAM by setting
+the WM_SCHEDULER variable.
+
+Typical usage for compiling OpenFOAM:
+
+- Make sure all lnInclude directories are uptodate:
+    wmakeLnIncludeAll
+- Compile all 'objects' with this scheduler and wait for completion
+    (export WM_SCHEDULER=$0 && wmake -all objects; WM_SCHEDULER)
+- Do all linkage
+    wmake -all
+
+USAGE
+    exit 1
+}
+
+
+Script=${0##*/}
+
+[ -n "$WM_PROJECT" ] || {
+    echo "$Script : No OpenFOAM installed. Exiting"
+    exit 1
+}
+[ -n "$WM_NCOMPPROCS" ] || {
+    echo "$Script : Environment variable WM_NCOMPPROCS needs to be set to the" \
+        "number of parallel compilations. Exiting."
+    exit 1
+}
+
+# Location of queue
+lockDir=$HOME/.$WM_PROJECT/.queue
+pendingDir=$lockDir/pending
+runningDir=$lockDir/running
+runLock=$lockDir/lock
+makefile=$lockDir/Makefile
+
+
+# Make sure directories exist
+mkdir -p $pendingDir
+mkdir -p $runningDir
+
+
+
+# Parse options. Handle the simple ones inline.
+
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+    -h | -help)
+        usage
+        ;;
+    -info)
+
+        while true
+        do
+            echo "$Script : Jobs pending  : `ls -1 $pendingDir | wc -l`"
+            echo "$Script : Jobs finished : `ls -1 $runningDir | wc -l`"
+            sleep 1
+            tput cuu1 && tput el && tput el1
+            tput cuu1 && tput el && tput el1
+        done
+        exit 0
+        ;;
+    -*)
+        usage "unknown option: '$*'"
+        break
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+
+
+
+if [ $# -eq 0 ]
+then
+
+    # Wait for finishing
+    echo "$Script : Jobs pending : `ls -1 $pendingDir | wc -l`"
+
+    echo "Constructing makefile $makefile"
+    jobs=`ls -1tr $pendingDir | tr '\n' ' '`
+    cat >$makefile <<MAKE
+lockDir=$lockDir
+
+SRC = \$(wildcard \$(lockDir)/pending/*)
+OBJ = \$(patsubst \$(lockDir)/pending/%, \$(lockDir)/running/%, \$(SRC))
+
+.PHONY: all
+all: \$(OBJ)
+
+MAKE
+
+    for j in $jobs
+    do
+        echo "\$(lockDir)/running/${j}:\$(lockDir)/pending/${j}" >> $makefile
+        echo "	mv \$< \$@" >> $makefile
+        echo "	sh \$@" >> $makefile
+        #echo "	rm \$@" >> $makefile
+        echo "" >> $makefile
+    done
+
+    echo "Running with $WM_NCOMPROCS processors makefile $makefile"
+#    make -j $WM_NCOMPROCS -f $makefile
+#
+#    echo "Clearing finished jobs $runningDir"
+#    rm $runningDir/* 2>/dev/null
+
+else
+
+    # Where to source WM_PROJECT settings in a remote shell
+    # This code tries to figure out which cshrc or bashrc to execute.
+    # !! Assumes remote computer running same shell and startup files
+    # in same location
+
+    sourceFoam=false    # Fallback command
+    case $SHELL in
+    */csh | */tcsh )    # [t]csh vs bash|ksh|sh
+        shellRc=cshrc
+        ;;
+    *)
+        shellRc=bashrc
+        ;;
+    esac
+
+    # Check ~/.$WM_PROJECT/$WM_PROJECT_VERSION/
+    # Check ~/.$WM_PROJECT/
+    # Check <installedProject>/etc/
+    if [ "$WM_PROJECT" ]
+    then
+        for i in \
+            $HOME/.$WM_PROJECT/$WM_PROJECT_VERSION \
+            $HOME/.$WM_PROJECT \
+            $WM_PROJECT_DIR/etc \
+            ;
+        do
+            if [ -f "$i/$shellRc" ]
+            then
+                sourceFoam="$i/$shellRc"
+                break
+            fi
+        done
+    fi
+
+    # Construct test string for remote execution.
+    # Source WM_PROJECT settings if WM_PROJECT environment not set.
+    # Attempt to preserve the installation directory 'FOAM_INST_DIR'
+    # Use FOAM_SETTINGS to pass command-line settings
+    case $sourceFoam in
+    */bashrc)
+        if [ "$FOAM_INST_DIR" ]
+        then
+            sourceFoam='[ "$WM_PROJECT" ] || '"FOAM_INST_DIR=$FOAM_INST_DIR . $sourceFoam $FOAM_SETTINGS"
+        else
+            sourceFoam='[ "$WM_PROJECT" ] || '". $sourceFoam $FOAM_SETTINGS"
+        fi
+        ;;
+
+    */cshrc)
+        # TODO: csh equivalent to bash code (preserving FOAM_INST_DIR)
+        sourceFoam='if ( ! $?WM_PROJECT ) source '"$sourceFoam $FOAM_SETTINGS"
+        ;;
+    esac
+
+    # Quote double-quotes for remote command line
+    rcmd=$(echo $* | sed -e s/\"/\'\"\'/g)
+    # The same, without forking (not ksh, maybe not /bin/sh either)
+    # rcmd=$(while [ "$#" -gt 0 ]; do echo "${1//\"/'\"'}"; shift; done)
+
+    #echo "Writing script $pendingDir/$$ with $rcmd"
+    #lockfile $runLock
+    file="$pendingDir/$$_${RANDOM}"
+    echo "$sourceFoam 2>/dev/null; cd $PWD && echo \"$rcmd\" && $rcmd" > "$file"
+    #rm -f $runLock
+
+fi
+
+#------------------------------------------------------------------------------

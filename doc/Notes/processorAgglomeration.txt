@@ -16,5 +16,6 @@ Us:
 - to start: write test app:
 - construct fvMatrix (=lduMatrix)
 - add lduMatrix::distribute(const mapDistributePolyMesh&)
+- optionally allow renumbering on destination
 - and see if we can move lduMatrix across processors
 - and solve it
