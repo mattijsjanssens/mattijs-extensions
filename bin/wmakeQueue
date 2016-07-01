@@ -92,6 +92,23 @@ USAGE
 }
 
 
+killServers() {
+    # Try nicely
+    serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
+    for serverLock in $serverLocks
+    do
+        pid=`cat $serverLock 2>/dev/null` && kill -TERM "$pid"
+    done
+    # Cleanup
+    rm $pendingDir/* 2>/dev/null
+    rm $runningDir/* 2>/dev/null
+    for serverLock in $serverLocks
+    do
+        rm -f $serverLock
+    done
+}
+
+
 Script=${0##*/}
 
 [ -n "$WM_PROJECT" ] || {
@@ -147,19 +164,10 @@ do
         echo "$Script : Servers      : `ps -u | grep -v grep | grep "$Script -run" | wc -l`"
         echo "$Script : Killing servers"
 
-        # Try nicely
-        serverLocks=`ls -1 $lockDir/${Script}_*.pid 2> /dev/null`
-        for serverLock in $serverLocks
-        do
-            pid=`cat $serverLock 2>/dev/null` && kill -TERM "$pid"
-        done
-        # Cleanup
-        rm $pendingDir/* 2>/dev/null
-        rm $runningDir/* 2>/dev/null
-        for serverLock in $serverLocks
-        do
-            rm -f $serverLock
-        done
+        # Kill servers nicely
+        killServers
+
+        sleep 5
 
         # Try not so nicely - also kills script itself
         killall -TERM ${Script}
@@ -197,8 +205,18 @@ then
     while true
     do
 
+        # Check that I am who I think I am
+        pid=`cat $serverLock 2> /dev/null`
+        if [ "$pid" -a "$pid" != $$ ]
+        then
+            echo "$Script : Server $serverNo, pid $$ exiting since duplicate"
+            trap - EXIT TERM INT
+            rm -f $runLock
+            exit 0
+        fi
+
+
         #- Check if any pending job
-        #echo "$Script : Server $serverNo checking for $runLock"
         lockfile $runLock
 	    job=`ls -1tr $pendingDir | head -1`
         if [ "$job" ]
@@ -218,7 +236,6 @@ then
             if [ "$found" = "false" ]
             then
                 echo "$Script : Server $serverNo exiting since no pending jobs"
-                rm -f $runLock $serverLock 2>/dev/null
                 exit 0
             else
 
@@ -255,6 +272,9 @@ then
 
 else
 
+    trap killServers TERM INT
+
+
     # Start instances of running script
     for serverNo in `seq 1 $WM_NCOMPPROCS`
     do
@@ -272,10 +292,13 @@ else
             # started.
             break
         else
-            # Already running?
+            # Already running? Check if still running and release lock if not
             pid=`cat $serverLock 2>/dev/null` && (kill -0 "$pid" || rm -f $serverLock)
         fi
     done
+
+
+    #echo "*** pid:$$ ppid:$PPID"
 
 
     # Where to source WM_PROJECT settings in a remote shell
