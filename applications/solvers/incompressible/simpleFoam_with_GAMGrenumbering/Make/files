@@ -1,0 +1,6 @@
+GAMGAgglomeration.C
+pairGAMGAgglomerate.C
+
+simpleFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/simpleFoam_with_GAMGrenumbering
