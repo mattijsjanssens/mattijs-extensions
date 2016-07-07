@@ -1,0 +1,41 @@
+Note: the Ostream& gets the format of the input file so if this was binary
+      you need to write in binary as well and this probably does not work
+      (binary reading of dictionary .. ; v.s. ascii dictionary with binary
+       entries ???)
+
+Example: random internal field:
+
+    //internalField   uniform (20 0 0);
+    internalField   #codeStream
+    {
+        codeInclude
+        #{
+            #include "fvCFD.H"
+        #};
+
+        code
+        #{
+            const IOdictionary& d = dynamicCast<const IOdictionary>(dict);
+            const fvMesh& mesh = refCast<const fvMesh>(d.db());
+            vectorField fld(mesh.nCells(), vector::zero);
+
+            Random rndGen(0);
+            forAll(fld, cellI)
+            {
+                fld[cellI] = 100*(rndGen.vector01()-vector(0.5, 0.5, 0.5));
+            }
+            //fld.writeEntry("", Pout);
+            fld.writeEntry("", os);
+        #};
+
+        codeOptions
+        #{
+            -I$(LIB_SRC)/meshTools/lnInclude \
+            -I$(LIB_SRC)/finiteVolume/lnInclude
+        #};
+
+        codeLibs
+        #{
+            -lfiniteVolume
+        #};
+    };
