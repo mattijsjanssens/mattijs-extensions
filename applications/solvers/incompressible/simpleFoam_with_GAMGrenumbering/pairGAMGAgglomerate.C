@@ -181,19 +181,47 @@ Pout<< "agglomerate at nCells:" << nFineCells
         }
     }
 
+    // Determine cell visit order. This will lower the effect of having
+    // one cell clustering with a neighbouring one whereas it would be better
+    // if that neighbour clustered with another one of its neighbours. So
+    // instead make sure to start with the cells with highest face weights first
 
-    // go through the faces and create clusters
+    labelList visitOrder(nFineCells);
+    {
+        scalarField maxCellWeight(nFineCells, -GREAT);
+        forAll(upperAddr, facei)
+        {
+            scalar& cWeight = maxCellWeight[upperAddr[facei]];
+            cWeight = max(cWeight, faceWeights[facei]);
+        }
+        forAll(lowerAddr, facei)
+        {
+            scalar& cWeight = maxCellWeight[lowerAddr[facei]];
+            cWeight = max(cWeight, faceWeights[facei]);
+        }
+
+        sortedOrder
+        (
+            maxCellWeight,
+            visitOrder,
+            typename UList<scalar>::greater(maxCellWeight)
+        );
+    }
+
+
+    // Go through the faces and create clusters
 
     tmp<labelField> tcoarseCellMap(new labelField(nFineCells, -1));
     labelField& coarseCellMap = tcoarseCellMap.ref();
 
     nCoarseCells = 0;
-    label celli;
 
     for (label cellfi=0; cellfi<nFineCells; cellfi++)
     {
         // Change cell ordering depending on direction for this level
-        celli = forward_ ? cellfi : nFineCells - cellfi - 1;
+        //label celli = forward_ ? cellfi : nFineCells - cellfi - 1;
+        //label celli = cellfi;
+        label celli = visitOrder[cellfi];
 
         if (coarseCellMap[celli] < 0)
         {
@@ -273,7 +301,9 @@ Pout<< "agglomerate at nCells:" << nFineCells
     for (label cellfi=0; cellfi<nFineCells; cellfi++)
     {
         // Change cell ordering depending on direction for this level
-        celli = forward_ ? cellfi : nFineCells - cellfi - 1;
+        //label celli = forward_ ? cellfi : nFineCells - cellfi - 1;
+        //label celli = cellfi;
+        label celli = visitOrder[cellfi];
 
         if (coarseCellMap[celli] < 0)
         {
@@ -282,88 +312,85 @@ Pout<< "agglomerate at nCells:" << nFineCells
         }
     }
 
+
+    // Have renumbering (below) start at different cells. Not sure whether
+    // this is needed with renumbering
     if (!forward_)
     {
-        nCoarseCells--;
-
         forAll(coarseCellMap, celli)
         {
-            coarseCellMap[celli] = nCoarseCells - coarseCellMap[celli];
-        }
-
-        nCoarseCells++;
-    }
-
-// Hack: construct cell-cell addressing on coarse level
-{
-    // Pass 1: count
-    labelList nNbrs(nCoarseCells, 0);
-
-    forAll(upperAddr, facei)
-    {
-        label coarseUpper = coarseCellMap[upperAddr[facei]];
-        label coarseLower = coarseCellMap[lowerAddr[facei]];
-
-        if (coarseUpper != coarseLower)
-        {
-            nNbrs[coarseUpper]++;
-            nNbrs[coarseLower]++;
+            coarseCellMap[celli] = nCoarseCells - 1 - coarseCellMap[celli];
         }
     }
 
-    // Size
-    labelListList cellCells(nCoarseCells);
-    forAll(cellCells, celli)
+
+    // Renumber coarse level
     {
-        cellCells[celli].setSize(nNbrs[celli]);
-    }
+        // Construct cell-cell addressing on coarse level
 
-    // Pass2: fill
-    nNbrs = 0;
+        // Pass 1: count
+        labelList nNbrs(nCoarseCells, 0);
 
-    forAll(upperAddr, facei)
-    {
-        label coarseUpper = coarseCellMap[upperAddr[facei]];
-        label coarseLower = coarseCellMap[lowerAddr[facei]];
-
-        if (coarseUpper != coarseLower)
+        forAll(upperAddr, facei)
         {
-            {
-                labelList& upper = cellCells[coarseUpper];
-                SubList<label> used(upper, nNbrs[coarseUpper]);
+            label coarseUpper = coarseCellMap[upperAddr[facei]];
+            label coarseLower = coarseCellMap[lowerAddr[facei]];
 
-                if (findIndex(used, coarseLower) == -1)
-                {
-                    upper[nNbrs[coarseUpper]++] = coarseLower;
-                }
-            }
+            if (coarseUpper != coarseLower)
             {
-                labelList& lower = cellCells[coarseLower];
-                SubList<label> used(lower, nNbrs[coarseLower]);
-
-                if (findIndex(used, coarseUpper) == -1)
-                {
-                    lower[nNbrs[coarseLower]++] = coarseUpper;
-                }
+                nNbrs[coarseUpper]++;
+                nNbrs[coarseLower]++;
             }
         }
+
+        // Size
+        labelListList cellCells(nCoarseCells);
+        forAll(cellCells, celli)
+        {
+            cellCells[celli].setSize(nNbrs[celli]);
+        }
+
+        // Pass2: fill
+        nNbrs = 0;
+
+        forAll(upperAddr, facei)
+        {
+            label coarseUpper = coarseCellMap[upperAddr[facei]];
+            label coarseLower = coarseCellMap[lowerAddr[facei]];
+
+            if (coarseUpper != coarseLower)
+            {
+                {
+                    labelList& upper = cellCells[coarseUpper];
+                    SubList<label> used(upper, nNbrs[coarseUpper]);
+
+                    if (findIndex(used, coarseLower) == -1)
+                    {
+                        upper[nNbrs[coarseUpper]++] = coarseLower;
+                    }
+                }
+                {
+                    labelList& lower = cellCells[coarseLower];
+                    SubList<label> used(lower, nNbrs[coarseLower]);
+
+                    if (findIndex(used, coarseUpper) == -1)
+                    {
+                        lower[nNbrs[coarseLower]++] = coarseUpper;
+                    }
+                }
+            }
+        }
+        forAll(cellCells, celli)
+        {
+            cellCells[celli].setSize(nNbrs[celli]);
+        }
+
+
+        // Renumber (CutHill-McKee) and apply to cell map
+        labelList newToOld(bandCompression(cellCells));
+        labelList oldToNew(invert(newToOld.size(), newToOld));
+        coarseCellMap = UIndirectList<label>(oldToNew, coarseCellMap)();
     }
-    forAll(cellCells, celli)
-    {
-        cellCells[celli].setSize(nNbrs[celli]);
-    }
-
-Pout<< "cellCells:" << cellCells << endl;
-
-    Info<< "** Renumbering coarse level cells" << endl;
-    labelList newToOld(bandCompression(cellCells));
-Pout<< "newToOld:" << newToOld << endl;
-    labelList oldToNew(invert(newToOld.size(), newToOld));
-
-    coarseCellMap = UIndirectList<label>(oldToNew, coarseCellMap)();
-    Info<< "** Done renumbering coarse level cells" << endl;
-}
-
 
 
     // Reverse the map ordering for the next level

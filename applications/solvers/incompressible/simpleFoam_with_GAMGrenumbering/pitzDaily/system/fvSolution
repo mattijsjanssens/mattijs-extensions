@@ -24,7 +24,7 @@ solvers
         relTol          0;  //0.1;
         smoother        GaussSeidel;
         processorAgglomerator    none;
-        nCellsInCoarsestLevel   11;
+        nCellsInCoarsestLevel   15;
     }
 
     "(U|k|epsilon|omega|f|v2)"
