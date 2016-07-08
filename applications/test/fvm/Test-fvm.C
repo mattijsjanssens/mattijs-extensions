@@ -38,6 +38,286 @@ Description
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+void writeMatrix(const fvScalarMatrix& mat)
+{
+    const volScalarField& psi = mat.psi();
+    const fvMesh& mesh = psi.mesh();
+
+    {
+        Info<< "Writing source" << endl;
+        volScalarField source
+        (
+            IOobject
+            (
+                "source",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", mat.dimensions(), 0.0),
+            zeroGradientFvPatchScalarField::typeName
+        );
+
+        source.ref().Field<scalar>::operator=(mat.source());
+        source.correctBoundaryConditions();
+        source.write();
+    }
+
+    if (mat.hasDiag())
+    {
+        Info<< "Writing diag" << endl;
+        volScalarField diag
+        (
+            IOobject
+            (
+                "diag",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimless, 0.0),
+            zeroGradientFvPatchScalarField::typeName
+        );
+
+        diag.ref().Field<scalar>::operator=(mat.diag());
+        diag.correctBoundaryConditions();
+        diag.write();
+    }
+
+    if (mat.hasUpper())
+    {
+        Info<< "Writing upper" << endl;
+        surfaceScalarField upper
+        (
+            IOobject
+            (
+                "upper",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimless, 0.0)
+        );
+        upper.ref().Field<scalar>::operator=(mat.upper());
+        upper.write();
+
+        volScalarField minUpper
+        (
+            "minUpper",
+            fvc::cellReduce(upper, minEqOp<scalar>(), GREAT)
+        );
+        minUpper.write();
+
+        volScalarField maxUpper
+        (
+            "maxUpper",
+            fvc::cellReduce(upper, maxEqOp<scalar>(), -GREAT)
+        );
+        maxUpper.write();
+    }
+
+    if (mat.hasLower())
+    {
+        Info<< "Writing lower" << endl;
+        surfaceScalarField lower
+        (
+            IOobject
+            (
+                "lower",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimless, 0.0)
+        );
+        lower.ref().Field<scalar>::operator=(mat.lower());
+        lower.write();
+
+        volScalarField minLower
+        (
+            "minLower",
+            fvc::cellReduce(lower, minEqOp<scalar>(), GREAT)
+        );
+        minLower.write();
+
+        volScalarField maxLower
+        (
+            "maxLower",
+            fvc::cellReduce(lower, maxEqOp<scalar>(), -GREAT)
+        );
+        maxLower.write();
+    }
+}
+void printSubMeshInfo
+(
+    const primitiveMesh& mesh,
+    const labelList& cellMap,
+    const labelList& faceMap,
+    const lduMesh& subMesh
+)
+{
+    forAll(cellMap, cellI)
+    {
+        Pout<< "cell:" << cellI << " at:" << mesh.cellCentres()[cellMap[cellI]]
+            << endl;
+    }
+    forAll(faceMap, faceI)
+    {
+        Pout<< "face:" << faceI << " at:" << mesh.faceCentres()[faceMap[faceI]]
+            << " lower:" << subMesh.lduAddr().lowerAddr()[faceI]
+            << " upper:" << subMesh.lduAddr().upperAddr()[faceI]
+            << endl;
+
+    }
+
+    lduInterfacePtrsList ifs(subMesh.interfaces());
+
+    forAll(ifs, patchI)
+    {
+        if (ifs.set(patchI))
+        {
+            Pout<< "    patch:" << patchI
+                << " fc:" << ifs[patchI].faceCells() << endl;
+        }
+    }
+}
+
+// Temporary replacement for lduPrimitiveMesh::gather
+void gather
+(
+    const label comm,
+    const lduMesh& mesh,
+    const labelList& procIDs,
+    PtrList<lduPrimitiveMesh>& otherMeshes
+)
+{
+    // Force calculation of schedule (since does parallel comms)
+    (void)mesh.lduAddr().patchSchedule();
+
+    if (Pstream::myProcNo(comm) == procIDs[0])
+    {
+        otherMeshes.setSize(procIDs.size()-1);
+
+        // Slave meshes
+        for (label i = 1; i < procIDs.size(); i++)
+        {
+            //Pout<< "on master :"
+            //    << " receiving from slave " << procIDs[i] << endl;
+
+            IPstream fromSlave
+            (
+                Pstream::scheduled,
+                procIDs[i],
+                0,          // bufSize
+                Pstream::msgType(),
+                comm
+            );
+
+            label nCells = readLabel(fromSlave);
+            labelList lowerAddr(fromSlave);
+            labelList upperAddr(fromSlave);
+            boolList validInterface(fromSlave);
+
+
+            // Construct mesh without interfaces
+            otherMeshes.set
+            (
+                i-1,
+                new lduPrimitiveMesh
+                (
+                    nCells,
+                    lowerAddr,
+                    upperAddr,
+                    comm,
+                    true    // reuse
+                )
+            );
+
+            // Construct GAMGInterfaces
+            lduInterfacePtrsList newInterfaces(validInterface.size());
+            forAll(validInterface, intI)
+            {
+                if (validInterface[intI])
+                {
+                    word coupleType(fromSlave);
+
+                    Pout<< "Received coupleType:" << coupleType << endl;
+
+                    newInterfaces.set
+                    (
+                        intI,
+                        // GAMGInterface::New
+                        // (
+                        //     coupleType,
+                        //     intI,
+                        //     otherMeshes[i-1].rawInterfaces(),
+                        //     fromSlave
+                        // ).ptr()
+                        new lduPrimitiveInterface(labelList(0))
+                    );
+                }
+            }
+
+            otherMeshes[i-1].addInterfaces
+            (
+                newInterfaces,
+                lduPrimitiveMesh::nonBlockingSchedule<processorGAMGInterface>
+                (
+                    newInterfaces
+                )
+            );
+       }
+    }
+    else if (findIndex(procIDs, Pstream::myProcNo(comm)) != -1)
+    {
+        // Send to master
+
+        const lduAddressing& addressing = mesh.lduAddr();
+        lduInterfacePtrsList interfaces(mesh.interfaces());
+        boolList validInterface(interfaces.size());
+        forAll(interfaces, intI)
+        {
+            validInterface[intI] = interfaces.set(intI);
+        }
+
+        OPstream toMaster
+        (
+            Pstream::scheduled,
+            procIDs[0],
+            0,
+            Pstream::msgType(),
+            comm
+        );
+
+        toMaster
+            << addressing.size()
+            << addressing.lowerAddr()
+            << addressing.upperAddr()
+            << validInterface;
+
+        forAll(interfaces, intI)
+        {
+            if (interfaces.set(intI))
+            {
+                toMaster << interfaces[intI].type();
+            }
+        }
+    }
+}
+
+
 labelList upperTriOrder
 (
     const label nCells,
@@ -217,15 +497,20 @@ autoPtr<lduPrimitiveMesh> subset
 
     PtrList<const lduInterface> primitiveInterfaces(ifs.size()+1);
 
+    patchMap.setSize(primitiveInterfaces.size());
     forAll(ifs, patchI)
     {
+        patchMap[patchI] = patchI;
         if (ifs.set(patchI))
         {
             Pout<< "**** Primitive interface at patch " << patchI
                 << " type:" << ifs[patchI].type() << endl;
-//            primitiveInterfaces.set(ifs[patchI].clone());
+            //primitiveInterfaces.set(ifs[patchI].clone());
         }
     }
+
+    // Add a single interface for the exposed cells
+    patchMap.last() = -1;
     primitiveInterfaces.set
     (
         primitiveInterfaces.size()-1,
@@ -268,163 +553,6 @@ autoPtr<lduPrimitiveMesh> subset
 }
 
 
-void writeMatrix(const fvScalarMatrix& mat)
-{
-    const volScalarField& psi = mat.psi();
-    const fvMesh& mesh = psi.mesh();
-
-    {
-        Info<< "Writing source" << endl;
-        volScalarField source
-        (
-            IOobject
-            (
-                "source",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            mesh,
-            dimensionedScalar("zero", mat.dimensions(), 0.0),
-            zeroGradientFvPatchScalarField::typeName
-        );
-
-        source.ref().Field<scalar>::operator=(mat.source());
-        source.correctBoundaryConditions();
-        source.write();
-    }
-
-    if (mat.hasDiag())
-    {
-        Info<< "Writing diag" << endl;
-        volScalarField diag
-        (
-            IOobject
-            (
-                "diag",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            mesh,
-            dimensionedScalar("zero", dimless, 0.0),
-            zeroGradientFvPatchScalarField::typeName
-        );
-
-        diag.ref().Field<scalar>::operator=(mat.diag());
-        diag.correctBoundaryConditions();
-        diag.write();
-    }
-
-    if (mat.hasUpper())
-    {
-        Info<< "Writing upper" << endl;
-        surfaceScalarField upper
-        (
-            IOobject
-            (
-                "upper",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            mesh,
-            dimensionedScalar("zero", dimless, 0.0)
-        );
-        upper.ref().Field<scalar>::operator=(mat.upper());
-        upper.write();
-
-        volScalarField minUpper
-        (
-            "minUpper",
-            fvc::cellReduce(upper, minEqOp<scalar>(), GREAT)
-        );
-        minUpper.write();
-
-        volScalarField maxUpper
-        (
-            "maxUpper",
-            fvc::cellReduce(upper, maxEqOp<scalar>(), -GREAT)
-        );
-        maxUpper.write();
-    }
-
-    if (mat.hasLower())
-    {
-        Info<< "Writing lower" << endl;
-        surfaceScalarField lower
-        (
-            IOobject
-            (
-                "lower",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            mesh,
-            dimensionedScalar("zero", dimless, 0.0)
-        );
-        lower.ref().Field<scalar>::operator=(mat.lower());
-        lower.write();
-
-        volScalarField minLower
-        (
-            "minLower",
-            fvc::cellReduce(lower, minEqOp<scalar>(), GREAT)
-        );
-        minLower.write();
-
-        volScalarField maxLower
-        (
-            "maxLower",
-            fvc::cellReduce(lower, maxEqOp<scalar>(), -GREAT)
-        );
-        maxLower.write();
-    }
-}
-void printSubMeshInfo
-(
-    const primitiveMesh& mesh,
-    const labelList& cellMap,
-    const labelList& faceMap,
-    const lduMesh& subMesh
-)
-{
-    forAll(cellMap, cellI)
-    {
-        Pout<< "cell:" << cellI << " at:" << mesh.cellCentres()[cellMap[cellI]]
-            << endl;
-    }
-    forAll(faceMap, faceI)
-    {
-        Pout<< "face:" << faceI << " at:" << mesh.faceCentres()[faceMap[faceI]]
-            << " lower:" << subMesh.lduAddr().lowerAddr()[faceI]
-            << " upper:" << subMesh.lduAddr().upperAddr()[faceI]
-            << endl;
-
-    }
-
-    lduInterfacePtrsList ifs(subMesh.interfaces());
-
-    forAll(ifs, patchI)
-    {
-        if (ifs.set(patchI))
-        {
-            Pout<< "    patch:" << patchI
-                << " fc:" << ifs[patchI].faceCells() << endl;
-        }
-    }
-}
-
-
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
@@ -437,14 +565,38 @@ int main(int argc, char *argv[])
     //writeMatrix(Teqn);
 
 
-    labelList cellRegion(mesh.nCells(), 1);
+    labelList destination(mesh.nCells());
 
-    for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
+    if (Pstream::master())
     {
-        cellRegion[cellI] = 0;
+        destination = 1;
+        for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
+        {
+            destination[cellI] = 0;
+        }
+        Pout<< "Moving " << findIndices(destination, 1).size()
+            << " cells to 1" << endl;
+    }
+    else
+    {
+        destination = 0;
+        for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
+        {
+            destination[cellI] = 1;
+        }
+        Pout<< "Moving " << findIndices(destination, 0).size()
+            << " cells to 0" << endl;
     }
 
+
     const lduMesh& lMesh = mesh;
+
+
+//XXXXXXXXXXX
+
+if (false)
+{
+    // Get mesh to keep
 
     labelList myCellMap;
     labelList myFaceMap;
@@ -454,33 +606,50 @@ int main(int argc, char *argv[])
         subset
         (
             lMesh,
-            cellRegion,
-            0,                  // Region to keep
+            destination,
+            Pstream::myProcNo(),    // Region to keep
             myCellMap,
             myFaceMap,
             myPatchMap
         )
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
-
     Pout<< "myMesh:" << myMesh.info() << endl;
     printSubMeshInfo(mesh, myCellMap, myFaceMap, myMesh);
 
 
-    PtrList<lduPrimitiveMesh> subMeshes(1);
+    // Where meshes come from
+    labelList procIDs(Pstream::nProcs(Pstream::worldComm));
+    {
+        procIDs[0] = Pstream::myProcNo();
+        label slotI = 1;
+        forAll(procIDs, procI)
+        {
+            if (procI != procIDs[0])
+            {
+                procIDs[slotI++] = procI;
+            }
+        }
+    }
+
+    // Get meshes to send
+
+    PtrList<lduPrimitiveMesh> subMeshes(procIDs.size()-1);
     labelListList cellMaps(subMeshes.size());
     labelListList faceMaps(subMeshes.size());
     labelListList patchMaps(subMeshes.size());
+
     forAll(subMeshes, i)
     {
+        label destProcI = procIDs[i+1];
         subMeshes.set
         (
             i,
             subset
             (
                 lMesh,
-                cellRegion,
-                i+1,                  // Region to keep
+                destination,
+                destProcI,   // Region to keep
                 cellMaps[i],
                 faceMaps[i],
                 patchMaps[i]
@@ -488,7 +657,8 @@ int main(int argc, char *argv[])
         );
 
         const lduPrimitiveMesh& subMesh = subMeshes[i];
-        Pout<< "subMesh:" << subMesh.info() << endl;
+        Pout<< "For destproc:" << destProcI
+            << " subMesh:" << subMesh.info() << endl;
         printSubMeshInfo(mesh, cellMaps[i], faceMaps[i], subMesh);
     }
 
@@ -503,7 +673,7 @@ int main(int argc, char *argv[])
     (
         Pstream::worldComm,
         identity(Pstream::nProcs(Pstream::worldComm)),
-        labelList(subMeshes.size()-1, Pstream::myProcNo()),
+        labelList(subMeshes.size(), Pstream::myProcNo()),
         myMesh,
         subMeshes,
 
@@ -514,6 +684,59 @@ int main(int argc, char *argv[])
         boundaryFaceMap
     );
     Pout<< "allMesh:" << allMesh.info() << endl;
+}
+//XXXXXXXXXXX
+
+    PtrList<lduPrimitiveMesh> subMeshes(Pstream::nProcs(Pstream::worldComm));
+    labelListList cellMaps(subMeshes.size());
+    labelListList faceMaps(subMeshes.size());
+    labelListList patchMaps(subMeshes.size());
+
+    forAll(subMeshes, procI)
+    {
+        subMeshes.set
+        (
+            procI,
+            subset
+            (
+                lMesh,
+                destination,
+                procI,   // Region to keep
+                cellMaps[procI],
+                faceMaps[procI],
+                patchMaps[procI]
+            )
+        );
+
+        const lduPrimitiveMesh& subMesh = subMeshes[procI];
+        Pout<< "For destproc:" << procI
+            << " subMesh:" << subMesh.info() << endl;
+        printSubMeshInfo(mesh, cellMaps[procI], faceMaps[procI], subMesh);
+
+
+        // Where meshes come from
+        labelList procIDs(Pstream::nProcs(Pstream::worldComm));
+        {
+            procIDs[0] = procI;
+            label slotI = 1;
+            forAll(procIDs, procI)
+            {
+                if (procI != procIDs[0])
+                {
+                    procIDs[slotI++] = procI;
+                }
+            }
+        }
+
+        PtrList<lduPrimitiveMesh> otherMeshes;
+        gather
+        (
+            Pstream::worldComm,
+            subMesh,
+            procIDs,
+            otherMeshes
+        );
+    }
 
 
     Info<< "end" << endl;
