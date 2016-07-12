@@ -39,3 +39,36 @@ Example: random internal field:
             -lfiniteVolume
         #};
     };
+
+
+Example: write field with processor number
+
+functions
+{
+    procID
+    {
+        // Load the library containing the 'coded' functionObject
+        functionObjectLibs ("libutilityFunctionObjects.so");
+        type coded;
+        // Name of on-the-fly generated functionObject
+        redirectType myProcNo;
+        codeWrite
+        #{
+            volScalarField procID
+            (
+                IOobject
+                (
+                    "procID",
+                    mesh().time().timeName(),
+                    mesh(),
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE,
+                    false
+                ),
+                mesh(),
+                dimensionedScalar("procID", dimless, Pstream::myProcNo())
+            );
+            procID.write();
+        #};
+    }
+}
