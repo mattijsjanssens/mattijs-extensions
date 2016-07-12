@@ -19,3 +19,17 @@ Us:
 - optionally allow renumbering on destination
 - and see if we can move lduMatrix across processors
 - and solve it
+
+
+Local agglomeration:
+- you want to be consistent in e.g. layers so neighbouring
+columns of cells get agglomerated in the same way
+- so pre-sorting the cells based on face areas might actually make things
+worse (compared to using original numbering). This happens on the (non-moving)
+DTCHull case.
+- should maybe make a layer-aware agglomeration method:
+    - given patch determine patch-local numbering
+    - only up to where the structuredness stops
+    - so now we have 1D columns
+    - agglomerate these consistently (so neighbouring columns do the same)
+    - then continue doing normal agglomeration
