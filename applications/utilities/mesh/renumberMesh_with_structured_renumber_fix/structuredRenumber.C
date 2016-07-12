@@ -54,7 +54,7 @@ Foam::structuredRenumber::structuredRenumber
     renumberMethod(renumberDict),
     methodDict_(renumberDict.subDict(typeName + "Coeffs")),
     patches_(methodDict_.lookup("patches")),
-    //nLayers_(readLabel(methodDict_.lookup("nLayers"))),
+    nLayers_(methodDict_.lookupOrDefault<label>("nLayers", labelMax)),
     depthFirst_(methodDict_.lookup("depthFirst")),
     method_(renumberMethod::New(methodDict_)),
     reverse_(methodDict_.lookup("reverse"))
@@ -69,8 +69,8 @@ bool Foam::structuredRenumber::layerLess::operator()
     const label b
 )
 {
-    const topoDistanceData& ta = values_[a];
-    const topoDistanceData& tb = values_[b];
+    const topoDistanceData& ta = distance_[a];
+    const topoDistanceData& tb = distance_[b];
 
     int dummy;
 
@@ -107,7 +107,7 @@ bool Foam::structuredRenumber::layerLess::operator()
                 }
                 else
                 {
-                    // Same layer; sort according to column
+                    // Same layer; sort according to current values
                     return ta.data() < tb.data();
                 }
             }
@@ -126,7 +126,7 @@ bool Foam::structuredRenumber::layerLess::operator()
         else
         {
             // Both not valid; fall back to cell indices for sorting
-            return a < b;
+            return order_[a] < order_[b];
         }
     }
 }
@@ -247,93 +247,36 @@ Foam::labelList Foam::structuredRenumber::renumber
         patchData,
         faceData,
         cellData,
-        nTotalCells+1
+        0
     );
 
-
-//     Pstream::parRun() = oldParRun;
-
-    // We now use the global column and layer in column to determine a sorting
-    // order. Combine column and layer into single index
-    // (alternatively we could use a specialised comparison operator)
-
-//     // Determine max layer (max column is already known = nTotalSeeds)
-//     label maxLayer = 0;
-//     forAll(cellData, celli)
-//     {
-//         if (cellData[celli].valid(deltaCalc.data()))
-//         {
-//             maxLayer = max(maxLayer, cellData[celli].distance());
-//         }
-//     }
-// 
-//     // Determine max layers
-// 
-// 
-//     // And extract
-//     label nUnvisited = 0;
-//     labelList cellDistance(mesh.nCells(), 0);
-//     forAll(cellData, celli)
-//     {
-//         if (!cellData[celli].valid(deltaCalc.data()))
-//         {
-//             nUnvisited++;
-//         }
-//         else
-//         {
-//             label columnI = cellData[celli].data();
-//             label layerI = cellData[celli].distance();
-// 
-//             if (depthFirst_)
-//             {
-//                 cellDistance[celli] = nTotalSeeds*columnI+layerI;
-//             }
-//             else
-//             {
-//                 cellDistance[celli] = columnI+nTotalSeeds*layerI;
-//             }
-//         }
-//     }
+    deltaCalc.iterate(nLayers_);
 
     Info<< type() << " : did not visit "
         << deltaCalc.getUnsetCells()
         << " cells out of " << nTotalCells
         << "; keeping these in original order" << endl;
 
+    // Get cell order using the method(). These values will get overwitten
+    // by any visited cell so are used only if the number of nLayers is limited.
+    labelList oldToOrdered
+    (
+        invert
+        (
+            mesh.nCells(),
+            method_().renumber(mesh, points)
+        )
+    );
 
-    //labelList orderedToOld;
-    sortedOrder(cellData, orderedToOld, layerLess(depthFirst_, cellData));
-
-// 
-//     // Note that distance is distance from face so starts at 1.
-//     bool haveWarned = false;
-//     forAll(orderedToOld, celli)
-//     {
-//         if (!cellData[celli].valid(deltaCalc.data()))
-//         {
-//             if (!haveWarned)
-//             {
-//                 WarningInFunction
-//                     << "Did not visit some cells, e.g. cell " << celli
-//                     << " at " << mesh.cellCentres()[celli] << endl
-//                     << "Assigning these cells to domain 0." << endl;
-//                 haveWarned = true;
-//             }
-//             orderedToOld[celli] = 0;
-//         }
-//         else
-//         {
-//             label layerI = cellData[celli].distance();
-//             if (depthFirst_)
-//             {
-//                 orderedToOld[nLayers*cellData[celli].data()+layerI] = celli;
-//             }
-//             else
-//             {
-//                 orderedToOld[cellData[celli].data()+nLayers*layerI] = celli;
-//             }
-//         }
-//     }
+    // Use specialised sorting to sorted either layers or columns first
+    // Done so that at no point we need to combine both into a single
+    // index and we might run out of label size.
+    sortedOrder
+    (
+        cellData,
+        orderedToOld,
+        layerLess(depthFirst_, oldToOrdered, cellData)
+    );
 
     // Return furthest away cell first
     if (reverse_)

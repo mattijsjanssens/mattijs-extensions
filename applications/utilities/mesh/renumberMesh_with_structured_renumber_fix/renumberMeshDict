@@ -64,9 +64,14 @@ structuredCoeffs
 {
     // Patches that mesh was extruded from. These determine the starting
     // layer of cells
-    patches (movingWall);
-    // Method to renumber the starting layer of cells
-    method  random;
+    patches (inlet);
+
+    // Optionally limit the extrusion detection to nLayers
+    nLayers 10;
+
+    // Method to renumber the starting layer of cells and the cells that
+    // cannot be reached
+    method  CuthillMcKee;
 
     // Renumber in columns (depthFirst) or in layers
     depthFirst true;

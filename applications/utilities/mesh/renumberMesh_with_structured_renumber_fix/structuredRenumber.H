@@ -64,18 +64,21 @@ public:
         class layerLess
         {
             const Switch depthFirst_;
-            const List<topoDistanceData>& values_;
+            const labelList& order_;
+            const List<topoDistanceData>& distance_;
 
         public:
 
             layerLess
             (
                 const Switch depthFirst,
-                const List<topoDistanceData>& values
+                const labelList& order,
+                const List<topoDistanceData>& distance
             )
             :
                 depthFirst_(depthFirst),
-                values_(values)
+                order_(order),
+                distance_(distance)
             {}
 
             bool operator()(const label a, const label b);
@@ -87,6 +90,8 @@ public:
         const dictionary methodDict_;
 
         const wordReList patches_;
+
+        const label nLayers_;
 
         const Switch depthFirst_;
 
