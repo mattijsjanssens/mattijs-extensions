@@ -1,0 +1,4 @@
+meshStructure.C
+meshStructureApp.C
+
+EXE = $(FOAM_USER_APPBIN)/meshStructure

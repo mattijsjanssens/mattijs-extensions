@@ -1,3 +1,4 @@
+#include "PatchTools.H"
 #include "checkGeometry.H"
 #include "polyMesh.H"
 #include "cellSet.H"
@@ -957,26 +958,100 @@ Foam::label Foam::checkGeometry
                     const AMIPatchToPatchInterpolation& ami =
                         cpp.AMI();
 
-                    wr.write
-                    (
-                        "postProcessing",
-                        "tgt_proc" + procAndTime,
-                        cpp.neighbPatch().localPoints(),
-                        cpp.neighbPatch().localFaces(),
-                        "weightsSum",
-                        ami.tgtWeightsSum(),
-                        false
-                    );
-                    wr.write
-                    (
-                        "postProcessing",
-                        "src_proc" + procAndTime,
-                        cpp.localPoints(),
-                        cpp.localFaces(),
-                        "weightsSum",
-                        ami.srcWeightsSum(),
-                        false
-                    );
+                    {
+                        // Collect geometry
+                        labelList pointToGlobal;
+                        labelList uniqueMeshPointLabels;
+                        autoPtr<globalIndex> globalPoints;
+                        autoPtr<globalIndex> globalFaces;
+                        faceList mergedFaces;
+                        pointField mergedPoints;
+                        Foam::PatchTools::gatherAndMerge
+                        (
+                            mesh,
+                            cpp.localFaces(),
+                            cpp.meshPoints(),
+                            cpp.meshPointMap(),
+
+                            pointToGlobal,
+                            uniqueMeshPointLabels,
+                            globalPoints,
+                            globalFaces,
+
+                            mergedFaces,
+                            mergedPoints
+                        );
+                        // Collect field
+                        scalarField mergedWeights;
+                        globalFaces().gather
+                        (
+                            UPstream::worldComm,
+                            UPstream::procID(UPstream::worldComm),
+                            ami.srcWeightsSum(),
+                            mergedWeights
+                        );
+
+                        if (Pstream::master())
+                        {
+                            wr.write
+                            (
+                                "postProcessing",
+                                "src_" + tmName,
+                                mergedPoints,
+                                mergedFaces,
+                                "weightsSum",
+                                mergedWeights,
+                                false
+                            );
+                        }
+                    }
+                    {
+                        // Collect geometry
+                        labelList pointToGlobal;
+                        labelList uniqueMeshPointLabels;
+                        autoPtr<globalIndex> globalPoints;
+                        autoPtr<globalIndex> globalFaces;
+                        faceList mergedFaces;
+                        pointField mergedPoints;
+                        Foam::PatchTools::gatherAndMerge
+                        (
+                            mesh,
+                            cpp.neighbPatch().localFaces(),
+                            cpp.neighbPatch().meshPoints(),
+                            cpp.neighbPatch().meshPointMap(),
+
+                            pointToGlobal,
+                            uniqueMeshPointLabels,
+                            globalPoints,
+                            globalFaces,
+
+                            mergedFaces,
+                            mergedPoints
+                        );
+                        // Collect field
+                        scalarField mergedWeights;
+                        globalFaces().gather
+                        (
+                            UPstream::worldComm,
+                            UPstream::procID(UPstream::worldComm),
+                            ami.tgtWeightsSum(),
+                            mergedWeights
+                        );
+
+                        if (Pstream::master())
+                        {
+                            wr.write
+                            (
+                                "postProcessing",
+                                "tgt_" + tmName,
+                                mergedPoints,
+                                mergedFaces,
+                                "weightsSum",
+                                mergedWeights,
+                                false
+                            );
+                        }
+                    }
                 }
             }
         }
