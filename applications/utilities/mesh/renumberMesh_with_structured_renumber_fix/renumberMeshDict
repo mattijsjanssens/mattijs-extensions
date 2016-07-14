@@ -71,7 +71,7 @@ structuredCoeffs
 
     // Method to renumber the starting layer of cells and the cells that
     // cannot be reached
-    method  CuthillMcKee;
+    method CuthillMcKee;
 
     // Renumber in columns (depthFirst) or in layers
     depthFirst true;

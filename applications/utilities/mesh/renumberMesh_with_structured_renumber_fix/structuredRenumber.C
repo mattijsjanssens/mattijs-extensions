@@ -255,7 +255,7 @@ Foam::labelList Foam::structuredRenumber::renumber
     Info<< type() << " : did not visit "
         << deltaCalc.getUnsetCells()
         << " cells out of " << nTotalCells
-        << "; keeping these in original order" << endl;
+        << "; using " << method_().type() << " renumbering for these" << endl;
 
     // Get cell order using the method(). These values will get overwitten
     // by any visited cell so are used only if the number of nLayers is limited.
