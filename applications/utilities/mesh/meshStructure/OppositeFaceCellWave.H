@@ -25,19 +25,16 @@ Class
     Foam::OppositeFaceCellWave
 
 Description
-    Wave propagation of information through grid. Every iteration
-    information goes through one layer of cells. Templated on information
-    that is transferred.
+    Version of FaceCellWave that walks through prismatic cells only.
 
-    Handles parallel and cyclics and non-parallel cyclics.
+    Used to determine mesh structure. In the front walking routines
+    (faceToCell and faceToCell) it
+    - walks across prismatic cells only
+    - and only to a single opposite face
 
-    Note: whether to propagate depends on the return value of Type::update
-    which returns true (i.e. propagate) if the value changes by more than a
-    certain tolerance.
-    This tolerance can be very strict for normal face-cell and parallel
-    cyclics (we use a value of 0.01 just to limit propagation of small changes)
-    but for non-parallel cyclics this tolerance can be critical and if chosen
-    too small can lead to non-convergence.
+    Notes:
+    A cell with a split faces will be marked but not walked through (since
+    there is no single opposite face.
 
 SourceFiles
     OppositeFaceCellWave.C
@@ -53,10 +50,6 @@ SourceFiles
 
 namespace Foam
 {
-
-// Forward declaration of classes
-//class polyMesh;
-//class polyPatch;
 
 /*---------------------------------------------------------------------------*\
                         Class OppositeFaceCellWaveName Declaration
@@ -75,18 +68,9 @@ class OppositeFaceCellWave
     public FaceCellWave<Type, TrackingData>,
     public OppositeFaceCellWaveName
 {
-private:
-
-   // Private Member Functions
-
-        void setFaceInfo(const labelList&, const List<Type>&);
-
-//         label faceToCell();
-// 
-//         label cellToFace();
-
-
 protected:
+
+    // Protected data
 
         //- For every entry in changedCells (i.e. the cell front) gives
         //  the face that it needs to transfer to
@@ -102,9 +86,6 @@ protected:
             const label facei,
             DynamicList<label>&
         ) const;
-
-//         //- Do walk from face to cell and back to face
-//         labelPair faceToCellToFace();
 
 
 public:
@@ -133,18 +114,14 @@ public:
 
     // Member Functions
 
-            //- Propagate from face to cell. Returns total number of cells
-            //  (over all processors) changed.
-            virtual label faceToCell();
+        //- Propagate from face to cell. Returns total number of cells
+        //  (over all processors) changed.
+        virtual label faceToCell();
 
-            //- Propagate from cell to face. Returns total number of faces
-            //  (over all processors) changed. (Faces on processorpatches are
-            //  counted double)
-            virtual label cellToFace();
-
-//             //- Iterate until no changes or maxIter reached.  Returns actual
-//             //  number of iterations.
-//             virtual label iterate(const label maxIter);
+        //- Propagate from cell to face. Returns total number of faces
+        //  (over all processors) changed. (Faces on processorpatches are
+        //  counted double)
+        virtual label cellToFace();
 };
 
 
