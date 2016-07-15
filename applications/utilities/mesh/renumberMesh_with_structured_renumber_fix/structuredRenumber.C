@@ -27,7 +27,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "topoDistanceData.H"
 #include "fvMeshSubset.H"
-#include "FaceCellWave.H"
+#include "OppositeFaceCellWave.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -177,16 +177,6 @@ Foam::labelList Foam::structuredRenumber::renumber
         << endl;
 
 
-    // Avoid subsetMesh, FaceCellWave going through proc boundaries
-    // Note: not too sure that FaceCellWave shouldn't since e.g. a processor
-    // might have zero patch faces on it but be quite close to the patch.
-    // However effect of renumbering is always local since processor boundaries
-    // are explicit.
-
-//    bool oldParRun = Pstream::parRun();
-//    Pstream::parRun() = false;
-
-
     // Work array. Used here to temporarily store the original-to-ordered
     // index. Later on used to store the ordered-to-original.
     labelList orderedToOld(mesh.nCells(), -1);
@@ -240,7 +230,7 @@ Foam::labelList Foam::structuredRenumber::renumber
     List<topoDistanceData> faceData(mesh.nFaces());
 
     // Propagate information inwards
-    FaceCellWave<topoDistanceData> deltaCalc
+    OppositeFaceCellWave<topoDistanceData> deltaCalc
     (
         mesh,
         patchFaces,
