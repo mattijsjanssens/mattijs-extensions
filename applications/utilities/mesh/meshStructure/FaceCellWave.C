@@ -103,13 +103,12 @@ namespace Foam
 }
 
 
-
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 // Update info for celli, at position pt, with information from
 // neighbouring face/cell.
 // Updates:
-//      - changedCell_, changedCells_, nChangedCells_,
+//      - changedCell_, changedCells_
 //      - statistics: nEvals_, nUnvisitedCells_
 template<class Type, class TrackingData>
 bool Foam::FaceCellWave<Type, TrackingData>::updateCell
@@ -141,7 +140,7 @@ bool Foam::FaceCellWave<Type, TrackingData>::updateCell
         if (!changedCell_[celli])
         {
             changedCell_[celli] = true;
-            changedCells_[nChangedCells_++] = celli;
+            changedCells_.append(celli);
         }
     }
 
@@ -157,7 +156,7 @@ bool Foam::FaceCellWave<Type, TrackingData>::updateCell
 // Update info for facei, at position pt, with information from
 // neighbouring face/cell.
 // Updates:
-//      - changedFace_, changedFaces_, nChangedFaces_,
+//      - changedFace_, changedFaces_,
 //      - statistics: nEvals_, nUnvisitedFaces_
 template<class Type, class TrackingData>
 bool Foam::FaceCellWave<Type, TrackingData>::updateFace
@@ -189,7 +188,7 @@ bool Foam::FaceCellWave<Type, TrackingData>::updateFace
         if (!changedFace_[facei])
         {
             changedFace_[facei] = true;
-            changedFaces_[nChangedFaces_++] = facei;
+            changedFaces_.append(facei);
         }
     }
 
@@ -205,7 +204,7 @@ bool Foam::FaceCellWave<Type, TrackingData>::updateFace
 // Update info for facei, at position pt, with information from
 // same face.
 // Updates:
-//      - changedFace_, changedFaces_, nChangedFaces_,
+//      - changedFace_, changedFaces_,
 //      - statistics: nEvals_, nUnvisitedFaces_
 template<class Type, class TrackingData>
 bool Foam::FaceCellWave<Type, TrackingData>::updateFace
@@ -235,7 +234,7 @@ bool Foam::FaceCellWave<Type, TrackingData>::updateFace
         if (!changedFace_[facei])
         {
             changedFace_[facei] = true;
-            changedFaces_[nChangedFaces_++] = facei;
+            changedFaces_.append(facei);
         }
     }
 
@@ -335,7 +334,7 @@ void Foam::FaceCellWave<Type, TrackingData>::setFaceInfo
         // Mark facei as changed, both on list and on face itself.
 
         changedFace_[facei] = true;
-        changedFaces_[nChangedFaces_++] = facei;
+        changedFaces_.append(facei);
     }
 }
 
@@ -820,10 +819,8 @@ Foam::FaceCellWave<Type, TrackingData>::FaceCellWave
     td_(td),
     changedFace_(mesh_.nFaces(), false),
     changedFaces_(mesh_.nFaces()),
-    nChangedFaces_(0),
     changedCell_(mesh_.nCells(), false),
     changedCells_(mesh_.nCells()),
-    nChangedCells_(0),
     hasCyclicPatches_(hasPatch<cyclicPolyPatch>()),
     hasCyclicAMIPatches_
     (
@@ -871,10 +868,8 @@ Foam::FaceCellWave<Type, TrackingData>::FaceCellWave
     td_(td),
     changedFace_(mesh_.nFaces(), false),
     changedFaces_(mesh_.nFaces()),
-    nChangedFaces_(0),
     changedCell_(mesh_.nCells(), false),
     changedCells_(mesh_.nCells()),
-    nChangedCells_(0),
     hasCyclicPatches_(hasPatch<cyclicPolyPatch>()),
     hasCyclicAMIPatches_
     (
@@ -911,8 +906,8 @@ Foam::FaceCellWave<Type, TrackingData>::FaceCellWave
         FatalErrorInFunction
             << "Maximum number of iterations reached. Increase maxIter." << endl
             << "    maxIter:" << maxIter << endl
-            << "    nChangedCells:" << nChangedCells_ << endl
-            << "    nChangedFaces:" << nChangedFaces_ << endl
+            << "    nChangedCells:" << changedCells_.size() << endl
+            << "    nChangedFaces:" << changedFaces_.size() << endl
             << exit(FatalError);
     }
 }
@@ -944,12 +939,7 @@ Foam::label Foam::FaceCellWave<Type, TrackingData>::faceToCell()
     const labelList& neighbour = mesh_.faceNeighbour();
     label nInternalFaces = mesh_.nInternalFaces();
 
-    for
-    (
-        label changedFacei = 0;
-        changedFacei < nChangedFaces_;
-        changedFacei++
-    )
+    forAll(changedFaces_, changedFacei)
     {
         label facei = changedFaces_[changedFacei];
         if (!changedFace_[facei])
@@ -1005,15 +995,15 @@ Foam::label Foam::FaceCellWave<Type, TrackingData>::faceToCell()
     }
 
     // Handled all changed faces by now
-    nChangedFaces_ = 0;
+    changedFaces_.clear();
 
     if (debug & 2)
     {
-        Pout<< " Changed cells            : " << nChangedCells_ << endl;
+        Pout<< " Changed cells            : " << changedCells_.size() << endl;
     }
 
-    // Sum nChangedCells over all procs
-    label totNChanged = nChangedCells_;
+    // Sum changedCells over all procs
+    label totNChanged = changedCells_.size();
 
     reduce(totNChanged, sumOp<label>());
 
@@ -1027,12 +1017,7 @@ Foam::label Foam::FaceCellWave<Type, TrackingData>::cellToFace()
 {
     const cellList& cells = mesh_.cells();
 
-    for
-    (
-        label changedCelli = 0;
-        changedCelli < nChangedCells_;
-        changedCelli++
-    )
+    forAll(changedCells_, changedCelli)
     {
         label celli = changedCells_[changedCelli];
         if (!changedCell_[celli])
@@ -1070,7 +1055,7 @@ Foam::label Foam::FaceCellWave<Type, TrackingData>::cellToFace()
     }
 
     // Handled all changed cells by now
-    nChangedCells_ = 0;
+    changedCells_.clear();
 
     if (hasCyclicPatches_)
     {
@@ -1091,11 +1076,11 @@ Foam::label Foam::FaceCellWave<Type, TrackingData>::cellToFace()
 
     if (debug & 2)
     {
-        Pout<< " Changed faces            : " << nChangedFaces_ << endl;
+        Pout<< " Changed faces            : " << changedFaces_.size() << endl;
     }
 
     // Sum nChangedFaces over all procs
-    label totNChanged = nChangedFaces_;
+    label totNChanged = changedFaces_.size();
 
     reduce(totNChanged, sumOp<label>());
 

@@ -47,8 +47,8 @@ SourceFiles
 #ifndef FaceCellWave_H
 #define FaceCellWave_H
 
-#include "boolList.H"
-#include "labelList.H"
+#include "PackedBoolList.H"
+#include "DynamicList.H"
 #include "primitiveFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -76,6 +76,19 @@ class FaceCellWave
 :
     public FaceCellWaveName
 {
+private:
+
+    // Private Member Functions
+
+        //- Disallow default bitwise copy construct
+        FaceCellWave(const FaceCellWave&);
+
+        //- Disallow default bitwise assignment
+        void operator=(const FaceCellWave&);
+
+
+protected:
+
     // Private data
 
         //- Reference to mesh
@@ -91,18 +104,17 @@ class FaceCellWave
         TrackingData& td_;
 
         //- Has face changed
-        boolList changedFace_;
+        PackedBoolList changedFace_;
 
         //- List of changed faces
-        labelList changedFaces_;
+        DynamicList<label> changedFaces_;
 
-        //- Number of changed faces
-        label nChangedFaces_;
+        //- Has cell changed
+        PackedBoolList changedCell_;
 
         // Cells that have changed
-        boolList changedCell_;
-        labelList changedCells_;
-        label nChangedCells_;
+        DynamicList<label> changedCells_;
+
 
         //- Contains cyclics
         const bool hasCyclicPatches_;
@@ -116,15 +128,6 @@ class FaceCellWave
         //- Number of unvisited cells/faces
         label nUnvisitedCells_;
         label nUnvisitedFaces_;
-
-
-    // Private Member Functions
-
-        //- Disallow default bitwise copy construct
-        FaceCellWave(const FaceCellWave&);
-
-        //- Disallow default bitwise assignment
-        void operator=(const FaceCellWave&);
 
 
         //- Updates cellInfo with information from neighbour. Updates all
@@ -287,6 +290,11 @@ public:
         );
 
 
+    //- Destructor
+    virtual ~FaceCellWave()
+    {}
+
+
     // Member Functions
 
         // Access
@@ -337,17 +345,16 @@ public:
 
             //- Propagate from face to cell. Returns total number of cells
             //  (over all processors) changed.
-            label faceToCell();
+           virtual label faceToCell();
 
             //- Propagate from cell to face. Returns total number of faces
             //  (over all processors) changed. (Faces on processorpatches are
             //  counted double)
-            label cellToFace();
+            virtual label cellToFace();
 
             //- Iterate until no changes or maxIter reached.  Returns actual
             //  number of iterations.
-            label iterate(const label maxIter);
-
+            virtual label iterate(const label maxIter);
 };
 
 

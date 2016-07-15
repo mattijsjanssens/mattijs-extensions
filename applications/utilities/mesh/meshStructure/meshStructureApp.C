@@ -46,6 +46,8 @@ Description
 // #include "faceSet.H"
 // #include "pointSet.H"
 #include "uindirectPrimitivePatch.H"
+#include "topoDistanceData.H"
+#include "OppositeFaceCellWave.H"
 
 using namespace Foam;
 
@@ -141,11 +143,166 @@ void opposingFaceLabels
             if (!sharedPoint)
             {
                 // Found opposite face
-                oppositeFaceLabel.append(curFaceLabels[facei]);
+                oppositeFaceLabels.append(curFaceLabels[facei]);
             }
         }
     }
 }
+
+
+// void handleProcPatches
+// (
+//     const polyMesh& mesh,
+//     const List<topoDistanceData>& allFaceInfo,
+//     DynamicList<label>& frontFaces
+// )
+// {
+//     const globalMeshData& pData = mesh.globalData();
+// 
+//     // Which patches are processor patches
+//     const labelList& procPatches = pData.processorPatches();
+// 
+//     PackedBoolList isFrontFace(mesh.nFaces()-mesh.nInternalFaces());
+//     forAll(frontFaces, i)
+//     {
+//         if (!mesh.isInternalFace(frontFaces[i]))
+//         {
+//             isFrontFace[frontFaces[i]-mesh.nInternalFaces()] = true;
+//         }
+//     }
+// 
+// 
+//     // Send all
+// 
+//     PstreamBuffers pBufs(Pstream::nonBlocking);
+// 
+//     forAll(procPatches, i)
+//     {
+//         label patchi = procPatches[i];
+// 
+//         const processorPolyPatch& procPatch =
+//             refCast<const processorPolyPatch>(mesh.boundaryMesh()[patchi]);
+// 
+//         // Allocate buffers
+//         DynamicList<label> sendFaces(procPatch.size());
+//         DynamicList<Type> sendFacesInfo(procPatch.size());
+// 
+//         // Determine which faces changed on current patch
+//         forAll(procPatch, patchFacei)
+//         {
+//             label meshFacei = procPatch.start()+patchFacei;
+// 
+//             if (isFrontFace[meshFacei-mesh.nInternalFaces()])
+//             {
+//                 sendFaces.append(patchFacei);   // patch face
+//                 sendFacesInfo.append(allFaceInfo[meshFacei]);
+//             }
+//         }
+// 
+// 
+//         nSendFaces = getChangedPatchFaces
+//         (
+//             procPatch,
+//             0,
+//             procPatch.size(),
+//             sendFaces,
+//             sendFacesInfo
+//         );
+// 
+//         // Adapt wallInfo for leaving domain
+//         leaveDomain
+//         (
+//             procPatch,
+//             nSendFaces,
+//             sendFaces,
+//             sendFacesInfo
+//         );
+// 
+//         if (debug & 2)
+//         {
+//             Pout<< " Processor patch " << patchi << ' ' << procPatch.name()
+//                 << " communicating with " << procPatch.neighbProcNo()
+//                 << "  Sending:" << nSendFaces
+//                 << endl;
+//         }
+// 
+//         UOPstream toNeighbour(procPatch.neighbProcNo(), pBufs);
+//         //writeFaces(nSendFaces, sendFaces, sendFacesInfo, toNeighbour);
+//         toNeighbour
+//             << SubList<label>(sendFaces, nSendFaces)
+//             << SubList<Type>(sendFacesInfo, nSendFaces);
+//     }
+// 
+//     pBufs.finishedSends();
+// 
+//     // Receive all
+// 
+//     forAll(procPatches, i)
+//     {
+//         label patchi = procPatches[i];
+// 
+//         const processorPolyPatch& procPatch =
+//             refCast<const processorPolyPatch>(mesh.boundaryMesh()[patchi]);
+// 
+//         // Allocate buffers
+//         labelList receiveFaces;
+//         List<Type> receiveFacesInfo;
+// 
+//         {
+//             UIPstream fromNeighbour(procPatch.neighbProcNo(), pBufs);
+//             fromNeighbour >> receiveFaces >> receiveFacesInfo;
+//         }
+// 
+//         if (debug & 2)
+//         {
+//             Pout<< " Processor patch " << patchi << ' ' << procPatch.name()
+//                 << " communicating with " << procPatch.neighbProcNo()
+//                 << "  Receiving:" << receiveFaces.size()
+//                 << endl;
+//         }
+// 
+//         // Apply transform to received data for non-parallel planes
+//         if (!procPatch.parallel())
+//         {
+//             transform
+//             (
+//                 procPatch.forwardT(),
+//                 receiveFaces.size(),
+//                 receiveFacesInfo
+//             );
+//         }
+// 
+//         // Adapt wallInfo for entering domain
+//         enterDomain
+//         (
+//             procPatch,
+//             receiveFaces.size(),
+//             receiveFaces,
+//             receiveFacesInfo
+//         );
+// 
+//         // Merge received info
+//         mergeFaceInfo
+//         (
+//             procPatch,
+//             receiveFaces.size(),
+//             receiveFaces,
+//             receiveFacesInfo
+//         );
+//     }
+// }
+// 
+// 
+// void syncFront
+// (
+//     const polyMesh& mesh,
+//     const List<topoDistanceData>& allFaceInfo,
+//     DynamicList<label>& frontFaces
+// )
+// {
+//     // Modify front to include coupled faces
+//     
+// }
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -200,143 +357,208 @@ int main(int argc, char *argv[])
         mesh.points()
     );
 
+Pout<< "pp:" << pp.size() << endl;
+
     //meshStructure ms(mesh, upp);
 
     List<topoDistanceData> allCellInfo(mesh.nCells());
-    List<topoDistanceData> allFaceInfo(mesh.nCells());
+    List<topoDistanceData> allFaceInfo(mesh.nFaces());
+//     {
+//         // Start of changes
+//         DynamicList<label> frontFaces(pp.size());
+//         DynamicList<topoDistanceData> frontData(pp.size());
+//         forAll(pp, patchFacei)
+//         {
+//             label meshFacei = pp.addressing()[patchFacei];
+// 
+//             // Make sure face present only once in initial front
+//             if (!allFaceInfo[meshFacei].valid(dummyTrackData))
+//             {
+//                 allFaceInfo[meshFacei] = topoDistanceData(patchFacei, 0);
+//                 frontData.append(allFaceInfo[meshFacei]);
+//                 frontFaces.append(meshFacei);
+//             }
+//         }
+// 
+// 
+//         PackedBoolList isNewFrontFace(mesh.nFaces());
+// 
+//         DynamicList<label> oppositeFaceLabels;
+// 
+//         while (true)
+//         {
+//             DynamicList<label> newFrontFaces(frontFaces.size());
+//             isNewFrontFace = false;
+// 
+//             // Collect opposite face
+//             forAll(frontFaces, i)
+//             {
+//                 label facei = frontFaces[i];
+//                 Pout<< "face:" << facei << " at:" << mesh.faceCentres()[facei]
+//                     << " distance:" << allFaceInfo[facei].distance()
+//                     << endl;
+// 
+//                 {
+//                     // Owner side
+// 
+//                     label own = mesh.faceOwner()[facei];
+//                     opposingFaceLabels
+//                     (
+//                         mesh,
+//                         own,
+//                         facei,
+//                         oppositeFaceLabels
+//                     );
+//                     Pout<< "    own:" << own
+//                         << " at:" << mesh.cellCentres()[own]
+//                         << " oppositefaces:"
+//                         << pointField(mesh.faceCentres(), oppositeFaceLabels)
+//                         << endl;
+// 
+//                     if (oppositeFaceLabels.size())
+//                     {
+//                         bool propagate = allCellInfo[own].updateCell
+//                         (
+//                             mesh,
+//                             own,
+//                             facei,
+//                             allFaceInfo[facei],
+//                             1e-6,                   //tol,
+//                             dummyTrackData
+//                         );
+// 
+//                         if (propagate && oppositeFaceLabels.size() == 1)
+//                         {
+//                             label oppFacei = oppositeFaceLabels[0];
+// 
+//                             bool propagate = allFaceInfo[oppFacei].updateFace
+//                             (
+//                                 mesh,
+//                                 oppFacei,
+//                                 own,
+//                                 allCellInfo[own],
+//                                 1e-6,           //tol,
+//                                 dummyTrackData
+//                             );
+//                             if (propagate && isNewFrontFace.set(oppFacei))
+//                             {
+//                                 newFrontFaces.append(oppFacei);
+//                             }
+//                         }
+//                     }
+//                 }
+//                 if (mesh.isInternalFace(facei))
+//                 {
+//                     label nei = mesh.faceNeighbour()[facei];
+//                     opposingFaceLabels
+//                     (
+//                         mesh,
+//                         nei,
+//                         facei,
+//                         oppositeFaceLabels
+//                     );
+//                     Pout<< "    nei:" << nei
+//                         << " at:" << mesh.cellCentres()[nei]
+//                         << " oppositefaces:"
+//                         << pointField(mesh.faceCentres(), oppositeFaceLabels)
+//                         << endl;
+// 
+// 
+//                     if (oppositeFaceLabels.size())
+//                     {
+//                         bool propagate = allCellInfo[nei].updateCell
+//                         (
+//                             mesh,
+//                             nei,
+//                             facei,
+//                             allFaceInfo[facei],
+//                             1e-6,               //tol,
+//                             dummyTrackData
+//                         );
+// 
+//                         if (propagate && oppositeFaceLabels.size() == 1)
+//                         {
+//                             label oppFacei = oppositeFaceLabels[0];
+// 
+//                             bool propagate = allFaceInfo[oppFacei].updateFace
+//                             (
+//                                 mesh,
+//                                 oppFacei,
+//                                 nei,
+//                                 allCellInfo[nei],
+//                                 1e-6,                   //tol,
+//                                 dummyTrackData
+//                             );
+//                             if (propagate && isNewFrontFace.set(oppFacei))
+//                             {
+//                                 newFrontFaces.append(oppFacei);
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+// 
+// 
+//             //TBD. Synchronise across coupled faces ...
+// 
+//             Pout<< "old front:" << frontFaces
+//                 << " new front:" << newFrontFaces << endl;
+// 
+//             if (returnReduce(newFrontFaces.size(), sumOp<label>()) == 0)
+//             {
+//                 break;
+//             }
+// 
+//             frontFaces.transfer(newFrontFaces);
+// 
+//             // Do parallel synchronisation
+//             syncFront(mesh, allFaceInfo, frontFaces);
+//         }
+//     }
+
+
+
+    DynamicList<label> patchFaces(pp.size());
+    DynamicList<topoDistanceData> patchData(pp.size());
+    forAll(pp, patchFacei)
     {
-        // Start of changes
-        DynamicList<label> frontFaces(pp.size());
-        DynamicList<topoDistanceData> frontData(pp.size());
-        forAll(pp, patchFacei)
-        {
-            label meshFacei = pp.addressing()[patchFacei];
-
-            // Make sure face present only once in initial front
-            if (!allFaceInfo[meshFacei].valid())
-            {
-                allFaceInfo[meshFacei] = topoDistanceData(patchFacei, 0);
-                frontData.append(allFaceInfo[meshFacei]);
-                frontFaces.append(meshFacei);
-            }
-        }
-
-
-        boolList isNewFrontFace(mesh.nFaces());
-
-        int td;
-        DynamicList<label> oppositeFaceLabels;
-
-        while (true)
-        {
-            DynamicList<label> newFrontFaces(frontFaces.size());
-            isNewFrontFace = false;
-
-            // Collect opposite face
-            forAll(frontFaces, i)
-            {
-                label facei = frontFaces[i];
-
-                {
-                    // Owner side
-
-                    label own = mesh.faceOwner()[facei];
-                    opposingFaceLabels
-                    (
-                        mesh,
-                        own,
-                        facei,
-                        oppositeFaceLabels
-                    );
-                    if (oppositeFaceLabels.size())
-                    {
-                        bool propagate = allCellInfo[own].updateCell
-                        (
-                            mesh,
-                            own,
-                            facei,
-                            allFaceInfo[facei],
-                            1e-6,                   //tol,
-                            td
-                        );
-
-                        if (propagate && oppositeFaceLabels.size() == 1)
-                        {
-                            label oppFacei = oppositeFaceLabels[0];
-
-                            bool propagate = allFaceInfo[oppFacei].updateFace
-                            (
-                                mesh,
-                                oppFacei,
-                                allCellInfo[own],
-                                1e-6,                   //tol,
-                                td
-                            );
-                            if (propagate && isNewFrontFace.set(oppFacei))
-                            {
-                                newFrontFaces.append(oppFacei);
-                            }
-                        }
-                    }
-                }
-                if (mesh.isInternalFace(facei))
-                {
-                    label nei = mesh.faceNeighbour()[facei];
-                    opposingFaceLabels
-                    (
-                        mesh,
-                        nei,
-                        facei,
-                        oppositeFaceLabels
-                    );
-                    if (oppositeFaceLabels.size())
-                    {
-                        int td;
-                        bool propagate = allCellInfo[nei].updateCell
-                        (
-                            mesh,
-                            nei,
-                            facei,
-                            allFaceInfo[facei],
-                            1e-6,                   //tol,
-                            td
-                        );
-
-                        if (propagate && oppositeFaceLabels.size() == 1)
-                        {
-                            label oppFacei = oppositeFaceLabels[0];
-
-                            bool propagate = allFaceInfo[oppFacei].updateFace
-                            (
-                                mesh,
-                                oppFacei,
-                                allCellInfo[nei],
-                                1e-6,                   //tol,
-                                td
-                            );
-                            if (propagate && isNewFrontFace.set(oppFacei))
-                            {
-                                newFrontFaces.append(oppFacei);
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            //TBD. Synchronise across coupled faces ...
-
-            Pout<< "old front:" << front.size()
-                << " new front:" << newFrontFaces.size() << endl;
-
-            if (returnReduce(newFrontFaces.size(), sumOp<label>()) == 0)
-            {
-                break;
-            }
-
-            frontFaces.transfer(newFrontFaces);
-        }
+        patchFaces.append(pp.addressing()[patchFacei]);
+        patchData.append(topoDistanceData(patchFacei, 0));
     }
+
+Pout<< " patchFaces:" << patchFaces << endl;
+
+    OppositeFaceCellWave<topoDistanceData> deltaCalc
+    (
+        mesh,
+        patchFaces,
+        patchData,
+        allFaceInfo,
+        allCellInfo,
+        mesh.globalData().nTotalCells()+1
+    );
+
+    volScalarField fld
+    (
+        IOobject
+        (
+            "distance",
+            mesh.time().timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE,
+            false
+        ),
+        mesh,
+        dimensionedScalar("zero", dimless, 0),
+        zeroGradientFvPatchScalarField::typeName
+    );
+    forAll(fld, celli)
+    {
+       fld[celli] = allCellInfo[celli].distance();
+    }
+    fld.correctBoundaryConditions();
+    fld.write();
 
 
 //     createScalarField

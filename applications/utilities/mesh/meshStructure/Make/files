@@ -1,3 +1,6 @@
+FaceCellWaveName.C
+OppositeFaceCellWaveName.C
+
 meshStructure.C
 meshStructureApp.C
 
