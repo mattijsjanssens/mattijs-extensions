@@ -43,7 +43,8 @@ Foam::label Foam::checkTopology
     const polyMesh& mesh,
     const bool allTopology,
     const bool allGeometry,
-    const autoPtr<surfaceWriter>& writer
+    const autoPtr<surfaceWriter>& writer,
+    const autoPtr<writer<scalar>> setWriter
 )
 {
     label noFailedChecks = 0;
@@ -154,6 +155,10 @@ Foam::label Foam::checkTopology
                 << " unused points to set " << points.name() << endl;
             points.instance() = mesh.pointsInstance();
             points.write();
+            if (setWriter.valid())
+            {
+                mergeAndWrite(setWriter, points);
+            }
         }
     }
 

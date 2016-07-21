@@ -47,7 +47,8 @@ Usage
       - \par -writeSets \<surfaceFormat\>
         Reconstruct all cellSets and faceSets geometry and write to
         postProcessing directory according to surfaceFormat
-        (e.g. vtk or ensight)
+        (e.g. vtk or ensight). Additionally reconstructs all pointSets and
+        writes as vtk format.
 
 \*---------------------------------------------------------------------------*/
 
@@ -157,9 +158,11 @@ int main(int argc, char *argv[])
 
 
     autoPtr<surfaceWriter> writer;
+    autoPtr<writer<scalar>> setWriter;
     if (writeSets)
     {
         writer = surfaceWriter::New(surfaceFormat);
+        setWriter = writer<scalar>::New(vtkSetWriter<scalar>::typeName);
     }
 
 
@@ -192,11 +195,18 @@ int main(int argc, char *argv[])
                     mesh,
                     allTopology,
                     allGeometry,
-                    writer
+                    writer,
+                    setWriter
                 );
             }
 
-            nFailedChecks += checkGeometry(mesh, allGeometry, writer);
+            nFailedChecks += checkGeometry
+            (
+                mesh,
+                allGeometry,
+                writer,
+                setWriter
+            );
 
             if (meshQuality)
             {
@@ -221,7 +231,13 @@ int main(int argc, char *argv[])
         {
             Info<< "Time = " << runTime.timeName() << nl << endl;
 
-            label nFailedChecks = checkGeometry(mesh, allGeometry, writer);
+            label nFailedChecks = checkGeometry
+            (
+                mesh,
+                allGeometry,
+                writer,
+                setWriter
+            );
 
             if (meshQuality)
             {

@@ -33,6 +33,7 @@ License
 #include "tetWedgeMatcher.H"
 #include "tetMatcher.H"
 #include "IOmanip.H"
+#include "pointSet.H"
 #include "faceSet.H"
 #include "cellSet.H"
 #include "Time.H"
@@ -369,6 +370,60 @@ void Foam::mergeAndWrite
       / set.name()
     );
 
-
     mergeAndWrite(mesh, writer, set.name(), setPatch, outputDir);
 }
+
+
+void Foam::mergeAndWrite
+(
+    const writer<scalar>& writer,
+    const pointSet& set
+)
+{
+    const polyMesh& mesh = refCast<const polyMesh>(set.db());
+
+//     if (Pstream::parRun())
+//     {
+//         // Renumber the setPatch points/faces into unique points
+//         globalPointsPtr = mesh.globalData().mergePoints
+//         (
+//             meshPoints,
+//             meshPointMap,
+//             pointToGlobal,
+//             uniqueMeshPointLabels
+//         );
+//     }
+//     else
+    {
+        labelList pointIDs(set.toc());
+
+        pointField setPoints(mesh.points(), pointIDs);
+        scalarField scalarPointIDs(pointIDs.size());
+        forAll(pointIDs, i)
+        {
+            scalarPointIDs[i] = 1.0*pointIDs[i];
+        }
+
+
+        coordSet points
+        (
+            set.name(),
+            "distance",
+            setPoints,
+            mag(setPoints)
+        );
+
+        List<const scalarField*> flds(1, &scalarPointIDs);
+
+        wordList fldNames(1, "pointID");
+
+        fileName outputFile(writer.getFileName(points, fldNames));
+
+        OFstream os(outputFile);
+
+Pout<< "Writing to " << os.name() << endl;
+
+        writer.write(points, wordList(1, "pointID"), flds, os);
+    }
+}
+
