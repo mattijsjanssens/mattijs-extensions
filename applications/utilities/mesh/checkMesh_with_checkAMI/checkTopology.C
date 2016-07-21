@@ -349,6 +349,13 @@ Foam::label Foam::checkTopology
             ctr.write();
 
 
+            // Points in multiple regions
+            pointSet points
+            (
+                mesh,
+                "multiRegionPoints",
+                mesh.nPoints()/1000
+            );
 
             // Is region disconnected
             boolList regionDisconnected(rs.nRegions(), true);
@@ -386,6 +393,7 @@ Foam::label Foam::checkTopology
                             regionDisconnected[regionI] = false;
                             regionDisconnected[pRegion] = false;
                             pRegion = -2;
+                            points.insert(f[fp]);
                         }
                     }
                 }
@@ -436,6 +444,15 @@ Foam::label Foam::checkTopology
                     << " cells to cellSet " << cellRegions[i].name() << endl;
 
                 cellRegions[i].write();
+            }
+
+            label nPoints = returnReduce(points.size(), sumOp<label>());
+            if (nPoints)
+            {
+                Info<< "  <<Writing " << nPoints
+                    << " points that are in multiple regions to set "
+                    << points.name() << endl;
+                points.write();
             }
         }
     }
