@@ -50,6 +50,7 @@ SourceFiles
 #include "PackedBoolList.H"
 #include "DynamicList.H"
 #include "primitiveFieldsFwd.H"
+#include "labelPair.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -93,6 +94,9 @@ protected:
 
         //- Reference to mesh
         const polyMesh& mesh_;
+
+        //- Optional boundary faces that information should travel through
+        const labelPairList explicitConnections_;
 
         //- Information for all faces
         UList<Type>& allFaceInfo_;
@@ -235,6 +239,10 @@ protected:
             //- Merge data from across AMI cyclics
             void handleAMICyclicPatches();
 
+            //- Merge data across explicitly provided local connections (usually
+            //  baffles)
+            void handleExplicitConnections();
+
 
       // Private static data
 
@@ -281,6 +289,23 @@ public:
         FaceCellWave
         (
             const polyMesh&,
+            const labelList& initialChangedFaces,
+            const List<Type>& changedFacesInfo,
+            UList<Type>& allFaceInfo,
+            UList<Type>& allCellInfo,
+            const label maxIter,
+            TrackingData& td = dummyTrackData_
+        );
+
+        //- Construct from mesh and explicitly connected boundary faces
+        //  and list of changed faces with the Type
+        //  for these faces. Iterates until nothing changes or maxIter reached.
+        //  (maxIter can be 0)
+        FaceCellWave
+        (
+            const polyMesh&,
+            const labelPairList& explicitConnections,
+            const bool handleCyclicAMI,
             const labelList& initialChangedFaces,
             const List<Type>& changedFacesInfo,
             UList<Type>& allFaceInfo,
