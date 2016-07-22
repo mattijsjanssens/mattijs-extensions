@@ -1,0 +1,6 @@
+globalPoints.C
+globalMeshData.C
+globalIndexAndTransform.C
+Test-globalMeshData.C
+
+EXE = $(FOAM_USER_APPBIN)/globalMeshData_with_more_than_6_transforms
