@@ -72,3 +72,29 @@ functions
         #};
     }
 }
+
+
+Example: write interpolated field. Use e.g.
+    postProcess -field 'p'  
+
+functions
+{
+    volPointInterpolate
+    {
+        // Load the library containing the 'coded' functionObject
+        functionObjectLibs ("libutilityFunctionObjects.so");
+        type coded;
+        // Name of on-the-fly generated functionObject
+        redirectType vpi;
+        codeInclude
+        #{
+            #include "volPointInterpolation.H"
+        #};
+        codeWrite
+        #{
+            const volScalarField& p = mesh().lookupObject<volScalarField>("p");
+            volPointInterpolation::New(mesh()).interpolate(p)().write();
+        #};
+    }
+}
+
