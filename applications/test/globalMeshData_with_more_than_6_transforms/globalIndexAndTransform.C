@@ -480,10 +480,4 @@ Foam::globalIndexAndTransform::globalIndexAndTransform(const polyMesh& mesh)
 }
 
 
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-Foam::globalIndexAndTransform::~globalIndexAndTransform()
-{}
-
-
 // ************************************************************************* //
