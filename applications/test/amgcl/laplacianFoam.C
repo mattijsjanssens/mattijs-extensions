@@ -389,70 +389,70 @@ int main(int argc, char *argv[])
                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                 << nl << endl;
 
-            // Force symmetry for ease of conversion
-            (void)TEqn.lower();
-
-            //printMatrix(TEqn);
-
-            std::vector<double> val;
-            std::vector<int> col;
-            std::vector<int> ptr;
-            std::vector<double> rhs;
-            convert(TEqn, val, col, ptr, rhs);
-            const label n = rhs.size();
-
-            Info<< "After conversion = "
-                << runTime.elapsedCpuTime() << " s"
-                << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                << nl << endl;
-
-            // Construct the AMG hierarchy.
-            // Note that this step only depends on the matrix. Hence,
-            // the constructed
-            // instance may be reused for several right-hand sides.
-            // The matrix is specified as a tuple of sizes and ranges.
-            //AMG::params prm;
-            //prm.coarse_enough = 10;
-
-            //AMG amg( boost::tie(n, ptr, col, val), prm );
-            //AMG amg( boost::tie(n, ptr, col, val) );
-
-            // Output some information about the constructed hierarchy:
-            //std::cout << amg << std::endl;
-
-            // Use GMRES as an iterative solver:
-            //typedef amgcl::solver::gmres<Backend> Solver;
-
-            // Construct the iterative solver. It needs size of the system to
-            // preallocate the required temporary structures:
-            Solver::params prm;
-            prm.solver.tol = 1e-6;
-            Solver solve(boost::tie(n, ptr, col, val), prm);
-
-            Info<< "After constructing solver = "
-                << runTime.elapsedCpuTime() << " s"
-                << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                << nl << endl;
-
-            // Solve the system. Returns number of iterations made and the
-            // achieved residual.
-            label iters;
-            scalar resid;
-            std::vector<double>  solution(n, 0.0);
-            boost::tie(iters, resid) = solve(rhs, solution);
-            Info << iters << "   " << resid << endl;
-
-            Info<< "After AMGCL solving = "
-                << runTime.elapsedCpuTime() << " s"
-                << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                << nl << endl;
-
-            forAll(solution, celli)
-            {
-                T[celli] = solution[celli];
-            }
-            T.correctBoundaryConditions();
-            Info<< "AMGCL residual:" << gAverage(TEqn.residual()) << endl;
+//             // Force symmetry for ease of conversion
+//             (void)TEqn.lower();
+// 
+//             //printMatrix(TEqn);
+// 
+//             std::vector<double> val;
+//             std::vector<int> col;
+//             std::vector<int> ptr;
+//             std::vector<double> rhs;
+//             convert(TEqn, val, col, ptr, rhs);
+//             const label n = rhs.size();
+// 
+//             Info<< "After conversion = "
+//                 << runTime.elapsedCpuTime() << " s"
+//                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+//                 << nl << endl;
+// 
+//             // Construct the AMG hierarchy.
+//             // Note that this step only depends on the matrix. Hence,
+//             // the constructed
+//             // instance may be reused for several right-hand sides.
+//             // The matrix is specified as a tuple of sizes and ranges.
+//             //AMG::params prm;
+//             //prm.coarse_enough = 10;
+// 
+//             //AMG amg( boost::tie(n, ptr, col, val), prm );
+//             //AMG amg( boost::tie(n, ptr, col, val) );
+// 
+//             // Output some information about the constructed hierarchy:
+//             //std::cout << amg << std::endl;
+// 
+//             // Use GMRES as an iterative solver:
+//             //typedef amgcl::solver::gmres<Backend> Solver;
+// 
+//             // Construct the iterative solver. It needs size of the system to
+//             // preallocate the required temporary structures:
+//             Solver::params prm;
+//             prm.solver.tol = 1e-6;
+//             Solver solve(boost::tie(n, ptr, col, val), prm);
+// 
+//             Info<< "After constructing solver = "
+//                 << runTime.elapsedCpuTime() << " s"
+//                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+//                 << nl << endl;
+// 
+//             // Solve the system. Returns number of iterations made and the
+//             // achieved residual.
+//             label iters;
+//             scalar resid;
+//             std::vector<double>  solution(n, 0.0);
+//             boost::tie(iters, resid) = solve(rhs, solution);
+//             Info << iters << "   " << resid << endl;
+// 
+//             Info<< "After AMGCL solving = "
+//                 << runTime.elapsedCpuTime() << " s"
+//                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+//                 << nl << endl;
+// 
+//             forAll(solution, celli)
+//             {
+//                 T[celli] = solution[celli];
+//             }
+//             T.correctBoundaryConditions();
+//             Info<< "AMGCL residual:" << gAverage(TEqn.residual()) << endl;
 
 
             //std::cout<< "solution:" << solution << std::endl;
@@ -462,7 +462,7 @@ int main(int argc, char *argv[])
             //    DebugVar(solution[celli]);
             //}
 
-            T = dimensionedScalar("zero", T.dimensions(), 0.0);
+            //T = dimensionedScalar("zero", T.dimensions(), 0.0);
             TEqn.solve();
 
             Info<< "After OpenFOAM solving = "

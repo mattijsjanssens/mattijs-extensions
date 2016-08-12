@@ -1,3 +1,4 @@
+amgclSolver.C
 laplacianFoam.C
 
 EXE = $(FOAM_USER_APPBIN)/amgcl-laplacianFoam
