@@ -1,0 +1,10 @@
+EXE_INC = \
+    /* -DFULLDEBUG -g -O0 */ \
+    -Wno-unknown-pragmas \
+    -Iamgcl \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lmeshTools
