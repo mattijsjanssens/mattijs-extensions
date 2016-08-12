@@ -39,6 +39,7 @@ Description
 #include "amgcl/coarsening/smoothed_aggregation.hpp"
 #include "amgcl/relaxation/damped_jacobi.hpp"
 #include "amgcl/relaxation/spai0.hpp"
+
 #include "amgcl/solver/bicgstab.hpp"
 #include "amgcl/solver/gmres.hpp"
 
@@ -104,13 +105,13 @@ void printMatrix
 
 typedef amgcl::backend::builtin<double> Backend;
 
-// Define the AMG type:
-typedef amgcl::amg
-<
-    Backend,
-    amgcl::coarsening::smoothed_aggregation,
-    amgcl::relaxation::spai0
-> AMG;
+// // Define the AMG type:
+// typedef amgcl::amg
+// <
+//     Backend,
+//     amgcl::coarsening::smoothed_aggregation,
+//     amgcl::relaxation::spai0
+// > AMG;
 
 typedef amgcl::make_solver
 <
@@ -446,6 +447,13 @@ int main(int argc, char *argv[])
                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                 << nl << endl;
 
+            forAll(solution, celli)
+            {
+                T[celli] = solution[celli];
+            }
+            T.correctBoundaryConditions();
+            Info<< "AMGCL residual:" << gAverage(TEqn.residual()) << endl;
+
 
             //std::cout<< "solution:" << solution << std::endl;
 
@@ -454,8 +462,7 @@ int main(int argc, char *argv[])
             //    DebugVar(solution[celli]);
             //}
 
-
-
+            T = dimensionedScalar("zero", T.dimensions(), 0.0);
             TEqn.solve();
 
             Info<< "After OpenFOAM solving = "
@@ -463,6 +470,7 @@ int main(int argc, char *argv[])
                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                 << nl << endl;
 
+            Info<< "OpenFOAM residual:" << gAverage(TEqn.residual()) << endl;
 
             fvOptions.correct(T);
         }
