@@ -39,6 +39,7 @@ Description
 #include "amgcl/coarsening/smoothed_aggregation.hpp"
 #include "amgcl/relaxation/damped_jacobi.hpp"
 #include "amgcl/relaxation/spai0.hpp"
+
 #include "amgcl/solver/bicgstab.hpp"
 #include "amgcl/solver/gmres.hpp"
 
@@ -104,13 +105,13 @@ void printMatrix
 
 typedef amgcl::backend::builtin<double> Backend;
 
-// Define the AMG type:
-typedef amgcl::amg
-<
-    Backend,
-    amgcl::coarsening::smoothed_aggregation,
-    amgcl::relaxation::spai0
-> AMG;
+// // Define the AMG type:
+// typedef amgcl::amg
+// <
+//     Backend,
+//     amgcl::coarsening::smoothed_aggregation,
+//     amgcl::relaxation::spai0
+// > AMG;
 
 typedef amgcl::make_solver
 <
@@ -453,8 +454,6 @@ int main(int argc, char *argv[])
             //{
             //    DebugVar(solution[celli]);
             //}
-
-
 
             TEqn.solve();
 
