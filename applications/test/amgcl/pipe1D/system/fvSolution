@@ -19,8 +19,8 @@ solvers
 {
     T
     {
-        solver          GAMG;
-        smoother        DILUGaussSeidel;
+        solver          amgcl;  //GAMG;
+        smoother        DICGaussSeidel;
 
 //         solver          PBiCG;
 //         preconditioner

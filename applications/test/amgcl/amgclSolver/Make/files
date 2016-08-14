@@ -1,0 +1,3 @@
+amgclSolver.C
+
+LIB = $(FOAM_USER_LIBBIN)/$(FOAM_MPI)/libamgclSolver

@@ -1,0 +1,11 @@
+sinclude $(GENERAL_RULES)/mplib$(WM_MPLIB)
+sinclude $(RULES)/mplib$(WM_MPLIB)
+
+EXE_INC = \
+    $(PFLAGS) $(PINC) \
+    -Wno-unknown-pragmas \
+    -Wno-old-style-cast \
+    -I../amgcl
+
+LIB_LIBS = \
+    -L$(FOAM_EXT_LIBBIN)/$(FOAM_MPI) ${LINK_FLAGS} -lrt

@@ -1,0 +1,35 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Parse arguments for library compilation
+. $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
+
+
+
+#
+# define how to create an mpi-versioned library of $targetType
+# compile into qualified directory
+# use sentinel file to handle version changes
+#
+wmakeMpiLib()
+{
+    depFile=`wdep $1`
+    depDir=`dirname "$depFile"`
+    set +x
+    libName="$2"
+    (
+        WM_OPTIONS="$WM_OPTIONS$WM_MPLIB"
+        whichmpi="$depDir/using:$FOAM_MPI"
+        [ -e "$whichmpi" ] || wclean $libName
+        echo "wmake $targetType"
+        wmake $targetType
+        touch "$whichmpi"
+    )
+    set -x
+}
+
+set -x
+
+wmakeMpiLib amgclSolver.C libamgclSolver
+
+#------------------------------------------------------------------------------
