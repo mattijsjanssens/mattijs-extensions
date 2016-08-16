@@ -75,80 +75,46 @@ struct constant_deflation {
 
 void Foam::amgclSolver::crs
 (
-    const globalIndex& globalNumbering,
-    lduMatrix& matrix,
-    const FieldField<Field, scalar>& interfaceBouCoeffs,
-    const FieldField<Field, scalar>& interfaceIntCoeffs,
     const scalarField& source,
     std::vector<double>& val,
     std::vector<int>& col,
-    std::vector<int>& ptr,
     std::vector<double>& rhs
-)
+) const
 {
-    const lduAddressing& lduAddr = matrix.mesh().lduAddr();
-    const lduInterfacePtrsList interfaces(matrix.mesh().interfaces());
+    const lduAddressing& lduAddr = matrix_.mesh().lduAddr();
+    const lduInterfacePtrsList interfaces(matrix_.mesh().interfaces());
     const labelUList& uPtr = lduAddr.upperAddr();
     const labelUList& lPtr = lduAddr.lowerAddr();
     const label n = lduAddr.size();
-    const scalarField& diag = matrix.diag();
-    const scalarField& upperPtr = matrix.upper();
+    const scalarField& diag = matrix_.diag();
+    const scalarField& upperPtr = matrix_.upper();
 
     const scalarField& lowerPtr =
     (
-        matrix.hasLower()
-      ? matrix.lower()
-      : matrix.upper()
+        matrix_.hasLower()
+      ? matrix_.lower()
+      : matrix_.upper()
     );
 
-    // Count number of neighbours
-    labelList nNbrs(n, 0);
-    forAll(uPtr, facei)
-    {
-        nNbrs[uPtr[facei]]++;
-        nNbrs[lPtr[facei]]++;
-    }
-    forAll(interfaces, patchi)
-    {
-        // Is coupled interface with neighbour?
-        if (interfaces.set(patchi))
-        {
-            const labelUList& fc = lduAddr.patchAddr(patchi);
-            forAll(fc, i)
-            {
-                nNbrs[fc[i]]++;
-            }
-        }
-    }
-
-    // Points to the start of each row in the above arrays
-    ptr.resize(n+1);
-
-    ptr[0] = 0;
-    for (label celli = 0; celli < n; celli++)
-    {
-        // Space for diagonal and cell neighbours
-        ptr[celli+1] = ptr[celli]+1+nNbrs[celli];
-    }
     // Values of nonzero entries
-    val.resize(ptr[ptr.size()-1]);
+    val.resize(ptr_[ptr_.size()-1]);
     // Column numbers of nonzero entries
     col.resize(val.size());
 
-    std::vector<int> offsets(ptr);
+    std::vector<int> offsets(ptr_);
     // Store diagonal first (not needed per se but easier when adding
     // boundary contributions)
     for (label celli = 0; celli < n; celli++)
     {
         int& index = offsets[celli];
-        col[index] = globalNumbering.toGlobal(celli);
+        col[index] = globalNumbering_.toGlobal(celli);
         val[index++] = diag[celli];
     }
     // Store connections to lower numbered cells
     forAll(uPtr, facei)
     {
         int& index = offsets[uPtr[facei]];
-        col[index] = globalNumbering.toGlobal(lPtr[facei]);
+        col[index] = globalNumbering_.toGlobal(lPtr[facei]);
         val[index++] = lowerPtr[facei];
     }
 
@@ -156,7 +122,7 @@ void Foam::amgclSolver::crs
     forAll(lPtr, facei)
     {
         int& index = offsets[lPtr[facei]];
-        col[index] = globalNumbering.toGlobal(uPtr[facei]);
+        col[index] = globalNumbering_.toGlobal(uPtr[facei]);
         val[index++] = upperPtr[facei];
     }
 
@@ -165,7 +131,7 @@ void Foam::amgclSolver::crs
         labelList globalCells(n);
         forAll(globalCells, celli)
         {
-            globalCells[celli] = globalNumbering.toGlobal(celli);
+            globalCells[celli] = globalNumbering_.toGlobal(celli);
         }
 
         // Initialise transfer of global cells
@@ -200,7 +166,7 @@ void Foam::amgclSolver::crs
                 );
 
                 const labelUList& fc = lduAddr.patchAddr(patchi);
-                const scalarField& bCoeffs = interfaceBouCoeffs[patchi];
+                const scalarField& bCoeffs = interfaceBouCoeffs_[patchi];
                 forAll(fc, i)
                 {
                     label celli = fc[i];
@@ -222,21 +188,21 @@ void Foam::amgclSolver::crs
     {
         rhs[celli] = source[celli];
     }
-    forAll(interfaceBouCoeffs, patchi)
+    forAll(interfaceBouCoeffs_, patchi)
     {
         forAll(interfaces, patchi)
         {
             if (!interfaces.set(patchi))
             {
-                const scalarField& iCoeffs = interfaceIntCoeffs[patchi];
-                const scalarField& bCoeffs = interfaceBouCoeffs[patchi];
+                const scalarField& iCoeffs = interfaceIntCoeffs_[patchi];
+                const scalarField& bCoeffs = interfaceBouCoeffs_[patchi];
                 const labelUList& fc = lduAddr.patchAddr(patchi);
 
                 forAll(fc, i)
                 {
                     label celli = fc[i];
-                    label index = ptr[celli];
-                    if (col[index] != globalNumbering.toGlobal(celli))
+                    label index = ptr_[celli];
+                    if (col[index] != globalNumbering_.toGlobal(celli))
                     {
                         FatalErrorInFunction
                             << "Problem: diagonal not first"
@@ -272,9 +238,45 @@ Foam::amgclSolver::amgclSolver
         interfaceIntCoeffs,
         interfaces,
         solverControls
-    )
+    ),
+    globalNumbering_(matrix.mesh().lduAddr().size())
 {
     readControls();
+
+    const lduAddressing& lduAddr = matrix.mesh().lduAddr();
+    const labelUList& uPtr = lduAddr.upperAddr();
+    const labelUList& lPtr = lduAddr.lowerAddr();
+    const label n = lduAddr.size();
+
+    // Count number of neighbours
+    labelList nNbrs(n, 0);
+    forAll(uPtr, facei)
+    {
+        nNbrs[uPtr[facei]]++;
+        nNbrs[lPtr[facei]]++;
+    }
+    forAll(interfaces, patchi)
+    {
+        // Is coupled interface with neighbour?
+        if (interfaces.set(patchi))
+        {
+            const labelUList& fc = lduAddr.patchAddr(patchi);
+            forAll(fc, i)
+            {
+                nNbrs[fc[i]]++;
+            }
+        }
+    }
+
+    // Points to the start of each row in the above arrays
+    ptr_.resize(n+1);
+
+    ptr_[0] = 0;
+    for (label celli = 0; celli < n; celli++)
+    {
+        // Space for diagonal and cell neighbours
+        ptr_[celli+1] = ptr_[celli]+1+nNbrs[celli];
+    }
 }
 
 
@@ -325,93 +327,115 @@ Foam::solverPerformance Foam::amgclSolver::solve
      || !solverPerf.checkConvergence(tolerance_, relTol_)
     )
     {
-        globalIndex globalNumbering(matrix().mesh().lduAddr().size());
-
         // Convert to CRS format
         std::vector<double> val;
         std::vector<int> col;
-        std::vector<int> ptr;
         std::vector<double> rhs;
-        crs
-        (
-            globalNumbering,
-            const_cast<lduMatrix&>(matrix()),
-            interfaceBouCoeffs_,
-            interfaceIntCoeffs_,
-            source,
-            val,
-            col,
-            ptr,
-            rhs
-        );
-
-        amgcl::mpi::communicator world(MPI_COMM_WORLD);
+        crs(source, val, col, rhs);
 
 
-        amgcl::runtime::coarsening::type coarsening =
-            amgcl::runtime::coarsening::smoothed_aggregation;
-        amgcl::runtime::relaxation::type relaxation =
-            amgcl::runtime::relaxation::spai0;
-        amgcl::runtime::solver::type iterative_solver =
-            amgcl::runtime::solver::bicgstabl;
-        amgcl::runtime::mpi::dsolver::type direct_solver =
-            amgcl::runtime::mpi::dsolver::skyline_lu;
-
-
-        boost::property_tree::ptree prm;
-        prm.put("isolver.type", iterative_solver);
-        prm.put("dsolver.type", direct_solver);
-
-
-        //ptrdiff_t chunk = part.size( world.rank );
-        //bilinear_deflation bld(n, chunk, lo, hi);
-
-        boost::function<double(ptrdiff_t,unsigned)> dv;
-        unsigned ndv;
-
-        // Use constant deflation for now
-        {
-            dv = constant_deflation();
-            ndv = 1;
-        }
-        prm.put("num_def_vec", ndv);
-        prm.put("def_vec", &dv);
-
-        prm.put("local.coarsening.type", coarsening);
-        prm.put("local.relax.type", relaxation);
-
-        typedef
-            amgcl::mpi::subdomain_deflation<
-                amgcl::runtime::amg< amgcl::backend::builtin<double> >,
-                amgcl::runtime::iterative_solver,
-                amgcl::runtime::mpi::direct_solver<double>
-            > SDD;
-
-
-        ptrdiff_t chunk(globalNumbering.localSize());
-
-        SDD solve
-        (
-            world,
-            boost::tie
-            (
-                chunk,
-                ptr,
-                col,
-                val
-            ),
-            prm
-        );
-
-        std::vector<double> solution(globalNumbering.localSize());
+        std::vector<double> solution(rhs.size());
         forAll(psi, celli)
         {
             solution[celli] = psi[celli];
         }
 
+
+        typedef amgcl::backend::builtin<double> Backend;
+
+
+        ptrdiff_t n(globalNumbering_.localSize());
+
         size_t iters;
         double resid;
-        boost::tie(iters, resid) = solve(rhs, solution);
+        if (Pstream::parRun())
+        {
+            //amgcl::runtime::coarsening::type coarsening =
+            //    amgcl::runtime::coarsening::smoothed_aggregation;
+            //amgcl::runtime::relaxation::type relaxation =
+            //    amgcl::runtime::relaxation::spai0;
+            //amgcl::runtime::solver::type iterative_solver =
+            //    amgcl::runtime::solver::bicgstabl;
+            //amgcl::runtime::mpi::dsolver::type direct_solver =
+            //    amgcl::runtime::mpi::dsolver::skyline_lu;
+            //
+            //
+            //boost::property_tree::ptree prm;
+            //prm.put("isolver.type", iterative_solver);
+            //prm.put("dsolver.type", direct_solver);
+            //prm.put("solver.tol", tolerance_);
+            //prm.put("isolver.tol", tolerance_);
+            //
+            //boost::function<double(ptrdiff_t,unsigned)> dv;
+            //unsigned ndv;
+            //
+            //// Use constant deflation for now
+            //{
+            //    dv = constant_deflation();
+            //    ndv = 1;
+            //}
+            //prm.put("num_def_vec", ndv);
+            //prm.put("def_vec", &dv);
+            //
+            //prm.put("local.coarsening.type", coarsening);
+            //prm.put("local.relax.type", relaxation);
+            //    typedef
+            //        amgcl::mpi::subdomain_deflation
+            //        <
+            //            amgcl::runtime::amg<Backend>,
+            //            amgcl::runtime::iterative_solver,
+            //            amgcl::runtime::mpi::direct_solver<double>
+            //        > Solver;
+
+            typedef amgcl::mpi::subdomain_deflation
+            <
+                // Use AMG as preconditioner:
+                amgcl::amg
+                <
+                    Backend,
+                    amgcl::coarsening::smoothed_aggregation,
+                    amgcl::relaxation::spai0
+                >,
+                // Iterative solver
+                amgcl::solver::bicgstab,
+                // Direct solver
+                amgcl::mpi::skyline_lu<double>
+            > Solver;
+
+            Solver::params prm;
+            prm.isolver.tol = tolerance_;
+            prm.num_def_vec = 1;
+            prm.def_vec = constant_deflation();
+
+            amgcl::mpi::communicator world(MPI_COMM_WORLD);
+
+            Solver solve(world, boost::tie(n, ptr_, col, val), prm);
+
+            boost::tie(iters, resid) = solve(rhs, solution);
+        }
+        else
+        {
+            typedef amgcl::make_solver
+            <
+                // Use AMG as preconditioner:
+                amgcl::amg
+                <
+                    Backend,
+                    amgcl::coarsening::smoothed_aggregation,
+                    amgcl::relaxation::spai0
+                >,
+                // And BiCGStab as iterative solver:
+                amgcl::solver::bicgstab<Backend>
+            > Solver;
+
+            Solver::params prm;
+            prm.solver.tol = tolerance_;
+
+            Solver solve(boost::tie(n, ptr_, col, val), prm);
+
+            boost::tie(iters, resid) = solve(rhs, solution);
+        }
+
 
         forAll(psi, celli)
         {

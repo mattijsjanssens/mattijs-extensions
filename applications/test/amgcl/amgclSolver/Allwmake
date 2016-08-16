@@ -1,6 +1,9 @@
 #!/bin/sh
 cd ${0%/*} || exit 1    # Run from this directory
 
+# Source the wmake functions
+. $WM_PROJECT_DIR/wmake/scripts/wmakeFunctions
+
 # Parse arguments for library compilation
 . $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
 
@@ -16,11 +19,12 @@ wmakeMpiLib()
     depFile=`wdep $1`
     depDir=`dirname "$depFile"`
     set +x
-    libName="$2"
+    #libName="$2"
     (
         WM_OPTIONS="$WM_OPTIONS$WM_MPLIB"
-        whichmpi="$depDir/using:$FOAM_MPI"
-        [ -e "$whichmpi" ] || wclean $libName
+        findObjectDir $1
+        whichmpi="$objectsDir/using:$FOAM_MPI"
+        [ -e "$whichmpi" ] || wclean $targetType
         echo "wmake $targetType"
         wmake $targetType
         touch "$whichmpi"
@@ -30,6 +34,6 @@ wmakeMpiLib()
 
 set -x
 
-wmakeMpiLib amgclSolver.C libamgclSolver
+wmakeMpiLib amgclSolver.C #libamgclSolver
 
 #------------------------------------------------------------------------------

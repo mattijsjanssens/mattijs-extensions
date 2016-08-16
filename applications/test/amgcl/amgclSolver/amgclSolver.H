@@ -36,6 +36,7 @@ SourceFiles
 #define amgclSolver_H
 
 #include "lduMatrix.H"
+#include "globalIndex.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -53,6 +54,26 @@ class amgclSolver
 :
     public lduMatrix::solver
 {
+    // Private data
+
+        //- Global numbering for cells
+        globalIndex globalNumbering_;
+
+        //- Offsets into crs storage. ptr[celli] is start of data for celli
+        std::vector<int> ptr_;
+
+
+   // Private Member Functions
+
+        //- Convert matrix into CRS format
+        void crs
+        (
+            const scalarField& source,
+            std::vector<double>& val,
+            std::vector<int>& col,
+            std::vector<double>& rhs
+        ) const;
+
 public:
 
     //- Runtime type information
@@ -86,20 +107,6 @@ public:
             const scalarField& source,
             const direction cmpt=0
         ) const;
-
-        //- Helper: convert matrix into CRS format
-        static void crs
-        (
-            const globalIndex& globalNumbering,
-            lduMatrix& matrix,
-            const FieldField<Field, scalar>& interfaceBouCoeffs,
-            const FieldField<Field, scalar>& interfaceIntCoeffs,
-            const scalarField& source,
-            std::vector<double>& val,
-            std::vector<int>& col,
-            std::vector<int>& ptr,
-            std::vector<double>& rhs
-        );
 };
 
 
