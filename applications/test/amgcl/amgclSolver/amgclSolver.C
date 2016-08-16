@@ -300,6 +300,13 @@ Foam::solverPerformance Foam::amgclSolver::solve
      || !solverPerf.checkConvergence(tolerance_, relTol_)
     )
     {
+        scalar tol = max
+        (
+            relTol_*solverPerf.initialResidual(),
+            tolerance_
+        );
+
+
         // Convert to CRS format
         std::vector<double> val;
         std::vector<int> col;
@@ -436,7 +443,7 @@ Foam::solverPerformance Foam::amgclSolver::solve
             > Solver;
 
             Solver::params prm;
-            prm.isolver.tol = tolerance_;
+            prm.isolver.tol = tol;
             prm.num_def_vec = 1;
             prm.def_vec = constant_deflation();
 
@@ -462,7 +469,7 @@ Foam::solverPerformance Foam::amgclSolver::solve
             > Solver;
 
             Solver::params prm;
-            prm.solver.tol = tolerance_;
+            prm.solver.tol = tol;
 
             Solver solve(boost::tie(n, ptr_, col, val), prm);
 

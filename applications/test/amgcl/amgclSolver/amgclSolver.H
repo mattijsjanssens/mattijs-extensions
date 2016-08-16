@@ -43,11 +43,10 @@ SourceFiles
 namespace Foam
 {
 
-//template<> std::vector<>;
 class globalIndex;
 
 /*---------------------------------------------------------------------------*\
-                           Class amgclSolver Declaration
+                         Class amgclSolver Declaration
 \*---------------------------------------------------------------------------*/
 
 class amgclSolver
