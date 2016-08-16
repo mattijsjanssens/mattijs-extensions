@@ -188,33 +188,6 @@ void Foam::amgclSolver::crs
     {
         rhs[celli] = source[celli];
     }
-    forAll(interfaceBouCoeffs_, patchi)
-    {
-        forAll(interfaces, patchi)
-        {
-            if (!interfaces.set(patchi))
-            {
-                const scalarField& iCoeffs = interfaceIntCoeffs_[patchi];
-                const scalarField& bCoeffs = interfaceBouCoeffs_[patchi];
-                const labelUList& fc = lduAddr.patchAddr(patchi);
-
-                forAll(fc, i)
-                {
-                    label celli = fc[i];
-                    label index = ptr_[celli];
-                    if (col[index] != globalNumbering_.toGlobal(celli))
-                    {
-                        FatalErrorInFunction
-                            << "Problem: diagonal not first"
-                            << abort(FatalError);
-                    }
-
-                    val[index] += iCoeffs[i];
-                    rhs[celli] += bCoeffs[i];
-                }
-            }
-        }
-    }
 }
 
 
@@ -332,6 +305,66 @@ Foam::solverPerformance Foam::amgclSolver::solve
         std::vector<int> col;
         std::vector<double> rhs;
         crs(source, val, col, rhs);
+
+
+        if (debug & 2)
+        {
+            const lduAddressing& lduAddr = matrix_.mesh().lduAddr();
+            const labelUList& uPtr = lduAddr.upperAddr();
+            const labelUList& lPtr = lduAddr.lowerAddr();
+            const scalarField& diag = matrix_.diag();
+            const scalarField& upperPtr = matrix_.upper();
+            const scalarField& lowerPtr =
+            (
+                matrix_.hasLower()
+              ? matrix_.lower()
+              : matrix_.upper()
+            );
+
+            Pout<< "Face-based matrix:" << endl;
+            forAll(source, celli)
+            {
+                Pout<< "cell:" << celli
+                    << " diag:" << diag[celli]
+                    << " source:" << source[celli] << endl;
+            }
+            forAll(uPtr, facei)
+            {
+                Pout<< "face:" << facei
+                    << " u:" << uPtr[facei] << " coeff:" << upperPtr[facei]
+                    << " l:" << lPtr[facei] << " coeff:" << lowerPtr[facei]
+                    << endl;
+            }
+            forAll(interfaceBouCoeffs_, patchi)
+            {
+                if (interfaceBouCoeffs_.set(patchi))
+                {
+                    const scalarField& iCoeffs = interfaceIntCoeffs_[patchi];
+                    const scalarField& bCoeffs = interfaceBouCoeffs_[patchi];
+                    const labelUList& fc = lduAddr.patchAddr(patchi);
+                    Pout<< "Patch:" << patchi << endl;
+                    forAll(fc, i)
+                    {
+                        Pout<< "    cell:" << fc[i]
+                            << " iCoeff:" << iCoeffs[i]
+                            << " bCoeff:" << bCoeffs[i]
+                            << endl;
+                    }
+                }
+            }
+
+
+            Pout<< "CRS matrix:" << endl;
+            for (unsigned int celli = 0; celli < rhs.size(); celli++)
+            {
+                Pout<< "cell:" << celli << " rhs:" << rhs[celli] << endl;
+                for (label facei = ptr_[celli]; facei < ptr_[celli+1]; facei++)
+                {
+                    Pout<< "    cell:" << col[facei]
+                        << " coeff:" << val[facei] << endl;
+                }
+            }
+        }
 
 
         std::vector<double> solution(rhs.size());
