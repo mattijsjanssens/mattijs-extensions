@@ -25,7 +25,10 @@ Class
     Foam::amgclSolver
 
 Description
-    Interface to amgcl.
+    Interface to amgcl. Produces a symmetric and asymmetric lduSolver 'amgcl'.
+
+    Note: amglcl uses slightly different residual for stopping criterion.
+          (observed factor of two).
 
 SourceFiles
     amgclSolver.C

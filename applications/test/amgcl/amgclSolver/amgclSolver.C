@@ -53,6 +53,8 @@ License
 
 #include "amgclSolver.H"
 #include "globalIndex.H"
+#include "cpuTime.H"
+#include "OFstream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -300,6 +302,9 @@ Foam::solverPerformance Foam::amgclSolver::solve
      || !solverPerf.checkConvergence(tolerance_, relTol_)
     )
     {
+
+        cpuTime solverTime;
+
         scalar tol = max
         (
             relTol_*solverPerf.initialResidual(),
@@ -312,6 +317,72 @@ Foam::solverPerformance Foam::amgclSolver::solve
         std::vector<int> col;
         std::vector<double> rhs;
         crs(source, val, col, rhs);
+
+        if (debug)
+        {
+            Pout<< "Constructed addressing in " << solverTime.cpuTimeIncrement()
+                << endl;
+        }
+
+        if (debug & 2)
+        {
+            // Dump to matrix market format
+
+            const lduAddressing& lduAddr = matrix_.mesh().lduAddr();
+            const labelUList& uPtr = lduAddr.upperAddr();
+            const labelUList& lPtr = lduAddr.lowerAddr();
+            const labelUList& ownerStart = lduAddr.ownerStartAddr();
+            const labelUList& losort = lduAddr.losortAddr();
+            const labelUList& losortStart = lduAddr.losortStartAddr();
+            const scalarField& diag = matrix_.diag();
+            const scalarField& upperPtr = matrix_.upper();
+            const scalarField& lowerPtr =
+            (
+                matrix_.hasLower()
+              ? matrix_.lower()
+              : matrix_.upper()
+            );
+
+            OFstream str("matrixmarket.txt");
+            Info<< "Dumping matrix to " << str.name() << endl;
+
+            str << "%%MatrixMarket matrix coordinate real general" << nl
+                << lduAddr.size() << ' ' << lduAddr.size() << ' '
+                << diag.size()+uPtr.size()+lPtr.size() << nl;
+
+            forAll(diag, celli)
+            {
+                // Lower
+                for
+                (
+                    label i = losortStart[celli];
+                    i < losortStart[celli+1];
+                    i++
+                )
+                {
+                    label facei = losort[i];
+                    str << celli+1 << ' ' << lPtr[facei]+1 << ' '
+                        << lowerPtr[facei] << nl;
+                }
+
+                // Diag
+                str << celli+1 << ' ' << celli+1 << ' '
+                    << diag[celli] << nl;
+
+                // Upper
+                for
+                (
+                    label facei = ownerStart[celli];
+                    facei < ownerStart[celli+1];
+                    facei++
+                )
+                {
+                    str << celli+1 << ' ' << uPtr[facei]+1 << ' '
+                        << upperPtr[facei] << nl;
+                }
+            }
+        }
+
 
 
         if (debug & 2)
@@ -451,6 +522,12 @@ Foam::solverPerformance Foam::amgclSolver::solve
 
             Solver solve(world, boost::tie(n, ptr_, col, val), prm);
 
+            if (debug)
+            {
+                Pout<< "Constructed AMG solver in "
+                    << solverTime.cpuTimeIncrement() << endl;
+            }
+
             boost::tie(iters, resid) = solve(rhs, solution);
         }
         else
@@ -473,9 +550,20 @@ Foam::solverPerformance Foam::amgclSolver::solve
 
             Solver solve(boost::tie(n, ptr_, col, val), prm);
 
+            if (debug)
+            {
+                Pout<< "Constructed AMG solver in "
+                    << solverTime.cpuTimeIncrement() << endl;
+            }
+
             boost::tie(iters, resid) = solve(rhs, solution);
         }
 
+        if (debug)
+        {
+            Pout<< "Solved with rhs in " << solverTime.cpuTimeIncrement()
+                << endl;
+        }
 
         forAll(psi, celli)
         {
@@ -497,6 +585,25 @@ Foam::solverPerformance Foam::amgclSolver::solve
             )(),
             matrix().mesh().comm()
         )/normFactor;
+
+        if (false)
+        {
+            double norm_rhs = sqrt(amgcl::backend::inner_product(rhs, rhs));
+            amgcl::backend::spmv
+            (
+                -1,
+                boost::tie(n, ptr_, col, val),
+                solution,
+                1,
+                rhs
+            );
+            double realResid =
+                sqrt(amgcl::backend::inner_product(rhs, rhs))
+              / norm_rhs;
+            DebugVar(realResid);
+            DebugVar(resid);
+            DebugVar(solverPerf.finalResidual());
+        }
     }
 
     return solverPerf;
