@@ -22,10 +22,12 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    Test-fvm
+    Test-processorAgglomeration
 
 Description
-    Finite volume method test code.
+- try and move some bits of lduMesh across and re-stitch
+- only coincident cyclics and processor interfaces are stitchable
+- all other interfaces get preserved
 
 \*---------------------------------------------------------------------------*/
 
@@ -193,6 +195,87 @@ void printSubMeshInfo
         }
     }
 }
+void sendMesh(const lduMesh& mesh, Ostream& os)
+{
+    const lduAddressing& addressing = mesh.lduAddr();
+    lduInterfacePtrsList interfaces(mesh.interfaces());
+    boolList validInterface(interfaces.size());
+    forAll(interfaces, intI)
+    {
+        validInterface[intI] = interfaces.set(intI);
+    }
+
+    os  << addressing.size()
+        << addressing.lowerAddr()
+        << addressing.upperAddr()
+        << validInterface;
+
+    forAll(interfaces, intI)
+    {
+        if (interfaces.set(intI))
+        {
+            os << interfaces[intI].type();
+        }
+    }
+}
+autoPtr<lduPrimitiveMesh> receiveMesh(const label comm, Istream& is)
+{
+    label nCells = readLabel(is);
+    labelList lowerAddr(is);
+    labelList upperAddr(is);
+    boolList validInterface(is);
+
+
+    // Construct mesh without interfaces
+    autoPtr<lduPrimitiveMesh> meshPtr
+    (
+        new lduPrimitiveMesh
+        (
+            nCells,
+            lowerAddr,
+            upperAddr,
+            comm,
+            true    // reuse
+        )
+    );
+
+    // Construct GAMGInterfaces
+    lduInterfacePtrsList newInterfaces(validInterface.size());
+    forAll(validInterface, intI)
+    {
+        if (validInterface[intI])
+        {
+            word coupleType(is);
+
+            Pout<< "Received coupleType:" << coupleType << endl;
+
+            newInterfaces.set
+            (
+                intI,
+                // GAMGInterface::New
+                // (
+                //     coupleType,
+                //     intI,
+                //     otherMeshes[i-1].rawInterfaces(),
+                //     is
+                // ).ptr()
+                new lduPrimitiveInterface(labelList(0))
+            );
+        }
+    }
+
+    meshPtr().addInterfaces
+    (
+        newInterfaces,
+        lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
+        (
+            newInterfaces
+        )
+    );
+
+    return meshPtr;
+}
+
 
 // Temporary replacement for lduPrimitiveMesh::gather
 void gather
@@ -273,7 +356,7 @@ void gather
             otherMeshes[i-1].addInterfaces
             (
                 newInterfaces,
-                lduPrimitiveMesh::nonBlockingSchedule<processorGAMGInterface>
+                lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
                 (
                     newInterfaces
                 )
@@ -503,8 +586,8 @@ autoPtr<lduPrimitiveMesh> subset
         patchMap[patchI] = patchI;
         if (ifs.set(patchI))
         {
-            Pout<< "**** Primitive interface at patch " << patchI
-                << " type:" << ifs[patchI].type() << endl;
+            //Pout<< "**** Primitive interface at patch " << patchI
+            //    << " type:" << ifs[patchI].type() << endl;
             //primitiveInterfaces.set(ifs[patchI].clone());
         }
     }
@@ -523,6 +606,8 @@ autoPtr<lduPrimitiveMesh> subset
             )()
         )
     );
+    Pout<< "Added exposedFaces patch " << primitiveInterfaces.size()-1
+        << " with number of cells:" << exposedCells.size() << endl;
 
     lduInterfacePtrsList newIfs(primitiveInterfaces.size());
     forAll(primitiveInterfaces, i)
@@ -579,11 +664,13 @@ int main(int argc, char *argv[])
     }
     else
     {
-        destination = 0;
-        for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
-        {
-            destination[cellI] = 1;
-        }
+        // destination = 0;
+        // for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
+        // {
+        //     destination[cellI] = 1;
+        // }
+        destination = 1;
+
         Pout<< "Moving " << findIndices(destination, 0).size()
             << " cells to 0" << endl;
     }
@@ -594,13 +681,126 @@ int main(int argc, char *argv[])
 
 //XXXXXXXXXXX
 
-if (false)
-{
-    // Get mesh to keep
+// if (false)
+// {
+//     // Get mesh to keep
+// 
+//     labelList myCellMap;
+//     labelList myFaceMap;
+//     labelList myPatchMap;
+//     autoPtr<lduPrimitiveMesh> myMeshPtr
+//     (
+//         subset
+//         (
+//             lMesh,
+//             destination,
+//             Pstream::myProcNo(),    // Region to keep
+//             myCellMap,
+//             myFaceMap,
+//             myPatchMap
+//         )
+//     );
+//     const lduPrimitiveMesh& myMesh = myMeshPtr();
+//     Pout<< "myMesh:" << myMesh.info() << endl;
+//     printSubMeshInfo(mesh, myCellMap, myFaceMap, myMesh);
+// 
+// 
+//     // Where meshes come from
+//     labelList procIDs(Pstream::nProcs(Pstream::worldComm));
+//     {
+//         procIDs[0] = Pstream::myProcNo();
+//         label slotI = 1;
+//         forAll(procIDs, procI)
+//         {
+//             if (procI != procIDs[0])
+//             {
+//                 procIDs[slotI++] = procI;
+//             }
+//         }
+//     }
+// 
+//     // Get meshes to send
+// 
+//     PtrList<lduPrimitiveMesh> subMeshes(procIDs.size()-1);
+//     labelListList cellMaps(subMeshes.size());
+//     labelListList faceMaps(subMeshes.size());
+//     labelListList patchMaps(subMeshes.size());
+// 
+//     forAll(subMeshes, i)
+//     {
+//         label destProcI = procIDs[i+1];
+//         subMeshes.set
+//         (
+//             i,
+//             subset
+//             (
+//                 lMesh,
+//                 destination,
+//                 destProcI,   // Region to keep
+//                 cellMaps[i],
+//                 faceMaps[i],
+//                 patchMaps[i]
+//             )
+//         );
+// 
+//         const lduPrimitiveMesh& subMesh = subMeshes[i];
+//         Pout<< "For destproc:" << destProcI
+//             << " subMesh:" << subMesh.info() << endl;
+//         printSubMeshInfo(mesh, cellMaps[i], faceMaps[i], subMesh);
+//     }
+// 
+// 
+//     labelList cellOffsets;
+//     labelList faceOffsets;
+//     labelListList faceMap;
+//     labelListList boundaryMap;
+//     labelListListList boundaryFaceMap;
+// 
+//     lduPrimitiveMesh allMesh
+//     (
+//         Pstream::worldComm,
+//         identity(Pstream::nProcs(Pstream::worldComm)),
+//         labelList(subMeshes.size(), Pstream::myProcNo()),
+//         myMesh,
+//         subMeshes,
+// 
+//         cellOffsets,
+//         faceOffsets,
+//         faceMap,
+//         boundaryMap,
+//         boundaryFaceMap
+//     );
+//     Pout<< "allMesh:" << allMesh.info() << endl;
+// }
+//XXXXXXXXXXX
 
-    labelList myCellMap;
-    labelList myFaceMap;
-    labelList myPatchMap;
+
+    const label nProcs = Pstream::nProcs(lMesh.comm());
+
+    // Determine local patches
+    boolList isGlobalPatch;
+    {
+        const lduInterfacePtrsList ifs(lMesh.interfaces());
+
+        isGlobalPatch(ifs.size(), true);
+        forAll(ifs, patchi)
+        {
+            if (ifs[patchi].type() == processorFvPatch::typeName)
+            {
+                isGlobalPatch[patchi] = false;
+            }
+        }
+    }
+
+
+
+    //PtrList<lduPrimitiveMesh> subMeshes(Pstream::nProcs(Pstream::worldComm));
+    labelListList cellMaps(nProcs);
+    labelListList faceMaps(nProcs);
+    labelListList patchMaps(nProcs);
+
+
+    // Construct local mesh that stays
     autoPtr<lduPrimitiveMesh> myMeshPtr
     (
         subset
@@ -608,135 +808,100 @@ if (false)
             lMesh,
             destination,
             Pstream::myProcNo(),    // Region to keep
-            myCellMap,
-            myFaceMap,
-            myPatchMap
+            cellMaps[Pstream::myProcNo()],
+            faceMaps[Pstream::myProcNo()],
+            patchMaps[Pstream::myProcNo()]
         )
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
-    Pout<< "myMesh:" << myMesh.info() << endl;
-    printSubMeshInfo(mesh, myCellMap, myFaceMap, myMesh);
 
 
-    // Where meshes come from
-    labelList procIDs(Pstream::nProcs(Pstream::worldComm));
     {
-        procIDs[0] = Pstream::myProcNo();
-        label slotI = 1;
-        forAll(procIDs, procI)
-        {
-            if (procI != procIDs[0])
-            {
-                procIDs[slotI++] = procI;
-            }
-        }
-    }
+        string oldPrefix = Pout.prefix();
+        Pout.prefix() += "myMesh: ";
 
-    // Get meshes to send
-
-    PtrList<lduPrimitiveMesh> subMeshes(procIDs.size()-1);
-    labelListList cellMaps(subMeshes.size());
-    labelListList faceMaps(subMeshes.size());
-    labelListList patchMaps(subMeshes.size());
-
-    forAll(subMeshes, i)
-    {
-        label destProcI = procIDs[i+1];
-        subMeshes.set
+        Pout<< myMesh.info() << endl;
+        printSubMeshInfo
         (
-            i,
-            subset
-            (
-                lMesh,
-                destination,
-                destProcI,   // Region to keep
-                cellMaps[i],
-                faceMaps[i],
-                patchMaps[i]
-            )
+            mesh,
+            cellMaps[Pstream::myProcNo()],
+            faceMaps[Pstream::myProcNo()],
+            myMesh
         );
-
-        const lduPrimitiveMesh& subMesh = subMeshes[i];
-        Pout<< "For destproc:" << destProcI
-            << " subMesh:" << subMesh.info() << endl;
-        printSubMeshInfo(mesh, cellMaps[i], faceMaps[i], subMesh);
+        Pout.prefix() = oldPrefix;
+        Pout<< endl;
     }
 
 
-    labelList cellOffsets;
-    labelList faceOffsets;
-    labelListList faceMap;
-    labelListList boundaryMap;
-    labelListListList boundaryFaceMap;
-
-    lduPrimitiveMesh allMesh
+    PstreamBuffers pBufs
     (
-        Pstream::worldComm,
-        identity(Pstream::nProcs(Pstream::worldComm)),
-        labelList(subMeshes.size(), Pstream::myProcNo()),
-        myMesh,
-        subMeshes,
-
-        cellOffsets,
-        faceOffsets,
-        faceMap,
-        boundaryMap,
-        boundaryFaceMap
+        Pstream::nonBlocking,
+        UPstream::msgType(),
+        lMesh.comm()
     );
-    Pout<< "allMesh:" << allMesh.info() << endl;
-}
-//XXXXXXXXXXX
 
-    PtrList<lduPrimitiveMesh> subMeshes(Pstream::nProcs(Pstream::worldComm));
-    labelListList cellMaps(subMeshes.size());
-    labelListList faceMaps(subMeshes.size());
-    labelListList patchMaps(subMeshes.size());
-
-    forAll(subMeshes, procI)
+    for (label destProcI = 0; destProcI < nProcs; destProcI++)
     {
-        subMeshes.set
-        (
-            procI,
-            subset
-            (
-                lMesh,
-                destination,
-                procI,   // Region to keep
-                cellMaps[procI],
-                faceMaps[procI],
-                patchMaps[procI]
-            )
-        );
-
-        const lduPrimitiveMesh& subMesh = subMeshes[procI];
-        Pout<< "For destproc:" << procI
-            << " subMesh:" << subMesh.info() << endl;
-        printSubMeshInfo(mesh, cellMaps[procI], faceMaps[procI], subMesh);
-
-
-        // Where meshes come from
-        labelList procIDs(Pstream::nProcs(Pstream::worldComm));
+        if (destProcI != Pstream::myProcNo())
         {
-            procIDs[0] = procI;
-            label slotI = 1;
-            forAll(procIDs, procI)
+            labelList& cMap = cellMaps[destProcI];
+            labelList& fMap = faceMaps[destProcI];
+            labelList& pMap = patchMaps[destProcI];
+
+            autoPtr<lduPrimitiveMesh> subMeshPtr
+            (
+                subset
+                (
+                    lMesh,
+                    destination,
+                    destProcI,      // Region to keep
+                    cMap,
+                    fMap,
+                    pMap
+                )
+            );
+
+            const lduPrimitiveMesh& subMesh = subMeshPtr();
+            //Pout<< "For destproc:" << destProcI
+            //    << " subMesh:" << subMesh.info() << endl;
+            //printSubMeshInfo(mesh, cMap, fMap, subMesh);
+
+            // Send subMesh
+            UOPstream toDest(destProcI, pBufs);
+            sendMesh(subMesh, toDest);
+        }
+    }
+
+
+    // Mark all sends as being done
+    pBufs.finishedSends();
+
+    // Receive and construct meshes
+    PtrList<lduPrimitiveMesh> otherMeshes(nProcs-1);
+    label otherI = 0;
+    for (label procI = 0; procI < nProcs; procI++)
+    {
+        if (procI != Pstream::myProcNo())
+        {
+            UIPstream fromDest(procI, pBufs);
+            otherMeshes.set(otherI++,  receiveMesh(lMesh.comm(), fromDest));
+            const lduMesh& subMesh = otherMeshes[otherI-1];
+
+
             {
-                if (procI != procIDs[0])
-                {
-                    procIDs[slotI++] = procI;
-                }
+                string oldPrefix = Pout.prefix();
+                string extra("from " + Foam::name(procI) + ": ");
+                Pout.prefix() += extra;
+
+                Pout<< subMesh.info() << endl;
+                //printSubMeshInfo(mesh, cMap, fMap, subMesh);
+
+                Pout.prefix() = oldPrefix;
+                Pout<< endl;
             }
         }
-
-        PtrList<lduPrimitiveMesh> otherMeshes;
-        gather
-        (
-            Pstream::worldComm,
-            subMesh,
-            procIDs,
-            otherMeshes
-        );
     }
+
 
 
     Info<< "end" << endl;

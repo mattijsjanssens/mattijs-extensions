@@ -21,6 +21,21 @@ Us:
 - and solve it
 
 
+
+Patches/interfaces:
+- processor patches are special! Are local only and can be
+deleted&constructed at will. The discerning feature is that they are local
+only.
+- so filter them out when exchanging subsets
+- all other patches are present on all processors so can map themselves
+  (given enough info)
+- info needed is:
+    - destination face numbering (preserve relative ordering)
+    - destination cell numbering
+
+
+
+
 Local agglomeration:
 - you want to be consistent in e.g. layers so neighbouring
 columns of cells get agglomerated in the same way

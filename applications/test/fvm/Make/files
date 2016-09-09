@@ -1,5 +1,0 @@
-lduPrimitiveMesh.C
-lduPrimitiveInterface.C
-Test-fvm.C
-
-EXE = $(FOAM_USER_APPBIN)/Test-fvm

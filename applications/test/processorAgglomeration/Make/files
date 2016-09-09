@@ -1,0 +1,6 @@
+lduMesh.C
+lduPrimitiveMesh.C
+lduPrimitiveInterface.C
+Test-processorAgglomeration.C
+
+EXE = $(FOAM_USER_APPBIN)/Test-processorAgglomeration
