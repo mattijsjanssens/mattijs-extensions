@@ -474,13 +474,18 @@ labelList upperTriOrder
 }
 
 
-// (local!) subsetting for lduPrimitiveMesh. Adds exposed faces to added
-// lduInterface.
+// (local!) subsetting for lduPrimitiveMesh. Adds exposed faces
+// (from internal or from processor interfaces) to added lduInterface.
 autoPtr<lduPrimitiveMesh> subset
 (
     const lduMesh& mesh,
+    const globalIndex& globalNumbering,
+    const lduInterfacePtrsList& interfaces,
+    const PtrList<labelList>& interfaceGlobalCells,
+
     const labelList& region,
     const label currentRegion,
+
     labelList& cellMap,
     labelList& faceMap,
     labelList& patchMap
@@ -516,7 +521,8 @@ autoPtr<lduPrimitiveMesh> subset
 
     DynamicList<label> exposedFaces(lower.size());
     DynamicList<bool> exposedFaceFlips(lower.size());
-    DynamicList<label> exposedCells(lower.size());
+    DynamicList<label> exposedGlobalCells(lower.size());
+    DynamicList<label> exposedGlobalNbrCells(lower.size());
 
     label coarseFaceI = 0;
     forAll(lower, faceI)
@@ -537,7 +543,14 @@ autoPtr<lduPrimitiveMesh> subset
                 // Upper deleted
                 exposedFaces.append(faceI);
                 exposedFaceFlips.append(false);
-                exposedCells.append(lower[faceI]);
+                exposedGlobalCells.append
+                (
+                    globalNumbering.toGlobal(lower[faceI])
+                );
+                exposedGlobalNbrCells.append
+                (
+                    globalNumbering.toGlobal(upper[faceI])
+                );
             }
         }
         else if (uRegion == currentRegion)
@@ -545,7 +558,14 @@ autoPtr<lduPrimitiveMesh> subset
             // Lower deleted
             exposedFaces.append(faceI);
             exposedFaceFlips.append(true);
-            exposedCells.append(upper[faceI]);
+            exposedGlobalCells.append
+            (
+                globalNumbering.toGlobal(upper[faceI])
+            );
+            exposedGlobalNbrCells.append
+            (
+                globalNumbering.toGlobal(lower[faceI])
+            );
         }
     }
 
@@ -575,20 +595,28 @@ autoPtr<lduPrimitiveMesh> subset
     labelList orderedUpper(UIndirectList<label>(subUpper, oldToNewFaces));
 
 
-    // Copy the interfaces
-    lduInterfacePtrsList ifs(mesh.interfaces());
+    // Copy all global interfaces
+    label maxGlobal = -1;
+    forAll(interfaces, patchI)
+    {
+        if (isGlobalPatch[patchi])
+        {
+            maxGlobal = max(maxGlobal, patchi);
+        }
+    }
 
-    PtrList<const lduInterface> primitiveInterfaces(ifs.size()+1);
+    PtrList<const lduInterface> primitiveInterfaces(maxGlobal+1+1);
 
     patchMap.setSize(primitiveInterfaces.size());
-    forAll(ifs, patchI)
+    patchMap = -1;
+    forAll(interfaces, patchI)
     {
-        patchMap[patchI] = patchI;
-        if (ifs.set(patchI))
+        if (isGlobalPatch[patchi])
         {
-            //Pout<< "**** Primitive interface at patch " << patchI
+            //Pout<< "**** Should copy primitive interface at patch " << patchI
             //    << " type:" << ifs[patchI].type() << endl;
             //primitiveInterfaces.set(ifs[patchI].clone());
+            patchMap[patchi] = patchi;
         }
     }
 
@@ -599,11 +627,13 @@ autoPtr<lduPrimitiveMesh> subset
         primitiveInterfaces.size()-1,
         new lduPrimitiveInterface
         (
-            UIndirectList<label>
-            (
-                reverseCellMap,
-                exposedCells
-            )()
+            exposedGlobalCells,
+            exposedGlobalNbrCells
+            //UIndirectList<label>
+            //(
+            //    reverseCellMap,
+            //    exposedCells
+            //)()
         )
     );
     Pout<< "Added exposedFaces patch " << primitiveInterfaces.size()-1
@@ -678,116 +708,66 @@ int main(int argc, char *argv[])
 
     const lduMesh& lMesh = mesh;
 
-
-//XXXXXXXXXXX
-
-// if (false)
-// {
-//     // Get mesh to keep
-// 
-//     labelList myCellMap;
-//     labelList myFaceMap;
-//     labelList myPatchMap;
-//     autoPtr<lduPrimitiveMesh> myMeshPtr
-//     (
-//         subset
-//         (
-//             lMesh,
-//             destination,
-//             Pstream::myProcNo(),    // Region to keep
-//             myCellMap,
-//             myFaceMap,
-//             myPatchMap
-//         )
-//     );
-//     const lduPrimitiveMesh& myMesh = myMeshPtr();
-//     Pout<< "myMesh:" << myMesh.info() << endl;
-//     printSubMeshInfo(mesh, myCellMap, myFaceMap, myMesh);
-// 
-// 
-//     // Where meshes come from
-//     labelList procIDs(Pstream::nProcs(Pstream::worldComm));
-//     {
-//         procIDs[0] = Pstream::myProcNo();
-//         label slotI = 1;
-//         forAll(procIDs, procI)
-//         {
-//             if (procI != procIDs[0])
-//             {
-//                 procIDs[slotI++] = procI;
-//             }
-//         }
-//     }
-// 
-//     // Get meshes to send
-// 
-//     PtrList<lduPrimitiveMesh> subMeshes(procIDs.size()-1);
-//     labelListList cellMaps(subMeshes.size());
-//     labelListList faceMaps(subMeshes.size());
-//     labelListList patchMaps(subMeshes.size());
-// 
-//     forAll(subMeshes, i)
-//     {
-//         label destProcI = procIDs[i+1];
-//         subMeshes.set
-//         (
-//             i,
-//             subset
-//             (
-//                 lMesh,
-//                 destination,
-//                 destProcI,   // Region to keep
-//                 cellMaps[i],
-//                 faceMaps[i],
-//                 patchMaps[i]
-//             )
-//         );
-// 
-//         const lduPrimitiveMesh& subMesh = subMeshes[i];
-//         Pout<< "For destproc:" << destProcI
-//             << " subMesh:" << subMesh.info() << endl;
-//         printSubMeshInfo(mesh, cellMaps[i], faceMaps[i], subMesh);
-//     }
-// 
-// 
-//     labelList cellOffsets;
-//     labelList faceOffsets;
-//     labelListList faceMap;
-//     labelListList boundaryMap;
-//     labelListListList boundaryFaceMap;
-// 
-//     lduPrimitiveMesh allMesh
-//     (
-//         Pstream::worldComm,
-//         identity(Pstream::nProcs(Pstream::worldComm)),
-//         labelList(subMeshes.size(), Pstream::myProcNo()),
-//         myMesh,
-//         subMeshes,
-// 
-//         cellOffsets,
-//         faceOffsets,
-//         faceMap,
-//         boundaryMap,
-//         boundaryFaceMap
-//     );
-//     Pout<< "allMesh:" << allMesh.info() << endl;
-// }
-//XXXXXXXXXXX
-
-
     const label nProcs = Pstream::nProcs(lMesh.comm());
+
+    const lduInterfacePtrsList ifs(lMesh.interfaces());
 
     // Determine local patches
     boolList isGlobalPatch;
     {
-        const lduInterfacePtrsList ifs(lMesh.interfaces());
-
-        isGlobalPatch(ifs.size(), true);
+        isGlobalPatch.setSize(ifs.size());
+        isGlobalPatch = true;
         forAll(ifs, patchi)
         {
             if (ifs[patchi].type() == processorFvPatch::typeName)
             {
+                // Note: make part of lduInterface api? lduInterface::local() ?
                 isGlobalPatch[patchi] = false;
+            }
+        }
+    }
+
+    // Determine global cell labels across interfaces
+    globalIndex globalNumbering(lMesh.size());
+    PtrList<labelList> interfaceGlobalCells(ifs.size());
+    {
+        labelList globalCells(lMesh.size());
+        forAll(globalCells, celli)
+        {
+            globalCells[celli] = globalNumbering.toGlobal(celli);
+        }
+
+        // Initialise transfer of global cells
+        forAll(ifs, patchi)
+        {
+            if (ifs.set(patchi))
+            {
+                ifs[patchi].initInternalFieldTransfer
+                (
+                    Pstream::nonBlocking,
+                    globalCells
+                );
+            }
+        }
+
+        if (Pstream::parRun())
+        {
+            Pstream::waitRequests();
+        }
+
+        forAll(interfaces, patchi)
+        {
+            if (interfaces.set(patchi))
+            {
+                interfaceGlobalCells.set
+                (
+                    patchi,
+                    interfaces[patchi].internalFieldTransfer
+                    (
+                        Pstream::nonBlocking,
+                        globalCells
+                    )
+                );
             }
         }
     }
@@ -806,8 +786,13 @@ int main(int argc, char *argv[])
         subset
         (
             lMesh,
+            globalNumbering,
+            ifs,
+            interfaceGlobalCells,
+
             destination,
             Pstream::myProcNo(),    // Region to keep
+
             cellMaps[Pstream::myProcNo()],
             faceMaps[Pstream::myProcNo()],
             patchMaps[Pstream::myProcNo()]
@@ -853,8 +838,13 @@ int main(int argc, char *argv[])
                 subset
                 (
                     lMesh,
+                    globalNumbering,
+                    ifs,
+                    interfaceGlobalCells,
+
                     destination,
                     destProcI,      // Region to keep
+
                     cMap,
                     fMap,
                     pMap
