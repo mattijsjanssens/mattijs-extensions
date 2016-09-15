@@ -36,6 +36,7 @@ Description
 #include "lduPrimitiveInterface.H"
 #include "fvCFD.H"
 #include "processorGAMGInterface.H"
+#include "processorFvPatch.H"
 #include "UPtrList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -215,6 +216,7 @@ void sendMesh(const lduMesh& mesh, Ostream& os)
         if (interfaces.set(intI))
         {
             os << interfaces[intI].type();
+            refCast<const lduPrimitiveInterface>(interfaces[intI]).write(os);
         }
     }
 }
@@ -259,7 +261,7 @@ autoPtr<lduPrimitiveMesh> receiveMesh(const label comm, Istream& is)
                 //     otherMeshes[i-1].rawInterfaces(),
                 //     is
                 // ).ptr()
-                new lduPrimitiveInterface(labelList(0))
+                new lduPrimitiveInterface(is)
             );
         }
     }
@@ -275,130 +277,171 @@ autoPtr<lduPrimitiveMesh> receiveMesh(const label comm, Istream& is)
 
     return meshPtr;
 }
-
-
-// Temporary replacement for lduPrimitiveMesh::gather
-void gather
+void swapCellData
 (
-    const label comm,
-    const lduMesh& mesh,
-    const labelList& procIDs,
-    PtrList<lduPrimitiveMesh>& otherMeshes
+    const lduInterfacePtrsList& ifs,
+    const labelUList& cellData,
+    PtrList<labelField>& nbrData
 )
 {
-    // Force calculation of schedule (since does parallel comms)
-    (void)mesh.lduAddr().patchSchedule();
+    nbrData.setSize(ifs.size());
 
-    if (Pstream::myProcNo(comm) == procIDs[0])
+    // Initialise transfer of global cells
+    forAll(ifs, patchi)
     {
-        otherMeshes.setSize(procIDs.size()-1);
-
-        // Slave meshes
-        for (label i = 1; i < procIDs.size(); i++)
+        if (ifs.set(patchi))
         {
-            //Pout<< "on master :"
-            //    << " receiving from slave " << procIDs[i] << endl;
-
-            IPstream fromSlave
+            ifs[patchi].initInternalFieldTransfer
             (
-                Pstream::scheduled,
-                procIDs[i],
-                0,          // bufSize
-                Pstream::msgType(),
-                comm
+                Pstream::nonBlocking,
+                cellData
             );
-
-            label nCells = readLabel(fromSlave);
-            labelList lowerAddr(fromSlave);
-            labelList upperAddr(fromSlave);
-            boolList validInterface(fromSlave);
-
-
-            // Construct mesh without interfaces
-            otherMeshes.set
-            (
-                i-1,
-                new lduPrimitiveMesh
-                (
-                    nCells,
-                    lowerAddr,
-                    upperAddr,
-                    comm,
-                    true    // reuse
-                )
-            );
-
-            // Construct GAMGInterfaces
-            lduInterfacePtrsList newInterfaces(validInterface.size());
-            forAll(validInterface, intI)
-            {
-                if (validInterface[intI])
-                {
-                    word coupleType(fromSlave);
-
-                    Pout<< "Received coupleType:" << coupleType << endl;
-
-                    newInterfaces.set
-                    (
-                        intI,
-                        // GAMGInterface::New
-                        // (
-                        //     coupleType,
-                        //     intI,
-                        //     otherMeshes[i-1].rawInterfaces(),
-                        //     fromSlave
-                        // ).ptr()
-                        new lduPrimitiveInterface(labelList(0))
-                    );
-                }
-            }
-
-            otherMeshes[i-1].addInterfaces
-            (
-                newInterfaces,
-                lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
-                (
-                    newInterfaces
-                )
-            );
-       }
-    }
-    else if (findIndex(procIDs, Pstream::myProcNo(comm)) != -1)
-    {
-        // Send to master
-
-        const lduAddressing& addressing = mesh.lduAddr();
-        lduInterfacePtrsList interfaces(mesh.interfaces());
-        boolList validInterface(interfaces.size());
-        forAll(interfaces, intI)
-        {
-            validInterface[intI] = interfaces.set(intI);
         }
+    }
 
-        OPstream toMaster
-        (
-            Pstream::scheduled,
-            procIDs[0],
-            0,
-            Pstream::msgType(),
-            comm
-        );
+    if (Pstream::parRun())
+    {
+        Pstream::waitRequests();
+    }
 
-        toMaster
-            << addressing.size()
-            << addressing.lowerAddr()
-            << addressing.upperAddr()
-            << validInterface;
-
-        forAll(interfaces, intI)
+    forAll(ifs, patchi)
+    {
+        if (ifs.set(patchi))
         {
-            if (interfaces.set(intI))
-            {
-                toMaster << interfaces[intI].type();
-            }
+            nbrData.set
+            (
+                patchi,
+                ifs[patchi].internalFieldTransfer
+                (
+                    Pstream::nonBlocking,
+                    cellData
+                )
+            );
         }
     }
 }
+//// Temporary replacement for lduPrimitiveMesh::gather
+//void gather
+//(
+//    const label comm,
+//    const lduMesh& mesh,
+//    const labelList& procIDs,
+//    PtrList<lduPrimitiveMesh>& otherMeshes
+//)
+//{
+//    // Force calculation of schedule (since does parallel comms)
+//    (void)mesh.lduAddr().patchSchedule();
+//
+//    if (Pstream::myProcNo(comm) == procIDs[0])
+//    {
+//        otherMeshes.setSize(procIDs.size()-1);
+//
+//        // Slave meshes
+//        for (label i = 1; i < procIDs.size(); i++)
+//        {
+//            //Pout<< "on master :"
+//            //    << " receiving from slave " << procIDs[i] << endl;
+//
+//            IPstream fromSlave
+//            (
+//                Pstream::scheduled,
+//                procIDs[i],
+//                0,          // bufSize
+//                Pstream::msgType(),
+//                comm
+//            );
+//
+//            label nCells = readLabel(fromSlave);
+//            labelList lowerAddr(fromSlave);
+//            labelList upperAddr(fromSlave);
+//            boolList validInterface(fromSlave);
+//
+//
+//            // Construct mesh without interfaces
+//            otherMeshes.set
+//            (
+//                i-1,
+//                new lduPrimitiveMesh
+//                (
+//                    nCells,
+//                    lowerAddr,
+//                    upperAddr,
+//                    comm,
+//                    true    // reuse
+//                )
+//            );
+//
+//            // Construct GAMGInterfaces
+//            lduInterfacePtrsList newInterfaces(validInterface.size());
+//            forAll(validInterface, intI)
+//            {
+//                if (validInterface[intI])
+//                {
+//                    word coupleType(fromSlave);
+//
+//                    Pout<< "Received coupleType:" << coupleType << endl;
+//
+//                    newInterfaces.set
+//                    (
+//                        intI,
+//                        // GAMGInterface::New
+//                        // (
+//                        //     coupleType,
+//                        //     intI,
+//                        //     otherMeshes[i-1].rawInterfaces(),
+//                        //     fromSlave
+//                        // ).ptr()
+//                        new lduPrimitiveInterface(labelList(0), labelList(0))
+//                    );
+//                }
+//            }
+//
+//            otherMeshes[i-1].addInterfaces
+//            (
+//                newInterfaces,
+//                lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
+//                (
+//                    newInterfaces
+//                )
+//            );
+//       }
+//    }
+//    else if (findIndex(procIDs, Pstream::myProcNo(comm)) != -1)
+//    {
+//        // Send to master
+//
+//        const lduAddressing& addressing = mesh.lduAddr();
+//        lduInterfacePtrsList interfaces(mesh.interfaces());
+//        boolList validInterface(interfaces.size());
+//        forAll(interfaces, intI)
+//        {
+//            validInterface[intI] = interfaces.set(intI);
+//        }
+//
+//        OPstream toMaster
+//        (
+//            Pstream::scheduled,
+//            procIDs[0],
+//            0,
+//            Pstream::msgType(),
+//            comm
+//        );
+//
+//        toMaster
+//            << addressing.size()
+//            << addressing.lowerAddr()
+//            << addressing.upperAddr()
+//            << validInterface;
+//
+//        forAll(interfaces, intI)
+//        {
+//            if (interfaces.set(intI))
+//            {
+//                toMaster << interfaces[intI].type();
+//            }
+//        }
+//    }
+//}
 
 
 labelList upperTriOrder
@@ -481,7 +524,8 @@ autoPtr<lduPrimitiveMesh> subset
     const lduMesh& mesh,
     const globalIndex& globalNumbering,
     const lduInterfacePtrsList& interfaces,
-    const PtrList<labelList>& interfaceGlobalCells,
+    const boolList& isGlobalInterface,
+    const PtrList<labelField>& interfaceNbrCells,
 
     const labelList& region,
     const label currentRegion,
@@ -597,11 +641,11 @@ autoPtr<lduPrimitiveMesh> subset
 
     // Copy all global interfaces
     label maxGlobal = -1;
-    forAll(interfaces, patchI)
+    forAll(isGlobalInterface, patchI)
     {
-        if (isGlobalPatch[patchi])
+        if (isGlobalInterface[patchI])
         {
-            maxGlobal = max(maxGlobal, patchi);
+            maxGlobal = max(maxGlobal, patchI);
         }
     }
 
@@ -611,17 +655,16 @@ autoPtr<lduPrimitiveMesh> subset
     patchMap = -1;
     forAll(interfaces, patchI)
     {
-        if (isGlobalPatch[patchi])
+        if (isGlobalInterface[patchI])
         {
             //Pout<< "**** Should copy primitive interface at patch " << patchI
             //    << " type:" << ifs[patchI].type() << endl;
             //primitiveInterfaces.set(ifs[patchI].clone());
-            patchMap[patchi] = patchi;
+            patchMap[patchI] = patchI;
         }
     }
 
     // Add a single interface for the exposed cells
-    patchMap.last() = -1;
     primitiveInterfaces.set
     (
         primitiveInterfaces.size()-1,
@@ -637,7 +680,7 @@ autoPtr<lduPrimitiveMesh> subset
         )
     );
     Pout<< "Added exposedFaces patch " << primitiveInterfaces.size()-1
-        << " with number of cells:" << exposedCells.size() << endl;
+        << " with number of cells:" << exposedGlobalCells.size() << endl;
 
     lduInterfacePtrsList newIfs(primitiveInterfaces.size());
     forAll(primitiveInterfaces, i)
@@ -650,7 +693,7 @@ autoPtr<lduPrimitiveMesh> subset
 
     lduSchedule ps
     (
-        lduPrimitiveMesh::nonBlockingSchedule<processorGAMGInterface>(newIfs)
+        lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>(newIfs)
     );
 
     return autoPtr<lduPrimitiveMesh>
@@ -713,65 +756,35 @@ int main(int argc, char *argv[])
     const lduInterfacePtrsList ifs(lMesh.interfaces());
 
     // Determine local patches
-    boolList isGlobalPatch;
+    boolList isGlobalInterface;
     {
-        isGlobalPatch.setSize(ifs.size());
-        isGlobalPatch = true;
+        isGlobalInterface.setSize(ifs.size());
+        isGlobalInterface = true;
         forAll(ifs, patchi)
         {
-            if (ifs[patchi].type() == processorFvPatch::typeName)
+            if
+            (
+                ifs.set(patchi)
+             && ifs[patchi].type() == processorFvPatch::typeName
+            )
             {
                 // Note: make part of lduInterface api? lduInterface::local() ?
-                isGlobalPatch[patchi] = false;
+                isGlobalInterface[patchi] = false;
             }
         }
     }
 
     // Determine global cell labels across interfaces
-    globalIndex globalNumbering(lMesh.size());
-    PtrList<labelList> interfaceGlobalCells(ifs.size());
+    globalIndex globalNumbering(lMesh.lduAddr().size());
+    PtrList<labelField> interfaceNbrCells(ifs.size());
     {
-        labelList globalCells(lMesh.size());
+        labelList globalCells(lMesh.lduAddr().size());
         forAll(globalCells, celli)
         {
             globalCells[celli] = globalNumbering.toGlobal(celli);
         }
-
-        // Initialise transfer of global cells
-        forAll(ifs, patchi)
-        {
-            if (ifs.set(patchi))
-            {
-                ifs[patchi].initInternalFieldTransfer
-                (
-                    Pstream::nonBlocking,
-                    globalCells
-                );
-            }
-        }
-
-        if (Pstream::parRun())
-        {
-            Pstream::waitRequests();
-        }
-
-        forAll(interfaces, patchi)
-        {
-            if (interfaces.set(patchi))
-            {
-                interfaceGlobalCells.set
-                (
-                    patchi,
-                    interfaces[patchi].internalFieldTransfer
-                    (
-                        Pstream::nonBlocking,
-                        globalCells
-                    )
-                );
-            }
-        }
+        swapCellData(ifs, globalCells, interfaceNbrCells);
     }
-
 
 
     //PtrList<lduPrimitiveMesh> subMeshes(Pstream::nProcs(Pstream::worldComm));
@@ -788,7 +801,8 @@ int main(int argc, char *argv[])
             lMesh,
             globalNumbering,
             ifs,
-            interfaceGlobalCells,
+            isGlobalInterface,
+            interfaceNbrCells,
 
             destination,
             Pstream::myProcNo(),    // Region to keep
@@ -799,7 +813,6 @@ int main(int argc, char *argv[])
         )
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
-
 
     {
         string oldPrefix = Pout.prefix();
@@ -840,7 +853,8 @@ int main(int argc, char *argv[])
                     lMesh,
                     globalNumbering,
                     ifs,
-                    interfaceGlobalCells,
+                    isGlobalInterface,
+                    interfaceNbrCells,
 
                     destination,
                     destProcI,      // Region to keep
@@ -892,6 +906,9 @@ int main(int argc, char *argv[])
         }
     }
 
+
+    // Combine lduPrimitiveMeshes. Coupling information given by
+    // lduPrimitiveInterface : contains global cells on either side.
 
 
     Info<< "end" << endl;

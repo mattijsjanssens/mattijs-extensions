@@ -56,6 +56,8 @@ class lduPrimitiveInterface
 
         labelList faceCells_;
 
+        labelList nbrFaceCells_;
+
 
 public:
 
@@ -66,9 +68,17 @@ public:
     // Constructors
 
         //- Construct from components
-        lduPrimitiveInterface(const labelList& fc)
+        lduPrimitiveInterface(const labelList& fc, const labelList& nbrFc)
         :
-            faceCells_(fc)
+            faceCells_(fc),
+            nbrFaceCells_(nbrFc)
+        {}
+
+        //- Construct from Istream
+        lduPrimitiveInterface(Istream& is)
+        :
+            faceCells_(is),
+            nbrFaceCells_(is)
         {}
 
 
@@ -85,6 +95,12 @@ public:
             virtual const labelUList& faceCells() const
             {
                 return faceCells_;
+            }
+
+            //- Return faceCell addressing
+            virtual const labelUList& nbrFaceCells() const
+            {
+                return nbrFaceCells_;
             }
 
 
@@ -116,6 +132,14 @@ public:
             ) const
             {
                 return tmp<labelField>(new labelField(iF, faceCells_));
+            }
+
+
+        // I/O
+
+            virtual Ostream& write(Ostream& os) const
+            {
+                return os  << faceCells_ << token::SPACE << nbrFaceCells_;
             }
 };
 

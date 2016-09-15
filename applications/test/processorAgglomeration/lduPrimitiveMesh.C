@@ -963,6 +963,120 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 }
 
 
+//XXXXXXX
+Foam::lduPrimitiveMesh::lduPrimitiveMesh
+(
+    const globalIndex& globalCells,
+    const lduPrimitiveMesh& myMesh,
+    const labelUList& myData,
+    const PtrList<lduPrimitiveMesh>& otherMeshes,
+    const PtrList<labelList>& otherData,
+
+    labelList& cellOffsets,
+    labelList& faceOffsets,
+    labelListList& faceMap,
+    labelListList& boundaryMap,
+    labelListListList& boundaryFaceMap
+)
+:
+    lduAddressing(myMesh.lduAddr().size() + totalSize(otherMeshes)),
+    lowerAddr_(0),
+    upperAddr_(0),
+    interfaces_(0),
+    patchSchedule_(0),
+    comm_(myMesh.comm())
+{
+    // Cells get added in order:
+    //  - myMesh
+    //  - otherMeshes
+
+    // Faces get added in order
+    //  - myMesh
+    //  - otherMeshes
+    //  - merged cells
+    // and sorted after that
+
+    const label nMeshes = otherMeshes.size()+1;
+
+    cellOffsets.setSize(nMeshes+1);
+    cellOffsets[0] = 0;
+    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    {
+        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+
+        cellOffsets[procMeshI+1] =
+            cellOffsets[procMeshI]
+          + procMesh.lduAddr().size();
+    }
+
+
+    labelList internalFaceOffsets(nMeshes+1);
+    internalFaceOffsets[0] = 0;
+    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    {
+        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+
+        internalFaceOffsets[procMeshI+1] =
+            internalFaceOffsets[procMeshI]
+          + procMesh.lduAddr().lowerAddr().size();
+    }
+
+    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    {
+        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+
+        const labelUList& l = procMesh.lduAddr().lowerAddr();
+        const labelUList& u = procMesh.lduAddr().upperAddr();
+
+        // Add internal faces
+        label allFacei = faceOffsets[procMeshI];
+
+        forAll(l, facei)
+        {
+            lowerAddr_[allFacei] = cellOffsets[procMeshI]+l[facei];
+            upperAddr_[allFacei] = cellOffsets[procMeshI]+u[facei];
+            allFacei++;
+        }
+//XXXXXXX
+
+
+    // Build table from 'tag' to processor and cell
+    labelList tagToProc(lduAddressing.size(), -1);
+    labelList tagToCell(lduAddressing.size(), -1);
+    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    {
+        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+        
+
+
+
+    label allFacei = 0;
+    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    {
+        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+        const labelUList& l = procMesh.lduAddr().lowerAddr();
+        const labelUList& u = procMesh.lduAddr().upperAddr();
+
+        // Add internal faces
+
+        forAll(l, facei)
+        {
+            lowerAddr_[allFacei] = cellOffsets[procMeshI]+l[facei];
+            upperAddr_[allFacei] = cellOffsets[procMeshI]+u[facei];
+            allFacei++;
+        }
+
+
+        // Add any processor patches. These are ones where the neighbour
+        // cells are local
+        const labelList& globalCells =
+            meshData(myMesh, myGlobalCells, otherGlobalCells);
+
+//XXXXXXX
+}
+//XXXXXXX
+
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 const Foam::lduMesh& Foam::lduPrimitiveMesh::mesh
@@ -973,6 +1087,17 @@ const Foam::lduMesh& Foam::lduPrimitiveMesh::mesh
 )
 {
     return (meshI == 0 ? myMesh : otherMeshes[meshI-1]);
+}
+
+
+const Foam::labelUList& Foam::lduPrimitiveMesh::meshData
+(
+    const labelUList& myData,
+    const PtrList<labelList>& otherData,
+    const label meshI
+)
+{
+    return (meshI == 0 ? myData : otherData[meshI-1]);
 }
 
 
