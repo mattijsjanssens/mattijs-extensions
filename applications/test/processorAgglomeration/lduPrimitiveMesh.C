@@ -28,6 +28,7 @@ License
 #include "EdgeMap.H"
 #include "labelPair.H"
 #include "processorGAMGInterface.H"
+#include "lduPrimitiveInterface.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -120,6 +121,36 @@ Foam::label Foam::lduPrimitiveMesh::totalSize
     forAll(meshes, i)
     {
         size += meshes[i].lduAddr().size();
+    }
+    return size;
+}
+Foam::label Foam::lduPrimitiveMesh::totalSize
+(
+    const UPtrList<lduMesh>& meshes
+)
+{
+    label size = 0;
+
+    forAll(meshes, i)
+    {
+        size += meshes[i].lduAddr().size();
+    }
+    return size;
+}
+
+
+Foam::label Foam::lduPrimitiveMesh::interfaceSize(const lduMesh& mesh)
+{
+    label size = 0;
+
+    const lduInterfacePtrsList interfaces = mesh.interfaces();
+
+    forAll(interfaces, patchi)
+    {
+        if (interfaces.set(patchi))
+        {
+            size += interfaces[patchi].faceCells().size();
+        }
     }
     return size;
 }
@@ -964,13 +995,157 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 
 
 //XXXXXXX
+// Foam::lduPrimitiveMesh::lduPrimitiveMesh
+// (
+//     //const globalIndex& globalCells,
+//     const lduPrimitiveMesh& myMesh,
+//     const labelList& myData,
+//     const PtrList<lduPrimitiveMesh>& otherMeshes,
+//     const PtrList<labelList>& otherData,
+// 
+//     labelList& cellOffsets,
+//     labelList& faceOffsets,
+//     labelListList& faceMap,
+//     labelListList& boundaryMap,
+//     labelListListList& boundaryFaceMap
+// )
+// :
+//     lduAddressing(myMesh.lduAddr().size() + totalSize(otherMeshes)),
+//     lowerAddr_(0),
+//     upperAddr_(0),
+//     interfaces_(0),
+//     patchSchedule_(0),
+//     comm_(myMesh.comm())
+// {
+//     // Cells get added in order:
+//     //  - myMesh
+//     //  - otherMeshes
+// 
+//     // Faces get added in order
+//     //  - myMesh
+//     //  - otherMeshes
+//     //  - merged cells
+//     // and sorted after that
+// 
+//     const label nMeshes = otherMeshes.size()+1;
+// 
+//     cellOffsets.setSize(nMeshes+1);
+//     cellOffsets[0] = 0;
+//     for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+//     {
+//         const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+// 
+//         cellOffsets[procMeshI+1] =
+//             cellOffsets[procMeshI]
+//           + procMesh.lduAddr().size();
+//     }
+// 
+// 
+//     labelList internalFaceOffsets(nMeshes+1);
+//     internalFaceOffsets[0] = 0;
+//     for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+//     {
+//         const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+// 
+//         internalFaceOffsets[procMeshI+1] =
+//             internalFaceOffsets[procMeshI]
+//           + procMesh.lduAddr().lowerAddr().size();
+//     }
+// 
+// 
+//     DynamicList<label> dynLowerAddr(faceOffsets.last());
+//     DynamicList<label> dynUpperAddr(faceOffsets.last());
+// 
+// 
+//     // Build table for cells we now have. Table goes from global cell number
+//     // to new local cell number.
+// 
+//     label totalIfsSize = 0;
+//     {
+//         for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+//         {
+//             const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+//             totalIfsSize += interfaceSize(procMesh);
+//         }
+//     }
+// 
+//     Map<label> tagToCell(totalIfsSize);
+//     for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+//     {
+//         const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+//         const lduInterfacePtrsList interfaces = procMesh.interfaces();
+//         const labelList& cellData = meshData(myData, otherData, procMeshI);
+// 
+//         forAll(interfaces, patchi)
+//         {
+//             if (interfaces.set(patchi))
+//             {
+//                 const labelUList& fc = interfaces[patchi].faceCells();
+//                 forAll(fc, i)
+//                 {
+//                     label celli = fc[i];
+//                     label newCelli = cellOffsets[procMeshI]+celli;
+//                     tagToCell.insert(cellData[celli], newCelli);
+//                 }
+//             }
+//         }
+//     }
+// 
+// 
+//     label allFacei = 0;
+//     for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+//     {
+//         const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+//         const labelUList& l = procMesh.lduAddr().lowerAddr();
+//         const labelUList& u = procMesh.lduAddr().upperAddr();
+// 
+//         // Add internal faces
+// 
+//         forAll(l, facei)
+//         {
+//             dynLowerAddr[allFacei] = cellOffsets[procMeshI]+l[facei];
+//             dynUpperAddr[allFacei] = cellOffsets[procMeshI]+u[facei];
+//             allFacei++;
+//         }
+// 
+// 
+//         // Add any (connections originating from) processor patches. These
+//         // are ones where we now have the neighbour cells
+//         const lduInterfacePtrsList interfaces = procMesh.interfaces();
+// 
+//         forAll(interfaces, patchi)
+//         {
+//             if (interfaces.set(patchi))
+//             {
+//                 const lduPrimitiveInterface& pi =
+//                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
+// 
+//                 const labelList& fc = pi.faceCells();
+//                 const labelList& nbrGlobalCells = pi.nbrFaceCells();
+//                 forAll(nbrGlobalCells, i)
+//                 {
+//                     Map<label>::const_iterator iter =
+//                         tagToCell.find(nbrGlobalCells[i]);
+// 
+//                     if (iter != tagToCell.end())
+//                     {
+//                         dynLowerAddr[allFacei] = cellOffsets[procMeshI]+fc[i];
+//                         dynUpperAddr[allFacei] = iter();
+//                         allFacei++;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// 
+//     lowerAddr_.transfer(dynLowerAddr.shrink());
+//     upperAddr_.transfer(dynUpperAddr.shrink());
+// }
 Foam::lduPrimitiveMesh::lduPrimitiveMesh
 (
-    const globalIndex& globalCells,
-    const lduPrimitiveMesh& myMesh,
-    const labelUList& myData,
-    const PtrList<lduPrimitiveMesh>& otherMeshes,
-    const PtrList<labelList>& otherData,
+    //const globalIndex& globalCells,
+    const UPtrList<lduMesh>& meshes,
+    const UPtrList<labelList>& data,
 
     labelList& cellOffsets,
     labelList& faceOffsets,
@@ -979,81 +1154,80 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
     labelListListList& boundaryFaceMap
 )
 :
-    lduAddressing(myMesh.lduAddr().size() + totalSize(otherMeshes)),
+    lduAddressing(totalSize(meshes)),
     lowerAddr_(0),
     upperAddr_(0),
     interfaces_(0),
     patchSchedule_(0),
-    comm_(myMesh.comm())
+    comm_(meshes[0].comm())
 {
-    // Cells get added in order:
-    //  - myMesh
-    //  - otherMeshes
+    // Cells get added in order
 
     // Faces get added in order
-    //  - myMesh
-    //  - otherMeshes
+    //  - meshes (internal faces only)
     //  - merged cells
     // and sorted after that
 
-    const label nMeshes = otherMeshes.size()+1;
-
-    cellOffsets.setSize(nMeshes+1);
+    cellOffsets.setSize(meshes.size()+1);
     cellOffsets[0] = 0;
-    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    forAll(meshes, procMeshi)
     {
-        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
-
-        cellOffsets[procMeshI+1] =
-            cellOffsets[procMeshI]
-          + procMesh.lduAddr().size();
+        label nCells = meshes[procMeshi].lduAddr().size();
+        cellOffsets[procMeshi+1] = cellOffsets[procMeshi] + nCells;
     }
 
 
-    labelList internalFaceOffsets(nMeshes+1);
+    labelList internalFaceOffsets(meshes.size()+1);
     internalFaceOffsets[0] = 0;
-    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    forAll(meshes, procMeshi)
     {
-        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+        const lduMesh& procMesh = meshes[procMeshi];
 
-        internalFaceOffsets[procMeshI+1] =
-            internalFaceOffsets[procMeshI]
+        internalFaceOffsets[procMeshi+1] =
+            internalFaceOffsets[procMeshi]
           + procMesh.lduAddr().lowerAddr().size();
     }
 
-    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+
+    DynamicList<label> dynLowerAddr(internalFaceOffsets.last());
+    DynamicList<label> dynUpperAddr(internalFaceOffsets.last());
+
+
+    // Build table for cells we now have. Table goes from global cell number
+    // to new local cell number.
+
+    label totalIfsSize = 0;
+    forAll(meshes, procMeshi)
     {
-        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+        totalIfsSize += interfaceSize(meshes[procMeshi]);
+    }
 
-        const labelUList& l = procMesh.lduAddr().lowerAddr();
-        const labelUList& u = procMesh.lduAddr().upperAddr();
+    Map<label> tagToCell(totalIfsSize);
+    forAll(meshes, procMeshi)
+    {
+        const lduInterfacePtrsList interfaces = meshes[procMeshi].interfaces();
+        const labelList& cellData = data[procMeshi];
 
-        // Add internal faces
-        label allFacei = faceOffsets[procMeshI];
-
-        forAll(l, facei)
+        forAll(interfaces, patchi)
         {
-            lowerAddr_[allFacei] = cellOffsets[procMeshI]+l[facei];
-            upperAddr_[allFacei] = cellOffsets[procMeshI]+u[facei];
-            allFacei++;
+            if (interfaces.set(patchi))
+            {
+                const labelUList& fc = interfaces[patchi].faceCells();
+                forAll(fc, i)
+                {
+                    label celli = fc[i];
+                    label newCelli = cellOffsets[procMeshi]+celli;
+                    tagToCell.insert(cellData[celli], newCelli);
+                }
+            }
         }
-//XXXXXXX
-
-
-    // Build table from 'tag' to processor and cell
-    labelList tagToProc(lduAddressing.size(), -1);
-    labelList tagToCell(lduAddressing.size(), -1);
-    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
-    {
-        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
-        
-
+    }
 
 
     label allFacei = 0;
-    for (label procMeshI = 0; procMeshI < nMeshes; procMeshI++)
+    forAll(meshes, procMeshi)
     {
-        const lduMesh& procMesh = mesh(myMesh, otherMeshes, procMeshI);
+        const lduMesh& procMesh = meshes[procMeshi];
         const labelUList& l = procMesh.lduAddr().lowerAddr();
         const labelUList& u = procMesh.lduAddr().upperAddr();
 
@@ -1061,18 +1235,43 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 
         forAll(l, facei)
         {
-            lowerAddr_[allFacei] = cellOffsets[procMeshI]+l[facei];
-            upperAddr_[allFacei] = cellOffsets[procMeshI]+u[facei];
+            dynLowerAddr[allFacei] = cellOffsets[procMeshi]+l[facei];
+            dynUpperAddr[allFacei] = cellOffsets[procMeshi]+u[facei];
             allFacei++;
         }
 
 
-        // Add any processor patches. These are ones where the neighbour
-        // cells are local
-        const labelList& globalCells =
-            meshData(myMesh, myGlobalCells, otherGlobalCells);
+        // Add any (connections originating from) processor patches. These
+        // are ones where we now have the neighbour cells
+        const lduInterfacePtrsList interfaces = procMesh.interfaces();
 
-//XXXXXXX
+        forAll(interfaces, patchi)
+        {
+            if (interfaces.set(patchi))
+            {
+                const lduPrimitiveInterface& pi =
+                    refCast<const lduPrimitiveInterface>(interfaces[patchi]);
+
+                const labelList& fc = pi.faceCells();
+                const labelList& nbrGlobalCells = pi.nbrFaceCells();
+                forAll(nbrGlobalCells, i)
+                {
+                    Map<label>::const_iterator iter =
+                        tagToCell.find(nbrGlobalCells[i]);
+
+                    if (iter != tagToCell.end())
+                    {
+                        dynLowerAddr[allFacei] = cellOffsets[procMeshi]+fc[i];
+                        dynUpperAddr[allFacei] = iter();
+                        allFacei++;
+                    }
+                }
+            }
+        }
+    }
+
+    lowerAddr_.transfer(dynLowerAddr.shrink());
+    upperAddr_.transfer(dynUpperAddr.shrink());
 }
 //XXXXXXX
 
@@ -1090,15 +1289,15 @@ const Foam::lduMesh& Foam::lduPrimitiveMesh::mesh
 }
 
 
-const Foam::labelUList& Foam::lduPrimitiveMesh::meshData
-(
-    const labelUList& myData,
-    const PtrList<labelList>& otherData,
-    const label meshI
-)
-{
-    return (meshI == 0 ? myData : otherData[meshI-1]);
-}
+// const Foam::labelList& Foam::lduPrimitiveMesh::meshData
+// (
+//     const labelList& myData,
+//     const PtrList<labelList>& otherData,
+//     const label meshI
+// )
+// {
+//     return (meshI == 0 ? myData : otherData[meshI-1]);
+// }
 
 
 void Foam::lduPrimitiveMesh::gather

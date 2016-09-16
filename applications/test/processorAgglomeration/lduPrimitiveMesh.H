@@ -25,7 +25,7 @@ Class
     Foam::lduPrimitiveMesh
 
 Description
-    Simplest contrete lduMesh which stores the addressing needed by lduMatrix.
+    Simplest concrete lduMesh which stores the addressing needed by lduMatrix.
 
 SourceFiles
     lduPrimitiveMesh.C
@@ -75,8 +75,14 @@ class lduPrimitiveMesh
 
     // Private Member Functions
 
-        //- Get size of all meshes
+        //- Get combined size of all meshes
         static label totalSize(const PtrList<lduPrimitiveMesh>&);
+
+        //- Get combined size of all meshes
+        static label totalSize(const UPtrList<lduMesh>&);
+
+        //- Get combined size of all interfaces
+        static label interfaceSize(const lduMesh& mesh);
 
         static labelList upperTriOrder
         (
@@ -175,6 +181,21 @@ public:
             labelListListList& boundaryFaceMap
         );
 
+        //- Construct by combined multiple meshes. Each individual mesh contains
+        //  coupling information through a lduPrimitiveInterface holding
+        //  the neighbouring processor+cell (as a global cell index).
+        lduPrimitiveMesh
+        (
+            const UPtrList<lduMesh>& meshes,
+            const UPtrList<labelList>& data,
+
+            labelList& cellOffsets,
+            labelList& faceOffsets,
+            labelListList& faceMap,
+            labelListList& boundaryMap,
+            labelListListList& boundaryFaceMap
+        );
+
 
     //- Destructor
     virtual ~lduPrimitiveMesh()
@@ -246,6 +267,14 @@ public:
                 const PtrList<lduPrimitiveMesh>& otherMeshes,
                 const label meshI
             );
+
+//             //- Select either mesh0 (meshI is 0) or otherMeshes[meshI-1]
+//             static const labelList& meshData
+//             (
+//                 const labelList& data0,
+//                 const PtrList<labelList>& otherData,
+//                 const label meshI
+//             );
 
             //- Gather meshes from other processors onto procIDs[0].
             //  Received meshes get GAMGInterface and communicator comm

@@ -25,9 +25,9 @@ Application
     Test-processorAgglomeration
 
 Description
-- try and move some bits of lduMesh across and re-stitch
-- only coincident cyclics and processor interfaces are stitchable
-- all other interfaces get preserved
+    - try and move some bits of lduMesh across and re-stitch
+    - only coincident cyclics and processor interfaces are stitchable
+    - all other interfaces get preserved
 
 \*---------------------------------------------------------------------------*/
 
@@ -565,7 +565,7 @@ autoPtr<lduPrimitiveMesh> subset
 
     DynamicList<label> exposedFaces(lower.size());
     DynamicList<bool> exposedFaceFlips(lower.size());
-    DynamicList<label> exposedGlobalCells(lower.size());
+    DynamicList<label> exposedCells(lower.size());
     DynamicList<label> exposedGlobalNbrCells(lower.size());
 
     label coarseFaceI = 0;
@@ -587,10 +587,7 @@ autoPtr<lduPrimitiveMesh> subset
                 // Upper deleted
                 exposedFaces.append(faceI);
                 exposedFaceFlips.append(false);
-                exposedGlobalCells.append
-                (
-                    globalNumbering.toGlobal(lower[faceI])
-                );
+                exposedCells.append(lower[faceI]);
                 exposedGlobalNbrCells.append
                 (
                     globalNumbering.toGlobal(upper[faceI])
@@ -602,10 +599,7 @@ autoPtr<lduPrimitiveMesh> subset
             // Lower deleted
             exposedFaces.append(faceI);
             exposedFaceFlips.append(true);
-            exposedGlobalCells.append
-            (
-                globalNumbering.toGlobal(upper[faceI])
-            );
+            exposedCells.append(upper[faceI]);
             exposedGlobalNbrCells.append
             (
                 globalNumbering.toGlobal(lower[faceI])
@@ -670,7 +664,7 @@ autoPtr<lduPrimitiveMesh> subset
         primitiveInterfaces.size()-1,
         new lduPrimitiveInterface
         (
-            exposedGlobalCells,
+            exposedCells,
             exposedGlobalNbrCells
             //UIndirectList<label>
             //(
@@ -680,7 +674,7 @@ autoPtr<lduPrimitiveMesh> subset
         )
     );
     Pout<< "Added exposedFaces patch " << primitiveInterfaces.size()-1
-        << " with number of cells:" << exposedGlobalCells.size() << endl;
+        << " with number of cells:" << exposedCells.size() << endl;
 
     lduInterfacePtrsList newIfs(primitiveInterfaces.size());
     forAll(primitiveInterfaces, i)
@@ -813,6 +807,17 @@ int main(int argc, char *argv[])
         )
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
+    PtrList<labelList> data(nProcs);
+    {
+        const labelList& myCellMap = cellMaps[Pstream::myProcNo()];
+        data.set(0, new labelList(myCellMap.size()));
+        labelList& d = data[0];
+        forAll(myCellMap, i)
+        {
+            d[i] = globalNumbering.toGlobal(myCellMap[i]);
+        }
+    }
+
 
     {
         string oldPrefix = Pout.prefix();
@@ -907,9 +912,27 @@ int main(int argc, char *argv[])
     }
 
 
-    // Combine lduPrimitiveMeshes. Coupling information given by
-    // lduPrimitiveInterface : contains global cells on either side.
-
+//     // Combine lduPrimitiveMeshes. Coupling information given by
+//     // lduPrimitiveInterface : contains global cells on remote side.
+//     UPtrList<lduMesh> meshes(nProcs);
+//     meshes.set(0, &myMesh);
+//     forAll(otherMeshes, i)
+//     {
+//         meshes.set(i+1, &otherMeshes[i]);
+//     }
+//     UPtrList<labelList> data(nProcs);
+//     data.set(0, &);
+//     forAll(otherMeshes, i)
+//     {
+//         meshes.set(i+1, &otherMeshes[i]);
+//     }
+//     UPtrList<labelList> data(nProcs);
+//     
+//     lduPrimitiveMesh combined
+//     (
+//         meshes,
+//         
+//     );
 
     Info<< "end" << endl;
 }
