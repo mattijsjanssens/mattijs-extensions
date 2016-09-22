@@ -1,0 +1,4 @@
+ADISmoother.C
+laplacianFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/laplacianFoam_with_ADI
