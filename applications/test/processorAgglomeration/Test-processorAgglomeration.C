@@ -31,13 +31,15 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "List.H"
+#include "UPtrList.H"
 #include "fvcCellReduce.H"
 #include "lduPrimitiveMesh.H"
 #include "lduPrimitiveInterface.H"
 #include "fvCFD.H"
 #include "processorGAMGInterface.H"
 #include "processorFvPatch.H"
-#include "UPtrList.H"
+//#include "UPtrList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -195,6 +197,33 @@ void printSubMeshInfo
                 << " fc:" << ifs[patchI].faceCells() << endl;
         }
     }
+}
+void printMeshInfo(const lduMesh& mesh)
+{
+    Pout<< "nCells:" << mesh.lduAddr().size() << endl;
+
+    forAll(mesh.lduAddr().lowerAddr(), faceI)
+    {
+        Pout<< "face:" << faceI
+            << " lower:" << mesh.lduAddr().lowerAddr()[faceI]
+            << " upper:" << mesh.lduAddr().upperAddr()[faceI]
+            << endl;
+    }
+
+    lduInterfacePtrsList ifs(mesh.interfaces());
+
+    string oldPrefix = Pout.prefix();
+    Pout.prefix() += "    ";
+    forAll(ifs, patchI)
+    {
+        if (ifs.set(patchI))
+        {
+            Pout<< "patch:" << patchI << " cells:";
+            refCast<const lduPrimitiveInterface>(ifs[patchI]).write(Pout);
+            Pout<< endl;
+        }
+    }
+    Pout.prefix() = oldPrefix;
 }
 void sendMesh(const lduMesh& mesh, Ostream& os)
 {
@@ -587,7 +616,7 @@ autoPtr<lduPrimitiveMesh> subset
                 // Upper deleted
                 exposedFaces.append(faceI);
                 exposedFaceFlips.append(false);
-                exposedCells.append(lower[faceI]);
+                exposedCells.append(reverseCellMap[lower[faceI]]);
                 exposedGlobalNbrCells.append
                 (
                     globalNumbering.toGlobal(upper[faceI])
@@ -599,7 +628,7 @@ autoPtr<lduPrimitiveMesh> subset
             // Lower deleted
             exposedFaces.append(faceI);
             exposedFaceFlips.append(true);
-            exposedCells.append(upper[faceI]);
+            exposedCells.append(reverseCellMap[upper[faceI]]);
             exposedGlobalNbrCells.append
             (
                 globalNumbering.toGlobal(lower[faceI])
@@ -770,21 +799,21 @@ int main(int argc, char *argv[])
 
     // Determine global cell labels across interfaces
     globalIndex globalNumbering(lMesh.lduAddr().size());
-    PtrList<labelField> interfaceNbrCells(ifs.size());
+    labelList globalCells(lMesh.lduAddr().size());
+    forAll(globalCells, celli)
     {
-        labelList globalCells(lMesh.lduAddr().size());
-        forAll(globalCells, celli)
-        {
-            globalCells[celli] = globalNumbering.toGlobal(celli);
-        }
-        swapCellData(ifs, globalCells, interfaceNbrCells);
+        globalCells[celli] = globalNumbering.toGlobal(celli);
     }
 
+    PtrList<labelField> interfaceNbrCells(ifs.size());
+    swapCellData(ifs, globalCells, interfaceNbrCells);
 
-    //PtrList<lduPrimitiveMesh> subMeshes(Pstream::nProcs(Pstream::worldComm));
+
     labelListList cellMaps(nProcs);
     labelListList faceMaps(nProcs);
     labelListList patchMaps(nProcs);
+
+    PtrList<labelList> globalData(nProcs);
 
 
     // Construct local mesh that stays
@@ -793,7 +822,7 @@ int main(int argc, char *argv[])
         subset
         (
             lMesh,
-            globalNumbering,
+            globalNumbering,    // Could pass in globalCells instead
             ifs,
             isGlobalInterface,
             interfaceNbrCells,
@@ -807,16 +836,19 @@ int main(int argc, char *argv[])
         )
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
-    PtrList<labelList> data(nProcs);
-    {
-        const labelList& myCellMap = cellMaps[Pstream::myProcNo()];
-        data.set(0, new labelList(myCellMap.size()));
-        labelList& d = data[0];
-        forAll(myCellMap, i)
-        {
-            d[i] = globalNumbering.toGlobal(myCellMap[i]);
-        }
-    }
+
+    globalData.set
+    (
+        0,
+        new labelList
+        (
+            UIndirectList<label>
+            (
+                globalCells,
+                cellMaps[Pstream::myProcNo()]
+            )
+        )
+    );
 
 
     {
@@ -878,6 +910,8 @@ int main(int argc, char *argv[])
             // Send subMesh
             UOPstream toDest(destProcI, pBufs);
             sendMesh(subMesh, toDest);
+            // Send the global cell numbers
+            toDest << UIndirectList<label>(globalCells, cMap);
         }
     }
 
@@ -893,7 +927,11 @@ int main(int argc, char *argv[])
         if (procI != Pstream::myProcNo())
         {
             UIPstream fromDest(procI, pBufs);
+
+            // Receive mesh and global cell labels
             otherMeshes.set(otherI++,  receiveMesh(lMesh.comm(), fromDest));
+            globalData.set(otherI, new labelList(fromDest));
+
             const lduMesh& subMesh = otherMeshes[otherI-1];
 
 
@@ -903,7 +941,7 @@ int main(int argc, char *argv[])
                 Pout.prefix() += extra;
 
                 Pout<< subMesh.info() << endl;
-                //printSubMeshInfo(mesh, cMap, fMap, subMesh);
+                printMeshInfo(subMesh);
 
                 Pout.prefix() = oldPrefix;
                 Pout<< endl;
@@ -912,27 +950,73 @@ int main(int argc, char *argv[])
     }
 
 
-//     // Combine lduPrimitiveMeshes. Coupling information given by
-//     // lduPrimitiveInterface : contains global cells on remote side.
-//     UPtrList<lduMesh> meshes(nProcs);
-//     meshes.set(0, &myMesh);
-//     forAll(otherMeshes, i)
-//     {
-//         meshes.set(i+1, &otherMeshes[i]);
-//     }
-//     UPtrList<labelList> data(nProcs);
-//     data.set(0, &);
-//     forAll(otherMeshes, i)
-//     {
-//         meshes.set(i+1, &otherMeshes[i]);
-//     }
-//     UPtrList<labelList> data(nProcs);
-//     
-//     lduPrimitiveMesh combined
-//     (
-//         meshes,
-//         
-//     );
+    // Combine lduPrimitiveMeshes. Coupling information given by
+    // lduPrimitiveInterface : contains global cells on remote side.
+    UPtrList<const lduMesh> meshes(nProcs);
+    meshes.set(0, &myMesh);
+    forAll(otherMeshes, i)
+    {
+        meshes.set(i+1, &otherMeshes[i]);
+    }
+    UPtrList<const labelList> data(nProcs);
+    forAll(globalData, i)
+    {
+Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
+
+        data.set(i, &globalData[i]);
+    }
+
+    labelList cellOffsets;
+    labelList faceOffsets;
+    labelListList faceMap;
+    labelListList boundaryMap;
+    labelListListList boundaryFaceMap;
+    lduPrimitiveMesh allMesh
+    (
+        globalNumbering,
+        meshes,
+        data,
+
+        cellOffsets,
+        faceOffsets,
+        faceMap,
+        boundaryMap,
+        boundaryFaceMap
+    );
+
+    // Print allMesh
+    {
+        string oldPrefix = Pout.prefix();
+        string extra("all ");
+        Pout.prefix() += extra;
+
+        Pout<< allMesh.info() << endl;
+        printMeshInfo(allMesh);
+
+        Pout.prefix() = oldPrefix;
+        Pout<< endl;
+    }
+
+
+    // Do proper patch mapping
+    // ~~~~~~~~~~~~~~~~~~~~~~~
+    {
+        lduInterfaceList ifs(lMesh.interfaces());
+        lduInterfaceList allIfs(patchMap.size());
+
+        forAll(ifs, patchi)
+        {
+            if (ifs.set(patchi) && isGlobalInterface[patchi])
+            {
+                label newPatchi = reversePatchMap[patchi];
+
+                const mapDistributeBase& mapper = patchMappers[newPatchi];
+
+                allIfs.set(newPatchi, ifs[patchi].clone(allMesh, mapper));
+            }
+        }
+        allMesh.addInterfaces(allIfs);
+    }
 
     Info<< "end" << endl;
 }

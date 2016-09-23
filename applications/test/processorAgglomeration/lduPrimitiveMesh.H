@@ -79,7 +79,7 @@ class lduPrimitiveMesh
         static label totalSize(const PtrList<lduPrimitiveMesh>&);
 
         //- Get combined size of all meshes
-        static label totalSize(const UPtrList<lduMesh>&);
+        static label totalSize(const UPtrList<const lduMesh>&);
 
         //- Get combined size of all interfaces
         static label interfaceSize(const lduMesh& mesh);
@@ -186,8 +186,9 @@ public:
         //  the neighbouring processor+cell (as a global cell index).
         lduPrimitiveMesh
         (
-            const UPtrList<lduMesh>& meshes,
-            const UPtrList<labelList>& data,
+            const globalIndex& globalCells,
+            const UPtrList<const lduMesh>& meshes,
+            const UPtrList<const labelList>& data,
 
             labelList& cellOffsets,
             labelList& faceOffsets,
@@ -267,14 +268,6 @@ public:
                 const PtrList<lduPrimitiveMesh>& otherMeshes,
                 const label meshI
             );
-
-//             //- Select either mesh0 (meshI is 0) or otherMeshes[meshI-1]
-//             static const labelList& meshData
-//             (
-//                 const labelList& data0,
-//                 const PtrList<labelList>& otherData,
-//                 const label meshI
-//             );
 
             //- Gather meshes from other processors onto procIDs[0].
             //  Received meshes get GAMGInterface and communicator comm
