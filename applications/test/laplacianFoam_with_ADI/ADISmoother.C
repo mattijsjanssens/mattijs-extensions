@@ -24,7 +24,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "ADISmoother.H"
-#include "fvMesh.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -99,9 +98,6 @@ void Foam::ADISmoother::smooth
         matrix_.lduAddr().ownerStartAddr().begin();
 
 
-    const fvMesh& fm = dynamic_cast<const fvMesh&>(matrix_.mesh());
-
-
     // Parallel boundary initialisation.  The parallel boundary is treated
     // as an effective jacobi interface in the boundary.
     // Note: there is a change of sign in the coupled
@@ -129,14 +125,9 @@ void Foam::ADISmoother::smooth
     }
 
 
-    Pout<< "Before psi:" << psi << endl;
-
-
     for (label sweep=0; sweep<nSweeps; sweep++)
     {
         bPrime = source;
-
-        DebugVar(bPrime);
 
         matrix_.initMatrixInterfaces
         (
@@ -156,14 +147,11 @@ void Foam::ADISmoother::smooth
             cmpt
         );
 
-        DebugVar(bPrime);
 
-        static bool forward = true;
+        static label direction = 0;
 
-        if (forward)
+        if ((direction % 2) == 0)
         {
-            DebugVar("forward");
-
             scalar psii;
             label fStart;
             label fEnd = ownStartPtr[0];
@@ -197,8 +185,6 @@ void Foam::ADISmoother::smooth
         }
         else
         {
-            DebugVar("backward");
-
             const labelUList& losort = matrix_.lduAddr().losortAddr();
             const labelUList& losortStart = matrix_.lduAddr().losortStartAddr();
 
@@ -240,12 +226,8 @@ void Foam::ADISmoother::smooth
             }
         }
 
-
-        forward = !forward;
+        direction++;
     }
-
-
-    Pout<< "After psi:" << psi << endl;
 
 
     // Restore interfaceBouCoeffs_

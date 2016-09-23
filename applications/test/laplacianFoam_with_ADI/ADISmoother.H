@@ -25,7 +25,8 @@ Class
     Foam::ADISmoother
 
 Description
-    A lduMatrix::smoother for Gauss-Seidel
+    A lduMatrix::smoother which alternates Gauss-Seidel and Gauss-Seidel
+    with reverse cell numbering.
 
 SourceFiles
     ADISmoother.C
