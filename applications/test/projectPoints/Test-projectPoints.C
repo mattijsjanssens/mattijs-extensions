@@ -121,13 +121,18 @@ int main(int argc, char *argv[])
     {
         Info<< "Time = " << runTime.timeName() << endl;
 
-        pointField displacement
+        vectorField displacement
         (
             findNearest(allGeometry[0], pp.localPoints())
           - pp.localPoints()
         );
 
-        smooth(pp, displacement);
+        vectorField smoothDisplacement(displacement);
+        smooth(pp, smoothDisplacement);
+
+        // TBD: replace tangential component of displacement
+        //      with smoothDisplacement
+XXXXX
 
 
         // Apply the patch displacement to the mesh points
@@ -136,7 +141,7 @@ int main(int argc, char *argv[])
             forAll(displacement, pointi)
             {
                 newMeshPoints[pp.meshPoints()[pointi]] +=
-                    0.1*displacement[pointi];
+                    0.5*displacement[pointi];
             }
             mesh.movePoints(newMeshPoints);
         }
