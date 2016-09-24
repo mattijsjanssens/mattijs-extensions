@@ -37,21 +37,37 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-tmp<pointField> findNearest(const searchableSurface& s, const pointField& pts)
+//tmp<pointField> findNearest(const searchableSurface& s, const pointField& pts)
+//{
+//    List<pointIndexHit> info;
+//    s.findNearest(pts, scalarField(pts.size(), GREAT), info);
+//
+//    tmp<pointField> tnear(new pointField(pts.size()));
+//    pointField& near = tnear.ref();
+//    forAll(info, i)
+//    {
+//        near[i] = info[i].hitPoint();
+//    }
+//    return tnear;
+//}
+void findNearest
+(
+    const searchableSurface& s,
+    const pointField& pts,
+    pointField& near,
+    vectorField& normal
+)
 {
     List<pointIndexHit> info;
     s.findNearest(pts, scalarField(pts.size(), GREAT), info);
+    s.getNormal(info, normal);
 
-    tmp<pointField> tnear(new pointField(pts.size()));
-    pointField& near = tnear.ref();
+    near.setSize(info.size());
     forAll(info, i)
     {
         near[i] = info[i].hitPoint();
     }
-    return tnear;
 }
-
-
 void smooth(const primitivePatch& p, vectorField& d)
 {
     const labelListList& pointEdges = p.pointEdges();
@@ -78,6 +94,83 @@ void smooth(const primitivePatch& p, vectorField& d)
         d = 0.5*d + 0.5*oldD;
     }
 }
+void smoothAttraction
+(
+    const searchableSurface& s,
+    const primitivePatch& pp,
+    vectorField& displacement
+)
+{
+    pointField surfNearest;
+    vectorField surfNormal;
+    findNearest(s, pp.localPoints(), surfNearest, surfNormal);
+
+    vectorField surfDisplacement(surfNearest-pp.localPoints());
+
+    displacement = surfDisplacement;
+    smooth(pp, displacement);
+
+    // TBD: replace normal component of displacement with that
+    //      of surfDisplacement
+    displacement -= (displacement & surfNormal) * surfNormal;
+    displacement += (surfDisplacement & surfNormal) * surfNormal;
+}
+
+
+// Two surface findNearest
+void findNearest
+(
+    const searchableSurface& s0,
+    const searchableSurface& s1,
+    const point& start,
+    point& near
+//,
+//    vector& normal0,
+//    vector& normal1
+)
+{
+    point pt(start);
+    vector n;
+    {
+        List<pointIndexHit> info0;
+        s0.findNearest(pointField(1, pt), scalarField(1, GREAT), info0);
+        vectorField normal1;
+        s.getNormal(info0, normal0);
+
+        pt = info0[0].hitPoint();
+        n = normal0[0];
+    }
+
+    // Find intersection with other surface
+    point pt1;
+    vector n1;
+    {
+        List<pointIndexHit> info1;
+        s1.findNearest(pointField(1, pt), scalarField(1, GREAT), info1);
+        vectorField normal1;
+        s.getNormal(info1, normal1);
+
+        // Move to intersection
+        plane pl0(pt, n);
+        plane pl1(info1[0].hitPoint(), normal1[0]);
+        plane::ray r(pl0.planeIntersect(pl1));
+        vector n = r.dir() / mag(r.dir());
+
+        vector d(r.refPoint()-pt);
+        d -= (d&n)*n;
+        pt1 = pt + d;
+
+        n1 = normal1[0];
+    }
+
+
+    near.setSize(info.size());
+    forAll(info, i)
+    {
+        near[i] = info[i].hitPoint();
+    }
+}
+
 
 
 int main(int argc, char *argv[])
@@ -117,23 +210,16 @@ int main(int argc, char *argv[])
     const polyBoundaryMesh& pbm = mesh.boundaryMesh();
     const polyPatch& pp = pbm[patchName];
 
+    scalar relax = 0.1;
+    scalar relaxIncrement = 0.1;
+
+
     while (runTime.loop())
     {
         Info<< "Time = " << runTime.timeName() << endl;
 
-        vectorField displacement
-        (
-            findNearest(allGeometry[0], pp.localPoints())
-          - pp.localPoints()
-        );
-
-        vectorField smoothDisplacement(displacement);
-        smooth(pp, smoothDisplacement);
-
-        // TBD: replace tangential component of displacement
-        //      with smoothDisplacement
-XXXXX
-
+        vectorField displacement;
+        smoothAttraction(allGeometry[0], pp, displacement);
 
         // Apply the patch displacement to the mesh points
         {
@@ -141,12 +227,14 @@ XXXXX
             forAll(displacement, pointi)
             {
                 newMeshPoints[pp.meshPoints()[pointi]] +=
-                    0.5*displacement[pointi];
+                    relax*displacement[pointi];
             }
             mesh.movePoints(newMeshPoints);
         }
 
         runTime.write();
+
+        relax = min(1.0, relax+relaxIncrement);
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
