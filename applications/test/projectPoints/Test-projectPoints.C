@@ -32,6 +32,8 @@ Description
 #include "argList.H"
 #include "fvMesh.H"
 #include "searchableSurfaces.H"
+#include "plane.H"
+#include "OBJstream.H"
 
 using namespace Foam;
 
@@ -117,60 +119,50 @@ void smoothAttraction
 }
 
 
-// Two surface findNearest
+// one or two surface findNearest
 void findNearest
 (
-    const searchableSurface& s0,
-    const searchableSurface& s1,
-    const point& start,
-    point& near
-//,
-//    vector& normal0,
-//    vector& normal1
+    const searchableSurfaces& geometry,
+    const labelList& surfaces,
+    const pointField& start,
+    pointField& near,
+    vectorField& normal
 )
 {
-    point pt(start);
-    vector n;
+    findNearest(geometry[surfaces[0]], start, near, normal);
+
+    // Work space
+    pointField near1;
+    vectorField normal1;
+
+    if (surfaces.size() == 2)
     {
-        List<pointIndexHit> info0;
-        s0.findNearest(pointField(1, pt), scalarField(1, GREAT), info0);
-        vectorField normal1;
-        s.getNormal(info0, normal0);
+        label surfi = 1;
+        for (label iter = 0; iter < 10; iter++)
+        {
+            // Find intersection with next surface
+            findNearest(geometry[surfaces[surfi]], near, near1, normal1);
 
-        pt = info0[0].hitPoint();
-        n = normal0[0];
-    }
+            // Move to intersection
+            forAll(near, pointi)
+            {
+                plane pl0(near[pointi], normal[pointi]);
+                plane pl1(near1[pointi], normal1[pointi]);
+                plane::ray r(pl0.planeIntersect(pl1));
+                vector n = r.dir() / mag(r.dir());
 
-    // Find intersection with other surface
-    point pt1;
-    vector n1;
-    {
-        List<pointIndexHit> info1;
-        s1.findNearest(pointField(1, pt), scalarField(1, GREAT), info1);
-        vectorField normal1;
-        s.getNormal(info1, normal1);
+                vector d(r.refPoint()-near[pointi]);
+                d -= (d&n)*n;
 
-        // Move to intersection
-        plane pl0(pt, n);
-        plane pl1(info1[0].hitPoint(), normal1[0]);
-        plane::ray r(pl0.planeIntersect(pl1));
-        vector n = r.dir() / mag(r.dir());
+                near[pointi] += d;
+                normal[pointi] = normal1[pointi];
+            }
 
-        vector d(r.refPoint()-pt);
-        d -= (d&n)*n;
-        pt1 = pt + d;
-
-        n1 = normal1[0];
-    }
-
-
-    near.setSize(info.size());
-    forAll(info, i)
-    {
-        near[i] = info[i].hitPoint();
+            // Step to next surface
+            surfi = surfaces.fcIndex(surfi);
+        }
     }
 }
-
 
 
 int main(int argc, char *argv[])
@@ -209,6 +201,40 @@ int main(int argc, char *argv[])
 
     const polyBoundaryMesh& pbm = mesh.boundaryMesh();
     const polyPatch& pp = pbm[patchName];
+
+
+    {
+        labelList surfs(2);
+        surfs[0] = 0;
+        surfs[1] = 1;
+
+        // Detect points on outside of patch and attract them to the
+        // nearest feature lines
+        pointField start(pp.localPoints(), pp.boundaryPoints());
+
+        pointField near;
+        vectorField normal;
+        findNearest
+        (
+            allGeometry,
+            surfs,
+            start,
+            near,
+            normal
+        );
+
+        OBJstream str("findNearest.obj");
+        forAll(start, i)
+        {
+            str.write(linePointRef(start[i], near[i]));
+        }
+
+        return 1;
+    }
+
+
+
+
 
     scalar relax = 0.1;
     scalar relaxIncrement = 0.1;
