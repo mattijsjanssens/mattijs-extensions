@@ -16,7 +16,27 @@ FoamFile
 
 geometry
 {
+    sphere1.vtk
+    {
+        type triSurfaceMesh;
+    }
+    sphere2.vtk
+    {
+        type triSurfaceMesh;
+    }
+    minX.vtk
+    {
+        type triSurfaceMesh;
+    }
+    minZ.vtk
+    {
+        type triSurfaceMesh;
+    }
     cylinder.vtk
+    {
+        type triSurfaceMesh;
+    }
+    cylinder_moved.vtk
     {
         type triSurfaceMesh;
     }

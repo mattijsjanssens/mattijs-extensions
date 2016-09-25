@@ -29,6 +29,7 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "pointConstraint.H"
 #include "argList.H"
 #include "fvMesh.H"
 #include "searchableSurfaces.H"
@@ -39,109 +40,67 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//tmp<pointField> findNearest(const searchableSurface& s, const pointField& pts)
-//{
-//    List<pointIndexHit> info;
-//    s.findNearest(pts, scalarField(pts.size(), GREAT), info);
-//
-//    tmp<pointField> tnear(new pointField(pts.size()));
-//    pointField& near = tnear.ref();
-//    forAll(info, i)
-//    {
-//        near[i] = info[i].hitPoint();
-//    }
-//    return tnear;
-//}
-void findNearest
-(
-    const searchableSurface& s,
-    const pointField& pts,
-    pointField& near,
-    vectorField& normal
-)
-{
-    List<pointIndexHit> info;
-    s.findNearest(pts, scalarField(pts.size(), GREAT), info);
-    s.getNormal(info, normal);
+// Geometric queries
+// ~~~~~~~~~~~~~~~~~
 
-    near.setSize(info.size());
-    forAll(info, i)
-    {
-        near[i] = info[i].hitPoint();
-    }
-}
-void smooth(const primitivePatch& p, vectorField& d)
-{
-    const labelListList& pointEdges = p.pointEdges();
-    const edgeList& edges = p.edges();
-
-    for (label iter = 0; iter < 100; iter++)
-    {
-        pointField oldD(d);
-
-        forAll(pointEdges, pointi)
-        {
-            const labelList& pEdges = pointEdges[pointi];
-
-            d[pointi] = vector::zero;
-            forAll(pEdges, i)
-            {
-                label nbrPointi = edges[pEdges[i]].otherVertex(pointi);
-
-                d[pointi] += oldD[nbrPointi];
-            }
-            d[pointi] /= pEdges.size();
-        }
-
-        d = 0.5*d + 0.5*oldD;
-    }
-}
-void smoothAttraction
-(
-    const searchableSurface& s,
-    const primitivePatch& pp,
-    vectorField& displacement
-)
-{
-    pointField surfNearest;
-    vectorField surfNormal;
-    findNearest(s, pp.localPoints(), surfNearest, surfNormal);
-
-    vectorField surfDisplacement(surfNearest-pp.localPoints());
-
-    displacement = surfDisplacement;
-    smooth(pp, displacement);
-
-    // TBD: replace normal component of displacement with that
-    //      of surfDisplacement
-    displacement -= (displacement & surfNormal) * surfNormal;
-    displacement += (surfDisplacement & surfNormal) * surfNormal;
-}
-
-
-// one or two surface findNearest
 void findNearest
 (
     const searchableSurfaces& geometry,
     const labelList& surfaces,
     const pointField& start,
+    const scalarField& distSqr,
     pointField& near,
-    vectorField& normal
+    List<pointConstraint>& constraint
 )
 {
-    findNearest(geometry[surfaces[0]], start, near, normal);
+    // Multi-surface findNearest
 
-    // Work space
-    pointField near1;
-    vectorField normal1;
+    vectorField normal;
+    List<pointIndexHit> info;
 
-    if (surfaces.size() == 2)
+    geometry[surfaces[0]].findNearest(start, distSqr, info);
+    geometry[surfaces[0]].getNormal(info, normal);
+
+    // Extract useful info
+    near.setSize(info.size());
+    forAll(info, i)
     {
+        near[i] = info[i].hitPoint();
+    }
+    constraint.setSize(near.size());
+
+    if (surfaces.size() == 1)
+    {
+        constraint = pointConstraint();
+        forAll(constraint, i)
+        {
+            constraint[i].applyConstraint(normal[i]);
+        }
+    }
+    else if (surfaces.size() >= 2)
+    {
+        // Work space
+        pointField near1;
+        vectorField normal1;
+
         label surfi = 1;
         for (label iter = 0; iter < 10; iter++)
         {
+            constraint = pointConstraint();
+            forAll(constraint, i)
+            {
+                constraint[i].applyConstraint(normal[i]);
+            }
+
             // Find intersection with next surface
-            findNearest(geometry[surfaces[surfi]], near, near1, normal1);
+            const searchableSurface& s = geometry[surfaces[surfi]];
+            s.findNearest(near, distSqr, info);
+            s.getNormal(info, normal1);
+            near1.setSize(info.size());
+            forAll(info, i)
+            {
+                near1[i] = info[i].hitPoint();
+            }
 
             // Move to intersection
             forAll(near, pointi)
@@ -156,6 +115,12 @@ void findNearest
 
                 near[pointi] += d;
                 normal[pointi] = normal1[pointi];
+
+                Pout<< "point:" << pointi << endl;
+                Pout<< "    pc was:" << constraint[pointi] << endl;
+                Pout<< "    adding:" << normal1[pointi] << endl;
+                constraint[pointi].applyConstraint(normal1[pointi]);
+                Pout<< "    pc now:" << constraint[pointi] << endl;
             }
 
             // Step to next surface
@@ -164,6 +129,124 @@ void findNearest
     }
 }
 
+
+
+// Smoothing
+// ~~~~~~~~~
+
+void smooth
+(
+    const label nIters,
+    const edgeList& edges,
+    const labelListList& pointEdges,
+    const List<pointConstraint>& constraints,
+    vectorField& d
+)
+{
+    for (label iter = 0; iter < nIters; iter++)
+    {
+        pointField oldD(d);
+
+        forAll(pointEdges, pointi)
+        {
+            const labelList& pEdges = pointEdges[pointi];
+            const pointConstraint& pc = constraints[pointi];
+
+            d[pointi] = vector::zero;
+
+            label nNbrs = 0;
+
+            forAll(pEdges, i)
+            {
+                label nbrPointi = edges[pEdges[i]].otherVertex(pointi);
+
+                if (constraints[nbrPointi].first() >= pc.first())
+                {
+                    // Feature edges not influenced by normal surface points ...
+
+                    d[pointi] += oldD[nbrPointi];
+                    nNbrs++;
+                }
+            }
+            if (nNbrs > 0)
+            {
+                d[pointi] /= pEdges.size();
+                d[pointi] = pc.constrainDisplacement(d[pointi]);
+            }
+        }
+
+        d = 0.5*d + 0.5*oldD;
+    }
+}
+
+
+//XXXX
+//void findNearest
+//(
+//    const searchableSurface& s,
+//    const pointField& pts,
+//    pointField& near,
+//    vectorField& normal
+//)
+//{
+//    List<pointIndexHit> info;
+//    s.findNearest(pts, scalarField(pts.size(), GREAT), info);
+//    s.getNormal(info, normal);
+//
+//    near.setSize(info.size());
+//    forAll(info, i)
+//    {
+//        near[i] = info[i].hitPoint();
+//    }
+//}
+//void smooth(const primitivePatch& p, vectorField& d)
+//{
+//    const labelListList& pointEdges = p.pointEdges();
+//    const edgeList& edges = p.edges();
+//
+//    for (label iter = 0; iter < 100; iter++)
+//    {
+//        pointField oldD(d);
+//
+//        forAll(pointEdges, pointi)
+//        {
+//            const labelList& pEdges = pointEdges[pointi];
+//
+//            d[pointi] = vector::zero;
+//            forAll(pEdges, i)
+//            {
+//                label nbrPointi = edges[pEdges[i]].otherVertex(pointi);
+//
+//                d[pointi] += oldD[nbrPointi];
+//            }
+//            d[pointi] /= pEdges.size();
+//        }
+//
+//        d = 0.5*d + 0.5*oldD;
+//    }
+//}
+//void smoothAttraction
+//(
+//    const searchableSurface& s,
+//    const primitivePatch& pp,
+//    vectorField& displacement
+//)
+//{
+//    pointField surfNearest;
+//    vectorField surfNormal;
+//    findNearest(s, pp.localPoints(), surfNearest, surfNormal);
+//
+//    vectorField surfDisplacement(surfNearest-pp.localPoints());
+//
+//    displacement = surfDisplacement;
+//    smooth(pp, displacement);
+//
+//    // TBD: replace normal component of displacement with that
+//    //      of surfDisplacement
+//    displacement -= (displacement & surfNormal) * surfNormal;
+//    displacement += (surfDisplacement & surfNormal) * surfNormal;
+//}
+//XXXXX
 
 int main(int argc, char *argv[])
 {
@@ -197,75 +280,163 @@ int main(int argc, char *argv[])
         meshDict.lookupOrDefault("singleRegionName", true)
     );
 
-    const word patchName((IStringStream(args[1])()));
-
     const polyBoundaryMesh& pbm = mesh.boundaryMesh();
-    const polyPatch& pp = pbm[patchName];
+
+    // Find set of patches from the list of regular expressions provided
+    const wordReList patches((IStringStream(args[1])()));
+    const labelList patchIDs(pbm.patchSet(patches).sortedToc());
 
 
+//    {
+//        labelList surfs(2);
+//        surfs[0] = 0;
+//        surfs[1] = 1;
+//
+//        // Detect points on outside of patch and attract them to the
+//        // nearest feature lines
+//        pointField start(pp.localPoints(), pp.boundaryPoints());
+//
+//        pointField near;
+//        List<pointConstraint> constraint;
+//        findNearest
+//        (
+//            allGeometry,
+//            surfs,
+//            start,
+//            scalarField(start.size(), GREAT),
+//            near,
+//            constraint
+//        );
+//
+//        DebugVar(constraint);
+//
+//        OBJstream str("findNearestLine.obj");
+//        forAll(start, i)
+//        {
+//            str.write(linePointRef(start[i], near[i]));
+//        }
+//    }
+
+
+
+    // Scan patches to find feature line points and feature points:
+    // construct map from mesh point to set of patches
+    Map<labelList> pointToPatches;
+    forAll(patchIDs, i)
     {
-        labelList surfs(2);
-        surfs[0] = 0;
-        surfs[1] = 1;
+        label patchi = patchIDs[i];
+        const labelList& meshPPoints = pbm[patchi].meshPoints();
+        const labelList& boundaryPoints = pbm[patchi].boundaryPoints();
+        forAll(boundaryPoints, bPointi)
+        {
+            label meshPointi = meshPPoints[bPointi];
+            Map<labelList>::iterator iter = pointToPatches.find(meshPointi);
+            if (iter == pointToPatches.end())
+            {
+                pointToPatches.insert(meshPointi, labelList(1, i));
+            }
+            else
+            {
+                iter().append(i);
+            }
+        }
+    }
 
-        // Detect points on outside of patch and attract them to the
-        // nearest feature lines
-        pointField start(pp.localPoints(), pp.boundaryPoints());
 
-        pointField near;
-        vectorField normal;
+    forAll(patchIDs, i)
+    {
+        label patchi = patchIDs[i];
+        const polyPatch& pp = pbm[patchi];
+        //const labelList& meshPPoints = pbm[patchi].meshPoints();
+
+        // Determine nearest for all points w.r.t. single surface
+        pointField patchNear;
+        List<pointConstraint> patchConstraint;
         findNearest
         (
             allGeometry,
-            surfs,
-            start,
-            near,
-            normal
+            labelList(1, 0),
+            pp.localPoints(),
+            scalarField(pp.nPoints(), GREAT),
+            patchNear,
+            patchConstraint
         );
 
-        OBJstream str("findNearest.obj");
-        forAll(start, i)
+        // Determine nearest for boundary points w.r.t. two surfaces
         {
-            str.write(linePointRef(start[i], near[i]));
-        }
+            labelList surfs(2);
+            surfs[0] = 0;
+            surfs[1] = 1;
+            pointField start(pp.localPoints(), pp.boundaryPoints());
 
-        return 1;
-    }
+            pointField boundaryNear;
+            List<pointConstraint> boundaryConstraint;
+            findNearest
+            (
+                allGeometry,
+                surfs,
+                start,
+                scalarField(start.size(), GREAT),
+                boundaryNear,
+                boundaryConstraint
+            );
 
-
-
-
-
-    scalar relax = 0.1;
-    scalar relaxIncrement = 0.1;
-
-
-    while (runTime.loop())
-    {
-        Info<< "Time = " << runTime.timeName() << endl;
-
-        vectorField displacement;
-        smoothAttraction(allGeometry[0], pp, displacement);
-
-        // Apply the patch displacement to the mesh points
-        {
-            pointField newMeshPoints(mesh.points());
-            forAll(displacement, pointi)
+            forAll(pp.boundaryPoints(), i)
             {
-                newMeshPoints[pp.meshPoints()[pointi]] +=
-                    relax*displacement[pointi];
+                label pointi = pp.boundaryPoints()[i];
+                patchNear[pointi] = boundaryNear[i];
+                patchConstraint[pointi] = boundaryConstraint[i];
             }
-            mesh.movePoints(newMeshPoints);
         }
 
-        runTime.write();
 
-        relax = min(1.0, relax+relaxIncrement);
+        vectorField patchDisplacement(patchNear-pp.localPoints());
+        vectorField displacement(patchDisplacement);
+        smooth
+        (
+            100,            // nIters,
+            pp.edges(),
+            pp.pointEdges(),
+            patchConstraint,
+            displacement
+        );
 
-        Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-            << nl << endl;
+        // Replace normal component of displacement with that
+        // of surfDisplacement
+        displacement -= (displacement & surfNormal) * surfNormal;
+        displacement += (patchDisplacement & surfNormal) * surfNormal;
     }
+
+//    scalar relax = 0.1;
+//    scalar relaxIncrement = 0.1;
+//
+//
+//    while (runTime.loop())
+//    {
+//        Info<< "Time = " << runTime.timeName() << endl;
+//
+//        vectorField displacement;
+//        smoothAttraction(allGeometry[0], pp, displacement);
+//
+//        // Apply the patch displacement to the mesh points
+//        {
+//            pointField newMeshPoints(mesh.points());
+//            forAll(displacement, pointi)
+//            {
+//                newMeshPoints[pp.meshPoints()[pointi]] +=
+//                    relax*displacement[pointi];
+//            }
+//            mesh.movePoints(newMeshPoints);
+//        }
+//
+//        runTime.write();
+//
+//        relax = min(1.0, relax+relaxIncrement);
+//
+//        Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+//            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+//            << nl << endl;
+//    }
 
     Info<< "End\n" << endl;
 
