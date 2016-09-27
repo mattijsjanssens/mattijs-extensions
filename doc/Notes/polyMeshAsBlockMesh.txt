@@ -1,0 +1,26 @@
+blockMesh:
+topology:
+- blocks
+- edges
+- faces
+geometry
+- points
+- edges
+
+If we want to use polyMesh as basis for 'dynamic' blockMesh
+- every block is single hex
+- block faces are already possible as patches
+- missing is
+    - description of edges (a pair of mesh points)
+    - edge-patches on these edges
+
+Then generating your proper polyMesh is 'just' a matter of
+- refining in various directions
+- maintaining ordering
+    - i for points on edges
+    - ij for points on patches
+    - ijk for internal points
+- moving the points
+    - needs correspondence between edges and edge of geometry
+      (might be implicit through intersections of two surfaces)
+    - needs correspondence between patches and surface of geometry
