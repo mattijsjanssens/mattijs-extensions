@@ -116,11 +116,11 @@ void findNearest
                 near[pointi] += d;
                 normal[pointi] = normal1[pointi];
 
-                Pout<< "point:" << pointi << endl;
-                Pout<< "    pc was:" << constraint[pointi] << endl;
-                Pout<< "    adding:" << normal1[pointi] << endl;
+                //Pout<< "point:" << pointi << endl;
+                //Pout<< "    pc was:" << constraint[pointi] << endl;
+                //Pout<< "    adding:" << normal1[pointi] << endl;
                 constraint[pointi].applyConstraint(normal1[pointi]);
-                Pout<< "    pc now:" << constraint[pointi] << endl;
+                //Pout<< "    pc now:" << constraint[pointi] << endl;
             }
 
             // Step to next surface
@@ -170,8 +170,8 @@ void smooth
             }
             if (nNbrs > 0)
             {
-                d[pointi] /= pEdges.size();
-                d[pointi] = pc.constrainDisplacement(d[pointi]);
+                d[pointi] /= nNbrs;
+//                d[pointi] = pc.constrainDisplacement(d[pointi]);
             }
         }
 
@@ -345,47 +345,44 @@ int main(int argc, char *argv[])
 //        }
 //    }
 
+
+
+//XXXX
+//Problem now is that feature edges are attracted much further than
+//internal points and smoothing cannot compensate for that. Need to change order:
+//- attraction to feature edges
+//- smooth on feature edges and internal
+//- calculate new points
+//- project internal (with new points)
+//- smooth internal
+//- calculate new points
+
+    pointField patchNear(pp.localPoints());
+    List<pointConstraint> patchConstraint(pp.nPoints());
+
     scalar relax = 0.1;
-    scalar relaxIncrement = 0.1;
-
-
-XXXX
-Problem now is that feature edges are attracted much further than
-internal points and smoothing cannot compensate for that. Need to change order:
-- attraction to feature edges
-- smooth on feature edges and internal
-- calculate new points
-- project internal (with new points)
-- smooth internal
-- calculate new points
-
-
-    while (runTime.loop())
+    const scalar relaxIncrement = 0.1;
+    for (label timeI = 0; timeI < 10; timeI++)
     {
+        runTime++;
+
         Info<< "Time = " << runTime.timeName() << endl;
 
         vectorField displacement;
         {
-//          smoothAttraction(allGeometry[0], pp, displacement);
+            patchNear = pp.localPoints();
+            patchConstraint = pointConstraint();
 
-            // Determine nearest for all points w.r.t. single surface
-            Pout<< "Attracting " << pp.nPoints()
-                << " boundary points to surfae " << allGeometry[0].name()
-                << endl;
-            pointField patchNear;
-            List<pointConstraint> patchConstraint;
-            findNearest
-            (
-                allGeometry,
-                labelList(1, 0),
-                pp.localPoints(),
-                scalarField(pp.nPoints(), GREAT),
-                patchNear,
-                patchConstraint
-            );
+            // 1: attract to feature points
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Smooth/interpolate to predict new pp.localPoints()
+            // TBD
 
-            // Determine nearest for boundary points w.r.t. two surfaces and
-            // override
+
+
+            // 2: attract to feature edges
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Smooth/interpolate to predict new pp.localPoints()
             {
                 labelList surfs(2);
                 surfs[0] = 0;
@@ -417,28 +414,187 @@ internal points and smoothing cannot compensate for that. Need to change order:
                 }
             }
 
-
-            const vectorField patchDisplacement(patchNear-pp.localPoints());
-            displacement = patchDisplacement;
-            smooth
-            (
-                100,            // nIters,
-                pp.edges(),
-                pp.pointEdges(),
-                patchConstraint,
-                displacement
-            );
-
-            forAll(patchConstraint, pointi)
             {
-                const pointConstraint& pc = patchConstraint[pointi];
-                const vector& nearDisp = patchDisplacement[pointi];
-                vector& d = displacement[pointi];
+                mkDir(runTime.timePath());
+                OBJstream str(runTime.timePath()/"patchNearAfterFeatEdge.obj");
+                forAll(patchNear, pointi)
+                {
+                    const point& pt = patchNear[pointi];
+                    str.write(linePointRef(pp.localPoints()[pointi], pt));
+                }
+            }
 
-                // Displacement d already constrained to surface. Add
-                // the other direction(s) from the original patchDisplacement.
 
-                d += nearDisp - pc.constrainDisplacement(nearDisp);
+
+            {
+                // Smooth
+                const vectorField patchDisplacement(patchNear-pp.localPoints());
+                displacement = patchDisplacement;
+                smooth
+                (
+                    100,            // nIters,
+                    pp.edges(),
+                    pp.pointEdges(),
+                    patchConstraint,
+                    displacement
+                );
+
+                {
+                    mkDir(runTime.timePath());
+                    OBJstream str(runTime.timePath()/"smoothDisp.obj");
+                    forAll(displacement, pointi)
+                    {
+                        const point& pt = pp.localPoints()[pointi];
+                        str.write(linePointRef(pt, pt+displacement[pointi]));
+                    }
+                }
+
+//                // Update displacement to project onto patch
+//                forAll(patchConstraint, pointi)
+//                {
+//                    const pointConstraint& pc = patchConstraint[pointi];
+//                    const vector& nearDisp = patchDisplacement[pointi];
+//                    vector& d = displacement[pointi];
+//
+//                    // Displacement d already constrained to surface. Add
+//                    // the other direction(s) from the original
+//                    // patchDisplacement.
+//                    d =
+//                        pc.constrainDisplacement(d)
+//                      + nearDisp
+//                      - pc.constrainDisplacement(nearDisp);
+//                }
+            }
+
+            {
+                mkDir(runTime.timePath());
+                OBJstream str(runTime.timePath()/"predictedFeatEdgePoints.obj");
+                forAll(displacement, pointi)
+                {
+                    const point& pt = pp.localPoints()[pointi];
+                    str.write(linePointRef(pt, pt+displacement[pointi]));
+                }
+            }
+        }
+
+        // Apply the patch displacement to the mesh points
+        {
+            pointField newMeshPoints(mesh.points());
+            forAll(displacement, pointi)
+            {
+                newMeshPoints[pp.meshPoints()[pointi]] +=
+                    relax*displacement[pointi];
+            }
+            mesh.movePoints(newMeshPoints);
+        }
+
+        runTime.write();
+
+        relax = min(1.0, relax+relaxIncrement);
+
+        Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+            << nl << endl;
+    }
+
+
+
+
+    relax = 0.1;
+    for (label timeI = 0; timeI < 10; timeI++)
+    {
+        runTime++;
+
+        Info<< "Time = " << runTime.timeName() << endl;
+
+        vectorField displacement;
+        {
+            // 3: attract to single surface
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Determine nearest for all non-boundary points w.r.t. single
+            // surface
+            {
+                const labelList& boundaryPoints = pp.boundaryPoints();
+
+                DynamicList<label> nonBoundaryPoints
+                (
+                    pp.nPoints()
+                   -boundaryPoints.size()
+                );
+                {
+                    PackedBoolList isBoundaryPoint(pp.nPoints());
+                    isBoundaryPoint.set(boundaryPoints);
+
+                    forAll(isBoundaryPoint, pointi)
+                    {
+                        if (!isBoundaryPoint[pointi])
+                        {
+                            nonBoundaryPoints.append(pointi);
+                        }
+                    }
+                }
+
+
+                Pout<< "Attracting " << nonBoundaryPoints.size()
+                    << " out of " << pp.nPoints()
+                    << " patch points to surface " << allGeometry[0].name()
+                    << endl;
+
+                pointField nonBoundaryNear;
+                List<pointConstraint> nonBoundaryConstraint;
+                findNearest
+                (
+                    allGeometry,
+                    labelList(1, 0),
+                    pointField(pp.localPoints(), nonBoundaryPoints),
+                    scalarField(nonBoundaryPoints.size(), GREAT),
+                    nonBoundaryNear,
+                    nonBoundaryConstraint
+                );
+                forAll(nonBoundaryPoints, i)
+                {
+                    label pointi = nonBoundaryPoints[i];
+                    patchNear[pointi] = nonBoundaryNear[i];
+                    patchConstraint[pointi] = nonBoundaryConstraint[i];
+                }
+
+                {
+                    mkDir(runTime.timePath());
+                    OBJstream str(runTime.timePath()/"patchNearAfterSurf.obj");
+                    forAll(patchNear, pointi)
+                    {
+                        const point& pt = patchNear[pointi];
+                        str.write(linePointRef(pp.localPoints()[pointi], pt));
+                    }
+                }
+
+
+                const vectorField patchDisplacement(patchNear-pp.localPoints());
+                displacement = patchDisplacement;
+                smooth
+                (
+                    100,            // nIters,
+                    pp.edges(),
+                    pp.pointEdges(),
+                    patchConstraint,
+                    displacement
+                );
+
+                // Update displacement to project onto patch
+                forAll(patchConstraint, pointi)
+                {
+                    const pointConstraint& pc = patchConstraint[pointi];
+                    const vector& nearDisp = patchDisplacement[pointi];
+                    vector& d = displacement[pointi];
+
+                    // Displacement d already constrained to surface. Add
+                    // the other direction(s) from the original
+                    // patchDisplacement.
+                    d =
+                        pc.constrainDisplacement(d)
+                      + nearDisp
+                      - pc.constrainDisplacement(nearDisp);
+                }
             }
         }
 
