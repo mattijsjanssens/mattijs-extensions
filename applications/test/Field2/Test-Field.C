@@ -33,6 +33,8 @@ See also
 \*---------------------------------------------------------------------------*/
 
 #include "OSspecific.H"
+#include "Map.H"
+#include "SortableList.H"
 #include "Field.H"
 
 #include "IOstreams.H"
@@ -48,6 +50,10 @@ using namespace Foam;
 
 int main(int argc, char *argv[])
 {
+    Map<label> m = {{200, 1},{300, 2}};
+    SortableList<label> l({300, 100, 200});
+    DebugVar(l);
+
     scalarField a(3);
     a[0] = 0.0;
     a[1] = 1.1;
