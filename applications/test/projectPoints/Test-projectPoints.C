@@ -22,10 +22,10 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    writePatchDistance
+    projectPoints
 
 Description
-    Write topological distance to wall
+    Attraction to surface(s)
 
 \*---------------------------------------------------------------------------*/
 
@@ -35,6 +35,9 @@ Description
 #include "searchableSurfaces.H"
 #include "plane.H"
 #include "OBJstream.H"
+#include "lineEdge.H"
+#include "lineDivide.H"
+#include "gradingDescriptors.H"
 
 using namespace Foam;
 
@@ -171,7 +174,6 @@ void smooth
             if (nNbrs > 0)
             {
                 d[pointi] /= nNbrs;
-//                d[pointi] = pc.constrainDisplacement(d[pointi]);
             }
         }
 
@@ -179,74 +181,6 @@ void smooth
     }
 }
 
-
-//XXXX
-//void findNearest
-//(
-//    const searchableSurface& s,
-//    const pointField& pts,
-//    pointField& near,
-//    vectorField& normal
-//)
-//{
-//    List<pointIndexHit> info;
-//    s.findNearest(pts, scalarField(pts.size(), GREAT), info);
-//    s.getNormal(info, normal);
-//
-//    near.setSize(info.size());
-//    forAll(info, i)
-//    {
-//        near[i] = info[i].hitPoint();
-//    }
-//}
-//void smooth(const primitivePatch& p, vectorField& d)
-//{
-//    const labelListList& pointEdges = p.pointEdges();
-//    const edgeList& edges = p.edges();
-//
-//    for (label iter = 0; iter < 100; iter++)
-//    {
-//        pointField oldD(d);
-//
-//        forAll(pointEdges, pointi)
-//        {
-//            const labelList& pEdges = pointEdges[pointi];
-//
-//            d[pointi] = vector::zero;
-//            forAll(pEdges, i)
-//            {
-//                label nbrPointi = edges[pEdges[i]].otherVertex(pointi);
-//
-//                d[pointi] += oldD[nbrPointi];
-//            }
-//            d[pointi] /= pEdges.size();
-//        }
-//
-//        d = 0.5*d + 0.5*oldD;
-//    }
-//}
-//void smoothAttraction
-//(
-//    const searchableSurface& s,
-//    const primitivePatch& pp,
-//    vectorField& displacement
-//)
-//{
-//    pointField surfNearest;
-//    vectorField surfNormal;
-//    findNearest(s, pp.localPoints(), surfNearest, surfNormal);
-//
-//    vectorField surfDisplacement(surfNearest-pp.localPoints());
-//
-//    displacement = surfDisplacement;
-//    smooth(pp, displacement);
-//
-//    // TBD: replace normal component of displacement with that
-//    //      of surfDisplacement
-//    displacement -= (displacement & surfNormal) * surfNormal;
-//    displacement += (surfDisplacement & surfNormal) * surfNormal;
-//}
-//XXXXX
 
 int main(int argc, char *argv[])
 {
@@ -290,36 +224,92 @@ int main(int argc, char *argv[])
     //const labelList patchIDs(pbm.patchSet(patches).sortedToc());
 
 
-//    {
-//        labelList surfs(2);
-//        surfs[0] = 0;
-//        surfs[1] = 1;
-//
-//        // Detect points on outside of patch and attract them to the
-//        // nearest feature lines
-//        pointField start(pp.localPoints(), pp.boundaryPoints());
-//
-//        pointField near;
-//        List<pointConstraint> constraint;
-//        findNearest
-//        (
-//            allGeometry,
-//            surfs,
-//            start,
-//            scalarField(start.size(), GREAT),
-//            near,
-//            constraint
-//        );
-//
-//        DebugVar(constraint);
-//
-//        OBJstream str("findNearestLine.obj");
-//        forAll(start, i)
-//        {
-//            str.write(linePointRef(start[i], near[i]));
-//        }
-//    }
+    {
+        // Surfaces to track on intersection
+        labelList surfs(2);
+        surfs[0] = 0;
+        surfs[1] = 1;
 
+        // Create start and end point
+        pointField points(2);
+        points[0] = point(0, 1, 0);
+        points[1] = point(1, 1, 0);
+
+        lineEdge cedge(points, 0, 1);
+        gradingDescriptors gds
+        (
+            gradingDescriptor
+            (
+                0.5,
+                1,
+                4
+            )
+        );
+
+        // Generate a few points
+        lineDivide ld(cedge, 20, gds);
+
+
+        // 1. Find nearest independently
+        {
+            pointField near;
+            List<pointConstraint> constraint;
+            findNearest
+            (
+                allGeometry,
+                surfs,
+                ld.points(),
+                scalarField(ld.points().size(), GREAT),
+                near,
+                constraint
+            );
+            OBJstream str("findNearestLine_no_prediction.obj");
+            forAll(ld.points(), i)
+            {
+                str.write(linePointRef(ld.points()[i], near[i]));
+            }
+        }
+
+        // 2. Track along line
+        {
+            pointField near(1);
+            List<pointConstraint> constraint(1);
+
+            OBJstream str("findNearestLine_with_prediction.obj");
+
+            // Predicted start point
+            pointField start(ld.points());
+            forAll(start, i)
+            {
+                Pout<< "inital:" << ld.points()[i] << endl;
+                Pout<< "corrected initial:" << start[i] << endl;
+
+                findNearest
+                (
+                    allGeometry,
+                    surfs,
+                    pointField(1, start[i]),
+                    scalarField(1, GREAT),
+                    near,
+                    constraint
+                );
+
+                str.write(linePointRef(ld.points()[i], start[i]));
+                str.write(linePointRef(start[i], near[0]));
+
+                // Do we have a line constraint? If so use the input
+                // grading to predict the next starting point
+                if (i < start.size()-1 && constraint[0].first() == 2)
+                {
+                    const vector& edgeN = constraint[0].second();
+                    vector d(ld.points()[i+1]-ld.points()[i]);
+                    start[i+1] = near[0]+(d&edgeN)*edgeN;
+                }
+            }
+        }
+
+        return 1;
+    }
 
 
 //    // Scan patches to find feature line points and feature points:
