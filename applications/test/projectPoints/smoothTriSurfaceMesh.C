@@ -40,73 +40,6 @@ addToRunTimeSelectionTable(searchableSurface, smoothTriSurfaceMesh, dict);
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-// void Foam::smoothTriSurfaceMesh::calcPointNormals
-// (
-//     const PackedBoolList& isBorderEdge,
-//     vectorField& pointNormals
-// )
-// {
-//     const triSurface& s = static_cast<const triSurface&>(*this);
-//     const pointField& pts = s.points();
-// 
-//     // Calculate faceNormals. Could use cached version from underlying
-//     // PrimitivePatch but want to avoid extra storage.
-//     vectorField faceNormals(size());
-//     forAll(faceNormals, facei)
-//     {
-//         faceNormals[facei] = s[facei].normal(pts)
-//         faceNormals[i] /= mag(faceNormals[i]) + VSMALL;
-//     }
-// 
-//     const labelListList& faceEdges = s.faceEdges();
-//     const labelListList& edgeFaces = s.edgeFaces();
-//     const edgeList& edges = s.edges();
-// 
-// 
-// 
-//     // Calculate average edge normals
-//     vectorField edgeNormals(pp.nEdges(), Zero);
-//     forAll(edgeNormals, edgei)
-//     {
-//         const labelList& eFaces = edgeFaces[edgei];
-//         forAll(eFaces, i)
-//         {
-//             edgeNormals[edgei] += faceNormals[eFaces[i]];
-//         }
-//     }
-//     edgeNormals /= mag(edgeNormals)+VSMALL;
-// 
-// 
-// 
-//     pointNormals.setSize(s.nPoints());
-//     pointNormals = Zero;
-// 
-//     forAll(faceEdges, facei)
-//     {
-//         const labelList& fEdges = faceEdges[facei];
-// 
-//         forAll(fEdges, i)
-//         {
-//             label edgei = fEdges[i];
-//             vector edgeN;
-//             if (isBorderEdge[edgei])
-//             {
-//                 edgeN = faceNormals[facei];
-//             }
-//             else
-//             {
-//                 edgeN = edgeNormals[edgei];
-//             }
-// 
-//             const edge& e = edges[edgei];
-//             pointNormals[e[0]] += edgeN;
-//             pointNormals[e[1]] += edgeN;
-//         }
-//     }
-// 
-//     pointNormals /= mag(pointNormals)+VSMALL;
-// }
-
 void Foam::smoothTriSurfaceMesh::calcFeatureEdges
 (
     const scalar featureAngle
@@ -117,6 +50,7 @@ void Foam::smoothTriSurfaceMesh::calcFeatureEdges
     const triSurface& s = static_cast<const triSurface&>(*this);
     const labelListList& edgeFaces = s.edgeFaces();
     const vectorField& faceNormals = s.faceNormals();
+    const edgeList& edges = s.edges();
 
     forAll(edgeFaces, edgei)
     {
@@ -136,20 +70,149 @@ void Foam::smoothTriSurfaceMesh::calcFeatureEdges
             }
         }
     }
+
+    forAll(isBorderEdge_, edgei)
+    {
+        if (isBorderEdge_[edgei])
+        {
+            const edge& e = edges[edgei];
+            isPointOnBorderEdge_[e[0]] = true;
+            isPointOnBorderEdge_[e[1]] = true;
+        }
+    }
+}
+
+
+Foam::vector Foam::smoothTriSurfaceMesh::pointNormal
+(
+    const label startFacei,
+    const label localPointi
+) const
+{
+    if (!isPointOnBorderEdge_[localPointi])
+    {
+        return pointNormals()[localPointi];
+    }
+
+
+    // Calculate the local point normal on the face. This routine
+    // only gets called if the point is on a border edge so we can
+    // walk and always hit a border edge.
+
+    const edgeList& edges = triSurface::edges();
+    const labelList& fEdges = faceEdges()[startFacei];
+
+    // Get the two edges on the point
+    label e0 = -1;
+    label e1 = -1;
+    forAll(fEdges, i)
+    {
+        const edge& e = edges[fEdges[i]];
+        if (e.otherVertex(localPointi) == -1)
+        {
+            e0 = fEdges[fEdges.rcIndex(i)];
+            e1 = fEdges[fEdges.fcIndex(i)];
+            break;
+        }
+    }
+
+    label facei = startFacei;
+    label edgei = e0;
+
+    // Initialise normal
+    vector n(faceNormals()[facei]);
+
+    while (!isBorderEdge_[edgei])
+    {
+        // Cross edge to next face
+        const labelList& eFaces = edgeFaces()[edgei];
+        if (eFaces.size() != 2)
+        {
+            break;
+        }
+
+        forAll(eFaces, i)
+        {
+            if (eFaces[i] != facei)
+            {
+                facei = eFaces[i];
+                break;
+            }
+        }
+
+        if (facei == startFacei)
+        {
+            break;
+        }
+
+        n += faceNormals()[facei];
+
+        // Cross face to next edge
+        const labelList& fEdges = faceEdges()[facei];
+
+        forAll(fEdges, i)
+        {
+            label ei = fEdges[i];
+            if (ei != edgei && edges[ei].otherVertex(localPointi) != -1)
+            {
+                edgei = ei;
+                break;
+            }
+        }
+    }
+
+
+    // Walk in other direction
+    {
+
+        facei = startFacei;
+        edgei = e1;
+
+        while (!isBorderEdge_[edgei])
+        {
+            // Cross edge to next face
+            const labelList& eFaces = edgeFaces()[edgei];
+            if (eFaces.size() != 2)
+            {
+                break;
+            }
+
+            forAll(eFaces, i)
+            {
+                if (eFaces[i] != facei)
+                {
+                    facei = eFaces[i];
+                    break;
+                }
+            }
+
+            if (facei == startFacei)
+            {
+                break;
+            }
+
+            n += faceNormals()[facei];
+
+            // Cross face to next edge
+            const labelList& fEdges = faceEdges()[facei];
+
+            forAll(fEdges, i)
+            {
+                label ei = fEdges[i];
+                if (ei != edgei && edges[ei].otherVertex(localPointi) != -1)
+                {
+                    edgei = ei;
+                    break;
+                }
+            }
+        }
+    }
+
+    return n/(mag(n)+VSMALL);
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-// Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
-// (
-//     const IOobject& io,
-//     const triSurface& s
-// )
-// :
-//     triSurfaceMesh(io, s)
-// {}
-
 
 Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
 (
@@ -158,7 +221,8 @@ Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
 )
 :
     triSurfaceMesh(io),
-    isBorderEdge_(nEdges())
+    isBorderEdge_(nEdges()),
+    isPointOnBorderEdge_(nPoints())
 {
     calcFeatureEdges(featureAngle);
 }
@@ -171,7 +235,8 @@ Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
 )
 :
     triSurfaceMesh(io, dict),
-    isBorderEdge_(nEdges())
+    isBorderEdge_(nEdges()),
+    isPointOnBorderEdge_(nPoints())
 {
     if (dict.found("featureAngle"))
     {
@@ -196,9 +261,6 @@ void Foam::smoothTriSurfaceMesh::getNormal
 {
     const triSurface& s = static_cast<const triSurface&>(*this);
     const pointField& pts = s.points();
-    const labelListList& faceEdges = s.faceEdges();
-    const labelListList& edgeFaces = s.edgeFaces();
-    const vectorField& faceNormals = s.faceNormals();
 
     normal.setSize(info.size());
 
@@ -207,54 +269,20 @@ void Foam::smoothTriSurfaceMesh::getNormal
         if (info[i].hit())
         {
             label facei = info[i].index();
-            const labelList& fEdges = faceEdges[facei];
-
-            // Get local point normals
-            FixedList<vector, 3> n(Zero);
-            forAll(fEdges, fEdgei)
-            {
-                label edgei = fEdges[fEdgei];
-
-                vector edgeN;
-                if (!isBorderEdge_[edgei])
-                {
-                    const labelList& eFaces = edgeFaces[edgei];
-
-                    edgeN = Zero;
-                    forAll(eFaces, eFacei)
-                    {
-                        edgeN += faceNormals[eFaces[eFacei]];
-                    }
-                    edgeN /= mag(edgeN) + VSMALL;
-                }
-                else
-                {
-                    edgeN = faceNormals[facei];
-                }
-                n[fEdgei] += edgeN;
-                n[n.fcIndex(fEdgei)] += edgeN;
-            }
-
-            forAll(n, ni)
-            {
-                n[ni] /= mag(n[ni]) + VSMALL;
-            }
 
             // Get local coordinates in triangle
             FixedList<scalar, 3> coordinates;
             s[facei].tri(pts).barycentric(info[i].hitPoint(), coordinates);
 
-            forAll(coordinates, ci)
-            {
-                normal[i] = coordinates[ci]*n[ci];
-                normal[i] /= mag(normal[i]) + VSMALL;
-            }
+            // Average point normals
+            const triFace& localTri = s.localFaces()[facei];
 
-            Pout<< "face:" << facei << nl
-                << "    fc:" << faceCentres()[facei] << nl
-                << "    n:" << faceNormals[facei] << nl
-                << "    smooth:" << normal[i] << nl
-                << endl;
+            vector n(Zero);
+            forAll(localTri, fp)
+            {
+                n += coordinates[fp]*pointNormal(facei, localTri[fp]);
+            }
+            normal[i] = n/(mag(n)+VSMALL);
         }
         else
         {

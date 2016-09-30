@@ -62,8 +62,15 @@ private:
         //- Edges with discontinuity
         PackedBoolList isBorderEdge_;
 
+        //- Points on border edges
+        PackedBoolList isPointOnBorderEdge_;
+
         //- Mark feature edges
         void calcFeatureEdges(const scalar featureAngle);
+
+        //- Calculate local point normal
+        vector pointNormal(const label, const label) const;
+
 
         //- Disallow default bitwise copy construct
         smoothTriSurfaceMesh(const triSurfaceMesh&);
@@ -79,9 +86,6 @@ public:
 
 
     // Constructors
-
-//        //- Construct from triSurface
-//        smoothTriSurfaceMesh(const IOobject&, const triSurface&);
 
         //- Construct read, specify feature angle
         smoothTriSurfaceMesh(const IOobject& io, const scalar featureAngle);
