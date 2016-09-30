@@ -1,4 +1,4 @@
-/* smoothTriSurfaceMesh.C */
+smoothTriSurfaceMesh.C
 Test-projectPoints.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-projectPoints
