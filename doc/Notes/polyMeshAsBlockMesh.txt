@@ -14,6 +14,16 @@ If we want to use polyMesh as basis for 'dynamic' blockMesh
     - description of edges (a pair of mesh points)
     - edge-patches on these edges
 
+Mesh macros:
+0- mesh macro is just a polyMesh in a region
+1- each initial block has 6 patches
+2- stitch blocks together (giving patches to stitch and starting point)
+3- optionally merge 'coplanar' patches into single patch
+   Now you have a new macro which is just a new mesh.
+4- loop to 2
+
+
+
 Then generating your proper polyMesh is 'just' a matter of
 - refining in various directions
 - maintaining ordering
@@ -21,6 +31,9 @@ Then generating your proper polyMesh is 'just' a matter of
     - ij for points on patches
     - ijk for internal points
 - moving the points
-    - needs correspondence between edges and edge of geometry
-      (might be implicit through intersections of two surfaces)
-    - needs correspondence between patches and surface of geometry
+    - user defined:
+        - structured interpolation (optional grading)
+        - structured interpolation plus 'nearest' to surface
+        - needs correspondence between edges and edge of geometry
+          (might be implicit through intersections of two surfaces)
+        - needs correspondence between patches and surface of geometry
