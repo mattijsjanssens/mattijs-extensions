@@ -38,6 +38,8 @@ Description
 #include "lineEdge.H"
 #include "lineDivide.H"
 #include "gradingDescriptors.H"
+#include "triSurfaceMesh.H"
+#include "unitConversion.H"
 
 using namespace Foam;
 
@@ -181,6 +183,43 @@ void smooth
     }
 }
 
+void calcFeatureEdges
+(
+    const triSurface& s,
+    const scalar featureAngle,
+    PackedBoolList& isBorderEdge
+)
+{
+    isBorderEdge.setSize(s.nEdges());
+    isBorderEdge = false;
+
+    scalar cosAngle = Foam::cos(degToRad(featureAngle));
+
+    const labelListList& edgeFaces = s.edgeFaces();
+    const vectorField& faceNormals = s.faceNormals();
+
+    forAll(edgeFaces, edgei)
+    {
+        const labelList& eFaces = edgeFaces[edgei];
+
+        if (eFaces.size() > 2)
+        {
+            isBorderEdge[edgei] = true;
+        }
+        else if (eFaces.size() == 2)
+        {
+            const vector& n0 = faceNormals[eFaces[0]];
+            const vector& n1 = faceNormals[eFaces[1]];
+            if ((n0&n1) < cosAngle)
+            {
+                isBorderEdge[edgei] = true;
+                Pout<< "MArking feature edge " << edgei
+                    << " at " << s.edges()[edgei].centre(s.localPoints())
+                    << endl;
+            }
+        }
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -224,6 +263,30 @@ int main(int argc, char *argv[])
     //const labelList patchIDs(pbm.patchSet(patches).sortedToc());
 
 
+    if (false)
+    {
+        OBJstream str("normals.obj");
+
+        pointField patchNear(pp.localPoints());
+        List<pointConstraint> patchConstraint(pp.nPoints());
+        findNearest
+        (
+            allGeometry,
+            labelList(1, 0),
+            pp.localPoints(),
+            scalarField(pp.nPoints(), GREAT),
+            patchNear,
+            patchConstraint
+        );
+        forAll(patchConstraint, i)
+        {
+            const vector& n = patchConstraint[i].second();
+            str.write(linePointRef(patchNear[i], patchNear[i]+0.1*n));
+        }
+        return 1;
+    }
+
+    if (false)
     {
         // Surfaces to track on intersection
         labelList surfs(2);
@@ -310,30 +373,6 @@ int main(int argc, char *argv[])
 
         return 1;
     }
-
-
-//    // Scan patches to find feature line points and feature points:
-//    // construct map from mesh point to set of patches
-//    Map<labelList> pointToPatches;
-//    forAll(patchIDs, i)
-//    {
-//        label patchi = patchIDs[i];
-//        const labelList& meshPPoints = pbm[patchi].meshPoints();
-//        const labelList& boundaryPoints = pbm[patchi].boundaryPoints();
-//        forAll(boundaryPoints, bPointi)
-//        {
-//            label meshPointi = meshPPoints[bPointi];
-//            Map<labelList>::iterator iter = pointToPatches.find(meshPointi);
-//            if (iter == pointToPatches.end())
-//            {
-//                pointToPatches.insert(meshPointi, labelList(1, i));
-//            }
-//            else
-//            {
-//                iter().append(i);
-//            }
-//        }
-//    }
 
 
 

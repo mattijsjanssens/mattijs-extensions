@@ -16,9 +16,9 @@ FoamFile
 
 geometry
 {
-    sphere1.vtk
+    sphere1_coarse.vtk
     {
-        type triSurfaceMesh;
+        type smoothTriSurfaceMesh;
     }
 //    sphere1
 //    {
@@ -26,9 +26,9 @@ geometry
 //        centre  (0.7 0.5 0.5);
 //        radius  0.7;
 //    }
-    sphere2.vtk
+    sphere2_coarse.vtk
     {
-        type triSurfaceMesh;
+        type smoothTriSurfaceMesh;
     }
     minX.vtk
     {

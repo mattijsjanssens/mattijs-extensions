@@ -42,6 +42,7 @@ SourceFiles
 #define smoothTriSurfaceMesh_H
 
 #include "triSurfaceMesh.H"
+#include "PackedBoolList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -58,6 +59,19 @@ class smoothTriSurfaceMesh
 {
 private:
 
+        //- Edges with discontinuity
+        PackedBoolList isBorderEdge_;
+
+        //- Points on border edges
+        PackedBoolList isPointOnBorderEdge_;
+
+        //- Mark feature edges
+        void calcFeatureEdges(const scalar featureAngle);
+
+        //- Calculate local point normal
+        vector pointNormal(const label, const label) const;
+
+
         //- Disallow default bitwise copy construct
         smoothTriSurfaceMesh(const triSurfaceMesh&);
 
@@ -73,11 +87,8 @@ public:
 
     // Constructors
 
-        //- Construct from triSurface
-        smoothTriSurfaceMesh(const IOobject&, const triSurface&);
-
-        //- Construct read.
-        smoothTriSurfaceMesh(const IOobject& io);
+        //- Construct read, specify feature angle
+        smoothTriSurfaceMesh(const IOobject& io, const scalar featureAngle);
 
         //- Construct from IO and dictionary (used by searchableSurface).
         //  Dictionary may contain a 'scale' entry (eg, 0.001: mm -> m)

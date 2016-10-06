@@ -24,12 +24,8 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "smoothTriSurfaceMesh.H"
-#include "Random.H"
 #include "addToRunTimeSelectionTable.H"
-#include "EdgeMap.H"
-#include "triSurfaceFields.H"
-#include "Time.H"
-#include "PatchTools.H"
+#include "unitConversion.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -42,22 +38,194 @@ addToRunTimeSelectionTable(searchableSurface, smoothTriSurfaceMesh, dict);
 }
 
 
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::smoothTriSurfaceMesh::calcFeatureEdges
+(
+    const scalar featureAngle
+)
+{
+    scalar cosAngle = Foam::cos(degToRad(featureAngle));
+
+    const triSurface& s = static_cast<const triSurface&>(*this);
+    const labelListList& edgeFaces = s.edgeFaces();
+    const vectorField& faceNormals = s.faceNormals();
+    const edgeList& edges = s.edges();
+
+    forAll(edgeFaces, edgei)
+    {
+        const labelList& eFaces = edgeFaces[edgei];
+
+        if (eFaces.size() > 2)
+        {
+            isBorderEdge_[edgei] = true;
+        }
+        else if (eFaces.size() == 2)
+        {
+            const vector& n0 = faceNormals[eFaces[0]];
+            const vector& n1 = faceNormals[eFaces[1]];
+            if ((n0&n1) < cosAngle)
+            {
+                isBorderEdge_[edgei] = true;
+            }
+        }
+    }
+
+    forAll(isBorderEdge_, edgei)
+    {
+        if (isBorderEdge_[edgei])
+        {
+            const edge& e = edges[edgei];
+            isPointOnBorderEdge_[e[0]] = true;
+            isPointOnBorderEdge_[e[1]] = true;
+        }
+    }
+}
+
+
+Foam::vector Foam::smoothTriSurfaceMesh::pointNormal
+(
+    const label startFacei,
+    const label localPointi
+) const
+{
+    if (!isPointOnBorderEdge_[localPointi])
+    {
+        return pointNormals()[localPointi];
+    }
+
+
+    // Calculate the local point normal on the face. This routine
+    // only gets called if the point is on a border edge so we can
+    // walk and always hit a border edge.
+
+    const edgeList& edges = triSurface::edges();
+    const labelList& fEdges = faceEdges()[startFacei];
+
+    // Get the two edges on the point
+    label e0 = -1;
+    label e1 = -1;
+    forAll(fEdges, i)
+    {
+        const edge& e = edges[fEdges[i]];
+        if (e.otherVertex(localPointi) == -1)
+        {
+            e0 = fEdges[fEdges.rcIndex(i)];
+            e1 = fEdges[fEdges.fcIndex(i)];
+            break;
+        }
+    }
+
+    label facei = startFacei;
+    label edgei = e0;
+
+    // Initialise normal
+    vector n(faceNormals()[facei]);
+
+    while (!isBorderEdge_[edgei])
+    {
+        // Cross edge to next face
+        const labelList& eFaces = edgeFaces()[edgei];
+        if (eFaces.size() != 2)
+        {
+            break;
+        }
+
+        forAll(eFaces, i)
+        {
+            if (eFaces[i] != facei)
+            {
+                facei = eFaces[i];
+                break;
+            }
+        }
+
+        if (facei == startFacei)
+        {
+            break;
+        }
+
+        n += faceNormals()[facei];
+
+        // Cross face to next edge
+        const labelList& fEdges = faceEdges()[facei];
+
+        forAll(fEdges, i)
+        {
+            label ei = fEdges[i];
+            if (ei != edgei && edges[ei].otherVertex(localPointi) != -1)
+            {
+                edgei = ei;
+                break;
+            }
+        }
+    }
+
+
+    // Walk in other direction
+    {
+
+        facei = startFacei;
+        edgei = e1;
+
+        while (!isBorderEdge_[edgei])
+        {
+            // Cross edge to next face
+            const labelList& eFaces = edgeFaces()[edgei];
+            if (eFaces.size() != 2)
+            {
+                break;
+            }
+
+            forAll(eFaces, i)
+            {
+                if (eFaces[i] != facei)
+                {
+                    facei = eFaces[i];
+                    break;
+                }
+            }
+
+            if (facei == startFacei)
+            {
+                break;
+            }
+
+            n += faceNormals()[facei];
+
+            // Cross face to next edge
+            const labelList& fEdges = faceEdges()[facei];
+
+            forAll(fEdges, i)
+            {
+                label ei = fEdges[i];
+                if (ei != edgei && edges[ei].otherVertex(localPointi) != -1)
+                {
+                    edgei = ei;
+                    break;
+                }
+            }
+        }
+    }
+
+    return n/(mag(n)+VSMALL);
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
 (
     const IOobject& io,
-    const triSurface& s
+    const scalar featureAngle
 )
 :
-    triSurfaceMesh(io, s)
-{}
-
-
-Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh(const IOobject& io)
-:
-    triSurfaceMesh(io)
-{}
+    triSurfaceMesh(io),
+    isBorderEdge_(nEdges()),
+    isPointOnBorderEdge_(nPoints())
+{
+    calcFeatureEdges(featureAngle);
+}
 
 
 Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
@@ -66,13 +234,20 @@ Foam::smoothTriSurfaceMesh::smoothTriSurfaceMesh
     const dictionary& dict
 )
 :
-    triSurfaceMesh(io, dict)
-{}
+    triSurfaceMesh(io, dict),
+    isBorderEdge_(nEdges()),
+    isPointOnBorderEdge_(nPoints())
+{
+    if (dict.found("featureAngle"))
+    {
+        calcFeatureEdges(readScalar(dict.lookup("featureAngle")));
+    }
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::smoothTriSurfaceMesh::~triSurfaceMesh()
+Foam::smoothTriSurfaceMesh::~smoothTriSurfaceMesh()
 {}
 
 
@@ -89,177 +264,32 @@ void Foam::smoothTriSurfaceMesh::getNormal
 
     normal.setSize(info.size());
 
-    if (minQuality_ >= 0)
+    forAll(info, i)
     {
-        // Make sure we don't use triangles with low quality since
-        // normal is not reliable.
-
-        const labelListList& faceFaces = s.faceFaces();
-
-        forAll(info, i)
+        if (info[i].hit())
         {
-            if (info[i].hit())
+            label facei = info[i].index();
+
+            // Get local coordinates in triangle
+            FixedList<scalar, 3> coordinates;
+            s[facei].tri(pts).barycentric(info[i].hitPoint(), coordinates);
+
+            // Average point normals
+            const triFace& localTri = s.localFaces()[facei];
+
+            vector n(Zero);
+            forAll(localTri, fp)
             {
-                label facei = info[i].index();
-                normal[i] = s[facei].normal(pts);
-
-                scalar qual = s[facei].tri(pts).quality();
-
-                if (qual < minQuality_)
-                {
-                    // Search neighbouring triangles
-                    const labelList& fFaces = faceFaces[facei];
-
-                    forAll(fFaces, j)
-                    {
-                        label nbrI = fFaces[j];
-                        scalar nbrQual = s[nbrI].tri(pts).quality();
-                        if (nbrQual > qual)
-                        {
-                            qual = nbrQual;
-                            normal[i] = s[nbrI].normal(pts);
-                        }
-                    }
-                }
-
-                normal[i] /= mag(normal[i]) + VSMALL;
+                n += coordinates[fp]*pointNormal(facei, localTri[fp]);
             }
-            else
-            {
-                // Set to what?
-                normal[i] = Zero;
-            }
-        }
-    }
-    else
-    {
-        forAll(info, i)
-        {
-            if (info[i].hit())
-            {
-                label facei = info[i].index();
-                // Cached:
-                //normal[i] = faceNormals()[facei];
-
-                // Uncached
-                normal[i] = s[facei].normal(pts);
-                normal[i] /= mag(normal[i]) + VSMALL;
-            }
-            else
-            {
-                // Set to what?
-                normal[i] = Zero;
-            }
-        }
-    }
-}
-
-
-void Foam::smoothTriSurfaceMesh::setField(const labelList& values)
-{
-    autoPtr<triSurfaceLabelField> fldPtr
-    (
-        new triSurfaceLabelField
-        (
-            IOobject
-            (
-                "values",
-                objectRegistry::time().timeName(),  // instance
-                "triSurface",                       // local
-                *this,
-                IOobject::NO_READ,
-                IOobject::AUTO_WRITE
-            ),
-            *this,
-            dimless,
-            labelField(values)
-        )
-    );
-
-    // Store field on triMesh
-    fldPtr.ptr()->store();
-}
-
-
-void Foam::smoothTriSurfaceMesh::getField
-(
-    const List<pointIndexHit>& info,
-    labelList& values
-) const
-{
-    if (foundObject<triSurfaceLabelField>("values"))
-    {
-        values.setSize(info.size());
-
-        const triSurfaceLabelField& fld = lookupObject<triSurfaceLabelField>
-        (
-            "values"
-        );
-
-        forAll(info, i)
-        {
-            if (info[i].hit())
-            {
-                values[i] = fld[info[i].index()];
-            }
-        }
-    }
-}
-
-
-void Foam::smoothTriSurfaceMesh::getVolumeType
-(
-    const pointField& points,
-    List<volumeType>& volType
-) const
-{
-    volType.setSize(points.size());
-
-    scalar oldTol = indexedOctree<treeDataTriSurface>::perturbTol();
-    indexedOctree<treeDataTriSurface>::perturbTol() = tolerance();
-
-    forAll(points, pointi)
-    {
-        const point& pt = points[pointi];
-
-        if (!tree().bb().contains(pt))
-        {
-            // Have to calculate directly as outside the octree
-            volType[pointi] = tree().shapes().getVolumeType(tree(), pt);
+            normal[i] = n/(mag(n)+VSMALL);
         }
         else
         {
-            // - use cached volume type per each tree node
-            volType[pointi] = tree().getVolumeType(pt);
+            // Set to what?
+            normal[i] = Zero;
         }
     }
-
-    indexedOctree<treeDataTriSurface>::perturbTol() = oldTol;
-}
-
-
-bool Foam::smoothTriSurfaceMesh::writeObject
-(
-    IOstream::streamFormat fmt,
-    IOstream::versionNumber ver,
-    IOstream::compressionType cmp
-) const
-{
-    fileName fullPath(searchableSurface::objectPath());
-
-    if (!mkDir(fullPath.path()))
-    {
-        return false;
-    }
-
-    triSurface::write(fullPath);
-
-    if (!isFile(fullPath))
-    {
-        return false;
-    }
-
-    return true;
 }
 
 
