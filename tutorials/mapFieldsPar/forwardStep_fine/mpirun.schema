@@ -1,5 +1,0 @@
--np 1 xterm -font fixed -title 'processor'0 -geometry 120x15+0+0 -e /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/mapFieldsPar/forwardStep_fine/processor0.sh
--np 1 xterm -font fixed -title 'processor'1 -geometry 120x15+0+200 -e /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/mapFieldsPar/forwardStep_fine/processor1.sh
--np 1 xterm -font fixed -title 'processor'2 -geometry 120x15+0+400 -e /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/mapFieldsPar/forwardStep_fine/processor2.sh
--np 1 xterm -font fixed -title 'processor'3 -geometry 120x15+0+600 -e /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/mapFieldsPar/forwardStep_fine/processor3.sh
--np 1 xterm -font fixed -title 'processor'4 -geometry 120x15+0+800 -e /home/dm2/mattijs/OpenFOAM/mattijs-extensions/tutorials/mapFieldsPar/forwardStep_fine/processor4.sh
