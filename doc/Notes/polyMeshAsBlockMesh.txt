@@ -1,3 +1,16 @@
+- If you're making a correspondence between geometry and (block)mesh
+
+- we want to have a correspondence between blockMesh and geometry, so special
+handling (e.g. surface attraction) for faces and selected edges and points.
+- I would like to see that preserved in the polyMesh so we can reuse that
+correspondence when e.g. mesh morphing.
+- the polyMesh does have face information through patches, what is missing is
+edge-based patches and point-based patches.
+- we can extend pointMesh / pointPatches to have I/O or extend the polyMesh to
+include this information.
+
+
+
 blockMesh:
 topology:
 - blocks
