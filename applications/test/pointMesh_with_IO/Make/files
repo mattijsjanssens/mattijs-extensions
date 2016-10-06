@@ -1,0 +1,53 @@
+pointMesh  =  pointMesh
+pointMeshPointBoundaryMesh  =  pointMesh/pointBoundaryMesh
+pointMeshPointMeshMapper  =  pointMesh/pointMeshMapper
+pointMeshPointPatches  =  pointMesh/pointPatches
+pointMeshPointPatchesDerived  =  pointMesh/pointPatches/derived
+pointMeshPointPatchesDerivedCoupled  =  pointMesh/pointPatches/derived/coupled
+pointMeshPointPatchesDerivedWall  =  pointMesh/pointPatches/derived/wall
+pointMeshPointPatchesPointPatch  =  pointMesh/pointPatches/pointPatch
+pointMeshPointPatchesConstraint  =  pointMesh/pointPatches/constraint
+pointMeshPointPatchesConstraintCyclicSlip  =  pointMesh/pointPatches/constraint/cyclicSlip
+pointMeshPointPatchesConstraintProcessorCyclic  =  pointMesh/pointPatches/constraint/processorCyclic
+pointMeshPointPatchesConstraintEmpty  =  pointMesh/pointPatches/constraint/empty
+pointMeshPointPatchesConstraintSymmetry  =  pointMesh/pointPatches/constraint/symmetry
+pointMeshPointPatchesConstraintNonuniformTransformCyclic  =  pointMesh/pointPatches/constraint/nonuniformTransformCyclic
+pointMeshPointPatchesConstraintSymmetryPlane  =  pointMesh/pointPatches/constraint/symmetryPlane
+pointMeshPointPatchesConstraintCyclic  =  pointMesh/pointPatches/constraint/cyclic
+pointMeshPointPatchesConstraintProcessor  =  pointMesh/pointPatches/constraint/processor
+pointMeshPointPatchesConstraintWedge  =  pointMesh/pointPatches/constraint/wedge
+pointMeshPointPatchesBasic  =  pointMesh/pointPatches/basic
+pointMeshPointPatchesBasicCoupled  =  pointMesh/pointPatches/basic/coupled
+pointMeshPointPatchesBasicGeneric  =  pointMesh/pointPatches/basic/generic
+pointMeshPointPatchesFacePointPatch  =  pointMesh/pointPatches/facePointPatch
+
+$(pointMeshPointBoundaryMesh)/pointBoundaryMesh.C
+/*
+$(pointMeshPointMeshMapper)/pointMapper.C
+$(pointMeshPointMeshMapper)/pointPatchMapper.C
+$(pointMeshPointPatchesDerivedCoupled)/coupledFacePointPatch.C
+$(pointMeshPointPatchesDerivedWall)/wallPointPatch.C
+*/
+$(pointMeshPointPatchesPointPatch)/pointPatch.C
+$(pointMeshPointPatchesPointPatch)/pointPatchNew.C
+$(pointMeshPointPatchesDerived)/fixedConstraint/fixedConstraintPointPatch.C
+
+/*
+$(pointMeshPointPatchesConstraintCyclicSlip)/cyclicSlipPointPatch.C
+$(pointMeshPointPatchesConstraintProcessorCyclic)/processorCyclicPointPatch.C
+$(pointMeshPointPatchesConstraintEmpty)/emptyPointPatch.C
+$(pointMeshPointPatchesConstraintSymmetry)/symmetryPointPatch.C
+$(pointMeshPointPatchesConstraintNonuniformTransformCyclic)/nonuniformTransformCyclicPointPatch.C
+$(pointMeshPointPatchesConstraintSymmetryPlane)/symmetryPlanePointPatch.C
+$(pointMeshPointPatchesConstraintCyclic)/cyclicPointPatch.C
+$(pointMeshPointPatchesConstraintProcessor)/processorPointPatch.C
+$(pointMeshPointPatchesConstraintWedge)/wedgePointPatch.C
+$(pointMeshPointPatchesBasicCoupled)/coupledPointPatch.C
+$(pointMeshPointPatchesBasicGeneric)/genericPointPatch.C
+$(pointMeshPointPatchesFacePointPatch)/facePointPatch.C
+$(pointMeshPointPatchesFacePointPatch)/facePointPatchNew.C
+*/
+$(pointMesh)/pointMesh.C
+Test-pointMesh.C
+
+EXE = $(FOAM_USER_APPBIN)/pointMesh_with_IO

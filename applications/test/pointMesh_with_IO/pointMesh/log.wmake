@@ -1,0 +1,3 @@
+wmake: 'Make' directory does not exist in /home/mattijs/OpenFOAM/mattijs-extensions/applications/test/pointMesh_with_IO/pointMesh
+    Searching up directories tree for Make directory
+make: '/home/mattijs/OpenFOAM/mattijs-dev/platforms/linux64GccDPInt32Opt/bin/pointMesh_with_IO' is up to date.
