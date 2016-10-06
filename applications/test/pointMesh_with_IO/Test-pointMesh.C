@@ -29,9 +29,10 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
-#include "pointMesh.H"
 #include "Time.H"
 #include "polyMesh.H"
+#include "pointMesh.H"
+#include "pointFields.H"
 
 using namespace Foam;
 
@@ -46,6 +47,51 @@ int main(int argc, char *argv[])
     runTime.functionObjects().off();
     #include "createPolyMesh.H"
     #include "createPointMesh.H"
+
+    // Read meshing dictionary
+    const word dictName("snappyHexMeshDict");
+    #include "setSystemMeshDictionaryIO.H"
+    const IOdictionary meshDict(dictIO);
+
+    // all surface geometry
+    const dictionary& geometryDict = meshDict.subDict("geometry");
+
+    searchableSurfaces allGeometry
+    (
+        IOobject
+        (
+            "abc",                      // dummy name
+            mesh.time().constant(),     // instance
+            "triSurface",               // local
+            mesh.time(),                // registry
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
+        ),
+        geometryDict,
+        meshDict.lookupOrDefault("singleRegionName", true)
+    );
+
+
+    // Read pointDisplacement
+    pointVectorField pointDisplacement
+    (
+        IOobject
+        (
+            "pointDisplacement",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        pMesh
+    );
+
+    DebugVar(pointDisplacement);
+
+    runTime++;
+    pointDisplacement.correctBoundaryConditions();
+    pointDisplacement.write();
+
 
     Info<< "End\n" << endl;
     return 0;

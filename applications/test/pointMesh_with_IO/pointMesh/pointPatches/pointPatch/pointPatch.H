@@ -185,7 +185,7 @@ public:
         }
 
         //- Return mesh points
-        virtual const labelList& meshPoints() const = 0;
+        virtual const labelUList& meshPoints() const = 0;
 
         //- Return mesh points
         virtual const vectorField& localPoints() const = 0;

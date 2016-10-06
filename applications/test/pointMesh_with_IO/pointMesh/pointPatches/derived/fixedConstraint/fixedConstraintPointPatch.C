@@ -64,15 +64,24 @@ Foam::fixedConstraintPointPatch::fixedConstraintPointPatch
 )
 :
     pointPatch(bm),
-    name_(name),
-    index_(index),
-    meshPoints_(dict.lookup("meshPoints")),
+    patchIdentifier(name, index),
+//    name_(name),
+//    index_(index),
+//    meshPoints_(dict.lookup("meshPoints")),
+    start_(readLabel(dict.lookup("start"))),
+    size_(readLabel(dict.lookup("nPoints"))),
+    meshPoints_
+    (
+        boundaryMesh().mesh().meshPoints(),
+        size_,
+        start_
+    ),
     constraints_(dict.lookup("constraints"))
 {
-    if (meshPoints_.size() != constraints_.size())
+    if (size_ != constraints_.size())
     {
-        FatalErrorInFunction << "patch " << name_
-            << " size of meshPoints " << meshPoints_.size()
+        FatalErrorInFunction << "patch " << name
+            << " size of meshPoints " << size_
             << " differs from size of constraints " << constraints_.size()
             << exit(FatalError);
     }
@@ -80,6 +89,17 @@ Foam::fixedConstraintPointPatch::fixedConstraintPointPatch
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+//const Foam::labelUList& Foam::fixedConstraintPointPatch::meshPoints() const
+//{
+//    return SubList<label>
+//    (
+//        boundaryMesh().mesh().meshPoints(),
+//        constraints_.size(),
+//        start_
+//    );
+//}
+
 
 const Foam::pointField& Foam::fixedConstraintPointPatch::localPoints() const
 {
@@ -97,7 +117,7 @@ const Foam::vectorField& Foam::fixedConstraintPointPatch::pointNormals() const
 {
     if (!pointNormalsPtr_.valid())
     {
-        pointNormalsPtr_.reset(new vectorField(constraints_.size()));
+        pointNormalsPtr_.reset(new vectorField(size_));
         vectorField& pointNormals = pointNormalsPtr_();
         forAll(constraints_, i)
         {
@@ -108,20 +128,37 @@ const Foam::vectorField& Foam::fixedConstraintPointPatch::pointNormals() const
 }
 
 
+void Foam::fixedConstraintPointPatch::applyConstraint
+(
+    const label pointi,
+    pointConstraint& pc
+) const
+{
+    pc.combine(constraints_[pointi]);
+}
+
+
 void Foam::fixedConstraintPointPatch::setConstraints
 (
     const List<pointConstraint>& pc
 )
 {
     constraints_ = pc;
+    localPointsPtr_.clear();
+    pointNormalsPtr_.clear();
 }
 
 
 void Foam::fixedConstraintPointPatch::write(Ostream& os) const
 {
     pointPatch::write(os);
-    os.writeKeyword("meshPoints")
-        << meshPoints() << token::END_STATEMENT << nl;
+
+//    os.writeKeyword("meshPoints")
+//        << meshPoints() << token::END_STATEMENT << nl;
+    os.writeKeyword("start")
+        << start_ << token::END_STATEMENT << nl;
+    os.writeKeyword("nPoints")
+        << size_ << token::END_STATEMENT << nl;
     os.writeKeyword("constraints")
         << constraints() << token::END_STATEMENT << nl;
 }

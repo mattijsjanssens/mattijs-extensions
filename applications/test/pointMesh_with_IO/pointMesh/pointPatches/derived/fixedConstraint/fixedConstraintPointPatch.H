@@ -38,6 +38,7 @@ SourceFiles
 #include "polyPatch.H"
 #include "autoPtr.H"
 #include "pointConstraint.H"
+#include "patchIdentifier.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,16 +51,25 @@ namespace Foam
 
 class fixedConstraintPointPatch
 :
-    public pointPatch
+    public pointPatch,
+    public patchIdentifier
 {
 
 protected:
 
-    const word name_;
+//    const word name_;
+//
+//    const label index_;
 
-    const label index_;
+//    labelList meshPoints_;
+//
+    // Slices of pointMesh
+    label start_;
 
-    labelList meshPoints_;
+    label size_;
+
+    SubList<label> meshPoints_;
+
 
     List<pointConstraint> constraints_;
 
@@ -97,23 +107,23 @@ public:
         //- Return name
         virtual const word& name() const
         {
-            return name_;
+            return patchIdentifier::name();
         }
 
         //- Return size
         virtual label size() const
         {
-            return meshPoints().size();
+            return size_;
         }
 
         //- Return the index of this patch in the pointBoundaryMesh
         virtual label index() const
         {
-            return index_;
+            return patchIdentifier::index();
         }
 
         //- Return mesh points
-        virtual const labelList& meshPoints() const
+        virtual const labelUList& meshPoints() const
         {
             return meshPoints_;
         }
@@ -141,8 +151,7 @@ public:
         (
             const label pointi,
             pointConstraint&
-        ) const
-        {}
+        ) const;
 
         virtual void setConstraints(const List<pointConstraint>&);
 

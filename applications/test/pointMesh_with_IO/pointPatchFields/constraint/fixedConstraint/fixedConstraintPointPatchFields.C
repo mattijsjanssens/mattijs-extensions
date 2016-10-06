@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,42 +23,21 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "pointPatch.H"
+#include "fixedConstraintPointPatchFields.H"
+#include "pointPatchFields.H"
+#include "addToRunTimeSelectionTable.H"
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(pointPatch, 0);
 
-    int pointPatch::disallowGenericPointPatch
-    (
-        debug::debugSwitch("disallowGenericPointPatch", 0)
-    );
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-    defineRunTimeSelectionTable(pointPatch, dictionary);
-}
+makePointPatchFields(fixedConstraint);
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-void Foam::pointPatch::write(Ostream& os) const
-{
-    os.writeKeyword("type") << type() << token::END_STATEMENT << nl;
-    //patchIdentifier::write(os);
-    //os.writeKeyword("nFaces") << size() << token::END_STATEMENT << nl;
-    //os.writeKeyword("startFace") << start() << token::END_STATEMENT << nl;
-}
-
-
-// * * * * * * * * * * * * * * * Friend Operators  * * * * * * * * * * * * * //
-
-Foam::Ostream& Foam::operator<<(Ostream& os, const pointPatch& p)
-{
-    p.write(os);
-    os.check("Ostream& operator<<(Ostream& os, const pointPatch& p");
-    return os;
-}
-
+} // End namespace Foam
 
 // ************************************************************************* //

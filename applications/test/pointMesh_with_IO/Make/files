@@ -31,7 +31,7 @@ $(pointMeshPointPatchesDerivedWall)/wallPointPatch.C
 $(pointMeshPointPatchesPointPatch)/pointPatch.C
 $(pointMeshPointPatchesPointPatch)/pointPatchNew.C
 $(pointMeshPointPatchesDerived)/fixedConstraint/fixedConstraintPointPatch.C
-
+pointPatchFields/constraint/fixedConstraint/fixedConstraintPointPatchFields.C
 /*
 $(pointMeshPointPatchesConstraintCyclicSlip)/cyclicSlipPointPatch.C
 $(pointMeshPointPatchesConstraintProcessorCyclic)/processorCyclicPointPatch.C

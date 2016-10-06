@@ -29,7 +29,7 @@ License
 #include "pointFields.H"
 #include "MapGeometricFields.H"
 #include "MapPointField.H"
-
+#include "mapPolyMesh.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -74,6 +74,34 @@ Foam::pointMesh::pointMesh(const polyMesh& pMesh)
 :
     MeshObject<polyMesh, Foam::UpdateableMeshObject, pointMesh>(pMesh),
     GeoMesh<polyMesh>(pMesh),
+    meshEdges_
+    (
+        IOobject
+        (
+            "meshEdges",
+            pMesh.facesInstance(),
+            meshSubDir,
+            thisDb(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        edgeList(0)
+    ),
+    meshPoints_
+    (
+        IOobject
+        (
+            "meshPoints",
+            pMesh.facesInstance(),
+            meshSubDir,
+            thisDb(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        labelList(0)
+    ),
     boundary_(*this, pMesh.boundaryMesh())
 {
     if (debug)
@@ -92,6 +120,34 @@ Foam::pointMesh::pointMesh(const IOobject& io, const polyMesh& pMesh)
 :
     MeshObject<polyMesh, Foam::UpdateableMeshObject, pointMesh>(pMesh),
     GeoMesh<polyMesh>(pMesh),
+    meshEdges_
+    (
+        IOobject
+        (
+            "meshEdges",
+            io.instance(),
+            meshSubDir,
+            thisDb(),
+            io.readOpt(),
+            io.writeOpt(),
+            false
+        ),
+        edgeList(0)
+    ),
+    meshPoints_
+    (
+        IOobject
+        (
+            "meshPoints",
+            io.instance(),
+            meshSubDir,
+            thisDb(),
+            io.readOpt(),
+            io.writeOpt(),
+            false
+        ),
+        labelList(0)
+    ),
     boundary_(io, *this, pMesh.boundaryMesh())
 {
     if (debug)
@@ -149,6 +205,18 @@ void Foam::pointMesh::updateMesh(const mapPolyMesh& mpm)
         Pout<< endl;
     }
     boundary_.updateMesh();
+
+    forAll(meshEdges_, edgei)
+    {
+        edge& e = meshEdges_[edgei];
+        e[0] = mpm.reversePointMap()[e[0]];
+        e[1] = mpm.reversePointMap()[e[1]];
+    }
+
+    forAll(meshPoints_, pointi)
+    {
+        meshPoints_[pointi] = mpm.reversePointMap()[meshPoints_[pointi]];
+    }
 
     // Map all registered point fields
     mapFields(mpm);

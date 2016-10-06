@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -36,6 +36,7 @@ Description
 #include "MeshObject.H"
 #include "polyMesh.H"
 #include "pointBoundaryMesh.H"
+#include "edgeIOList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -43,7 +44,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class pointMesh Declaration
+                          Class pointMesh Declaration
 \*---------------------------------------------------------------------------*/
 
 class pointMesh
@@ -52,6 +53,12 @@ class pointMesh
     public GeoMesh<polyMesh>
 {
     // Permanent data
+
+        //- Selected edges
+        edgeIOList meshEdges_;
+
+        //- Selected points
+        labelIOList meshPoints_;
 
         //- Boundary mesh
         pointBoundaryMesh boundary_;
@@ -128,6 +135,18 @@ public:
             return GeoMesh<polyMesh>::mesh_.thisDb();
         }
 
+        //- Selected edges
+        const edgeList& meshEdges() const
+        {
+            return meshEdges_;
+        }
+
+        //- Selected points
+        const labelList& meshPoints() const
+        {
+            return meshPoints_;
+        }
+
         //- Return the local mesh directory (dbDir()/meshSubDir)
         fileName meshDir() const;
 
@@ -135,10 +154,10 @@ public:
         // Mesh motion
 
             //- Move points
-            bool movePoints();
+            virtual bool movePoints();
 
             //- Update the mesh corresponding to given map
-            void updateMesh(const mapPolyMesh& mpm);
+            virtual void updateMesh(const mapPolyMesh& mpm);
 
 
     // Member Operators

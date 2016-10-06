@@ -9,28 +9,20 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       pointBoundaryMesh;
-    location    "constant/pointMesh";
-    object      boundary;
+    class       edgeList;
+    location    "constant/polyMesh";
+    object      meshEdges;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-1
+
+4
 (
-    featEdges
-    {
-        type            fixedConstraint;
-
-        //- Direct specification of meshPoints
-        //meshPoints      (2 3 6 7);
-
-        //- Or as slice of pointMesh
-        start           0;
-        nPoints         4;
-
-        //- Direct specification of constraints on points
-        constraints     ((0 (0 0 0)) (0 (0 0 0)) (0 (0 0 0)) (0 (0 0 0)));
-    }
+2(2 3)
+2(3 7)
+2(7 6)
+2(6 2)
 )
+
 
 // ************************************************************************* //

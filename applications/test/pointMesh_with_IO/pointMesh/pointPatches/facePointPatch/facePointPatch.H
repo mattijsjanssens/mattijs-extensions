@@ -178,7 +178,7 @@ public:
         }
 
         //- Return mesh points
-        virtual const labelList& meshPoints() const
+        virtual const labelUList& meshPoints() const
         {
             return polyPatch_.meshPoints();
         }
