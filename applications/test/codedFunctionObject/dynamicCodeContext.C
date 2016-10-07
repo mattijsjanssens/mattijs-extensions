@@ -50,22 +50,22 @@ void Foam::dynamicCodeContext::clear()
 }
 
 
-const Foam::string& Foam::dynamicCodeContext::filterVar
-(
-    const word& var,
-    const word& defaultVal
-) const
-{
-    HashTable<string>::const_iterator fnd = filterVars_.find(var);
-    if (fnd != filterVars_.end())
-    {
-        return var;
-    }
-    else
-    {
-        return defaultVal;
-    }
-}
+// const Foam::string& Foam::dynamicCodeContext::filterVar
+// (
+//     const word& var,
+//     const word& defaultVal
+// ) const
+// {
+//     HashTable<string>::const_iterator fnd = filterVars_.find(var);
+//     if (fnd != filterVars_.end())
+//     {
+//         return var;
+//     }
+//     else
+//     {
+//         return defaultVal;
+//     }
+// }
 
 
 void Foam::dynamicCodeContext::read(const dictionary& dict)

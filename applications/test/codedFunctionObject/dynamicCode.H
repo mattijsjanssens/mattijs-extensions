@@ -36,7 +36,7 @@ SourceFiles
 #define dynamicCode_H
 
 #include "Tuple2.H"
-#include "HashTable.H"
+#include "HashSet.H"
 #include "DynamicList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -117,7 +117,8 @@ protected:
         (
             ISstream&,
             OSstream&,
-            const HashTable<string>& mapping
+            const HashTable<string>& mapping,
+            wordHashSet usedVars
         );
 
         //- Resolve code-templates via the codeTemplateEnvName
@@ -137,7 +138,6 @@ protected:
 
         //- Copy/create Make/options prior to compilation
         bool createMakeOptions() const;
-
 
         //- Write digest to Make/SHA1Digest
         bool writeDigest(const SHA1Digest&) const;
@@ -202,6 +202,13 @@ public:
         {
             return codeRoot_;
         }
+
+        //- Helper: return variable content if set, default otherwise
+        const string& filterVar
+        (
+            const word& var,
+            const word& defaultVal = ""
+        ) const;
 
         //- Subdirectory name for loading libraries
         //  Expanded from platforms/\$WM_OPTIONS/lib

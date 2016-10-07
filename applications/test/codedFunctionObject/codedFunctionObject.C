@@ -78,12 +78,12 @@ void Foam::codedFunctionObject::prepare
         "EXE_INC = -g \\\n"
         "-I$(LIB_SRC)/finiteVolume/lnInclude \\\n"
         "-I$(LIB_SRC)/meshTools/lnInclude \\\n"
-      + context.filterVar("codeOptions")
+      + dynCode.filterVar("codeOptions")
       + "\n\nLIB_LIBS = \\\n"
       + "    -lOpenFOAM \\\n"
       + "    -lfiniteVolume \\\n"
       + "    -lmeshTools \\\n"
-      + context.filterVar("codeLibs")
+      + dynCode.filterVar("codeLibs")
     );
 }
 

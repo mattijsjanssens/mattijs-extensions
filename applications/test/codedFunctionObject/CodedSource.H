@@ -50,22 +50,19 @@ Description
         field is the field in fieldNames
         eqn is the fvMatrix
 
-    \heading Source usage
-
+Usage
     Example usage in controlDict:
     \verbatim
     energySource
     {
         type            scalarCodedSource;
 
-        active          yes;
-
         scalarCodedSourceCoeffs
         {
             selectionMode   all;
 
-            fieldNames      (h);
-            name    sourceTime;
+            fields          (h);
+            name            sourceTime;
 
             codeInclude
             #{

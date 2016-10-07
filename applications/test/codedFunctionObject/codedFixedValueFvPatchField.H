@@ -31,11 +31,10 @@ Description
     Constructs on-the-fly a new boundary condition (derived from
     fixedValueFvPatchField) which is then used to evaluate.
 
-    \heading Patch usage
-
+Usage
     Example:
     \verbatim
-    myPatch
+    <patchName>
     {
         type            codedFixedValue;
         value           uniform 0;
@@ -63,7 +62,7 @@ Description
     which would have a corresponding entry:
 
     \verbatim
-    myPatch
+    <patchName>
     {
         code
         #{
@@ -72,7 +71,7 @@ Description
     }
     \endverbatim
 
-SeeAlso
+See also
     Foam::dynamicCode
     Foam::functionEntries::codeStream
 

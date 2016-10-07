@@ -24,7 +24,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "CodedSource.H"
-#include "stringOps.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
