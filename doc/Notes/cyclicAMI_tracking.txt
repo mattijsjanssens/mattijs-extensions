@@ -17,6 +17,6 @@
         - other side triangle
 
     - on cyclicACMI: same but nonOverlap part needs to know about overlap part
-    - on conincident baffles: same. We need to know which side to interrogate.
+    - on coincident baffles: same. We need to know which side to interrogate.
 
 - cutting: needs triangle-triangle (or poly-poly) intersection.

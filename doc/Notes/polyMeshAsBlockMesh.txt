@@ -56,3 +56,84 @@ Then generating your proper polyMesh is 'just' a matter of
         - needs correspondence between edges and edge of geometry
           (might be implicit through intersections of two surfaces)
         - needs correspondence between patches and surface of geometry
+
+
+
+
+
+blockMeshDict:
+
+geometry
+{
+    front.stl
+    {
+        tpye triSurfaceMesh;
+    }
+
+    back.stl
+    {
+        tpye triSurfaceMesh;
+    }
+
+    geom0
+    {
+        type multSurfaceIntersection;
+        surfaces (front.stl, back.stl);
+    }
+
+    geom01
+    {
+        type multSurfaceIntersection;
+        surfaces (front.stl, back.stl);
+    }
+}
+
+
+vertices
+(
+    attraction (0 0 0) geom0
+    (1 0 0)
+    (1 1 0)
+    (0 1 0)
+    attraction (0 0 0.1) geom1
+    (1 0 0.1)
+    (1 1 0.1)
+    (0 1 0.1)
+);
+
+blocks
+(
+    hex (5 4 9 10 24 23 28 29) (10 10 1) simpleGrading (1 1 1)
+);
+
+edges
+(
+    attraction 0 5 geom01 simpleGrading
+);
+
+faces
+(
+    attraction (0 1 20)
+);
+
+blocks(?)
+(
+    interpolation (5 4 9 10 24 23 28 29)
+);
+
+boundary
+(
+);
+
+
+- generate corner points
+- edges:
+    - generate internal points (using edge grading and interpolation)
+    - 'project'
+- faces:
+    - check consistent edge grading
+    - generate internal points (from edge points + interpolation)
+    - 'project'
+- cells:
+    - generate internal points (from face points + interpolation)
+    - 'project'
