@@ -1,4 +1,5 @@
 EXE_INC = \
+    -g -DFULLDEBUG -O0 \
     -I$(LIB_SRC)/lagrangian/basic/lnInclude \
     -I$(LIB_SRC)/lagrangian/intermediate/lnInclude \
     -I$(LIB_SRC)/lagrangian/distributionModels/lnInclude \
