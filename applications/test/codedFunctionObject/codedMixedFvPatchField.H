@@ -31,11 +31,10 @@ Description
     Constructs on-the-fly a new boundary condition (derived from
     mixedFvPatchField) which is then used to evaluate.
 
-    \heading Patch usage
-
+Usage
     Example:
     \verbatim
-    myPatch
+    <patchName>
     {
         type            codedMixed;
 
@@ -71,7 +70,7 @@ Description
     which would have a corresponding entry
 
     \verbatim
-    myPatch
+    <patchName>
     {
         code
         #{
@@ -82,7 +81,7 @@ Description
     }
     \endverbatim
 
-SeeAlso
+See also
     Foam::dynamicCode
     Foam::functionEntries::codeStream
 

@@ -1,6 +1,7 @@
 EXE_INC = \
-    -I$(LIB_SRC)/lagrangian/basic/lnInclude \
-    -I$(LIB_SRC)/lagrangian/intermediate/lnInclude \
+    -g -DFULLDEBUG -O0 \
+    -Ilagrangian/basic/lnInclude \
+    -Ilagrangian/intermediate/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude \
     -I$(LIB_SRC)/transportModels/compressible/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \

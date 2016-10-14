@@ -84,12 +84,12 @@ public:
             return filterVars_;
         }
 
-        //- Helper: return variable content if set, default otherwise
-        const string& filterVar
-        (
-            const word& var,
-            const word& defaultVal = ""
-        ) const;
+//         //- Helper: return variable content if set, default otherwise
+//         const string& filterVar
+//         (
+//             const word& var,
+//             const word& defaultVal = ""
+//         ) const;
 
         //- Return SHA1 digest calculated from current stream. Call only
         //  after all filterVars have been added

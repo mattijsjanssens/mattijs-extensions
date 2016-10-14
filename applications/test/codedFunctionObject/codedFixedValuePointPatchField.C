@@ -130,11 +130,11 @@ void Foam::codedFixedValuePointPatchField<Type>::prepare
         (
             "EXE_INC = -g \\\n"
             "-I$(LIB_SRC)/finiteVolume/lnInclude \\\n"
-            + context.filterVar("codeOptions")
+            + dynCode.filterVar("codeOptions")
             + "\n\nLIB_LIBS = \\\n"
             + "    -lOpenFOAM \\\n"
             + "    -lfiniteVolume \\\n"
-            + context.filterVar("codeLibs")
+            + dynCode.filterVar("codeLibs")
         );
 }
 

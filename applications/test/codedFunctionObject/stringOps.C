@@ -87,7 +87,8 @@ Foam::string& Foam::stringOps::inplaceExpand
 (
     string& s,
     const HashTable<string, word, string::hash>& mapping,
-    const char sigil
+    const char sigil,
+    wordHashSet* substitutedPtr
 )
 {
     string::size_type begVar = 0;
@@ -207,6 +208,11 @@ Foam::string& Foam::stringOps::inplaceExpand
                             *fnd
                         );
                         begVar += (*fnd).size();
+
+                        if (substitutedPtr)
+                        {
+                            substitutedPtr->insert(varName);
+                        }
                     }
                 }
                 else if (altPos != string::npos && altType == '-')

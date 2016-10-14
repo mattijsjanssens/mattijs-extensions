@@ -37,7 +37,6 @@ SourceFiles
 
 #include "string.H"
 #include "dictionary.H"
-#include "HashTable.H"
 #include "HashSet.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -106,6 +105,9 @@ namespace stringOps
     //
     //  Any unknown entries are removed silently.
     //
+    //  Any substituted variables are marked in the substituted hashtable
+    //  (if provided)
+    //
     //  Malformed entries (eg, brace mismatch, sigil followed by bad character)
     //  are left as is.
     //
@@ -115,7 +117,8 @@ namespace stringOps
     (
         string&,
         const HashTable<string, word, string::hash>& mapping,
-        const char sigil = '$'
+        const char sigil = '$',
+        wordHashSet* substitutedPtr = nullptr
     );
 
     //- Expand occurences of variables according to the dictionary

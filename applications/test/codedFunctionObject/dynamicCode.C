@@ -104,7 +104,8 @@ void Foam::dynamicCode::copyAndFilter
 (
     ISstream& is,
     OSstream& os,
-    const HashTable<string>& mapping
+    const HashTable<string>& mapping,
+    wordHashSet usedVars
 )
 {
     if (!is.good())
@@ -130,7 +131,7 @@ void Foam::dynamicCode::copyAndFilter
         // Expand according to mapping.
         // Expanding according to env variables might cause too many
         // surprises
-        stringOps::inplaceExpand(line, mapping);
+        stringOps::inplaceExpand(line, mapping, '$', &usedVars);
         os.writeQuoted(line, false) << nl;
     }
     while (is.good());
@@ -328,6 +329,24 @@ Foam::dynamicCode::dynamicCode(const word& codeName, const word& codeDirName)
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+const Foam::string& Foam::dynamicCode::filterVar
+(
+    const word& var,
+    const word& defaultVal
+) const
+{
+    HashTable<string>::const_iterator fnd = filterVars_.find(var);
+    if (fnd != filterVars_.end())
+    {
+        return var;
+    }
+    else
+    {
+        return defaultVal;
+    }
+}
+
+
 Foam::fileName Foam::dynamicCode::codeRelPath() const
 {
     return topDirName/codeDirName_;
@@ -402,7 +421,10 @@ void Foam::dynamicCode::setFilterContext
     const dynamicCodeContext& context
 )
 {
+    // Default typeName
     filterVars_.set("typeName", codeName_);
+
+    // Add all variables from context; probably override typeName
     forAllConstIter(HashTable<string>, context.filterVars(), iter)
     {
         filterVars_.set(iter.key(), iter());
@@ -440,7 +462,8 @@ bool Foam::dynamicCode::copyOrCreateFiles(const bool verbose) const
     DynamicList<fileName> resolvedFiles(nFiles);
     DynamicList<fileName> badFiles(nFiles);
 
-    // Resolve template, or add to bad-files
+    // Resolve template, or add to bad-files. Extracts list of variables to
+    // substitute.
     resolveTemplates(compileFiles_, resolvedFiles, badFiles);
     resolveTemplates(copyFiles_, resolvedFiles, badFiles);
 
@@ -459,6 +482,9 @@ bool Foam::dynamicCode::copyOrCreateFiles(const bool verbose) const
 
     // Create dir
     const fileName outputDir = this->codePath();
+
+
+    wordHashSet usedVars(filterVars_.size());
 
     // Create dir
     mkDir(outputDir);
@@ -488,7 +514,7 @@ bool Foam::dynamicCode::copyOrCreateFiles(const bool verbose) const
         }
 
         // Copy lines while expanding variables
-        copyAndFilter(is, os, filterVars_);
+        copyAndFilter(is, os, filterVars_, usedVars);
     }
 
 
@@ -518,6 +544,16 @@ bool Foam::dynamicCode::copyOrCreateFiles(const bool verbose) const
     createMakeOptions();
 
     writeDigest(filterVars_["SHA1sum"]);
+
+    if (verbose)
+    {
+        Info<< "Code " << codeName_ << " has variables " << nl
+            << incrIndent << indent << filterVars_.sortedToc()
+            << decrIndent << nl
+            << "Code " << codeName_ << " uses variables " << nl
+            << incrIndent << indent << usedVars.sortedToc() << decrIndent
+            << endl;
+    }
 
     return true;
 }
