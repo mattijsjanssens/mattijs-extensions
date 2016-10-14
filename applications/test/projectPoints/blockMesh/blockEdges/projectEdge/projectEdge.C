@@ -23,7 +23,8 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "intersectEdge.H"
+#include "searchableSurfacesQueries.H"
+#include "projectEdge.H"
 #include "unitConversion.H"
 #include "addToRunTimeSelectionTable.H"
 #include "pointConstraint.H"
@@ -33,14 +34,14 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(intersectEdge, 0);
-    addToRunTimeSelectionTable(blockEdge, intersectEdge, Istream);
+    defineTypeNameAndDebug(projectEdge, 0);
+    addToRunTimeSelectionTable(blockEdge, projectEdge, Istream);
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::intersectEdge::findNearest
+void Foam::projectEdge::findNearest
 (
     const pointField& start,
     const scalarField& distSqr,
@@ -131,23 +132,7 @@ void Foam::intersectEdge::findNearest
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-//Foam::intersectEdge::intersectEdge
-//(
-//    const pointField& points,
-//    const label start,
-//    const label end,
-//    const point& pMid
-//)
-//:
-//    blockEdge(points, start, end),
-//    p1_(points_[start_]),
-//    p2_(pMid),
-//    p3_(points_[end_]),
-//    cs_(calcAngle())
-//{}
-
-
-Foam::intersectEdge::intersectEdge
+Foam::projectEdge::projectEdge
 (
     const searchableSurfaces& geometry,
     const pointField& points,
@@ -175,7 +160,7 @@ Foam::intersectEdge::intersectEdge
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::point Foam::intersectEdge::position(const scalar lambda) const
+Foam::point Foam::projectEdge::position(const scalar lambda) const
 {
     // Initial guess
     const pointField start
@@ -193,8 +178,10 @@ Pout<< "lambda:" << lambda
     if (lambda >= SMALL && lambda < 1.0-SMALL && surfaces_.size())
     {
         List<pointConstraint> boundaryConstraint;
-        findNearest
+        searchableSurfacesQueries::findNearest
         (
+            geometry_,
+            surfaces_,
             start,
             scalarField(start.size(), magSqr(points_[end_] - points_[start_])),
             boundaryNear,
@@ -208,13 +195,6 @@ Pout<< "lambda:" << lambda
 
     return boundaryNear[0];
 }
-
-
-//Foam::scalar Foam::intersectEdge::length() const
-//{
-//    // Approximate length by straight line
-//    return mag(points_[end_] - points_[start_]);
-//}
 
 
 // ************************************************************************* //

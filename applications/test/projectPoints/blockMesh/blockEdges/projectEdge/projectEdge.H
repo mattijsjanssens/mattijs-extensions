@@ -22,18 +22,19 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::intersectEdge
+    Foam::projectEdge
 
 Description
-    Defines the edge from the intersection of two surfaces
+    Defines the edge from the projection onto a surface (single surface)
+    or intersection of two surfaces.
 
 SourceFiles
-    intersectEdge.C
+    projectEdge.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef intersectEdge_H
-#define intersectEdge_H
+#ifndef projectEdge_H
+#define projectEdge_H
 
 #include "blockEdge.H"
 
@@ -45,10 +46,10 @@ namespace Foam
 class pointConstraint;
 
 /*---------------------------------------------------------------------------*\
-                           Class intersectEdge Declaration
+                         Class projectEdge Declaration
 \*---------------------------------------------------------------------------*/
 
-class intersectEdge
+class projectEdge
 :
     public blockEdge
 {
@@ -58,12 +59,7 @@ class intersectEdge
 
         //- The indices of surfaces onto which the points are projected
         labelList surfaces_;
-        
 
-//        point p1_, p2_, p3_;
-//        cylindricalCS cs_;
-//        scalar angle_;
-//        scalar radius_;
 
     // Private Member Functions
 
@@ -75,34 +71,23 @@ class intersectEdge
             List<pointConstraint>& constraint
         ) const;
 
-//        //- Calculate the coordinate system, angle and radius
-//        cylindricalCS calcAngle();
-
         //- Disallow default bitwise copy construct
-        intersectEdge(const intersectEdge&);
+        projectEdge(const projectEdge&);
 
         //- Disallow default bitwise assignment
-        void operator=(const intersectEdge&);
+        void operator=(const projectEdge&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("intersect");
+    TypeName("project");
 
 
     // Constructors
 
-//        //- Construct from components
-//        intersectEdge
-//        (
-//            const pointField& points,
-//            const label start, const label end,
-//            const point& pMid
-//        );
-
         //- Construct from Istream setting pointsList
-        intersectEdge
+        projectEdge
         (
             const searchableSurfaces& geometry,
             const pointField& points,
@@ -111,7 +96,7 @@ public:
 
 
     //- Destructor
-    virtual ~intersectEdge()
+    virtual ~projectEdge()
     {}
 
 
