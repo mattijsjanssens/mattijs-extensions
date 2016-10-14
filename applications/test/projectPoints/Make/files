@@ -1,5 +1,37 @@
 smoothTriSurfaceMesh.C
-Test-projectPoints.C
+blockMesh.C
 
-EXE = $(FOAM_USER_APPBIN)/Test-projectPoints
+blockMesh/blockEdges/blockEdge/blockEdge.C
+blockMesh/blockEdges/lineDivide/lineDivide.C
+blockMesh/blockEdges/lineEdge/lineEdge.C
+blockMesh/blockEdges/polyLineEdge/polyLine.C
+blockMesh/blockEdges/polyLineEdge/polyLineEdge.C
+blockMesh/blockEdges/arcEdge/arcEdge.C
+blockMesh/blockEdges/BSplineEdge/BSpline.C
+blockMesh/blockEdges/BSplineEdge/BSplineEdge.C
+blockMesh/blockEdges/splineEdge/CatmullRomSpline.C
+blockMesh/blockEdges/splineEdge/splineEdge.C
+blockMesh/blockEdges/intersectEdge/intersectEdge.C
+
+blockMesh/blockFaces/blockFace/blockFace.C
+blockMesh/blockFaces/projectFace/projectFace.C
+
+blockMesh/gradingDescriptor/gradingDescriptor.C
+blockMesh/gradingDescriptor/gradingDescriptors.C
+
+blockMesh/blockDescriptor/blockDescriptor.C
+blockMesh/blockDescriptor/blockDescriptorEdges.C
+
+blockMesh/block/block.C
+blockMesh/block/blockCreate.C
+
+blockMesh/blockMesh/blockMesh.C
+blockMesh/blockMesh/blockMeshCreate.C
+blockMesh/blockMesh/blockMeshTopology.C
+blockMesh/blockMesh/blockMeshCheck.C
+blockMesh/blockMesh/blockMeshMerge.C
+blockMesh/blockMesh/blockMeshMergeFast.C
+
+
+EXE = $(FOAM_USER_APPBIN)/blockMesh-projectPoints
 
