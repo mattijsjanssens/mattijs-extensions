@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,91 +22,85 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::blockEdges::splineEdge
+    Foam::blockVertices::projectVertex
 
 Description
-    A blockEdge interface for Catmull-Rom splines.
+    Projects the vertex onto the selected surfacees of the
+    geometry provided as a searchableSurfaces object.
 
 SourceFiles
-    splineEdge.C
+    projectVertex.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef blockEdges_splineEdge_H
-#define blockEdges_splineEdge_H
+#ifndef blockVertices_projectVertex_H
+#define blockVertices_projectVertex_H
 
-#include "blockEdge.H"
-#include "CatmullRomSpline.H"
+#include "pointVertex.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace blockEdges
+namespace blockVertices
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class splineEdge Declaration
+                        Class projectVertex Declaration
 \*---------------------------------------------------------------------------*/
 
-class splineEdge
+class projectVertex
 :
-    public blockEdge,
-    public CatmullRomSpline
+    public pointVertex
 {
+    // Private data
+
+        const searchableSurfaces& geometry_;
+
+        //- The indices of surfaces onto which the points are projected
+        labelList surfaces_;
+
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        splineEdge(const splineEdge&);
+        projectVertex(const projectVertex&);
 
         //- Disallow default bitwise assignment
-        void operator=(const splineEdge&);
+        void operator=(const projectVertex&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("spline");
+    TypeName("project");
 
 
     // Constructors
 
-        //- Construct from components
-        splineEdge
-        (
-            const pointField&,
-            const label start,
-            const label end,
-            const pointField& internalPoints
-        );
-
-        //- Construct from Istream, setting pointsList
-        splineEdge
+        //- Construct from Istream setting pointsList
+        projectVertex
         (
             const searchableSurfaces& geometry,
-            const pointField&,
             Istream&
         );
 
 
     //- Destructor
-    virtual ~splineEdge();
+    virtual ~projectVertex()
+    {}
 
 
     // Member Functions
 
-        //- Return the point position corresponding to the curve parameter
-        //  0 <= lambda <= 1
-        virtual point position(const scalar) const;
-
-        //- Return the length of the spline curve (not implemented)
-        virtual scalar length() const;
+        //- Project the given points onto the surface
+        virtual operator point() const;
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End of namespace blockEdges
+} // End namespace blockVertices
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

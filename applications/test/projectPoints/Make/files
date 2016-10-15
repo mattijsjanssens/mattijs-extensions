@@ -2,6 +2,10 @@ searchableSurfacesQueries.C
 smoothTriSurfaceMesh.C
 blockMesh.C
 
+blockMesh/blockVertices/blockVertex/blockVertex.C
+blockMesh/blockVertices/pointVertex/pointVertex.C
+blockMesh/blockVertices/projectVertex/projectVertex.C
+
 blockMesh/blockEdges/blockEdge/blockEdge.C
 blockMesh/blockEdges/lineDivide/lineDivide.C
 blockMesh/blockEdges/lineEdge/lineEdge.C

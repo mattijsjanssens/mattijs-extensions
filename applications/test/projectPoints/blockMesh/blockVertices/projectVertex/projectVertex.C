@@ -23,31 +23,33 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "searchableSurfacesQueries.H"
-#include "projectEdge.H"
+#include "projectVertex.H"
 #include "unitConversion.H"
 #include "addToRunTimeSelectionTable.H"
+#include "searchableSurfacesQueries.H"
 #include "pointConstraint.H"
-#include "plane.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(projectEdge, 0);
-    addToRunTimeSelectionTable(blockEdge, projectEdge, Istream);
+namespace blockVertices
+{
+    defineTypeNameAndDebug(projectVertex, 0);
+    addToRunTimeSelectionTable(blockVertex, projectVertex, Istream);
 }
+}
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::projectEdge::projectEdge
+Foam::blockVertices::projectVertex::projectVertex
 (
     const searchableSurfaces& geometry,
-    const pointField& points,
     Istream& is
 )
 :
-    blockEdge(points, is),
+    pointVertex(geometry, is),
     geometry_(geometry)
 {
     wordList names(is);
@@ -68,38 +70,30 @@ Foam::projectEdge::projectEdge
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::point Foam::projectEdge::position(const scalar lambda) const
+Foam::blockVertices::projectVertex::operator point() const
 {
-    // Initial guess
-    const pointField start
-    (
-        1,
-        points_[start_] + lambda * (points_[end_] - points_[start_])
-    );
+    pointField start(1, pointVertex::operator point());
 
-Pout<< "lambda:" << lambda
-    << " start:" << start[0] << endl;
-
+DebugVar(start[0]);
 
     pointField boundaryNear(start);
+    List<pointConstraint> boundaryConstraint;
 
-    if (lambda >= SMALL && lambda < 1.0-SMALL && surfaces_.size())
-    {
-        List<pointConstraint> boundaryConstraint;
-        searchableSurfacesQueries::findNearest
-        (
-            geometry_,
-            surfaces_,
-            start,
-            scalarField(start.size(), magSqr(points_[end_] - points_[start_])),
-            boundaryNear,
-            boundaryConstraint
-        );
-    }
+    // Note: how far do we need to search? Probably not further than
+    //       span of surfaces themselves.
+    boundBox bb(searchableSurfacesQueries::bounds(geometry_, surfaces_));
 
-Pout<< "lambda:" << lambda
-    << " start:" << start[0]
-    << " boundaryNear:" << boundaryNear[0] << endl;
+    searchableSurfacesQueries::findNearest
+    (
+        geometry_,
+        surfaces_,
+        start,
+        scalarField(start.size(), magSqr(bb.span())),
+        boundaryNear,
+        boundaryConstraint
+    );
+
+DebugVar(boundaryNear[0]);
 
     return boundaryNear[0];
 }

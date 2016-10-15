@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::BSplineEdge
+    Foam::blockEdges::BSplineEdge
 
 Description
     A blockEdge interface for B-splines.
@@ -32,8 +32,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef BSplineEdge_H
-#define BSplineEdge_H
+#ifndef blockEdges_BSplineEdge_H
+#define blockEdges_BSplineEdge_H
 
 #include "blockEdge.H"
 #include "BSpline.H"
@@ -41,6 +41,8 @@ SourceFiles
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
+{
+namespace blockEdges
 {
 
 /*---------------------------------------------------------------------------*\
@@ -104,6 +106,7 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End of namespace blockEdges
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

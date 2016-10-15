@@ -30,14 +30,17 @@ License
 
 namespace Foam
 {
+namespace blockEdges
+{
     defineTypeNameAndDebug(polyLineEdge, 0);
     addToRunTimeSelectionTable(blockEdge, polyLineEdge, Istream);
+}
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::polyLineEdge::polyLineEdge
+Foam::blockEdges::polyLineEdge::polyLineEdge
 (
     const pointField& ps,
     const label start,
@@ -50,7 +53,7 @@ Foam::polyLineEdge::polyLineEdge
 {}
 
 
-Foam::polyLineEdge::polyLineEdge
+Foam::blockEdges::polyLineEdge::polyLineEdge
 (
     const searchableSurfaces& geometry,
     const pointField& ps,
@@ -64,19 +67,19 @@ Foam::polyLineEdge::polyLineEdge
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::polyLineEdge::~polyLineEdge()
+Foam::blockEdges::polyLineEdge::~polyLineEdge()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::point Foam::polyLineEdge::position(const scalar lambda) const
+Foam::point Foam::blockEdges::polyLineEdge::position(const scalar lambda) const
 {
     return polyLine::position(lambda);
 }
 
 
-Foam::scalar Foam::polyLineEdge::length() const
+Foam::scalar Foam::blockEdges::polyLineEdge::length() const
 {
     return polyLine::lineLength_;
 }

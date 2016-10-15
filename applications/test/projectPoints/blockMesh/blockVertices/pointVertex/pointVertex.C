@@ -23,85 +23,38 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "searchableSurfacesQueries.H"
-#include "projectEdge.H"
-#include "unitConversion.H"
+#include "pointVertex.H"
 #include "addToRunTimeSelectionTable.H"
-#include "pointConstraint.H"
-#include "plane.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(projectEdge, 0);
-    addToRunTimeSelectionTable(blockEdge, projectEdge, Istream);
+namespace blockVertices
+{
+    defineTypeNameAndDebug(pointVertex, 0);
+    addToRunTimeSelectionTable(blockVertex, pointVertex, Istream);
 }
+}
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::projectEdge::projectEdge
+Foam::blockVertices::pointVertex::pointVertex
 (
     const searchableSurfaces& geometry,
-    const pointField& points,
     Istream& is
 )
 :
-    blockEdge(points, is),
-    geometry_(geometry)
-{
-    wordList names(is);
-    surfaces_.setSize(names.size());
-    forAll(names, i)
-    {
-        surfaces_[i] = geometry_.findSurfaceID(names[i]);
-
-        if (surfaces_[i] == -1)
-        {
-            FatalIOErrorInFunction(is)
-                << "Cannot find surface " << names[i] << " in geometry"
-                << exit(FatalIOError);
-        }
-    }
-}
+    vertex_(is)
+{}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::point Foam::projectEdge::position(const scalar lambda) const
+Foam::blockVertices::pointVertex::operator point() const
 {
-    // Initial guess
-    const pointField start
-    (
-        1,
-        points_[start_] + lambda * (points_[end_] - points_[start_])
-    );
-
-Pout<< "lambda:" << lambda
-    << " start:" << start[0] << endl;
-
-
-    pointField boundaryNear(start);
-
-    if (lambda >= SMALL && lambda < 1.0-SMALL && surfaces_.size())
-    {
-        List<pointConstraint> boundaryConstraint;
-        searchableSurfacesQueries::findNearest
-        (
-            geometry_,
-            surfaces_,
-            start,
-            scalarField(start.size(), magSqr(points_[end_] - points_[start_])),
-            boundaryNear,
-            boundaryConstraint
-        );
-    }
-
-Pout<< "lambda:" << lambda
-    << " start:" << start[0]
-    << " boundaryNear:" << boundaryNear[0] << endl;
-
-    return boundaryNear[0];
+    return vertex_;
 }
 
 
