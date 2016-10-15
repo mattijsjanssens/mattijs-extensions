@@ -75,6 +75,7 @@ Foam::blockVertices::projectVertex::operator point() const
     pointField start(1, pointVertex::operator point());
 
 DebugVar(start[0]);
+DebugVar(surfaces_);
 
     pointField boundaryNear(start);
     List<pointConstraint> boundaryConstraint;

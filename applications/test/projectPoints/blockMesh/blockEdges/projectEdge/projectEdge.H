@@ -37,13 +37,14 @@ SourceFiles
 #define projectEdge_H
 
 #include "blockEdge.H"
+#include "pointConstraint.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class pointConstraint;
+//class pointConstraint;
 
 /*---------------------------------------------------------------------------*\
                          Class projectEdge Declaration
@@ -59,6 +60,18 @@ class projectEdge
 
         //- The indices of surfaces onto which the points are projected
         labelList surfaces_;
+
+        //- Precalculated lambda_
+        scalarField lambda_;
+
+        //- Precalculated nearest
+        pointField boundaryNear_;
+
+        //- Precalculated nearest
+        List<pointConstraint> boundaryConstraint_;
+
+        //- Project lambda
+        scalarField projectedLambda_;
 
 
     // Private Member Functions

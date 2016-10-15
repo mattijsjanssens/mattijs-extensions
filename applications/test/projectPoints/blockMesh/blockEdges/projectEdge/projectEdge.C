@@ -63,6 +63,50 @@ Foam::projectEdge::projectEdge
                 << exit(FatalIOError);
         }
     }
+
+    // Precalculate a distribution along straight edge
+    const point& startPt = points_[start_];
+    const vector d(points_[end_]-startPt);
+
+    const label nPoints = 20;
+
+    pointField start(nPoints);
+    lambda_.setSize(nPoints);
+
+    lambda_[0] = 0.0;
+    start[0] = startPt;
+
+    scalar dLambda = 1.0/(nPoints-1);
+    for (label i = 1; i < lambda_.size(); i++)
+    {
+        lambda_[i] = lambda_[i-1] + dLambda;
+        start[i] = startPt + lambda_[i]*d;
+    }
+
+    boundaryNear_.setSize(nPoints);
+    boundaryConstraint_.setSize(nPoints);
+    searchableSurfacesQueries::findNearest
+    (
+        geometry_,
+        surfaces_,
+        start,
+        scalarField(start.size(), magSqr(points_[end_] - points_[start_])),
+        boundaryNear_,
+        boundaryConstraint_
+    );
+
+    // Lambda of projected points
+    projectedLambda_.setSize(nPoints);
+    projectedLambda_[0] = 0.0;
+    for (label i = 1; i < boundaryNear_.size(); i++)
+    {
+        projectedLambda_[i] =
+            projectedLambda_[i-1]
+          + mag(boundaryNear_[i]-boundaryNear_[i-1]);
+    }
+    projectedLambda_ /= projectedLambda_.last();
+
+    DebugVar(projectedLambda_);
 }
 
 
