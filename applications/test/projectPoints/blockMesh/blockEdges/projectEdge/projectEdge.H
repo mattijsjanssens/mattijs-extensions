@@ -76,13 +76,8 @@ class projectEdge
 
     // Private Member Functions
 
-        void findNearest
-        (
-            const pointField& start,
-            const scalarField& distSqr,
-            pointField& near,
-            List<pointConstraint>& constraint
-        ) const;
+        //- Single point find nearest
+        void findNearest(const point&, point& near, pointConstraint&) const;
 
         //- Disallow default bitwise copy construct
         projectEdge(const projectEdge&);
@@ -115,9 +110,13 @@ public:
 
     // Member Functions
 
-        //- Return the point position corresponding to the curve parameter
+        //- Return the point positions corresponding to the curve parameters
         //  0 <= lambda <= 1
         virtual point position(const scalar) const;
+
+        //- Return the point positions corresponding to the curve parameters
+        //  0 <= lambda <= 1
+        virtual tmp<pointField> position(const scalarList&) const;
 
         //- Return the length of the curve
         virtual scalar length() const

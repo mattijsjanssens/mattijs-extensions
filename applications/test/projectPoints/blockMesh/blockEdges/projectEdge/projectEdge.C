@@ -38,6 +38,35 @@ namespace Foam
     addToRunTimeSelectionTable(blockEdge, projectEdge, Istream);
 }
 
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::projectEdge::findNearest
+(
+    const point& pt,
+    point& near,
+    pointConstraint& constraint
+) const
+{
+    const scalar distSqr = magSqr(points_[end_]-points_[start_]);
+
+    pointField boundaryNear(1);
+    List<pointConstraint> boundaryConstraint(1);
+    
+    searchableSurfacesQueries::findNearest
+    (
+        geometry_,
+        surfaces_,
+        pointField(1, pt),
+        scalarField(1, distSqr),
+        boundaryNear,
+        boundaryConstraint
+    );
+    near = boundaryNear[0];
+    constraint = boundaryConstraint[0];
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::projectEdge::projectEdge
@@ -146,6 +175,58 @@ Pout<< "lambda:" << lambda
     << " boundaryNear:" << boundaryNear[0] << endl;
 
     return boundaryNear[0];
+}
+
+
+Foam::tmp<Foam::pointField>
+Foam::projectEdge::position(const scalarList& lambdas) const
+{
+    tmp<pointField> tpoints(new pointField(lambdas.size()));
+    pointField& points = tpoints.ref();
+
+    const point& startPt = points_[start_];
+    const point& endPt = points_[end_];
+    const vector d = endPt-startPt;
+
+    pointConstraint surfConstraint;
+
+    // Starting point
+    points[0] = startPt+lambdas[0]*d;
+    findNearest(points[0], points[0], surfConstraint);
+
+    scalar dMagDLambda = 1;
+
+    // Other points
+    for (label i = 1; i < points.size()-1; i++)
+    {
+        // See what difference in input lambda caused what displacement
+
+        scalar dLambda = lambdas[i]-lambdas[i-1];
+        if (i == 1)
+        {
+            dMagDLambda = mag(d)/dLambda;
+        }
+
+        // Predicted point position        
+        points[i] = points[i-1] + dMagDLambda*dLambda*surfConstraint.second();
+        // Find nearest surface point
+        findNearest(points[i], points[i], surfConstraint);
+
+        // Update secant
+        dMagDLambda = mag(points[i]-points[i-1])/dLambda;
+    }
+
+    // Reset start and end point
+    if (lambdas[0] < SMALL)
+    {
+        points[0] = startPt;
+    }
+    if (lambdas.last() > 1.0-SMALL)
+    {
+        points.last() = endPt;
+    }
+
+    return tpoints;
 }
 
 
