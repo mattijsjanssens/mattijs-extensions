@@ -55,13 +55,13 @@ baffles
             {
                 //- Master side patch
                 name            ACMI1_blockage;
-                type            wall;
+                type            ACMIWall;
             }
             slave2 // not used since we're manipulating a boundary patch
             {
                 //- Slave side patch
                 name            ACMI1_blockage;
-                type            wall;
+                type            ACMIWall;
             }
 
         }
@@ -95,13 +95,13 @@ baffles
             {
                 //- Master side patch
                 name            ACMI2_blockage;
-                type            wall;
+                type            ACMIWall;
             }
             slave2 // not used since we're manipulating a boundary patch
             {
                 //- Slave side patch
                 name            ACMI2_blockage;
-                type            wall;
+                type            ACMIWall;
             }
         }
     }
