@@ -58,6 +58,7 @@ class processorPolyPatch;
 class symmetryPlanePolyPatch;
 class symmetryPolyPatch;
 class wallPolyPatch;
+class ACMIWallPolyPatch;
 class wedgePolyPatch;
 
 // Forward declaration of friend functions and operators
@@ -297,6 +298,17 @@ protected:
             const wallPolyPatch&,
             TrackData& td,
             const tetIndices& tetIs
+        );
+
+        //- Overridable function to handle the particle hitting the wall
+        //  part of an ACMI couple
+        template<class TrackData>
+        void hitACMIWallPatch
+        (
+            const ACMIWallPolyPatch& pp,
+            TrackData& td,
+            const tetIndices& ti,
+            const vector& direction
         );
 
         //- Overridable function to handle the particle hitting a

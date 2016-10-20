@@ -3,6 +3,9 @@ particle/particleIO.C
 passiveParticle/passiveParticleCloud.C
 indexedParticle/indexedParticleCloud.C
 
+polyPatches/derived/ACMIWall/ACMIWallPolyPatch.C
+polyPatches/derived/ACMIWall/ACMIWallFvPatch.C
+
 InteractionLists/referredWallFace/referredWallFace.C
 
 LIB = $(FOAM_USER_LIBBIN)/liblagrangian2

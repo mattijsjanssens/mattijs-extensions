@@ -31,6 +31,8 @@ License
 #include "symmetryPlanePolyPatch.H"
 #include "symmetryPolyPatch.H"
 #include "wallPolyPatch.H"
+#include "cyclicACMIPolyPatch.H"
+#include "ACMIWallPolyPatch.H"
 #include "wedgePolyPatch.H"
 #include "meshTools.H"
 
@@ -622,6 +624,16 @@ Foam::scalar Foam::particle::trackToFace
                     static_cast<const processorPolyPatch&>(patch), td
                 );
             }
+            else if (isA<ACMIWallPolyPatch>(patch))
+            {
+                p.hitACMIWallPatch
+                (
+                    static_cast<const ACMIWallPolyPatch&>(patch),
+                    td,
+                    faceHitTetIs,
+                    endPosition - position_
+                );
+            }
             else if (isA<wallPolyPatch>(patch))
             {
                 p.hitWallPatch
@@ -1043,6 +1055,8 @@ void Foam::particle::hitCyclicAMIPatch
     const vector& direction
 )
 {
+    DebugVar(cpp.name());
+
     const cyclicAMIPolyPatch& receiveCpp = cpp.neighbPatch();
 
     // Patch face index on sending side
@@ -1105,14 +1119,83 @@ void Foam::particle::hitProcessorPatch(const processorPolyPatch&, TrackData&)
 {}
 
 
+//XXXXXX
+template<class TrackData>
+void Foam::particle::hitACMIWallPatch
+(
+    const ACMIWallPolyPatch& pp,
+    TrackData& td,
+    const tetIndices& ti,
+    const vector& direction
+)
+{
+    DebugVar(pp.name());
+
+    const cyclicACMIPolyPatch& cpp = pp.ACMI();
+    const cyclicAMIPolyPatch& receiveCpp = cpp.neighbPatch();
+
+    // Patch face index on sending side
+    label patchFacei = facei_ - cpp.start();
+
+    // Patch face index on receiving side - also updates position
+    patchFacei = cpp.pointFace(patchFacei, direction, position_);
+
+    if (patchFacei < 0)
+    {
+        Pout<< "** missed **" << endl;
+        DebugVar(*this);
+        hitWallPatch(pp, td, ti);
+    }
+    else
+    {
+        // Convert face index into global numbering
+        facei_ = patchFacei + receiveCpp.start();
+
+        celli_ = mesh_.faceOwner()[facei_];
+
+        tetFacei_ = facei_;
+
+        // See note in correctAfterParallelTransfer for tetPti_ addressing.
+        tetPti_ = mesh_.faces()[tetFacei_].size() - 1 - tetPti_;
+
+        // Now the particle is on the receiving side
+
+        // Transform the properties
+        if (!receiveCpp.parallel())
+        {
+            const tensor& T =
+            (
+                receiveCpp.forwardT().size() == 1
+              ? receiveCpp.forwardT()[0]
+              : receiveCpp.forwardT()[patchFacei]
+            );
+            transformProperties(T);
+        }
+        else if (receiveCpp.separated())
+        {
+            const vector& s =
+            (
+                (receiveCpp.separation().size() == 1)
+              ? receiveCpp.separation()[0]
+              : receiveCpp.separation()[patchFacei]
+            );
+            transformProperties(-s);
+        }
+    }
+}
+//XXXX
+
+
 template<class TrackData>
 void Foam::particle::hitWallPatch
 (
-    const wallPolyPatch&,
-    TrackData&,
-    const tetIndices&
+    const wallPolyPatch& pp,
+    TrackData& td,
+    const tetIndices& ti
 )
-{}
+{
+    DebugVar(pp.name());
+}
 
 
 template<class TrackData>

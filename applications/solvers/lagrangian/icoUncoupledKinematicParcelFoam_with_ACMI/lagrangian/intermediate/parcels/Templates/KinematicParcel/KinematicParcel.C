@@ -391,6 +391,8 @@ bool Foam::KinematicParcel<ParcelType>::hitPatch
     const tetIndices& tetIs
 )
 {
+DebugVar(pp.name());
+
     typename TrackData::cloudType::parcelType& p =
         static_cast<typename TrackData::cloudType::parcelType&>(*this);
 
@@ -447,6 +449,7 @@ void Foam::KinematicParcel<ParcelType>::hitWallPatch
 )
 {
     // Wall interactions handled by generic hitPatch function
+    DebugVar(wpp.name());
 }
 
 
