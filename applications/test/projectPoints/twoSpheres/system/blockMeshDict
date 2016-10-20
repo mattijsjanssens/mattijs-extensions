@@ -1,0 +1,147 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+geometry
+{
+    sphere
+    {
+        type searchableSphere;
+        centre (0 0 0);
+        radius 1;
+    }
+    cap
+    {
+        type        searchablePlane;
+        planeType   pointAndNormal;
+        pointAndNormalDict
+        {
+            basePoint   (0 0.6 0);
+            normal      (0 1 0);
+        }
+    }
+    topSphere
+    {
+        type searchableSphere;
+        centre (0 1 0);
+        radius 1;
+    }
+}
+
+scale 1;
+
+v 0.5773502;
+mv -0.5773502;
+
+a 0.7071067;
+ma -0.7071067;
+
+vertices
+(
+    project ($mv $mv $mv) (sphere)
+    project ( $v $mv $mv) (sphere)
+    project ( $v  $v $mv) (sphere topSphere)
+    project ($mv  $v $mv) (sphere topSphere)
+    project ($mv $mv  $v) (sphere)
+    project ( $v $mv  $v) (sphere)
+    project ( $v  $v  $v) (sphere topSphere)
+    project ($mv  $v  $v) (sphere topSphere)
+);
+//vertices
+//(
+//    ($mv $mv $mv)
+//    ( $v $mv $mv)
+//    ( $v  $v $mv)
+//    ($mv  $v $mv)
+//    ($mv $mv  $v)
+//    ( $v $mv  $v)
+//    ( $v  $v  $v)
+//    ($mv  $v  $v)
+//);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (10 10 10) simpleGrading (1 1 1)
+);
+
+
+edges
+(
+    project 0 1 (sphere)
+    project 4 5 (sphere)
+
+    project 0 3 (sphere)
+    project 1 2 (sphere)
+    project 5 6 (sphere)
+    project 4 7 (sphere)
+
+    project 0 4 (sphere)
+    project 1 5 (sphere)
+
+
+    // Top
+    project 2 3 (sphere topSphere)
+    project 6 7 (sphere topSphere)
+    project 2 6 (sphere topSphere)
+    project 3 7 (sphere topSphere)
+);
+//edges
+//(
+//    line 0 1
+//    line 4 5
+//
+//    line 0 3
+//    line 1 2
+//    line 5 6
+//    line 4 7
+//
+//    line 0 4
+//    line 1 5
+//
+//    // Top
+//    line 2 3
+//    line 6 7
+//    line 2 6
+//    line 3 7
+//);
+
+faces
+(
+    project (0 4 7 3) sphere
+    project (2 6 5 1) sphere
+    project (1 5 4 0) sphere
+    project (3 7 6 2) sphere
+    project (0 3 2 1) sphere
+    project (4 5 6 7) sphere
+);
+
+boundary
+(
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 4 7 3)
+            (2 6 5 1)
+            (1 5 4 0)
+            (3 7 6 2)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
+    }
+);
+
+// ************************************************************************* //
