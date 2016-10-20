@@ -25,6 +25,12 @@ License
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+inline const Foam::pointField& Foam::blockDescriptor::vertices() const
+{
+    return vertices_;
+}
+
+
 inline const Foam::blockFaceList& Foam::blockDescriptor::faces() const
 {
     return faces_;
@@ -40,6 +46,13 @@ inline const Foam::cellShape& Foam::blockDescriptor::blockShape() const
 inline const Foam::Vector<Foam::label>& Foam::blockDescriptor::density() const
 {
     return density_;
+}
+
+
+inline const Foam::List<Foam::gradingDescriptors>&
+Foam::blockDescriptor::expand() const
+{
+    return expand_;
 }
 
 

@@ -161,6 +161,9 @@ public:
 
     // Member Functions
 
+        //- Reference to point field defining the block mesh
+        inline const pointField& vertices() const;
+
         //- Return reference to the list of curved faces
         inline const blockFaceList& faces() const;
 
@@ -169,6 +172,8 @@ public:
 
         //- Return the mesh density (number of cells) in the i,j,k directions
         inline const Vector<label>& density() const;
+
+        inline const List<gradingDescriptors>& expand() const;
 
         //- Return the (optional) zone name
         inline const word& zoneName() const;

@@ -66,6 +66,52 @@ const Foam::searchableSurface& Foam::blockFaces::projectFace::lookupSurface
 }
 
 
+Foam::label Foam::blockFaces::projectFace::index
+(
+    const labelPair& n,
+    const labelPair& coord
+) const
+{
+    return coord.first()+coord.second()*n.first();
+}
+
+
+void Foam::blockFaces::projectFace::calcLambdas
+(
+    const labelPair& n,
+    const pointField& points,
+    scalarField& lambdaI,
+    scalarField& lambdaJ
+) const
+{
+    lambdaI.setSize(points.size());
+    lambdaI = 0.0;
+    lambdaJ.setSize(points.size());
+    lambdaJ = 0.0;
+
+    for (label i = 1; i < n.first(); i++)
+    {
+        Pout<< "Row:" << i << endl;
+
+        for (label j = 1; j < n.second(); j++)
+        {
+            //Pout<< "    Col:" << j << endl;
+            label ij = index(n, labelPair(i, j));
+
+            label iMin1j = index(n, labelPair(i-1, j));
+            label ijMin1 = index(n, labelPair(i, j-1));
+
+            Pout<< "    ij:" << ij << " iMin1j:" << iMin1j
+                << " ijMin1:" << ijMin1
+                << " pt:" << points[ij] << endl;
+
+            lambdaI[ij] = lambdaI[iMin1j] + mag(points[ij]-points[iMin1j]);
+            lambdaJ[ij] = lambdaJ[ijMin1] + mag(points[ij]-points[ijMin1]);
+        }
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::blockFaces::projectFace::projectFace
@@ -89,21 +135,126 @@ void Foam::blockFaces::projectFace::project
 ) const
 {
 DebugVar(blockFacei);
+DebugVar(desc.curvedFaces()[blockFacei]);
 DebugVar(points);
+DebugVar(desc.density());
+const cellShape& hex = desc.blockShape();
+DebugVar(hex);
+DebugVar(desc.expand());
+DebugVar(desc.vertices());
+//DebugVar(desc.facePoints(desc.vertices()));
+DebugVar(hex.faces()[blockFacei]);
 
-    List<pointIndexHit> hits;
-    scalarField nearestDistSqr
-    (
-        points.size(),
-        magSqr(points[0] - points[points.size()-1])
-    );
-    surface_.findNearest(points, nearestDistSqr, hits);
-
-    forAll(hits, i)
+    label ni = -1;
+    label nj = -1;
+    switch (blockFacei)
     {
-        if (hits[i].hit())
+        case 0:
+        case 1:
         {
-            points[i] = hits[i].hitPoint();
+            ni = desc.density()[1]+1;
+            nj = desc.density()[2]+1;
+        }
+        break;
+
+        case 2:
+        case 3:
+        {
+            ni = desc.density()[0]+1;
+            nj = desc.density()[2]+1;
+        }
+        break;
+
+        case 4:
+        case 5:
+        {
+            ni = desc.density()[0]+1;
+            nj = desc.density()[1]+1;
+        }
+        break;
+    }
+
+    DebugVar(ni);
+    DebugVar(nj);
+
+    const labelPair n(ni, nj);
+
+
+    scalarField lambdaI(points.size(), 0.0);
+    scalarField lambdaJ(points.size(), 0.0);
+    calcLambdas(n, points, lambdaI, lambdaJ);
+    DebugVar(lambdaI);
+    DebugVar(lambdaJ);
+
+
+    const label nIter = 3;
+
+    for (label iter = 0; iter < nIter;  iter++)
+    {
+        List<pointIndexHit> hits;
+        scalarField nearestDistSqr
+        (
+            points.size(),
+            magSqr(points[0] - points[points.size()-1])
+        );
+        surface_.findNearest(points, nearestDistSqr, hits);
+
+        forAll(hits, i)
+        {
+            if (hits[i].hit())
+            {
+                points[i] = hits[i].hitPoint();
+            }
+        }
+
+        if (iter < nIter-1)
+        {
+            scalarField lI;
+            scalarField lJ;
+            calcLambdas(n, points, lI, lJ);
+            DebugVar(lI);
+            DebugVar(lJ);
+
+            for (label i = 1; i < n.first()-1; i++)
+            {
+                for (label j = 1; j < n.second()-1; j++)
+                {
+                    label ij = index(n, labelPair(i, j));
+
+                    // Predict along i
+                    point predi;
+                    {
+                        label iMin1j = index(n, labelPair(i-1, j));
+                        label iLastj = index(n, labelPair(n.first()-1, j));
+
+                        vector v(points[ij]-points[iMin1j]);
+                        scalar nearDelta = mag(v)/lI[iLastj];
+                        scalar wantedDelta =
+                            (lambdaI[ij]-lambdaI[iMin1j])
+                           /lambdaI[iLastj];
+                        predi = points[iMin1j] + wantedDelta/nearDelta*v;
+                    }
+
+                    // Predict along j
+                    point predj;
+                    {
+                        label ijMin1 = index(n, labelPair(i, j-1));
+                        label ijLast = index(n, labelPair(i, n.second()-1));
+
+                        vector v(points[ij]-points[ijMin1]);
+                        scalar nearDelta = mag(v)/lJ[ijLast];
+                        scalar wantedDelta =
+                            (lambdaJ[ij]-lambdaJ[ijMin1])
+                           /lambdaJ[ijLast];
+                        predj = points[ijMin1] + wantedDelta/nearDelta*v;
+                    }
+
+                    Pout<< "at i:" << i << " j:" << j
+                        << " point was:" << points[ij];
+                    points[ij] = 0.5*(predi + predj);
+                    Pout<< " point now:" << points[ij] << endl;
+                }
+            }
         }
     }
 }

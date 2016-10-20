@@ -74,11 +74,9 @@ Foam::blockVertices::projectVertex::operator point() const
 {
     pointField start(1, pointVertex::operator point());
 
-DebugVar(start[0]);
-DebugVar(surfaces_);
-
     pointField boundaryNear(start);
     List<pointConstraint> boundaryConstraint;
+
 
     // Note: how far do we need to search? Probably not further than
     //       span of surfaces themselves.
@@ -93,8 +91,6 @@ DebugVar(surfaces_);
         boundaryNear,
         boundaryConstraint
     );
-
-DebugVar(boundaryNear[0]);
 
     return boundaryNear[0];
 }
