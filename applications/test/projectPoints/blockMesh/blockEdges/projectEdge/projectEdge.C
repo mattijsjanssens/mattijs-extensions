@@ -29,6 +29,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "pointConstraint.H"
 #include "OBJstream.H"
+#include "linearInterpolationWeights.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -157,7 +158,7 @@ Foam::projectEdge::position(const scalarList& lambdas) const
     // Upper limit for number of iterations
     const label maxIter = 10;
     // Residual tolerance
-    const scalar relTol = 0.2;
+    const scalar relTol = 0.1;
 
     scalar initialResidual = 0.0;
 
@@ -196,30 +197,43 @@ Foam::projectEdge::position(const scalarList& lambdas) const
             }
         }
 
-        // Calculate distances (unnormalised coordinate along edge)
-        scalarField nearLength(points.size());
+        // Calculate lambdas (normalised coordinate along edge)
+        scalarField projLambdas(points.size());
         {
-            nearLength[0] = 0.0;
-            for(label i = 1; i < points.size(); i++)
+            projLambdas[0] = 0.0;
+            for (label i = 1; i < points.size(); i++)
             {
-                nearLength[i] = nearLength[i-1] + mag(points[i]-points[i-1]);
+                projLambdas[i] = projLambdas[i-1] + mag(points[i]-points[i-1]);
             }
+            projLambdas /= projLambdas.last();
         }
+        linearInterpolationWeights interpolator(projLambdas);
 
         // Compare actual distances and move points (along straight line;
         // not along surface)
         vectorField residual(points.size(), vector::zero);
-        for(label i = 1; i < points.size() - 1; i++)
+        labelList indices;
+        scalarField weights;
+        for (label i = 1; i < points.size() - 1; i++)
         {
-            scalar nearLambda = nearLength[i]/nearLength.last();
-            scalar wantedLambda = lambdas[i]/lambdas.last();
-            scalar f = wantedLambda/nearLambda;
+            interpolator.valueWeights(lambdas[i], indices, weights);
 
-            vector predicted = points[i-1]+f*(points[i]-points[i-1]);
+            point predicted = vector::zero;
+            forAll(indices, indexi)
+            {
+                predicted += weights[indexi]*points[indices[indexi]];
+            }
             residual[i] = predicted-points[i];
         }
 
         scalar scalarResidual = sum(mag(residual));
+
+        if (debug)
+        {
+            Pout<< "Iter:" << iter << " initialResidual:" << initialResidual
+                << " residual:" << scalarResidual << endl;
+        }
+
 
         if (iter == 0)
         {

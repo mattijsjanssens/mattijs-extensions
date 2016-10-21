@@ -28,6 +28,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "blockDescriptor.H"
 #include "OBJstream.H"
+#include "linearInterpolationWeights.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -102,6 +103,25 @@ void Foam::blockFaces::projectFace::calcLambdas
             lambdaJ[ij] = lambdaJ[ijMin1] + mag(points[ij]-points[ijMin1]);
         }
     }
+
+    for (label i = 1; i < n.first(); i++)
+    {
+        label ijLast = index(n, labelPair(i, n.second()-1));
+        for (label j = 1; j < n.second(); j++)
+        {
+            label ij = index(n, labelPair(i, j));
+            lambdaJ[ij] /= lambdaJ[ijLast];
+        }
+    }
+    for (label j = 1; j < n.second(); j++)
+    {
+        label iLastj = index(n, labelPair(n.first()-1, j));
+        for (label i = 1; i < n.first(); i++)
+        {
+            label ij = index(n, labelPair(i, j));
+            lambdaI[ij] /= lambdaI[iLastj];
+        }
+    }
 }
 
 
@@ -174,16 +194,16 @@ void Foam::blockFaces::projectFace::project
     }
 
 
-    // Calculate initial edge lengths (= unnormalised u,v coordinates)
+    // Calculate initial normalised edge lengths (= u,v coordinates)
     scalarField lambdaI(points.size(), 0.0);
     scalarField lambdaJ(points.size(), 0.0);
     calcLambdas(n, points, lambdaI, lambdaJ);
 
 
     // Upper limit for number of iterations
-    const label maxIter = 100;
+    const label maxIter = 10;
     // Residual tolerance
-    const scalar relTol = 0.2;
+    const scalar relTol = 0.1;
 
     scalar initialResidual = 0.0;
     scalar iResidual = 0.0;
@@ -228,33 +248,41 @@ void Foam::blockFaces::projectFace::project
         }
 
 
-        // Calculate actual edge lengths from the projected points
-        scalarField lI;
-        scalarField lJ;
-        calcLambdas(n, points, lI, lJ);
-
         // Predict along i
         vectorField residual(points.size(), vector::zero);
 
+        // Work arrays for interpolation
+        labelList indices;
+        scalarField weights;
         for (label j = 1; j < n.second()-1; j++)
         {
-            label iMaxj = index(n, labelPair(n.first()-1, j));
+            // Calculate actual lamdba along constant j line
+            scalarField projLambdas(n.first());
+            projLambdas[0] = 0.0;
+            for (label i = 1; i < n.first(); i++)
+            {
+                label ij = index(n, labelPair(i, j));
+                label iMin1j = index(n, labelPair(i-1, j));
+                projLambdas[i] =
+                    projLambdas[i-1]
+                   +mag(points[ij]-points[iMin1j]);
+            }
+            projLambdas /= projLambdas.last();
+
+            linearInterpolationWeights interpolator(projLambdas);
 
             for (label i = 1; i < n.first()-1; i++)
             {
                 label ij = index(n, labelPair(i, j));
 
-                // How close are we to wanted (normalised) lambda
-                scalar nearLambda = lI[ij]/lI[iMaxj];
-                scalar wantedLambda = lambdaI[ij]/lambdaI[iMaxj];
-                scalar f = wantedLambda/nearLambda;
+                interpolator.valueWeights(lambdaI[ij], indices, weights);
 
-                // Move in straight line direction. Approximation
-                // for local surface normal. Could use constraint
-                // instead.
-                label iMin1j = index(n, labelPair(i-1, j));
-                const point& leftPt(points[iMin1j]);
-                vector predicted = leftPt + f*(points[ij]-leftPt);
+                point predicted = vector::zero;
+                forAll(indices, indexi)
+                {
+                    label ptIndex = index(n, labelPair(indices[indexi], j));
+                    predicted += weights[indexi]*points[ptIndex];
+                }
                 residual[ij] = predicted-points[ij];
             }
         }
@@ -279,21 +307,34 @@ void Foam::blockFaces::projectFace::project
         residual = vector::zero;
         for (label i = 1; i < n.first()-1; i++)
         {
-            label ijMax = index(n, labelPair(i, n.second()-1));
+            // Calculate actual lamdba along constant i line
+            scalarField projLambdas(n.second());
+            projLambdas[0] = 0.0;
+            for (label j = 1; j < n.second(); j++)
+            {
+                label ij = index(n, labelPair(i, j));
+                label ijMin1 = index(n, labelPair(i, j-1));
+                projLambdas[j] =
+                    projLambdas[j-1]
+                   +mag(points[ij]-points[ijMin1]);
+            }
+
+            projLambdas /= projLambdas.last();
+
+            linearInterpolationWeights interpolator(projLambdas);
+
             for (label j = 1; j < n.second()-1; j++)
             {
                 label ij = index(n, labelPair(i, j));
 
-                scalar nearLambda = lJ[ij]/lJ[ijMax];
-                scalar wantedLambda = lambdaJ[ij]/lambdaJ[ijMax];
-                scalar f = wantedLambda/nearLambda;
+                interpolator.valueWeights(lambdaJ[ij], indices, weights);
 
-                // Move in straight line direction. Approximation
-                // for local surface normal. Could use constraint
-                // instead.
-                label ijMin1 = index(n, labelPair(i, j-1));
-                const point& leftPt(points[ijMin1]);
-                vector predicted = leftPt + f*(points[ij]-leftPt);
+                point predicted = vector::zero;
+                forAll(indices, indexi)
+                {
+                    label ptIndex = index(n, labelPair(i, indices[indexi]));
+                    predicted += weights[indexi]*points[ptIndex];
+                }
                 residual[ij] = predicted-points[ij];
             }
         }
