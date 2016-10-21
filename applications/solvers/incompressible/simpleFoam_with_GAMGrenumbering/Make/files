@@ -1,3 +1,6 @@
+structuredFaceAreaPairGAMGAgglomeration.C
+structuredFaceAreaPairGAMGAgglomerate.C
+
 GAMGAgglomeration.C
 pairGAMGAgglomerate.C
 
