@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,44 +23,46 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "block.H"
+#include "namedVertex.H"
+#include "addToRunTimeSelectionTable.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace blockVertices
+{
+    defineTypeNameAndDebug(namedVertex, 0);
+    addToRunTimeSelectionTable(blockVertex, namedVertex, Istream);
+}
+}
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::block::block
+Foam::blockVertices::namedVertex::namedVertex
 (
     const dictionary& dict,
-    const pointField& vertices,
-    const blockEdgeList& edges,
-    const blockFaceList& faces,
+    const label index,
+    const searchableSurfaces& geometry,
     Istream& is
 )
 :
-    blockDescriptor(dict, vertices, edges, faces, is)
+    name_(is),
+    vertex_(is)
 {
-    createPoints();
-    createBoundary();
+    dictionary& d = const_cast<dictionary&>(dict);
+    d.add(name_, index);
+
+    DebugVar(d);
 }
 
 
-Foam::block::block(const blockDescriptor& blockDesc)
-:
-    blockDescriptor(blockDesc)
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::blockVertices::namedVertex::operator point() const
 {
-    createPoints();
-    createBoundary();
-}
-
-
-// * * * * * * * * * * * * * * * IOstream Operators  * * * * * * * * * * * * //
-
-Foam::Ostream& Foam::operator<<(Ostream& os, const block& b)
-{
-    os << b.points() << nl
-       << b.cells() << nl
-       << b.boundaryPatches() << endl;
-
-    return os;
+    return vertex_;
 }
 
 

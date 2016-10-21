@@ -45,11 +45,13 @@ namespace blockVertices
 
 Foam::blockVertices::projectVertex::projectVertex
 (
+    const dictionary& dict,
+    const label index,
     const searchableSurfaces& geometry,
     Istream& is
 )
 :
-    pointVertex(geometry, is),
+    pointVertex(dict, index, geometry, is),
     geometry_(geometry)
 {
     wordList names(is);

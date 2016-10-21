@@ -395,7 +395,7 @@ Foam::polyMesh* Foam::blockMesh::createTopology
         blockList blocks
         (
             meshDescription.lookup("blocks"),
-            block::iNew(vertices_, edges_, faces_)
+            block::iNew(meshDescription, vertices_, edges_, faces_)
         );
 
         transfer(blocks);

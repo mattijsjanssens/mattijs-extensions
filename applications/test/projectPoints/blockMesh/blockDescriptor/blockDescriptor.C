@@ -164,6 +164,7 @@ Foam::blockDescriptor::blockDescriptor
 
 Foam::blockDescriptor::blockDescriptor
 (
+    const dictionary& dict,
     const pointField& vertices,
     const blockEdgeList& edges,
     const blockFaceList& faces,
@@ -173,13 +174,50 @@ Foam::blockDescriptor::blockDescriptor
     vertices_(vertices),
     edges_(edges),
     faces_(faces),
-    blockShape_(is),
+    blockShapeType_(is),
+    blockShapeDescr_(is),
     density_(),
     expand_(12, gradingDescriptors()),
     zoneName_(),
     curvedFaces_(-1),
     nCurvedFaces_(0)
 {
+    {
+        // Convert wordList to labelList
+
+        OStringStream os;
+        os << blockShapeType_ << token::SPACE << token::BEGIN_LIST;
+
+        forAll(blockShapeDescr_, i)
+        {
+            const word& keyword = blockShapeDescr_[i];
+            word varName = keyword(1, keyword.size()-1);
+            const entry* ePtr = dict.lookupScopedEntryPtr
+            (
+                varName,
+                true,
+                true
+            );
+            if (ePtr)
+            {
+                if (i > 0) os << token::SPACE;
+                // Read as label
+                os << readLabel(ePtr->stream());
+            }
+            else
+            {
+                FatalIOErrorInFunction(is)
+                    << "Attempt to use undefined variable " << varName
+                    << " as keyword"
+                    << exit(FatalIOError);
+            }
+        }
+        os << token::END_LIST;
+
+        IStringStream is(os.str());
+        is >> blockShape_;
+    }
+
     // Examine next token
     token t(is);
 

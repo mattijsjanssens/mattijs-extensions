@@ -22,17 +22,17 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::blockVertices::pointVertex
+    Foam::blockVertices::namedVertex
 
 Description
 
 SourceFiles
-    pointVertex.C
+    namedVertex.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef blockVertices_pointVertex_H
-#define blockVertices_pointVertex_H
+#ifndef blockVertices_namedVertex_H
+#define blockVertices_namedVertex_H
 
 #include "blockVertex.H"
 
@@ -44,16 +44,19 @@ namespace blockVertices
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class pointVertex Declaration
+                           Class namedVertex Declaration
 \*---------------------------------------------------------------------------*/
 
-class pointVertex
+class namedVertex
 :
     public blockVertex
 {
 protected:
 
     // Protected member data
+
+        //- The dictionary variable name for the vertex number
+        word name_;
 
         //- The vertex location
         point vertex_;
@@ -62,13 +65,13 @@ protected:
 public:
 
     //- Runtime type information
-    TypeName("point");
+    TypeName("named");
 
 
     // Constructors
 
         //- Construct from Istream setting pointsList
-        pointVertex
+        namedVertex
         (
             const dictionary&,
             const label index,
@@ -78,7 +81,7 @@ public:
 
 
     //- Destructor
-    virtual ~pointVertex()
+    virtual ~namedVertex()
     {}
 
 

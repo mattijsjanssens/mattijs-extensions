@@ -96,6 +96,7 @@ public:
         //- Construct from components with Istream
         block
         (
+            const dictionary& dict,
             const pointField& vertices,
             const blockEdgeList& edges,
             const blockFaceList& faces,
@@ -116,6 +117,7 @@ public:
         //  PtrLists of blocks
         class iNew
         {
+            const dictionary& dict_;
             const pointField& points_;
             const blockEdgeList& edges_;
             const blockFaceList& faces_;
@@ -124,11 +126,13 @@ public:
 
             iNew
             (
+                const dictionary& dict,
                 const pointField& points,
                 const blockEdgeList& edges,
                 const blockFaceList& faces
             )
             :
+                dict_(dict),
                 points_(points),
                 edges_(edges),
                 faces_(faces)
@@ -136,7 +140,10 @@ public:
 
             autoPtr<block> operator()(Istream& is) const
             {
-                return autoPtr<block>(new block(points_, edges_, faces_, is));
+                return autoPtr<block>
+                (
+                    new block(dict_, points_, edges_, faces_, is)
+                );
             }
         };
 
