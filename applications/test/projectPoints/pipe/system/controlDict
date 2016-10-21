@@ -19,7 +19,7 @@ libs            ("libblockMesh.so");
 
 DebugSwitches
 {
-    project 1;
+//    project 1;
 }
 
 application     blockMesh;
