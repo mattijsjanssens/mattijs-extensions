@@ -79,8 +79,11 @@ Foam::blockVertices::projectVertex::operator point() const
 
 
     // Note: how far do we need to search? Probably not further than
-    //       span of surfaces themselves.
+    //       span of surfaces themselves. Make sure to limit in case
+    //       of e.g. searchablePlane which has infinite bb.
     boundBox bb(searchableSurfacesQueries::bounds(geometry_, surfaces_));
+    bb.min() = max(bb.min(), point(-GREAT, -GREAT, -GREAT));
+    bb.max() = min(bb.max(), point(GREAT, GREAT, GREAT));
 
     searchableSurfacesQueries::findNearest
     (

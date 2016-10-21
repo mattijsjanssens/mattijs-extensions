@@ -27,6 +27,7 @@ License
 #include "unitConversion.H"
 #include "addToRunTimeSelectionTable.H"
 #include "blockDescriptor.H"
+#include "OBJstream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -91,21 +92,13 @@ void Foam::blockFaces::projectFace::calcLambdas
 
     for (label i = 1; i < n.first(); i++)
     {
-        Pout<< "Row:" << i << endl;
-
         for (label j = 1; j < n.second(); j++)
         {
-            //Pout<< "    Col:" << j << endl;
             label ij = index(n, labelPair(i, j));
-
             label iMin1j = index(n, labelPair(i-1, j));
-            label ijMin1 = index(n, labelPair(i, j-1));
-
-            Pout<< "    ij:" << ij << " iMin1j:" << iMin1j
-                << " ijMin1:" << ijMin1
-                << " pt:" << points[ij] << endl;
-
             lambdaI[ij] = lambdaI[iMin1j] + mag(points[ij]-points[iMin1j]);
+
+            label ijMin1 = index(n, labelPair(i, j-1));
             lambdaJ[ij] = lambdaJ[ijMin1] + mag(points[ij]-points[ijMin1]);
         }
     }
@@ -134,128 +127,194 @@ void Foam::blockFaces::projectFace::project
     pointField& points
 ) const
 {
-DebugVar(blockFacei);
-DebugVar(desc.curvedFaces()[blockFacei]);
-DebugVar(points);
-DebugVar(desc.density());
-const cellShape& hex = desc.blockShape();
-DebugVar(hex);
-DebugVar(desc.expand());
-DebugVar(desc.vertices());
-//DebugVar(desc.facePoints(desc.vertices()));
-DebugVar(hex.faces()[blockFacei]);
+    // For debugging to tag the output
+    static label fIter = 0;
 
-    label ni = -1;
-    label nj = -1;
+    autoPtr<OBJstream> debugStr;
+    if (debug)
+    {
+        debugStr.reset
+        (
+            new OBJstream("projectFace_" + Foam::name(fIter++) + ".obj")
+        );
+        Info<< "Face:" << blockFacei << " on block:" << desc.blockShape()
+            << " with verts:" << desc.vertices()
+            << " writing lines from start points"
+            << " to projected points to " << debugStr().name() << endl;
+    }
+
+
+    // Find out range of vertices in face
+    labelPair n(-1, -1);
     switch (blockFacei)
     {
         case 0:
         case 1:
         {
-            ni = desc.density()[1]+1;
-            nj = desc.density()[2]+1;
+            n.first() = desc.density()[1]+1;
+            n.second() = desc.density()[2]+1;
         }
         break;
 
         case 2:
         case 3:
         {
-            ni = desc.density()[0]+1;
-            nj = desc.density()[2]+1;
+            n.first() = desc.density()[0]+1;
+            n.second() = desc.density()[2]+1;
         }
         break;
 
         case 4:
         case 5:
         {
-            ni = desc.density()[0]+1;
-            nj = desc.density()[1]+1;
+            n.first() = desc.density()[0]+1;
+            n.second() = desc.density()[1]+1;
         }
         break;
     }
 
-    DebugVar(ni);
-    DebugVar(nj);
 
-    const labelPair n(ni, nj);
-
-
+    // Calculate initial edge lengths (= unnormalised u,v coordinates)
     scalarField lambdaI(points.size(), 0.0);
     scalarField lambdaJ(points.size(), 0.0);
     calcLambdas(n, points, lambdaI, lambdaJ);
-    DebugVar(lambdaI);
-    DebugVar(lambdaJ);
 
 
-    const label nIter = 3;
+    // Upper limit for number of iterations
+    const label maxIter = 100;
+    // Residual tolerance
+    const scalar relTol = 0.2;
 
-    for (label iter = 0; iter < nIter;  iter++)
+    scalar initialResidual = 0.0;
+    scalar iResidual = 0.0;
+    scalar jResidual = 0.0;
+
+    for (label iter = 0; iter < maxIter;  iter++)
     {
-        List<pointIndexHit> hits;
-        scalarField nearestDistSqr
-        (
-            points.size(),
-            magSqr(points[0] - points[points.size()-1])
-        );
-        surface_.findNearest(points, nearestDistSqr, hits);
-
-        forAll(hits, i)
+        // Do projection
         {
-            if (hits[i].hit())
-            {
-                points[i] = hits[i].hitPoint();
-            }
-        }
+            List<pointIndexHit> hits;
+            scalarField nearestDistSqr
+            (
+                points.size(),
+                magSqr(points[0] - points[points.size()-1])
+            );
+            surface_.findNearest(points, nearestDistSqr, hits);
 
-        if (iter < nIter-1)
-        {
-            scalarField lI;
-            scalarField lJ;
-            calcLambdas(n, points, lI, lJ);
-            DebugVar(lI);
-            DebugVar(lJ);
-
-            for (label i = 1; i < n.first()-1; i++)
+            forAll(hits, i)
             {
-                for (label j = 1; j < n.second()-1; j++)
+                if (hits[i].hit())
                 {
-                    label ij = index(n, labelPair(i, j));
-
-                    // Predict along i
-                    point predi;
+                    const point& hitPt = hits[i].hitPoint();
+                    if (debugStr.valid())
                     {
-                        label iMin1j = index(n, labelPair(i-1, j));
-                        label iLastj = index(n, labelPair(n.first()-1, j));
-
-                        vector v(points[ij]-points[iMin1j]);
-                        scalar nearDelta = mag(v)/lI[iLastj];
-                        scalar wantedDelta =
-                            (lambdaI[ij]-lambdaI[iMin1j])
-                           /lambdaI[iLastj];
-                        predi = points[iMin1j] + wantedDelta/nearDelta*v;
+                        debugStr().write(linePointRef(points[i], hitPt));
                     }
-
-                    // Predict along j
-                    point predj;
-                    {
-                        label ijMin1 = index(n, labelPair(i, j-1));
-                        label ijLast = index(n, labelPair(i, n.second()-1));
-
-                        vector v(points[ij]-points[ijMin1]);
-                        scalar nearDelta = mag(v)/lJ[ijLast];
-                        scalar wantedDelta =
-                            (lambdaJ[ij]-lambdaJ[ijMin1])
-                           /lambdaJ[ijLast];
-                        predj = points[ijMin1] + wantedDelta/nearDelta*v;
-                    }
-
-                    Pout<< "at i:" << i << " j:" << j
-                        << " point was:" << points[ij];
-                    points[ij] = 0.5*(predi + predj);
-                    Pout<< " point now:" << points[ij] << endl;
+                    points[i] = hitPt;
                 }
             }
         }
+
+        if (debug)
+        {
+            Pout<< "Iter:" << iter << " initialResidual:" << initialResidual
+                << " iResidual+jResidual:" << iResidual+jResidual << endl;
+        }
+
+
+        if (iter > 0 && (iResidual+jResidual)/initialResidual < relTol)
+        {
+            break;
+        }
+
+
+        // Calculate actual edge lengths from the projected points
+        scalarField lI;
+        scalarField lJ;
+        calcLambdas(n, points, lI, lJ);
+
+        // Predict along i
+        vectorField residual(points.size(), vector::zero);
+
+        for (label j = 1; j < n.second()-1; j++)
+        {
+            label iMaxj = index(n, labelPair(n.first()-1, j));
+
+            for (label i = 1; i < n.first()-1; i++)
+            {
+                label ij = index(n, labelPair(i, j));
+
+                // How close are we to wanted (normalised) lambda
+                scalar nearLambda = lI[ij]/lI[iMaxj];
+                scalar wantedLambda = lambdaI[ij]/lambdaI[iMaxj];
+                scalar f = wantedLambda/nearLambda;
+
+                // Move in straight line direction. Approximation
+                // for local surface normal. Could use constraint
+                // instead.
+                label iMin1j = index(n, labelPair(i-1, j));
+                const point& leftPt(points[iMin1j]);
+                vector predicted = leftPt + f*(points[ij]-leftPt);
+                residual[ij] = predicted-points[ij];
+            }
+        }
+
+        if (debugStr.valid())
+        {
+            forAll(points, i)
+            {
+                const linePointRef ln(points[i], points[i]+residual[i]);
+                debugStr().write(ln);
+            }
+        }
+
+        iResidual = sum(mag(residual));
+
+        // Update points before doing j. Note: is this needed? Complicates
+        // residual checking.
+        points += residual;
+
+
+        // Predict along j
+        residual = vector::zero;
+        for (label i = 1; i < n.first()-1; i++)
+        {
+            label ijMax = index(n, labelPair(i, n.second()-1));
+            for (label j = 1; j < n.second()-1; j++)
+            {
+                label ij = index(n, labelPair(i, j));
+
+                scalar nearLambda = lJ[ij]/lJ[ijMax];
+                scalar wantedLambda = lambdaJ[ij]/lambdaJ[ijMax];
+                scalar f = wantedLambda/nearLambda;
+
+                // Move in straight line direction. Approximation
+                // for local surface normal. Could use constraint
+                // instead.
+                label ijMin1 = index(n, labelPair(i, j-1));
+                const point& leftPt(points[ijMin1]);
+                vector predicted = leftPt + f*(points[ij]-leftPt);
+                residual[ij] = predicted-points[ij];
+            }
+        }
+
+        if (debugStr.valid())
+        {
+            forAll(points, i)
+            {
+                const linePointRef ln(points[i], points[i]+residual[i]);
+                debugStr().write(ln);
+            }
+        }
+
+        jResidual = sum(mag(residual));
+
+        if (iter == 0)
+        {
+            initialResidual = iResidual + jResidual;
+        }
+
+        points += residual;
     }
 }
 
