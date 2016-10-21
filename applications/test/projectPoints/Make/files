@@ -4,6 +4,7 @@ blockMesh.C
 blockMesh/blockVertices/blockVertex/blockVertex.C
 blockMesh/blockVertices/pointVertex/pointVertex.C
 blockMesh/blockVertices/projectVertex/projectVertex.C
+blockMesh/blockVertices/namedVertex/namedVertex.C
 
 blockMesh/blockEdges/blockEdge/blockEdge.C
 blockMesh/blockEdges/lineDivide/lineDivide.C
