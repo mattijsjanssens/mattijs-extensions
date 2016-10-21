@@ -1,6 +1,8 @@
 smoothTriSurfaceMesh.C
 blockMesh.C
 
+blockMesh/searchablePipe/searchablePipe.C
+
 blockMesh/blockVertices/blockVertex/blockVertex.C
 blockMesh/blockVertices/pointVertex/pointVertex.C
 blockMesh/blockVertices/projectVertex/projectVertex.C
