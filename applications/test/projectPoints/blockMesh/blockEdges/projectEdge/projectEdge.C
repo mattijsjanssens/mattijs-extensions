@@ -159,6 +159,7 @@ Foam::projectEdge::position(const scalarList& lambdas) const
     const label maxIter = 10;
     // Residual tolerance
     const scalar relTol = 0.1;
+    const scalar absTol = 1e-4;
 
     scalar initialResidual = 0.0;
 
@@ -234,8 +235,11 @@ Foam::projectEdge::position(const scalarList& lambdas) const
                 << " residual:" << scalarResidual << endl;
         }
 
-
-        if (iter == 0)
+        if (scalarResidual < absTol*0.5*lambdas.size())
+        {
+            break;
+        }
+        else if (iter == 0)
         {
             initialResidual = scalarResidual;
         }
@@ -243,6 +247,7 @@ Foam::projectEdge::position(const scalarList& lambdas) const
         {
             break;
         }
+
 
         if (debugStr.valid())
         {

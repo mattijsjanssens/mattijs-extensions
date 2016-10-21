@@ -88,11 +88,11 @@ class blockDescriptor
         //- Reference to the list of curved faces
         const blockFaceList& faces_;
 
-        //- Block shape
-        word blockShapeType_;
-
-        //- Block shape
-        wordList blockShapeDescr_;
+//         //- Block shape
+//         word blockShapeType_;
+// 
+//         //- Block shape
+//         wordList blockShapeDescr_;
 
         //- Block shape
         cellShape blockShape_;
