@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-libs            ("liblagrangian2.so");
+//libs            ("liblagrangian2.so");
 
 application     icoUncoupledKinematicParcelDyMFoam;
 
