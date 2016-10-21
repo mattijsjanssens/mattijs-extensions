@@ -1,0 +1,29 @@
+Have named vertices in blockMesh.
+We want to be able to include blockMeshes which is not possible
+since all the faces and blocks refer to vertex labels which are
+not known by dictionary expansion.
+
+dictionary expansion:
+- see mattijs-extensions/applications/test/projectPoints/blockMesh
+- in top-level disableFunctionEntries
+- have new blockVertex type that adds the vertex index to the input dictionary
+- now read blockShape as word+wordList:
+    hex ($v0 $v1 $v2 $v3 $v4 $v5 $v6 $v7);
+- and use variable expansion to convert varname into label
+- this can be done much easier by having blocks use run-time selection
+  and have special version that looks up variables:
+    expand hex (v0 v1 v2 v3 v4 v5 v6 v7);
+  and now 'expandBlock' will read as wordList and does the conversion itself.
+
+Ideal: included blockMeshes:
+- all inputs are dictionaries
+- all vertices/face/block get merged such that there is no conflict
+  (maybe with new keyword by prefixing fileName?). Makes sense since the
+  dictionary variable resolution is w.r.t local scope first.
+
+Generic dictionary:
+Not possible. Two problems:
+- namedVertex hands out indices. These are very specific. If it is always
+  a position in a List this might be possible but very restrictive.
+- variable expansion happens at reading. We might want to do it later,
+  e.g. when the vertices have been calculated.
