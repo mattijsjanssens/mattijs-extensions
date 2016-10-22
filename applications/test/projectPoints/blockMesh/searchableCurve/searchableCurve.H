@@ -22,24 +22,24 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::searchablePipe
+    Foam::searchableCurve
 
 Description
     Searching on edgemesh with constant radius
 
 SourceFiles
-    searchablePipe.C
+    searchableCurve.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef searchablePipe_H
-#define searchablePipe_H
+#ifndef searchableCurve_H
+#define searchableCurve_H
 
 #include "treeBoundBox.H"
 #include "searchableSurface.H"
-#include "edgeMesh.H"
-#include "indexedOctree.H"
-#include "treeDataEdge.H"
+//#include "edgeMesh.H"
+//#include "indexedOctree.H"
+//#include "treeDataEdge.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -47,12 +47,15 @@ namespace Foam
 {
 
 // Forward declaration of classes
+class edgeMesh;
+class treeDataEdge;
+template <class Type> class indexedOctree;
 
 /*---------------------------------------------------------------------------*\
-                           Class searchablePipe Declaration
+                           Class searchableCurve Declaration
 \*---------------------------------------------------------------------------*/
 
-class searchablePipe
+class searchableCurve
 :
     public searchableSurface
 {
@@ -72,6 +75,7 @@ private:
         //- Names of regions
         mutable wordList regions_;
 
+
     // Private Member Functions
 
         //- Find nearest
@@ -82,29 +86,30 @@ private:
         ) const;
 
         //- Disallow default bitwise copy construct
-        searchablePipe(const searchablePipe&);
+        searchableCurve(const searchableCurve&);
 
         //- Disallow default bitwise assignment
-        void operator=(const searchablePipe&);
+        void operator=(const searchableCurve&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("pipe");
+    TypeName("searchableCurve");
 
 
     // Constructors
 
         //- Construct from dictionary (used by searchableSurface)
-        searchablePipe
+        searchableCurve
         (
             const IOobject& io,
             const dictionary& dict
         );
 
+
     //- Destructor
-    virtual ~searchablePipe();
+    virtual ~searchableCurve();
 
 
     // Member Functions
@@ -149,6 +154,14 @@ public:
         // Multiple point queries.
 
             virtual void findNearest
+            (
+                const pointField& sample,
+                const scalarField& nearestDistSqr,
+                List<pointIndexHit>&
+            ) const;
+
+            //- Unique to curved geometry: interpolate along curve
+            virtual void findInterpolatedNearest
             (
                 const pointField& sample,
                 const scalarField& nearestDistSqr,

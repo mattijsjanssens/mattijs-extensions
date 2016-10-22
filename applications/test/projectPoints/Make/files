@@ -1,7 +1,7 @@
 smoothTriSurfaceMesh.C
 blockMesh.C
 
-blockMesh/searchablePipe/searchablePipe.C
+blockMesh/searchableCurve/searchableCurve.C
 
 blockMesh/blockVertices/blockVertex/blockVertex.C
 blockMesh/blockVertices/pointVertex/pointVertex.C
@@ -19,6 +19,7 @@ blockMesh/blockEdges/BSplineEdge/BSplineEdge.C
 blockMesh/blockEdges/splineEdge/CatmullRomSpline.C
 blockMesh/blockEdges/splineEdge/splineEdge.C
 blockMesh/blockEdges/projectEdge/projectEdge.C
+blockMesh/blockEdges/projectCurveEdge/projectCurveEdge.C 
 
 blockMesh/blockFaces/blockFace/blockFace.C
 blockMesh/blockFaces/projectFace/projectFace.C
