@@ -68,7 +68,7 @@ Foam::projectCurveEdge::projectCurveEdge
 
         if (isA<searchableCurve>(geometry_[surfaces_[i]]))
         {
-            Info<< type() << " : Using curved surface : "
+            Info<< type() << " : Using curved surface "
                 << geometry_[surfaces_[i]].name()
                 << " to predict starting points." << endl;
         }

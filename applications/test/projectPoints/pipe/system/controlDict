@@ -19,9 +19,9 @@ libs            ("libblockMesh.so");
 
 DebugSwitches
 {
-    project 1;
-    searchableCurve 1;
-    projectCurve 1;
+//    project 1;
+//    searchableCurve 1;
+//    projectCurve 1;
 }
 
 application     blockMesh;
