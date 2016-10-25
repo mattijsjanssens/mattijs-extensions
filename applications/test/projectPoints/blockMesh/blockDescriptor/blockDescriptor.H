@@ -88,11 +88,11 @@ class blockDescriptor
         //- Reference to the list of curved faces
         const blockFaceList& faces_;
 
-//         //- Block shape
-//         word blockShapeType_;
-// 
-//         //- Block shape
-//         wordList blockShapeDescr_;
+        //- Block shape
+        word blockShapeType_;
+ 
+        //- Block shape
+        labelList blockShapeDescr_;
 
         //- Block shape
         cellShape blockShape_;
@@ -244,6 +244,15 @@ public:
         //- Correct the location of the given face-points
         //  to lie on the faces of the block
         void correctFacePoints(FixedList<pointField, 6>&) const;
+
+        //- Helper: read label, looks up any words from the dictionary.
+        static label readLabel(Istream& is, const dictionary& dict);
+
+        //- Helper: read labelList, looks up any words from the dictionary.
+        static labelList readLabelList(Istream& is, const dictionary& dict);
+
+        //- Helper: read labelListList, looks up any words from the dictionary.
+        static labelListList readLabelListList(Istream&, const dictionary&);
 
 
     // IOstream Operators

@@ -25,6 +25,7 @@ Class
     Foam::blockVertices::namedVertex
 
 Description
+    Gives name to a vertex.
 
 SourceFiles
     namedVertex.C
@@ -59,7 +60,7 @@ protected:
         word name_;
 
         //- The vertex location
-        point vertex_;
+        autoPtr<blockVertex> vertexPtr_;
 
 
 public:

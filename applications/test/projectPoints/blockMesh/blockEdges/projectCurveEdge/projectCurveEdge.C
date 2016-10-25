@@ -45,12 +45,14 @@ namespace Foam
 
 Foam::projectCurveEdge::projectCurveEdge
 (
+    const dictionary& dict,
+    const label index,
     const searchableSurfaces& geometry,
     const pointField& points,
     Istream& is
 )
 :
-    blockEdge(points, is),
+    blockEdge(dict, index, points, is),
     geometry_(geometry)
 {
     wordList names(is);

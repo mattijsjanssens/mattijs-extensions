@@ -129,11 +129,13 @@ void Foam::blockFaces::projectFace::calcLambdas
 
 Foam::blockFaces::projectFace::projectFace
 (
+    const dictionary& dict,
+    const label index,
     const searchableSurfaces& geometry,
     Istream& is
 )
 :
-    blockFace(is),
+    blockFace(dict, index, is),
     surface_(lookupSurface(geometry, is))
 {}
 

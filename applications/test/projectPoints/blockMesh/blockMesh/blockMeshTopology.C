@@ -286,7 +286,20 @@ void Foam::blockMesh::readBoundary
         patchDicts.set(patchi, new dictionary(patchInfo.dict()));
 
         // Read block faces
-        patchDicts[patchi].lookup("faces") >> tmpBlocksPatches[patchi];
+        labelListList fcs
+        (
+            blockDescriptor::readLabelListList
+            (
+                patchDicts[patchi].lookup("faces"),
+                meshDescription
+            )
+        );
+        tmpBlocksPatches[patchi].setSize(fcs.size());
+        forAll(fcs, i)
+        {
+            tmpBlocksPatches[patchi][i].transfer(fcs[i]);
+        }
+
 
         checkPatchLabels
         (
@@ -353,7 +366,7 @@ Foam::polyMesh* Foam::blockMesh::createTopology
         blockEdgeList edges
         (
             meshDescription.lookup("edges"),
-            blockEdge::iNew(geometry_, vertices_)
+            blockEdge::iNew(meshDescription, geometry_, vertices_)
         );
 
         edges_.transfer(edges);
@@ -375,7 +388,7 @@ Foam::polyMesh* Foam::blockMesh::createTopology
         blockFaceList faces
         (
             meshDescription.lookup("faces"),
-            blockFace::iNew(geometry_)
+            blockFace::iNew(meshDescription, geometry_)
         );
 
         faces_.transfer(faces);

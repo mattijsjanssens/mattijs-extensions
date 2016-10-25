@@ -128,6 +128,201 @@ void Foam::blockDescriptor::findCurvedFaces()
 }
 
 
+Foam::labelList Foam::blockDescriptor::readLabelList
+(
+    Istream& is,
+    const dictionary& dict
+)
+{
+    labelList L;
+
+    token firstToken(is);
+
+    if (firstToken.isLabel())
+    {
+        label s = firstToken.labelToken();
+
+        // Set list length to that read
+        L.setSize(s);
+
+        // Read list contents depending on data format
+
+        // Read beginning of contents
+        char delimiter = is.readBeginList("List");
+
+        if (s)
+        {
+            if (delimiter == token::BEGIN_LIST)
+            {
+                for (label i=0; i<s; i++)
+                {
+                    L[i] = readLabel(is, dict);
+                }
+            }
+        }
+
+        // Read end of contents
+        is.readEndList("List");
+    }
+    else if (firstToken.isPunctuation())
+    {
+        if (firstToken.pToken() != token::BEGIN_LIST)
+        {
+            FatalIOErrorInFunction(is)
+                << "incorrect first token, expected '(', found "
+                << firstToken.info()
+                << exit(FatalIOError);
+        }
+
+        SLList<label> sll;
+
+        while (true)
+        {
+            token t(is);
+            if (t.isPunctuation() && t.pToken() == token::END_LIST)
+            {
+                break;
+            }
+            is.putBack(t);
+            sll.append(readLabel(is, dict));
+        }
+
+        // Convert the singly-linked list to this list
+        L = sll;
+    }
+    else
+    {
+        FatalIOErrorInFunction(is)
+            << "incorrect first token, expected <int> or '(', found "
+            << firstToken.info()
+            << exit(FatalIOError);
+    }
+    return L;
+}
+
+
+Foam::label Foam::blockDescriptor::readLabel
+(
+    Istream& is,
+    const dictionary& dict
+)
+{
+    token t(is);
+    if (t.isLabel())
+    {
+        return t.labelToken();
+    }
+    else if (t.isWord())
+    {
+        const word& varName = t.wordToken();
+        const entry* ePtr = dict.lookupScopedEntryPtr
+        (
+            varName,
+            true,
+            true
+        );
+        if (ePtr)
+        {
+            // Read as label
+            return Foam::readLabel(ePtr->stream());
+        }
+        else
+        {
+            FatalIOErrorInFunction(is)
+                << "Attempt to use undefined variable "
+                << varName << " as keyword"
+                << exit(FatalIOError);
+        }
+    }
+    else
+    {
+        FatalIOErrorInFunction(is)
+            << "Illegal token " << t.info()
+            << " when trying to read label"
+            << exit(FatalIOError);
+    }
+
+    is.fatalCheck
+    (
+        "operator>>(Istream&, List<T>&) : reading entry"
+    );
+    return labelMin;
+}
+
+
+Foam::labelListList Foam::blockDescriptor::readLabelListList
+(
+    Istream& is,
+    const dictionary& dict
+)
+{
+    labelListList L;
+
+    token firstToken(is);
+
+    if (firstToken.isLabel())
+    {
+        label s = firstToken.labelToken();
+
+        // Set list length to that read
+        L.setSize(s);
+
+        // Read list contents depending on data format
+
+        // Read beginning of contents
+        char delimiter = is.readBeginList("List");
+
+        if (s)
+        {
+            if (delimiter == token::BEGIN_LIST)
+            {
+                for (label i=0; i<s; i++)
+                {
+                    L[i] = readLabelList(is, dict);
+                }
+            }
+        }
+
+        // Read end of contents
+        is.readEndList("List");
+    }
+    else if (firstToken.isPunctuation())
+    {
+        if (firstToken.pToken() != token::BEGIN_LIST)
+        {
+            FatalIOErrorInFunction(is)
+                << "incorrect first token, expected '(', found "
+                << firstToken.info()
+                << exit(FatalIOError);
+        }
+
+        SLList<labelList> sll;
+
+        while (true)
+        {
+            token t(is);
+            if (t.isPunctuation() && t.pToken() == token::END_LIST)
+            {
+                break;
+            }
+            is.putBack(t);
+            sll.append(readLabelList(is, dict));
+        }
+
+        // Convert the singly-linked list to this list
+        L = sll;
+    }
+    else
+    {
+        FatalIOErrorInFunction(is)
+            << "incorrect first token, expected <int> or '(', found "
+            << firstToken.info()
+            << exit(FatalIOError);
+    }
+    return L;
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::blockDescriptor::blockDescriptor
@@ -174,50 +369,15 @@ Foam::blockDescriptor::blockDescriptor
     vertices_(vertices),
     edges_(edges),
     faces_(faces),
-//    blockShapeType_(is),
-//    blockShapeDescr_(is),
-    blockShape_(is),
+    blockShapeType_(is),
+    blockShapeDescr_(readLabelList(is, dict)),
     density_(),
     expand_(12, gradingDescriptors()),
     zoneName_(),
     curvedFaces_(-1),
     nCurvedFaces_(0)
 {
-//     {
-//         // Convert wordList to labelList
-// 
-//         OStringStream os;
-//         os << blockShapeType_ << token::SPACE << token::BEGIN_LIST;
-// 
-//         forAll(blockShapeDescr_, i)
-//         {
-//             const word& keyword = blockShapeDescr_[i];
-//             word varName = keyword(1, keyword.size()-1);
-//             const entry* ePtr = dict.lookupScopedEntryPtr
-//             (
-//                 varName,
-//                 true,
-//                 true
-//             );
-//             if (ePtr)
-//             {
-//                 if (i > 0) os << token::SPACE;
-//                 // Read as label
-//                 os << readLabel(ePtr->stream());
-//             }
-//             else
-//             {
-//                 FatalIOErrorInFunction(is)
-//                     << "Attempt to use undefined variable " << varName
-//                     << " as keyword"
-//                     << exit(FatalIOError);
-//             }
-//         }
-//         os << token::END_LIST;
-// 
-//         IStringStream is(os.str());
-//         is >> blockShape_;
-//     }
+    blockShape_ = cellShape(blockShapeType_, blockShapeDescr_);
 
     // Examine next token
     token t(is);

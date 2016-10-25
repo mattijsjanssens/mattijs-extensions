@@ -99,7 +99,7 @@ public:
 
         public:
 
-            iNew( const dictionary& dict, const searchableSurfaces& geometry)
+            iNew(const dictionary& dict, const searchableSurfaces& geometry)
             :
                 dict_(dict),
                 geometry_(geometry),

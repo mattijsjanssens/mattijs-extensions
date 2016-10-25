@@ -24,6 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "blockEdge.H"
+#include "blockDescriptor.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -51,13 +52,15 @@ Foam::blockEdge::blockEdge
 
 Foam::blockEdge::blockEdge
 (
+    const dictionary& dict,
+    const label index,
     const pointField& points,
     Istream& is
 )
 :
     points_(points),
-    start_(readLabel(is)),
-    end_(readLabel(is))
+    start_(blockDescriptor::readLabel(is, dict)),
+    end_(blockDescriptor::readLabel(is, dict))
 {}
 
 
@@ -70,6 +73,8 @@ Foam::autoPtr<Foam::blockEdge> Foam::blockEdge::clone() const
 
 Foam::autoPtr<Foam::blockEdge> Foam::blockEdge::New
 (
+    const dictionary& dict,
+    const label index,
     const searchableSurfaces& geometry,
     const pointField& points,
     Istream& is
@@ -95,7 +100,7 @@ Foam::autoPtr<Foam::blockEdge> Foam::blockEdge::New
             << abort(FatalError);
     }
 
-    return autoPtr<blockEdge>(cstrIter()(geometry, points, is));
+    return autoPtr<blockEdge>(cstrIter()(dict, index, geometry, points, is));
 }
 
 

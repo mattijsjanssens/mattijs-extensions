@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,44 +23,14 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "namedVertex.H"
-#include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-namespace Foam
-{
-namespace blockVertices
-{
-    defineTypeNameAndDebug(namedVertex, 0);
-    addToRunTimeSelectionTable(blockVertex, namedVertex, Istream);
-}
-}
-
-
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-Foam::blockVertices::namedVertex::namedVertex
-(
-    const dictionary& dict,
-    const label index,
-    const searchableSurfaces& geometry,
-    Istream& is
-)
-:
-    name_(is),
-    vertexPtr_(blockVertex::New(dict, index, geometry, is))
-{
-    dictionary& d = const_cast<dictionary&>(dict);
-    d.add(name_, index);
-}
-
+#include "cellShape.H"
+#include "degenerateMatcher.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::blockVertices::namedVertex::operator point() const
+void Foam::cellShape::collapse()
 {
-    return vertexPtr_().operator point();
+    operator=(degenerateMatcher::match(*this));
 }
 
 

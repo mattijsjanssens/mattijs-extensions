@@ -81,6 +81,8 @@ public:
         //- Construct from Istream setting pointsList
         projectCurveEdge
         (
+            const dictionary& dict,
+            const label index,
             const searchableSurfaces& geometry,
             const pointField& points,
             Istream&

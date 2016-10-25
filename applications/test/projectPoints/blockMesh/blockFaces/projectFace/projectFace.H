@@ -101,6 +101,8 @@ public:
         //- Construct from Istream setting pointsList
         projectFace
         (
+            const dictionary& dict,
+            const label index,
             const searchableSurfaces& geometry,
             Istream&
         );
