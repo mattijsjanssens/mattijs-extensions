@@ -41,24 +41,6 @@ namespace Foam
 }
 
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-Foam::pointIndexHit Foam::searchableCurve::findNearest
-(
-    const point& sample,
-    const scalar distSqr
-) const
-{
-    pointIndexHit curvePt = edgeTree_().findNearest(sample, distSqr);
-
-    vector d(sample - curvePt.hitPoint());
-
-    curvePt.setPoint(curvePt.hitPoint() + d/mag(d)*radius_);
-
-    return curvePt;
-}
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::searchableCurve::searchableCurve
@@ -178,11 +160,19 @@ void Foam::searchableCurve::findNearest
     List<pointIndexHit>& info
 ) const
 {
+    const indexedOctree<treeDataEdge>& tree = edgeTree_();
+
     info.setSize(samples.size());
 
     forAll(samples, i)
     {
-        info[i] = findNearest(samples[i], nearestDistSqr[i]);
+        info[i] = tree.findNearest(samples[i], nearestDistSqr[i]);
+
+        if (info[i].hit())
+        {
+            vector d(samples[i]-info[i].hitPoint());
+            info[i].setPoint(info[i].hitPoint() + d/mag(d)*radius_);
+        }
     }
 }
 
@@ -198,9 +188,10 @@ void Foam::searchableCurve::findInterpolatedNearest
     const indexedOctree<treeDataEdge>& tree = edgeTree_();
     const edgeList& edges = mesh.edges();
     const pointField& points = mesh.points();
+    const labelListList& pointEdges = mesh.pointEdges();
 
 
-
+    // Calculate lambdas from input points
     scalarField lambdas(samples.size());
     {
         lambdas[0] = 0.0;
@@ -212,102 +203,155 @@ void Foam::searchableCurve::findInterpolatedNearest
     }
 
 
+    // Nearest point on curve and local axis direction
     pointField curvePoints(samples);
-    scalarField curveLambdas(samples.size());
     vectorField axialVecs(samples.size());
 
+    const pointIndexHit startInfo = tree.findNearest
+    (
+        samples[0],
+        Foam::magSqr(bounds().span())
+    );
+    curvePoints[0] = startInfo.hitPoint();
+    axialVecs[0] = edges[startInfo.index()].vec(points);
 
-    // Upper limit for number of iterations
-    const label maxIter = 10;
-    // Residual tolerance
-    const scalar relTol = 0.1;
-    const scalar absTol = 1e-4;
+    const pointIndexHit endInfo = tree.findNearest
+    (
+        samples.last(),
+        Foam::magSqr(bounds().span())
+    );
+    curvePoints.last() = endInfo.hitPoint();
+    axialVecs.last() = edges[endInfo.index()].vec(points);
 
-    scalar initialResidual = 0.0;
 
-    for (label iter = 0; iter < maxIter; iter++)
+
+    scalarField curveLambdas(points.size(), -1.0);
+
     {
-        // Update curve points by projecting onto the curve:
-        // - curvePoints
-        // - curveLambdas
-        // - axialDirs
+        scalar endDistance = -1.0;
 
-        forAll(curvePoints, i)
+        // Determine edge lengths walking from start to end.
+
+        const point& start = curvePoints[0];
+        const point& end = curvePoints.last();
+
+        label edgei = startInfo.index();
+        const edge& startE = edges[edgei];
+
+        label pointi = startE[0];
+        if ((startE.vec(points)&(end-start)) > 0)
         {
-            pointIndexHit curveInfo = tree.findNearest
-            (
-                curvePoints[i],
-                Foam::magSqr(bounds().span())
-            );
-            curvePoints[i] = curveInfo.hitPoint();
+            pointi = startE[1];
+        }
 
-            axialVecs[i] = edges[curveInfo.index()].vec(points);
-            axialVecs[i] /= mag(axialVecs[i]);
+        curveLambdas[pointi] = mag(points[pointi]-curvePoints[0]);
+        label otherPointi = startE.otherVertex(pointi);
+        curveLambdas[otherPointi] = -mag(points[otherPointi]-curvePoints[0]);
 
-            if (i == 0)
+        //Pout<< "for point:" << points[pointi] << " have distance "
+        //    << curveLambdas[pointi] << endl;
+
+
+        while (true)
+        {
+            const labelList& pEdges = pointEdges[pointi];
+            if (pEdges.size() == 1)
             {
-                curveLambdas[i] = 0.0;
+                break;
+            }
+            else if (pEdges.size() != 2)
+            {
+                FatalErrorInFunction << "Curve " << name()
+                    << " is not a single path. This is not supported"
+                    << exit(FatalError);
+                break;
+            }
+
+            label oldEdgei = edgei;
+            if (pEdges[0] == oldEdgei)
+            {
+                edgei = pEdges[1];
             }
             else
             {
-                curveLambdas[i] =
-                    curveLambdas[i-1]
-                  + mag(curvePoints[i]-curvePoints[i-1]);
+                edgei = pEdges[0];
             }
-        }
-        curveLambdas /= curveLambdas.last();
 
-        // Interpolation engine
-        linearInterpolationWeights interpolator(curveLambdas);
-
-        // Compare actual distances and move points (along straight line;
-        // not along surface)
-        vectorField residual(curvePoints.size(), vector::zero);
-        labelList indices;
-        scalarField weights;
-        for (label i = 1; i < curvePoints.size() - 1; i++)
-        {
-            interpolator.valueWeights(lambdas[i], indices, weights);
-
-            point predicted = vector::zero;
-            forAll(indices, indexi)
+            if (edgei == endInfo.index())
             {
-                predicted += weights[indexi]*curvePoints[indices[indexi]];
+                endDistance = curveLambdas[pointi] + mag(end-points[pointi]);
+
+                //Pout<< "Found end edge:" << edges[edgei].centre(points)
+                //    << " endPt:" << end
+                //    << " point before:" << points[pointi]
+                //    << " accumulated length:" << endDistance << endl;
             }
-            residual[i] = predicted-curvePoints[i];
+
+
+            label oldPointi = pointi;
+            pointi = edges[edgei].otherVertex(oldPointi);
+
+            if (curveLambdas[pointi] >= 0)
+            {
+                break;
+            }
+
+            curveLambdas[pointi] =
+                curveLambdas[oldPointi] + edges[edgei].mag(points);
         }
 
-        scalar scalarResidual = sum(mag(residual));
-
-        if (debug)
+        // Normalise curveLambdas
+        forAll(curveLambdas, i)
         {
-            Pout<< "Iter:" << iter << " initialResidual:" << initialResidual
-                << " residual:" << scalarResidual << endl;
+            if (curveLambdas[i] >= 0)
+            {
+                curveLambdas[i] /= endDistance;
+            }
         }
-
-        if (scalarResidual < absTol*0.5*lambdas.size())
-        {
-            break;
-        }
-        else if (iter == 0)
-        {
-            initialResidual = scalarResidual;
-        }
-        else if (scalarResidual/initialResidual < relTol)
-        {
-            break;
-        }
-
-        // ? Underrelaxation so as not to overshoot
-        curvePoints += 0.5*residual;
     }
+
+
+
+    // Interpolation engine
+    linearInterpolationWeights interpolator(curveLambdas);
+
+    // Find wanted location along curve
+    labelList indices;
+    scalarField weights;
+    for (label i = 1; i < curvePoints.size()-1; i++)
+    {
+        interpolator.valueWeights(lambdas[i], indices, weights);
+
+        if (indices.size() == 1)
+        {
+            // On outside of curve. Choose one of the connected edges.
+            label pointi = indices[0];
+            const point& p0 = points[pointi];
+            label edge0 = pointEdges[pointi][0];
+            const edge& e0 = edges[edge0];
+            axialVecs[i] = e0.vec(points);
+            curvePoints[i] = weights[0]*p0;
+        }
+        else if (indices.size() == 2)
+        {
+            const point& p0 = points[indices[0]];
+            const point& p1 = points[indices[1]];
+            axialVecs[i] = p1-p0;
+            curvePoints[i] = weights[0]*p0+weights[1]*p1;
+        }
+    }
+    axialVecs /= mag(axialVecs);
+
+
+    // Now we have the lambdas, curvePoints and axialVecs.
+
 
 
     info.setSize(samples.size());
     info = pointIndexHit();
 
     // Given the current lambdas interpolate radial direction inbetween
-    // endpoints
+    // endpoints (all projected onto the starting coordinate system)
     quaternion qStart;
     vector radialStart;
     {
@@ -319,21 +363,26 @@ void Foam::searchableCurve::findInterpolatedNearest
         info[0] = pointIndexHit(true, samples[0], 0);
     }
 
-    quaternion qEnd;
+    quaternion qProjectedEnd;
     {
         vector radialEnd(samples.last()-curvePoints.last());
         radialEnd -= (radialEnd&axialVecs.last())*axialVecs.last();
         radialEnd /= mag(radialEnd);
-        qEnd = quaternion(radialEnd, 0.0);
+
+        vector projectedEnd = radialEnd;
+        projectedEnd -= (projectedEnd&axialVecs[0])*axialVecs[0];
+        projectedEnd /= mag(projectedEnd);
+        qProjectedEnd = quaternion(projectedEnd, 0.0);
 
         info.last() = pointIndexHit(true, samples.last(), 0);
     }
 
-
     for (label i = 1; i < samples.size()-1; i++)
     {
-        quaternion q(slerp(qStart, qEnd, curveLambdas[i]));
+        quaternion q(slerp(qStart, qProjectedEnd, lambdas[i]));
         vector radialDir(q.transform(radialStart));
+
+        radialDir -= (radialDir&axialVecs[i])*axialVecs.last();
         radialDir /= mag(radialDir);
 
         info[i] = pointIndexHit(true, curvePoints[i]+radius_*radialDir, 0);
@@ -383,7 +432,6 @@ void Foam::searchableCurve::getNormal
             vector axialVec = edges[curvePt.index()].vec(points);
             axialVec /= mag(axialVec);
             normal[i] -= (normal[i]&axialVec)*axialVec;
-
             normal[i] /= mag(normal[i]);
         }
     }

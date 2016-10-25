@@ -21,6 +21,7 @@ DebugSwitches
 {
     project 1;
     searchableCurve 1;
+    projectCurve 1;
 }
 
 application     blockMesh;

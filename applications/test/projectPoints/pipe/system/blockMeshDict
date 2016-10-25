@@ -33,7 +33,7 @@ geometry
     cylinder2
     {
         type    searchableCurve;
-        file    "curve.obj";
+        file    "curve2.vtk";   //"curve.obj";
         radius  0.5;
     }
     inletPlane

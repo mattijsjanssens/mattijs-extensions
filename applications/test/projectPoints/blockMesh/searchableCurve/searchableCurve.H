@@ -78,13 +78,6 @@ private:
 
     // Private Member Functions
 
-        //- Find nearest
-        pointIndexHit findNearest
-        (
-            const point& sample,
-            const scalar distSqr
-        ) const;
-
         //- Disallow default bitwise copy construct
         searchableCurve(const searchableCurve&);
 
@@ -160,7 +153,8 @@ public:
                 List<pointIndexHit>&
             ) const;
 
-            //- Unique to curved geometry: interpolate along curve
+            //- Unique to parametric geometry: given points find
+            //  an interpolated (along the curve) point on the surface.
             virtual void findInterpolatedNearest
             (
                 const pointField& sample,
