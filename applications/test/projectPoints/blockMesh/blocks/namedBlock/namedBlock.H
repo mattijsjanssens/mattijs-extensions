@@ -21,50 +21,71 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::blocks::namedBlock
+
+Description
+    Gives name to a block.
+
+SourceFiles
+    namedBlock.C
+
 \*---------------------------------------------------------------------------*/
 
-#include "namedVertex.H"
-#include "addToRunTimeSelectionTable.H"
+#ifndef blocks_namedBlock_H
+#define blocks_namedBlock_H
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+#include "block.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace blockVertices
+namespace blocks
 {
-    defineTypeNameAndDebug(namedVertex, 0);
-    addToRunTimeSelectionTable(blockVertex, namedVertex, Istream);
-}
-}
 
+/*---------------------------------------------------------------------------*\
+                           Class namedBlock Declaration
+\*---------------------------------------------------------------------------*/
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-Foam::blockVertices::namedVertex::namedVertex
-(
-    const dictionary& dict,
-    const label index,
-    const searchableSurfaces& geometry,
-    Istream& is
-)
+class namedBlock
 :
-    name_(is),
-    vertexPtr_(blockVertex::New(dict, index, geometry, is))
+    public word,
+    public block
 {
-    Info<< "Vertex " << name_ << " at " <<  vertexPtr_().operator point()
-        << " has index " << index << endl;
+public:
 
-    dictionary& d = const_cast<dictionary&>(dict);
-    d.add(name_, index);
-}
+    //- Runtime type information
+    TypeName("named");
 
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+    // Constructors
 
-Foam::blockVertices::namedVertex::operator point() const
-{
-    return vertexPtr_().operator point();
-}
+        //- Construct from Istream setting pointsList
+        namedBlock
+        (
+            const dictionary& dict,
+            const label index,
+            const pointField& vertices,
+            const blockEdgeList& edges,
+            const blockFaceList& faces,
+            Istream& is
+        );
 
+
+    //- Destructor
+    virtual ~namedBlock()
+    {}
+};
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace blocks
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
 
 // ************************************************************************* //

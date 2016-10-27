@@ -33,7 +33,7 @@ geometry
     cylinder2
     {
         type    searchableCurve;
-        file    "curve2.vtk";   //"curve.obj";
+        file    "curve2.vtk";
         radius  0.5;
     }
     inletPlane
@@ -47,106 +47,106 @@ geometry
 vertices
 (
     // Vertical cylinder
-    named ABC project (-1 -0.1 -1) (cylinder cylinder2)
-    project ( 1 -0.1 -1) (cylinder)
-    project ( 1  0.9 -1) (cylinder)
-    project (-1  0.9 -1) (cylinder cylinder2)
-    project (-1 -0.1  1) (cylinder cylinder2)
-    project ( 1 -0.1  1) (cylinder)
-    project ( 1  0.9  1) (cylinder)
-    project (-1  0.9  1) (cylinder cylinder2)
+    named v0 project (-1 -0.1 -1) (cylinder cylinder2)
+    named v1 project ( 1 -0.1 -1) (cylinder)
+    named v2 project ( 1  0.9 -1) (cylinder)
+    named v3 project (-1  0.9 -1) (cylinder cylinder2)
+    named v4 project (-1 -0.1  1) (cylinder cylinder2)
+    named v5 project ( 1 -0.1  1) (cylinder)
+    named v6 project ( 1  0.9  1) (cylinder)
+    named v7 project (-1  0.9  1) (cylinder cylinder2)
 
 
     // Horizontal cylinder
-    project (-4   0 -0.5) (cylinder2 inletPlane)
+    named v8 project (-4   0 -0.5) (cylinder2 inletPlane)
     (-0.6 0 -0.5)   //project (-0.6 0 -0.5) (cylinder cylinder2)
     (-0.6 1 -0.5)   //project (-0.6 1 -0.5) (cylinder cylinder2)
-    project (-4   1 -0.5) (cylinder2 inletPlane)
-    project (-4   0  0.5) (cylinder2 inletPlane)
+    named v9 project (-4   1 -0.5) (cylinder2 inletPlane)
+    named v10 project (-4   0  0.5) (cylinder2 inletPlane)
     (-0.6 0  0.5)   //project (-0.6 0  0.5) (cylinder cylinder2)
     (-0.6 1  0.5)   //project (-0.6 1  0.5) (cylinder cylinder2)
-    project (-4   1  0.5) (cylinder2 inletPlane)
+    named v11 project (-4   1  0.5) (cylinder2 inletPlane)
 
 
     // On top of vertical cylinder
-    project (-1 2 -1) (cylinder)
-    project ( 1 2 -1) (cylinder)
-    project ( 1 2  1) (cylinder)
-    project (-1 2  1) (cylinder)
+    named v12 project (-1 2 -1) (cylinder)
+    named v13 project ( 1 2 -1) (cylinder)
+    named v14 project ( 1 2  1) (cylinder)
+    named v15 project (-1 2  1) (cylinder)
 
     // Below vertical cylinder
-    project (-1 -1 -1) (cylinder)
-    project ( 1 -1 -1) (cylinder)
-    project ( 1 -1  1) (cylinder)
-    project (-1 -1  1) (cylinder)
+    named v16 project (-1 -1 -1) (cylinder)
+    named v17 project ( 1 -1 -1) (cylinder)
+    named v18 project ( 1 -1  1) (cylinder)
+    named v19 project (-1 -1  1) (cylinder)
 );
 
 blocks
 (
-    hex (ABC 1 2 3 4 5 6 7) (8 8 8) simpleGrading (1 1 1)
-    hex (ABC 3 11 8 4 7 15 12) (8 20 8) simpleGrading (1 1 1)
+    named b0 hex (v0 v1 v2 v3 v4 v5 v6 v7) (8 8 8) simpleGrading (1 1 1)
+    hex (v0 v3 v9 v8 v4 v7 v11 v10) (8 20 8) simpleGrading (1 1 1)
 
-    hex ( 7 6 2 3 19 18 17 16) (8 8 8) simpleGrading (1 1 1)
-    hex (20 23 22 21 0 4 5 1) (8 8 8) simpleGrading (1 1 1)
+    hex ( v7 v6 v2 v3 v15 v14 v13 v12) (8 8 8) simpleGrading (1 1 1)
+    hex (v16 v19 v18 v17 v0 v4 v5 v1) (8 8 8) simpleGrading (1 1 1)
 );
 
 edges
 (
-    project ABC 1 (cylinder)
-    project 1 2 (cylinder)
-    project 2 3 (cylinder)
+    project v0 v1 (cylinder)
+    project v1 v2 (cylinder)
+    project v2 v3 (cylinder)
 
-    project 1 5 (cylinder)
-    project 2 6 (cylinder)
+    project v1 v5 (cylinder)
+    project v2 v6 (cylinder)
 
-    project 4 5 (cylinder)
-    project 5 6 (cylinder)
-    project 6 7 (cylinder)
+    project v4 v5 (cylinder)
+    project v5 v6 (cylinder)
+    project v6 v7 (cylinder)
 
     // Common face
-    project 3 ABC (cylinder cylinder2)
-    project 3 7 (cylinder cylinder2)
-    project 7 4 (cylinder cylinder2)
-    project 0 4 (cylinder cylinder2)
+    project v3 v0 (cylinder cylinder2)
+    project v3 v7 (cylinder cylinder2)
+    project v7 v4 (cylinder cylinder2)
+    project v0 v4 (cylinder cylinder2)
 
     // Inlet
-    project 8 12 (cylinder2 inletPlane)
-    project 12 15 (cylinder2 inletPlane)
-    project 15 11 (cylinder2 inletPlane)
-    project 11 8 (cylinder2 inletPlane)
+    project v8 v10 (cylinder2 inletPlane)
+    project v10 v11 (cylinder2 inletPlane)
+    project v11 v9 (cylinder2 inletPlane)
+    project v9 v8 (cylinder2 inletPlane)
 
     // Sides of horizontal cylinder. Use projectCurve to do interpolation
     // for radial direction to keep points along edges at constant radial
     // direction.
-    projectCurve  8 ABC (cylinder2)
-    projectCurve 11 3 (cylinder2)
-    projectCurve 15 7 (cylinder2)
-    projectCurve 12 4 (cylinder2)
+    projectCurve  v8 v0 (cylinder2)
+    projectCurve v9 v3 (cylinder2)
+    projectCurve v11 v7 (cylinder2)
+    projectCurve v10 v4 (cylinder2)
 
 
 
     // Top cylinder
-    project 16 19 (cylinder)
-    project 19 18 (cylinder)
-    project 18 17 (cylinder)
-    project 17 16 (cylinder)
+    project v12 v15 (cylinder)
+    project v15 v14 (cylinder)
+    project v14 v13 (cylinder)
+    project v13 v12 (cylinder)
 
     // Bottom cylinder
-    project 20 21 (cylinder)
-    project 21 22 (cylinder)
-    project 22 23 (cylinder)
-    project 23 20 (cylinder)
+    project v16 v17 (cylinder)
+    project v17 v18 (cylinder)
+    project v18 v19 (cylinder)
+    project v19 v16 (cylinder)
 );
 
 faces
 (
     // Common face
-    project (ABC 4 7 3) cylinder
+    project (v0 v4 v7 v3) cylinder
 
-    project (8 0 4 12) cylinder2
-    project (12 4 7 15) cylinder2
-    project (15 7 3 11) cylinder2
-    project (8 11 3 0) cylinder2
+    project (v8 v0 v4 v10) cylinder2
+    project (v10 v4 v7 v11) cylinder2
+    project (v11 v7 v3 v9) cylinder2
+    project (v8 v9 v3 v0) cylinder2
 );
 
 
@@ -161,19 +161,19 @@ boundary
     side
     {
         type    patch;
-        faces   ((8 12 15 11));
+        faces   ((v8 v10 v11 v9));
     }
 
     inlet
     {
         type    patch;
-        faces   ((21 22 23 20));
+        faces   ((v17 v18 v19 v16));
     }
 
     outlet
     {
         type    patch;
-        faces   ((16 19 18 17));
+        faces   ((v12 v15 v14 v13));
     }
 );
 

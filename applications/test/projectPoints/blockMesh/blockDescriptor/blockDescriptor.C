@@ -360,6 +360,7 @@ Foam::blockDescriptor::blockDescriptor
 Foam::blockDescriptor::blockDescriptor
 (
     const dictionary& dict,
+    const label index,
     const pointField& vertices,
     const blockEdgeList& edges,
     const blockFaceList& faces,
@@ -369,15 +370,15 @@ Foam::blockDescriptor::blockDescriptor
     vertices_(vertices),
     edges_(edges),
     faces_(faces),
-    blockShapeType_(is),
-    blockShapeDescr_(readLabelList(is, dict)),
     density_(),
     expand_(12, gradingDescriptors()),
     zoneName_(),
     curvedFaces_(-1),
     nCurvedFaces_(0)
 {
-    blockShape_ = cellShape(blockShapeType_, blockShapeDescr_);
+    // Read cell model and list of vertices (potentially with variables)
+    word model(is);
+    blockShape_ = cellShape(model, readLabelList(is, dict));
 
     // Examine next token
     token t(is);

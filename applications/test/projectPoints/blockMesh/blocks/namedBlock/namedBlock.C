@@ -23,47 +23,41 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "namedVertex.H"
+#include "namedBlock.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace blockVertices
+namespace blocks
 {
-    defineTypeNameAndDebug(namedVertex, 0);
-    addToRunTimeSelectionTable(blockVertex, namedVertex, Istream);
+    defineTypeNameAndDebug(namedBlock, 0);
+    addToRunTimeSelectionTable(block, namedBlock, Istream);
 }
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::blockVertices::namedVertex::namedVertex
+Foam::blocks::namedBlock::namedBlock
 (
     const dictionary& dict,
     const label index,
-    const searchableSurfaces& geometry,
+    const pointField& vertices,
+    const blockEdgeList& edges,
+    const blockFaceList& faces,
     Istream& is
 )
 :
-    name_(is),
-    vertexPtr_(blockVertex::New(dict, index, geometry, is))
+    word(is),
+    block(dict, index, vertices, edges, faces, is)
 {
-    Info<< "Vertex " << name_ << " at " <<  vertexPtr_().operator point()
+    Info<< "Block " << static_cast<word&>(*this)
         << " has index " << index << endl;
 
     dictionary& d = const_cast<dictionary&>(dict);
-    d.add(name_, index);
-}
-
-
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-Foam::blockVertices::namedVertex::operator point() const
-{
-    return vertexPtr_().operator point();
+    d.add(*this, index);
 }
 
 

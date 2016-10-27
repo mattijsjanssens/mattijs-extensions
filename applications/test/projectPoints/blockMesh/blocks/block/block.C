@@ -25,18 +25,28 @@ License
 
 #include "block.H"
 
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+    defineTypeNameAndDebug(block, 0);
+    defineRunTimeSelectionTable(block, Istream);
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::block::block
 (
     const dictionary& dict,
+    const label index,
     const pointField& vertices,
     const blockEdgeList& edges,
     const blockFaceList& faces,
     Istream& is
 )
-:
-    blockDescriptor(dict, vertices, edges, faces, is)
+:   
+    blockDescriptor(dict, index, vertices, edges, faces, is)
 {
     createPoints();
     createBoundary();
@@ -49,6 +59,49 @@ Foam::block::block(const blockDescriptor& blockDesc)
 {
     createPoints();
     createBoundary();
+}
+
+
+Foam::autoPtr<Foam::block> Foam::block::New
+(
+    const dictionary& dict,
+    const label index,
+    const pointField& points,
+    const blockEdgeList& edges,
+    const blockFaceList& faces,
+    Istream& is
+)
+{
+    if (debug)
+    {
+        InfoInFunction << "Constructing block" << endl;
+    }
+
+    const word blockOrCellShapeType(is);
+
+    IstreamConstructorTable::iterator cstrIter =
+        IstreamConstructorTablePtr_->find(blockOrCellShapeType);
+
+    if (cstrIter == IstreamConstructorTablePtr_->end())
+    {
+        is.putBack(blockOrCellShapeType);
+        return autoPtr<block>(new block(dict, index, points, edges, faces, is));
+    }
+    else
+    {
+        return autoPtr<block>
+        (
+            cstrIter()
+            (
+                dict,
+                index,
+                points,
+                edges,
+                faces,
+                is
+            )
+        );
+    }
 }
 
 

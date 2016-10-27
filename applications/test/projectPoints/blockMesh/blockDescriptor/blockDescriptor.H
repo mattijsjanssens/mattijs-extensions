@@ -89,12 +89,6 @@ class blockDescriptor
         const blockFaceList& faces_;
 
         //- Block shape
-        word blockShapeType_;
- 
-        //- Block shape
-        labelList blockShapeDescr_;
-
-        //- Block shape
         cellShape blockShape_;
 
         //- The number of cells in the i,j,k directions
@@ -159,6 +153,7 @@ public:
         blockDescriptor
         (
             const dictionary& dict,
+            const label index,
             const pointField& vertices,
             const blockEdgeList&,
             const blockFaceList&,

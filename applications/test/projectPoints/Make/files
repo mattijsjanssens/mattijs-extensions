@@ -31,8 +31,9 @@ blockMesh/gradingDescriptor/gradingDescriptors.C
 blockMesh/blockDescriptor/blockDescriptor.C
 blockMesh/blockDescriptor/blockDescriptorEdges.C
 
-blockMesh/block/block.C
-blockMesh/block/blockCreate.C
+blockMesh/blocks/block/block.C
+blockMesh/blocks/block/blockCreate.C
+blockMesh/blocks/namedBlock/namedBlock.C
 
 blockMesh/blockMesh/blockMesh.C
 blockMesh/blockMesh/blockMeshCreate.C

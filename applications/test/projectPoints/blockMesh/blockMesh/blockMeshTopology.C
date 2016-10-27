@@ -160,7 +160,21 @@ void Foam::blockMesh::readPatches
             >> patchNames[nPatches];
 
         // Read patch faces
-        patchStream >> tmpBlocksPatches[nPatches];
+        {
+            labelListList patchFaces
+            (
+                blockDescriptor::readLabelListList
+                (
+                    patchStream,
+                    meshDescription
+                )
+            );
+            tmpBlocksPatches[nPatches].setSize(patchFaces.size());
+            forAll(patchFaces, facei)
+            {
+                tmpBlocksPatches[nPatches][facei].transfer(patchFaces[facei]);
+            }
+        }
 
 
         // Check for multiple patches

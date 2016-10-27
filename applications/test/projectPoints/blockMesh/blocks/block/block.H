@@ -91,12 +91,36 @@ class block
 
 public:
 
+    //- Runtime type information
+    TypeName("block");
+
+
+    // Declare run-time constructor selection tables
+
+        declareRunTimeSelectionTable
+        (
+            autoPtr,
+            block,
+            Istream,
+            (
+                const dictionary& dict,
+                const label index,
+                const pointField& vertices,
+                const blockEdgeList& edges,
+                const blockFaceList& faces,
+                Istream& is
+            ),
+            (dict, index, vertices, edges, faces, is)
+        );
+
+
     // Constructors
 
         //- Construct from components with Istream
         block
         (
             const dictionary& dict,
+            const label index,
             const pointField& vertices,
             const blockEdgeList& edges,
             const blockFaceList& faces,
@@ -113,6 +137,17 @@ public:
             return autoPtr<block>(nullptr);
         }
 
+        //- New function which constructs and returns pointer to a block
+        static autoPtr<block> New
+        (
+            const dictionary& dict,
+            const label index,
+            const pointField& points,
+            const blockEdgeList& edges,
+            const blockFaceList& faces,
+            Istream&
+        );
+
         //- Class used for the read-construction of
         //  PtrLists of blocks
         class iNew
@@ -121,6 +156,7 @@ public:
             const pointField& points_;
             const blockEdgeList& edges_;
             const blockFaceList& faces_;
+            mutable label index_;
 
         public:
 
@@ -135,17 +171,20 @@ public:
                 dict_(dict),
                 points_(points),
                 edges_(edges),
-                faces_(faces)
+                faces_(faces),
+                index_(0)
             {}
 
             autoPtr<block> operator()(Istream& is) const
             {
-                return autoPtr<block>
-                (
-                    new block(dict_, points_, edges_, faces_, is)
-                );
+                return block::New(dict_, index_++, points_, edges_, faces_, is);
             }
         };
+
+
+    //- Destructor
+    virtual ~block()
+    {}
 
 
     // Member Functions
