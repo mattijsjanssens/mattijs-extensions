@@ -50,7 +50,14 @@ Foam::blockFace::blockFace
     Istream& is
 )
 :
-    vertices_(blockDescriptor::readLabelList(is, dict))
+    vertices_
+    (
+        blockDescriptor::readLabelList
+        (
+            is,
+            dict.subOrEmptyDict("namedVertices")
+        )
+    )
 {}
 
 

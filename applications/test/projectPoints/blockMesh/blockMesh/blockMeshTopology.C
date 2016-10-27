@@ -110,6 +110,11 @@ void Foam::blockMesh::readPatches
     wordList& nbrPatchNames
 )
 {
+    // Collect all variables
+    dictionary varDict(meshDescription.subOrEmptyDict("namedVertices"));
+    varDict.merge(meshDescription.subOrEmptyDict("namedBlocks"));
+
+
     ITstream& patchStream(meshDescription.lookup("patches"));
 
     // Read number of patches in mesh
@@ -166,7 +171,7 @@ void Foam::blockMesh::readPatches
                 blockDescriptor::readLabelListList
                 (
                     patchStream,
-                    meshDescription
+                    varDict
                 )
             );
             tmpBlocksPatches[nPatches].setSize(patchFaces.size());
@@ -272,6 +277,11 @@ void Foam::blockMesh::readBoundary
     PtrList<dictionary>& patchDicts
 )
 {
+    // Collect all variables
+    dictionary varDict(meshDescription.subOrEmptyDict("namedVertices"));
+    varDict.merge(meshDescription.subOrEmptyDict("namedBlocks"));
+
+
     // Read like boundary file
     const PtrList<entry> patchesInfo
     (
@@ -305,7 +315,7 @@ void Foam::blockMesh::readBoundary
             blockDescriptor::readLabelListList
             (
                 patchDicts[patchi].lookup("faces"),
-                meshDescription
+                varDict
             )
         );
         tmpBlocksPatches[patchi].setSize(fcs.size());

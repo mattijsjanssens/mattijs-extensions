@@ -229,8 +229,8 @@ Foam::label Foam::blockDescriptor::readLabel
         else
         {
             FatalIOErrorInFunction(is)
-                << "Attempt to use undefined variable "
-                << varName << " as keyword"
+                << "Undefined variable "
+                << varName << ". Valid variables are " << dict.sortedToc()
                 << exit(FatalIOError);
         }
     }
@@ -378,7 +378,15 @@ Foam::blockDescriptor::blockDescriptor
 {
     // Read cell model and list of vertices (potentially with variables)
     word model(is);
-    blockShape_ = cellShape(model, readLabelList(is, dict));
+    blockShape_ = cellShape
+    (
+        model,
+        readLabelList
+        (
+            is,
+            dict.subOrEmptyDict("namedVertices")
+        )
+    );
 
     // Examine next token
     token t(is);

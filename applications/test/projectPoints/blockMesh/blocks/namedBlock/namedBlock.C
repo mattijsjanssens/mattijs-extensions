@@ -57,7 +57,18 @@ Foam::blocks::namedBlock::namedBlock
         << " has index " << index << endl;
 
     dictionary& d = const_cast<dictionary&>(dict);
-    d.add(*this, index);
+
+    const dictionary* varDictPtr = d.subDictPtr("namedBlocks");
+    if (varDictPtr)
+    {
+        const_cast<dictionary&>(*varDictPtr).add(*this, index);
+    }
+    else
+    {
+        dictionary varDict;
+        varDict.add(*this, index);
+        d.add("namedBlocks", varDict);
+    }
 }
 
 
