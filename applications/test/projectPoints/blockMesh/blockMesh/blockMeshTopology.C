@@ -165,21 +165,11 @@ void Foam::blockMesh::readPatches
             >> patchNames[nPatches];
 
         // Read patch faces
-        {
-            labelListList patchFaces
-            (
-                blockDescriptor::readLabelListList
-                (
-                    patchStream,
-                    varDict
-                )
-            );
-            tmpBlocksPatches[nPatches].setSize(patchFaces.size());
-            forAll(patchFaces, facei)
-            {
-                tmpBlocksPatches[nPatches][facei].transfer(patchFaces[facei]);
-            }
-        }
+        tmpBlocksPatches[nPatches] = blockDescriptor::read<face>
+        (
+            patchStream,
+            varDict
+        );
 
 
         // Check for multiple patches
@@ -310,19 +300,11 @@ void Foam::blockMesh::readBoundary
         patchDicts.set(patchi, new dictionary(patchInfo.dict()));
 
         // Read block faces
-        labelListList fcs
+        tmpBlocksPatches[patchi] = blockDescriptor::read<face>
         (
-            blockDescriptor::readLabelListList
-            (
-                patchDicts[patchi].lookup("faces"),
-                varDict
-            )
+            patchDicts[patchi].lookup("faces"),
+            varDict
         );
-        tmpBlocksPatches[patchi].setSize(fcs.size());
-        forAll(fcs, i)
-        {
-            tmpBlocksPatches[patchi][i].transfer(fcs[i]);
-        }
 
 
         checkPatchLabels

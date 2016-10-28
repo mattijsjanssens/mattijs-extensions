@@ -59,8 +59,8 @@ Foam::blockEdge::blockEdge
 )
 :
     points_(points),
-    start_(blockDescriptor::readLabel(is, dict.subOrEmptyDict("namedVertices"))),
-    end_(blockDescriptor::readLabel(is, dict.subOrEmptyDict("namedVertices")))
+    start_(blockDescriptor::read(is, dict.subOrEmptyDict("namedVertices"))),
+    end_(blockDescriptor::read(is, dict.subOrEmptyDict("namedVertices")))
 {}
 
 

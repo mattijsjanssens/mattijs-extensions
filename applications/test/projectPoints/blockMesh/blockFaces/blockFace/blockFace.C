@@ -52,7 +52,7 @@ Foam::blockFace::blockFace
 :
     vertices_
     (
-        blockDescriptor::readLabelList
+        blockDescriptor::read<label>
         (
             is,
             dict.subOrEmptyDict("namedVertices")

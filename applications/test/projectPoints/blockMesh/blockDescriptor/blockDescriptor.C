@@ -128,16 +128,17 @@ void Foam::blockDescriptor::findCurvedFaces()
 }
 
 
-Foam::label Foam::blockDescriptor::readLabel
+void Foam::blockDescriptor::read
 (
     Istream& is,
+    label& val,
     const dictionary& dict
 )
 {
     token t(is);
     if (t.isLabel())
     {
-        return t.labelToken();
+        val = t.labelToken();
     }
     else if (t.isWord())
     {
@@ -151,7 +152,7 @@ Foam::label Foam::blockDescriptor::readLabel
         if (ePtr)
         {
             // Read as label
-            return Foam::readLabel(ePtr->stream());
+            val = Foam::readLabel(ePtr->stream());
         }
         else
         {
@@ -173,153 +174,18 @@ Foam::label Foam::blockDescriptor::readLabel
     (
         "operator>>(Istream&, List<T>&) : reading entry"
     );
-    return labelMin;
 }
 
 
-Foam::labelList Foam::blockDescriptor::readLabelList
+Foam::label Foam::blockDescriptor::read
 (
     Istream& is,
     const dictionary& dict
 )
 {
-    labelList L;
-
-    token firstToken(is);
-
-    if (firstToken.isLabel())
-    {
-        label s = firstToken.labelToken();
-
-        // Set list length to that read
-        L.setSize(s);
-
-        // Read list contents depending on data format
-
-        // Read beginning of contents
-        char delimiter = is.readBeginList("List");
-
-        if (s)
-        {
-            if (delimiter == token::BEGIN_LIST)
-            {
-                for (label i=0; i<s; i++)
-                {
-                    L[i] = readLabel(is, dict);
-                }
-            }
-        }
-
-        // Read end of contents
-        is.readEndList("List");
-    }
-    else if (firstToken.isPunctuation())
-    {
-        if (firstToken.pToken() != token::BEGIN_LIST)
-        {
-            FatalIOErrorInFunction(is)
-                << "incorrect first token, expected '(', found "
-                << firstToken.info()
-                << exit(FatalIOError);
-        }
-
-        SLList<label> sll;
-
-        while (true)
-        {
-            token t(is);
-            if (t.isPunctuation() && t.pToken() == token::END_LIST)
-            {
-                break;
-            }
-            is.putBack(t);
-            sll.append(readLabel(is, dict));
-        }
-
-        // Convert the singly-linked list to this list
-        L = sll;
-    }
-    else
-    {
-        FatalIOErrorInFunction(is)
-            << "incorrect first token, expected <int> or '(', found "
-            << firstToken.info()
-            << exit(FatalIOError);
-    }
-    return L;
-}
-
-
-Foam::labelListList Foam::blockDescriptor::readLabelListList
-(
-    Istream& is,
-    const dictionary& dict
-)
-{
-    labelListList L;
-
-    token firstToken(is);
-
-    if (firstToken.isLabel())
-    {
-        label s = firstToken.labelToken();
-
-        // Set list length to that read
-        L.setSize(s);
-
-        // Read list contents depending on data format
-
-        // Read beginning of contents
-        char delimiter = is.readBeginList("List");
-
-        if (s)
-        {
-            if (delimiter == token::BEGIN_LIST)
-            {
-                for (label i=0; i<s; i++)
-                {
-                    L[i] = readLabelList(is, dict);
-                }
-            }
-        }
-
-        // Read end of contents
-        is.readEndList("List");
-    }
-    else if (firstToken.isPunctuation())
-    {
-        if (firstToken.pToken() != token::BEGIN_LIST)
-        {
-            FatalIOErrorInFunction(is)
-                << "incorrect first token, expected '(', found "
-                << firstToken.info()
-                << exit(FatalIOError);
-        }
-
-        SLList<labelList> sll;
-
-        while (true)
-        {
-            token t(is);
-            if (t.isPunctuation() && t.pToken() == token::END_LIST)
-            {
-                break;
-            }
-            is.putBack(t);
-            sll.append(readLabelList(is, dict));
-        }
-
-        // Convert the singly-linked list to this list
-        L = sll;
-    }
-    else
-    {
-        FatalIOErrorInFunction(is)
-            << "incorrect first token, expected <int> or '(', found "
-            << firstToken.info()
-            << exit(FatalIOError);
-    }
-    return L;
+    label val;
+    read(is, val, dict);
+    return val;
 }
 
 
@@ -381,7 +247,7 @@ Foam::blockDescriptor::blockDescriptor
     blockShape_ = cellShape
     (
         model,
-        readLabelList
+        read<label>
         (
             is,
             dict.subOrEmptyDict("namedVertices")
