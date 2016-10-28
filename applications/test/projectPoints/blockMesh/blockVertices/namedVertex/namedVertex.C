@@ -51,8 +51,8 @@ Foam::blockVertices::namedVertex::namedVertex
     name_(is),
     vertexPtr_(blockVertex::New(dict, index, geometry, is))
 {
-    Info<< "Vertex " << name_ << " at " <<  vertexPtr_().operator point()
-        << " has index " << index << endl;
+    //Info<< "Vertex " << name_ << " at " <<  vertexPtr_().operator point()
+    //    << " has index " << index << endl;
 
     dictionary& d = const_cast<dictionary&>(dict);
 

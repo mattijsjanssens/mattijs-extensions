@@ -120,9 +120,11 @@ Foam::projectCurveEdge::position(const scalarList& lambdas) const
             const searchableCurve& s =
                 refCast<const searchableCurve>(geometry_[surfaces_[i]]);
             List<pointIndexHit> nearInfo;
-            s.findInterpolatedNearest
+            s.findNearest
             (
-                points,
+                points[0],
+                points.last(),
+                scalarField(lambdas),
                 scalarField(points.size(), magSqr(d)),
                 nearInfo
             );

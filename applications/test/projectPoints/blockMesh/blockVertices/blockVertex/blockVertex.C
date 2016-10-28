@@ -63,7 +63,7 @@ Foam::autoPtr<Foam::blockVertex> Foam::blockVertex::New
 
     token firstToken(is);
 
-    if (firstToken.pToken() == token::BEGIN_LIST)
+    if (firstToken.isPunctuation() && firstToken.pToken() == token::BEGIN_LIST)
     {
         // Putback the opening bracket
         is.putBack(firstToken);

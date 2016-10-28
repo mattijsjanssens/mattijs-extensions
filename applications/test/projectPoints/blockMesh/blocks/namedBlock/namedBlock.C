@@ -53,8 +53,8 @@ Foam::blocks::namedBlock::namedBlock
     word(is),
     block(dict, index, vertices, edges, faces, is)
 {
-    Info<< "Block " << static_cast<word&>(*this)
-        << " has index " << index << endl;
+    //Info<< "Block " << static_cast<word&>(*this)
+    //    << " has index " << index << endl;
 
     dictionary& d = const_cast<dictionary&>(dict);
 

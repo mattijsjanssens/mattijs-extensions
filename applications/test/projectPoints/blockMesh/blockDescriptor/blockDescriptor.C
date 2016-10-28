@@ -128,6 +128,55 @@ void Foam::blockDescriptor::findCurvedFaces()
 }
 
 
+Foam::label Foam::blockDescriptor::readLabel
+(
+    Istream& is,
+    const dictionary& dict
+)
+{
+    token t(is);
+    if (t.isLabel())
+    {
+        return t.labelToken();
+    }
+    else if (t.isWord())
+    {
+        const word& varName = t.wordToken();
+        const entry* ePtr = dict.lookupScopedEntryPtr
+        (
+            varName,
+            true,
+            true
+        );
+        if (ePtr)
+        {
+            // Read as label
+            return Foam::readLabel(ePtr->stream());
+        }
+        else
+        {
+            FatalIOErrorInFunction(is)
+                << "Undefined variable "
+                << varName << ". Valid variables are " << dict
+                << exit(FatalIOError);
+        }
+    }
+    else
+    {
+        FatalIOErrorInFunction(is)
+            << "Illegal token " << t.info()
+            << " when trying to read label"
+            << exit(FatalIOError);
+    }
+
+    is.fatalCheck
+    (
+        "operator>>(Istream&, List<T>&) : reading entry"
+    );
+    return labelMin;
+}
+
+
 Foam::labelList Foam::blockDescriptor::readLabelList
 (
     Istream& is,
@@ -198,55 +247,6 @@ Foam::labelList Foam::blockDescriptor::readLabelList
             << exit(FatalIOError);
     }
     return L;
-}
-
-
-Foam::label Foam::blockDescriptor::readLabel
-(
-    Istream& is,
-    const dictionary& dict
-)
-{
-    token t(is);
-    if (t.isLabel())
-    {
-        return t.labelToken();
-    }
-    else if (t.isWord())
-    {
-        const word& varName = t.wordToken();
-        const entry* ePtr = dict.lookupScopedEntryPtr
-        (
-            varName,
-            true,
-            true
-        );
-        if (ePtr)
-        {
-            // Read as label
-            return Foam::readLabel(ePtr->stream());
-        }
-        else
-        {
-            FatalIOErrorInFunction(is)
-                << "Undefined variable "
-                << varName << ". Valid variables are " << dict.sortedToc()
-                << exit(FatalIOError);
-        }
-    }
-    else
-    {
-        FatalIOErrorInFunction(is)
-            << "Illegal token " << t.info()
-            << " when trying to read label"
-            << exit(FatalIOError);
-    }
-
-    is.fatalCheck
-    (
-        "operator>>(Istream&, List<T>&) : reading entry"
-    );
-    return labelMin;
 }
 
 

@@ -177,9 +177,11 @@ void Foam::searchableCurve::findNearest
 }
 
 
-void Foam::searchableCurve::findInterpolatedNearest
+void Foam::searchableCurve::findNearest
 (
-    const pointField& samples,
+    const point& start,
+    const point& end,
+    const scalarField& rawLambdas,
     const scalarField& nearestDistSqr,
     List<pointIndexHit>& info
 ) const
@@ -190,36 +192,25 @@ void Foam::searchableCurve::findInterpolatedNearest
     const pointField& points = mesh.points();
     const labelListList& pointEdges = mesh.pointEdges();
 
+    const scalar maxDistSqr(Foam::magSqr(bounds().span()));
 
-    // Calculate lambdas from input points
-    scalarField lambdas(samples.size());
-    {
-        lambdas[0] = 0.0;
-        for (label i = 1; i < samples.size(); i++)
-        {
-            lambdas[i] = lambdas[i-1] + mag(samples[i]-samples[i-1]);
-        }
-        lambdas /= lambdas.last();
-    }
+    // Normalise lambdas
+    const scalarField lambdas
+    (
+        (rawLambdas-rawLambdas[0])
+       /(rawLambdas.last()-rawLambdas[0])
+    );
 
 
     // Nearest point on curve and local axis direction
-    pointField curvePoints(samples);
-    vectorField axialVecs(samples.size());
+    pointField curvePoints(lambdas.size());
+    vectorField axialVecs(lambdas.size());
 
-    const pointIndexHit startInfo = tree.findNearest
-    (
-        samples[0],
-        Foam::magSqr(bounds().span())
-    );
+    const pointIndexHit startInfo = tree.findNearest(start, maxDistSqr);
     curvePoints[0] = startInfo.hitPoint();
     axialVecs[0] = edges[startInfo.index()].vec(points);
 
-    const pointIndexHit endInfo = tree.findNearest
-    (
-        samples.last(),
-        Foam::magSqr(bounds().span())
-    );
+    const pointIndexHit endInfo = tree.findNearest(end, maxDistSqr);
     curvePoints.last() = endInfo.hitPoint();
     axialVecs.last() = edges[endInfo.index()].vec(points);
 
@@ -347,7 +338,7 @@ void Foam::searchableCurve::findInterpolatedNearest
 
 
 
-    info.setSize(samples.size());
+    info.setSize(lambdas.size());
     info = pointIndexHit();
 
     // Given the current lambdas interpolate radial direction inbetween
@@ -355,17 +346,17 @@ void Foam::searchableCurve::findInterpolatedNearest
     quaternion qStart;
     vector radialStart;
     {
-        radialStart = samples[0]-curvePoints[0];
+        radialStart = start-curvePoints[0];
         radialStart -= (radialStart&axialVecs[0])*axialVecs[0];
         radialStart /= mag(radialStart);
         qStart = quaternion(radialStart, 0.0);
 
-        info[0] = pointIndexHit(true, samples[0], 0);
+        info[0] = pointIndexHit(true, start, 0);
     }
 
     quaternion qProjectedEnd;
     {
-        vector radialEnd(samples.last()-curvePoints.last());
+        vector radialEnd(end-curvePoints.last());
         radialEnd -= (radialEnd&axialVecs.last())*axialVecs.last();
         radialEnd /= mag(radialEnd);
 
@@ -374,10 +365,10 @@ void Foam::searchableCurve::findInterpolatedNearest
         projectedEnd /= mag(projectedEnd);
         qProjectedEnd = quaternion(projectedEnd, 0.0);
 
-        info.last() = pointIndexHit(true, samples.last(), 0);
+        info.last() = pointIndexHit(true, end, 0);
     }
 
-    for (label i = 1; i < samples.size()-1; i++)
+    for (label i = 1; i < lambdas.size()-1; i++)
     {
         quaternion q(slerp(qStart, qProjectedEnd, lambdas[i]));
         vector radialDir(q.transform(radialStart));

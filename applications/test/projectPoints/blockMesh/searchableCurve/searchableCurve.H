@@ -155,9 +155,13 @@ public:
 
             //- Unique to parametric geometry: given points find
             //  an interpolated (along the curve) point on the surface.
-            virtual void findInterpolatedNearest
+            //  The lambdas[0] is equivalent for start, lambdas.last()
+            //  is equivalent for end.
+            virtual void findNearest
             (
-                const pointField& sample,
+                const point& start,
+                const point& end,
+                const scalarField& lambdas,
                 const scalarField& nearestDistSqr,
                 List<pointIndexHit>&
             ) const;
