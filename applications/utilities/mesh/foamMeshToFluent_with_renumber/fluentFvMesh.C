@@ -36,6 +36,7 @@ using std::ios;
 #include "symmetryPlaneFvPatch.H"
 #include "symmetryFvPatch.H"
 #include "cellModeller.H"
+#include "cellZoneRenumber.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -99,6 +100,15 @@ void Foam::fluentFvMesh::writeCellShapes
 
 void Foam::fluentFvMesh::writeFluentMesh() const
 {
+    // Layout of Fluent zones:
+    //  1               : unzoned cells
+    //  2..zonei        : cellZones
+    //  2+nZones        : interior faces
+    //  3+nZones+patchi : patch faces
+
+    const cellZoneMesh& czm = cellZones();
+
+
     // make a directory called proInterface in the case
     mkDir(time().rootPath()/time().caseName()/"fluentInterface");
 
@@ -182,7 +192,7 @@ void Foam::fluentFvMesh::writeFluentMesh() const
 
     // Writing (mixed) internal faces
     fluentMeshFile
-        << "(13 (9 1 "
+        << "(13 (" << 2+czm.size() << " 1 "
         << own.size() << " 2 0)" << std::endl << "(" << std::endl;
 
     forAll(own, facei)
@@ -214,11 +224,11 @@ void Foam::fluentFvMesh::writeFluentMesh() const
         const labelList& patchFaceCells =
             boundaryMesh()[patchi].faceCells();
 
-        // The face group will be offset by 10 from the patch label
+        // The face group will be offset by cellzones from the patch label
 
         // Write header
         fluentMeshFile
-            << "(13 (" << patchi + 10 << " " << nWrittenFaces + 1
+            << "(13 (" << 3+czm.size()+patchi << " " << nWrittenFaces + 1
             << " " << nWrittenFaces + patchFaces.size() << " ";
 
         nWrittenFaces += patchFaces.size();
@@ -268,7 +278,6 @@ void Foam::fluentFvMesh::writeFluentMesh() const
 
 
     // Determine if cellZones and ordered.
-    const cellZoneMesh& czm = cellZones();
 
     bool ordered;
     labelList nZoneCells(czm.size(), 0);
@@ -307,15 +316,13 @@ void Foam::fluentFvMesh::writeFluentMesh() const
         {
             Info<< "Detected mesh with unordered cellZones."
                 << " Ignoring zone info. Run renumberMesh "
-                << "with cellZoneOrder method to enable Fluent mesh"
+                << "with the " << cellZoneRenumber::typeName
+                << " renumber method to enable Fluent mesh"
                 << " output with cellZones." << endl;
 
             nZoneCells.clear();
         }
     }
-
-DebugVar(ordered);
-DebugVar(nZoneCells);
 
 
 
@@ -323,6 +330,9 @@ DebugVar(nZoneCells);
     // ~~~~~~~~~~~~~
 
     label nUnzonedCells = nCells()-sum(nZoneCells);
+
+
+    label nWrittenCells = 0;
 
     // Write unzoned cells first
     {
@@ -333,25 +343,26 @@ DebugVar(nZoneCells);
         SubList<cellShape> set(cellShapes(), nUnzonedCells);
         writeCellShapes(fluentMeshFile, set);
 
+        nWrittenCells += nUnzonedCells;
+
         fluentMeshFile << ")())" << std::endl;
         fluentMeshFile << "(39 (1 fluid fluid-1)())" << std::endl;
     }
 
-    label startCelli = nUnzonedCells;
     forAll(nZoneCells, zonei)
     {
         fluentMeshFile
-            << "(12 (" << zonei+1 <<  " 1 "
-            << nZoneCells[zonei] << " 1 0)(" << std::endl;
+            << "(12 (" << 2+zonei << " " << nWrittenCells+1 << " "
+            << nWrittenCells+nZoneCells[zonei] << " 1 0)(" << std::endl;
 
-        SubList<cellShape> set(cellShapes(), nZoneCells[zonei], startCelli);
+        SubList<cellShape> set(cellShapes(), nZoneCells[zonei], nWrittenCells);
         writeCellShapes(fluentMeshFile, set);
 
         fluentMeshFile << ")())" << std::endl;
-        fluentMeshFile << "(39 (" << zonei+1 << " fluid " << czm[zonei].name()
+        fluentMeshFile << "(39 (" << 2+zonei << " fluid " << czm[zonei].name()
             << ")())" << std::endl;
 
-        startCelli += nZoneCells[zonei];
+        nWrittenCells += nZoneCells[zonei];
     }
 
 
@@ -359,13 +370,14 @@ DebugVar(nZoneCells);
     fluentMeshFile.setf(ios::dec, ios::basefield);
 
     // Internal faces
-    fluentMeshFile << "(39 (9 interior interior-1)())" << std::endl;
+    fluentMeshFile << "(39 (" << 2+czm.size() << " interior interior-1)())"
+        << std::endl;
 
     // Writing boundary patch types
     forAll(boundary(), patchi)
     {
         fluentMeshFile
-            << "(39 (" << patchi + 10 << " ";
+            << "(39 (" << 3+czm.size()+patchi << " ";
 
         // Write patch type
         if (isA<wallFvPatch>(boundary()[patchi]))
