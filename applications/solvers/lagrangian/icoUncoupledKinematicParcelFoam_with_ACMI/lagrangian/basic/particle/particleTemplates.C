@@ -413,6 +413,10 @@ Foam::scalar Foam::particle::trackToFace
         {
             position_ = endPosition;
 
+Pout<< "updated position to:" << position_
+    << " since reached end" << endl;
+
+
             return 1.0;
         }
         else
@@ -468,15 +472,15 @@ Foam::scalar Foam::particle::trackToFace
             facei_ = -1;
         }
 
-        // Pout<< "track loop " << position_ << " " << endPosition << nl
-        //     << "    " << celli_
-        //     << "    " << facei_
-        //     << " " << tetFacei_
-        //     << " " << tetPti_
-        //     << " " << triI
-        //     << " " << lambdaMin
-        //     << " " << trackFraction
-        //     << endl;
+        Pout<< "track loop " << position_ << " " << endPosition << nl
+             << "    " << celli_
+             << "    " << facei_
+             << " " << tetFacei_
+             << " " << tetPti_
+             << " " << triI
+             << " " << lambdaMin
+             << " " << trackFraction
+             << endl;
 
         // Pout<< "# Tracking loop tet "
         //     << origId_ << " " << origProc_<< nl
@@ -509,10 +513,16 @@ Foam::scalar Foam::particle::trackToFace
             {
                 trackFraction += lambdaMin*(1 - trackFraction);
                 position_ += lambdaMin*(endPosition - position_);
+
+Pout<< "updated position to:" << position_ << " trackFraction:" << trackFraction
+    << " since lamddaMin:" << lambdaMin << endl;
             }
             else
             {
                 position_ = endPosition;
+
+Pout<< "updated position to:" << position_ << " trackFraction:" << trackFraction
+    << " since reached end" << endl;
 
                 return 1.0;
             }
@@ -522,6 +532,7 @@ Foam::scalar Foam::particle::trackToFace
             // Set lambdaMin to zero to force a towards-tet-centre
             // correction.
             lambdaMin = 0.0;
+Pout<< "Froce tet-correction" << endl;
         }
 
     } while (facei_ < 0);
@@ -1129,16 +1140,32 @@ void Foam::particle::hitACMIWallPatch
     const vector& direction
 )
 {
+    DebugVar(position_);
     DebugVar(pp.name());
+    DebugVar(pp.start());
+    DebugVar(pp.size());
 
     const cyclicACMIPolyPatch& cpp = pp.ACMI();
     const cyclicAMIPolyPatch& receiveCpp = cpp.neighbPatch();
 
+    DebugVar(cpp.name());
+    DebugVar(cpp.start());
+    DebugVar(cpp.size());
+
+    DebugVar(receiveCpp.name());
+    DebugVar(receiveCpp.start());
+    DebugVar(receiveCpp.size());
+
+
     // Patch face index on sending side
-    label patchFacei = facei_ - cpp.start();
+    label patchFacei = facei_ - pp.start();
+
+    DebugVar(patchFacei);
 
     // Patch face index on receiving side - also updates position
     patchFacei = cpp.pointFace(patchFacei, direction, position_);
+
+    DebugVar(patchFacei);
 
     if (patchFacei < 0)
     {
@@ -1152,6 +1179,13 @@ void Foam::particle::hitACMIWallPatch
         facei_ = patchFacei + receiveCpp.start();
 
         celli_ = mesh_.faceOwner()[facei_];
+
+DebugVar(celli_);
+Pout<< "Moved particle through " << receiveCpp.name()
+    << " into cell:" << celli_
+    << " at:" << mesh_.cellCentres()[celli_]
+    << endl;
+Pout<< "particle now at:" << position_ << endl;
 
         tetFacei_ = facei_;
 

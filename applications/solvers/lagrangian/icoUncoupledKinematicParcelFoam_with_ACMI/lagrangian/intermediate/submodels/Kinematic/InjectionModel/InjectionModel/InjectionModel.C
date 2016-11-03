@@ -469,8 +469,8 @@ void Foam::InjectionModel<CloudType>::inject(TrackData& td)
                     // Lagrangian timestep
                     const scalar dt = time - timeInj;
 
-                    // Apply corrections to position for 2-D cases
-                    meshTools::constrainToMeshCentre(mesh, pos);
+//                    // Apply corrections to position for 2-D cases
+//                    meshTools::constrainToMeshCentre(mesh, pos);
 
                     // Create a new parcel
                     parcelType* pPtr =
@@ -586,8 +586,8 @@ void Foam::InjectionModel<CloudType>::injectSteadyState
 
         if (celli > -1)
         {
-            // Apply corrections to position for 2-D cases
-            meshTools::constrainToMeshCentre(mesh, pos);
+//            // Apply corrections to position for 2-D cases
+//            meshTools::constrainToMeshCentre(mesh, pos);
 
             // Create a new parcel
             parcelType* pPtr =

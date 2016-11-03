@@ -38,7 +38,7 @@ const Foam::scalar Foam::particle::minStepFractionTol = 1e5*SMALL;
 
 namespace Foam
 {
-    defineTypeNameAndDebug(particle, 0);
+    defineTypeNameAndDebug(particle, 1);
 }
 
 

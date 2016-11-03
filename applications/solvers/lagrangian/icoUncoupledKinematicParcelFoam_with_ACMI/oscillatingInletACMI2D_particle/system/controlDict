@@ -15,7 +15,10 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//libs            ("liblagrangian2.so");
+DebugSwitches
+{
+    particle 1;
+}
 
 application     icoUncoupledKinematicParcelDyMFoam;
 

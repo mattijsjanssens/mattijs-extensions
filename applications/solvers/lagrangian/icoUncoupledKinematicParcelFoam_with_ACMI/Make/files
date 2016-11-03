@@ -1,3 +1,4 @@
+cyclicAMIPolyPatch.C
 icoUncoupledKinematicParcelFoam.C
 
 basic=lagrangian/basic

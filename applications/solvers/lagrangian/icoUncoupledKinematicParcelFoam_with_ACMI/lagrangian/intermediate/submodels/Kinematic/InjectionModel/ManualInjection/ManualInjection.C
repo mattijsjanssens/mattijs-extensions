@@ -118,6 +118,8 @@ void Foam::ManualInjection<CloudType>::updateMesh()
 
     PackedBoolList keep(positions_.size(), true);
 
+DebugVar(positions_);
+
     forAll(positions_, pI)
     {
         if
@@ -136,6 +138,9 @@ void Foam::ManualInjection<CloudType>::updateMesh()
             nRejected++;
         }
     }
+
+
+DebugVar(positions_);
 
     if (nRejected > 0)
     {

@@ -176,7 +176,14 @@ bool Foam::LocalInteraction<CloudType>::correct
     const tetIndices& tetIs
 )
 {
+DebugVar(p);
+DebugVar(pp.name());
+DebugVar(pp.index());
+
     label patchi = patchData_.applyToPatch(pp.index());
+
+DebugVar(patchi);
+
 
     if (patchi >= 0)
     {

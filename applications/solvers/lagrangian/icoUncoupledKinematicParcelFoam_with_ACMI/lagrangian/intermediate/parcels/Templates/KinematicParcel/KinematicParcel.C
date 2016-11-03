@@ -279,8 +279,8 @@ bool Foam::KinematicParcel<ParcelType>::move
 
     while (td.keepParticle && !td.switchProcessor && tEnd > ROOTVSMALL)
     {
-        // Apply correction to position for reduced-D cases
-        meshTools::constrainToMeshCentre(mesh, p.position());
+//        // Apply correction to position for reduced-D cases
+//        meshTools::constrainToMeshCentre(mesh, p.position());
 
         const point start(p.position());
 

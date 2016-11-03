@@ -84,10 +84,12 @@ Foam::patchInteractionDataList::patchInteractionDataList
 
     if (badPatches.size() > 0)
     {
-        FatalErrorInFunction
+        //FatalErrorInFunction
+        WarningInFunction
             << "All patches must be specified when employing local patch "
             << "interaction. Please specify data for patches:" << nl
-            << badPatches << nl << exit(FatalError);
+            << badPatches << nl << endl;
+            // << exit(FatalError);
     }
 }
 

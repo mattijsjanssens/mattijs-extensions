@@ -62,7 +62,8 @@ ACMI1
     }
     ACMI1_blockage
     {
-        type            wall;
+        type            ACMIWall;
+        coupleGroup     ACMI1;
         inGroups        
 2
 (
@@ -92,7 +93,8 @@ ACMI2
     }
     ACMI2_blockage
     {
-        type            wall;
+        type            ACMIWall;
+        coupleGroup     ACMI2;
         inGroups        
 2
 (
