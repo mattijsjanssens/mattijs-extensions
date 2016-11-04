@@ -1,0 +1,19 @@
+offsetting surface:
+- using point normal
+- using distance-to-wall (iso surface)
+- how to avoid cross-overs
+- has features? If not how to handle mitering?
+- how to smooth out non-extrusion areas
+- addressing back onto original surface. Same topology?
+
+cutting:
+- move vertices before cutting?
+- impossible cuts? Consistency?
+- resolve impossible cuts by -tet? -refinement?
+
+infill:
+- to original surface point
+- perpendicular to snapped point?
+- features?
+- smoothing?
+- feedback to offsetting surface?
