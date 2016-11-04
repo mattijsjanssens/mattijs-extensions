@@ -1,0 +1,5 @@
+smoothTriSurfaceMesh.C
+writeSurfaceDistance.C
+
+EXE = $(FOAM_USER_APPBIN)/writeSurfaceDistance
+
