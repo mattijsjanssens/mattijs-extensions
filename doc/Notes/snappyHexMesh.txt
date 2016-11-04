@@ -1,15 +1,19 @@
 offsetting surface:
-- using point normal
-- using distance-to-wall (iso surface)
-- how to avoid cross-overs
+- using point normal. Problem: requires perfect surface.
+  See cfMesh ship5415Octree.
+- using distance-to-wall (iso surface). With walking method can have
+  originating location info. Still same problems as medial axis.
+- how to avoid cross-overs. Feedback loop.
 - has features? If not how to handle mitering?
-- how to smooth out non-extrusion areas
+- how to smooth out non-extrusion areas. Easier with mesh - walking
+  method based on distance-to-nearest problem point.
 - addressing back onto original surface. Same topology?
 
 cutting:
 - move vertices before cutting?
 - impossible cuts? Consistency?
 - resolve impossible cuts by -tet? -refinement?
+- cfMesh: cut hexes (with flattened faces) to make prisms, tets
 
 infill:
 - to original surface point
@@ -17,3 +21,4 @@ infill:
 - features?
 - smoothing?
 - feedback to offsetting surface?
+- single cell or all cells in on go. cfMesh does single cell first.

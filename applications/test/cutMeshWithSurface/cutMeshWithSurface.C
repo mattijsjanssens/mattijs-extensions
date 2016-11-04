@@ -29,7 +29,6 @@ Application
 #include "argList.H"
 #include "Time.H"
 #include "faceSet.H"
-//#include "removeFaces.H"
 #include "ReadFields.H"
 #include "volFields.H"
 #include "surfaceFields.H"
@@ -39,6 +38,7 @@ Application
 #include "polyTopoChange.H"
 #include "cellCuts.H"
 #include "meshCutAndRemove.H"
+#include "meshCutter.H"
 
 using namespace Foam;
 
@@ -110,9 +110,21 @@ int main(int argc, char *argv[])
             const point& pt = info[edgei].hitPoint();
 
             vector eVec(e.vec(points));
+            scalar f = eVec&(pt-points[e.start()])/magSqr(eVec);
 
-            cutEdges.append(edgei);
-            cutEdgeWeights.append(eVec&(pt-points[e.start()])/magSqr(eVec));
+            // if (f < 0.1)
+            // {
+            //     cutVerts.append(e.start());
+            // }
+            // else if (f > 0.9)
+            // {
+            //     cutVerts.append(e.end());
+            // }
+            // else
+            {
+                cutEdges.append(edgei);
+                cutEdgeWeights.append(f);
+            }
         }
     }
 
@@ -124,7 +136,6 @@ DebugVar(cutEdgeWeights);
     //- Construct from pattern of cuts. Detect cells to cut.
     cellCuts cuts(mesh, cutVerts, cutEdges, cutEdgeWeights);
 
-    DebugVar(cuts.cellLoops());
     DebugVar(cuts.nLoops());
 
 
@@ -164,13 +175,11 @@ DebugVar(cutEdgeWeights);
     ReadFields(mesh, objects, stFlds);
 
 
-    // Mesh change engine
-    meshCutAndRemove cutter(mesh);
-
 
     // Topo changes container
     polyTopoChange meshMod(mesh);
 
+    meshCutAndRemove cutter(mesh);
     // Insert mesh refinement into polyTopoChange.
     cutter.setRefinement
     (
@@ -179,6 +188,13 @@ DebugVar(cutEdgeWeights);
         labelList(mesh.nCells(), 0),    //exposedPatchi
         meshMod
     );
+
+
+    // Mesh change engine
+    //meshCutter cutter(mesh);
+    //cutter.setRefinement(cuts, meshMod);
+
+
 
     autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
 
