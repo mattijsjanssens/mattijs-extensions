@@ -1,0 +1,6 @@
+entry.C
+entryIO.C
+functionEntry.C
+foamDictionary.C
+
+EXE = $(FOAM_USER_APPBIN)/foamDictionary_without_expansion
