@@ -13,7 +13,13 @@ cutting:
 - move vertices before cutting?
 - impossible cuts? Consistency?
 - resolve impossible cuts by -tet? -refinement?
-- cfMesh: cut hexes (with flattened faces) to make prisms, tets
+- cfMesh: after snapping does an optimisation which
+    cuts hexes (with flattened faces) perpendicular to the surface
+    to make prisms, tets
+- test: on iglooWithFridges cut cells with 3 faces on same patch
+  (i.e. slice off the top tet). This produces exactly the same mesh
+  as without since the combine-patch-faces merges it all into the same
+  base 5 pyramid.
 
 infill:
 - to original surface point
