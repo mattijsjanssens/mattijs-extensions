@@ -109,21 +109,25 @@ bool Foam::entry::New(dictionary& parentDict, Istream& is)
     is.fatalCheck("entry::New(const dictionary& parentDict, Istream&)");
 
     keyType keyword;
-    token keywordToken;
+    token keyToken;
 
     // Get the next keyword and if a valid keyword return true
-    bool valid = getKeyword(keyword, keywordToken, is);
+    bool valid = getKeyword(keyword, keyToken, is);
 
     if (!valid)
     {
         // Do some more checking
-        if (keywordToken == token::END_BLOCK || is.eof())
+        if (keyToken == token::END_BLOCK || is.eof())
         {
             return false;
         }
-        else if (keywordToken.isLabel())
+        else if
+        (
+            keyToken.isLabel()
+         || (keyToken.isPunctuation() && keyToken.pToken() == token::BEGIN_LIST)
+        )
         {
-            is.putBack(keywordToken);
+            is.putBack(keyToken);
             return parentDict.add
             (
                 new dictionaryListEntry(parentDict, is),
@@ -139,7 +143,7 @@ bool Foam::entry::New(dictionary& parentDict, Istream& is)
                 << "    in file " << __FILE__
                 << " at line " << __LINE__ << std::endl
                 << "    Reading " << is.name().c_str() << std::endl
-                << "    found " << keywordToken << std::endl
+                << "    found " << keyToken << std::endl
                 << "    expected either " << token::END_BLOCK << " or EOF"
                 << std::endl;
             return false;

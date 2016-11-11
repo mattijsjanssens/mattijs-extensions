@@ -70,6 +70,27 @@ Foam::dictionaryListEntry::dictionaryListEntry
         }
         is.readEndList("List");
     }
+    else if
+    (
+        firstToken.isPunctuation()
+     && firstToken.pToken() == token::BEGIN_LIST
+    )
+    {
+        while (true)
+        {
+            token nextToken(is);
+            if
+            (
+                nextToken.isPunctuation()
+             && nextToken.pToken() == token::END_LIST
+            )
+            {
+                break;
+            }
+            is.putBack(nextToken);
+            entry::New(*this, is);
+        }
+    }
     else
     {
         FatalIOErrorInFunction(is)
