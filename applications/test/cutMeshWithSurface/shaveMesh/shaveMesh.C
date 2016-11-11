@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
     (
         0,                  //exposedPatci
         cuts,
-        labelList(mesh.nCells(), 0),    //exposedPatchi
+        labelList(mesh.nCells(), patchi),    //exposedPatchi
         meshMod
     );
 
