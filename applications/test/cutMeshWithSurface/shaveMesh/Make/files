@@ -1,0 +1,4 @@
+
+shaveMesh.C
+
+EXE = $(FOAM_APPBIN)/shaveMesh

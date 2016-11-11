@@ -1,0 +1,85 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "1/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+9
+(
+    maxY
+    {
+        type            patch;  //symmetryPlane;
+        //inGroups        1(symmetryPlane);
+        nFaces          0;
+        startFace       21700;
+    }
+    minX
+    {
+        type            patch;  //symmetryPlane;
+        //inGroups        1(symmetryPlane);
+        nFaces          0;
+        startFace       21700;
+    }
+    maxX
+    {
+        type            patch;  //symmetryPlane;
+        //inGroups        1(symmetryPlane);
+        nFaces          0;
+        startFace       21700;
+    }
+    minY
+    {
+        type            patch;  //symmetryPlane;
+        //inGroups        1(symmetryPlane);
+        nFaces          0;
+        startFace       21700;
+    }
+    ground
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          590;
+        startFace       21700;
+    }
+    maxZ
+    {
+        type            patch;  //symmetryPlane;
+        //inGroups        1(symmetryPlane);
+        nFaces          0;
+        startFace       22290;
+    }
+    igloo
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          2428;
+        startFace       22290;
+    }
+    twoFridgeFreezers_seal_0
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          800;
+        startFace       24718;
+    }
+    twoFridgeFreezers_herring_1
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          592;
+        startFace       25518;
+    }
+)
+
+// ************************************************************************* //
