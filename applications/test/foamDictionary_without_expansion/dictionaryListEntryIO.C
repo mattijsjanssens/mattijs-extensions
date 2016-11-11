@@ -57,22 +57,26 @@ Foam::dictionaryListEntry::dictionaryListEntry
         dictionary::null
     )
 {
-    token keywordToken(is);
-    label s = keywordToken.labelToken();
-
-    is.readBeginList("List");
-
-    for (label i=0; i<s; i++)
+    token firstToken(is);
+    if (firstToken.isLabel())
     {
-        entry::New(*this, is);
-    }
-    is.readEndList("List");
+        label s = firstToken.labelToken();
 
-    is.fatalCheck
-    (
-        "dictionaryListEntry::dictionaryListEntry"
-        "(const dictionary& parentDict, Istream&)"
-    );
+        is.readBeginList("List");
+
+        for (label i=0; i<s; i++)
+        {
+            entry::New(*this, is);
+        }
+        is.readEndList("List");
+    }
+    else
+    {
+        FatalIOErrorInFunction(is)
+            << "incorrect first token, expected <int> or '(', found "
+            << firstToken.info()
+            << exit(FatalIOError);
+    }
 }
 
 
