@@ -25,6 +25,13 @@ Class
     Foam::dictionaryListEntry
 
 Description
+    Read/write List of dictionaries.
+
+    The List entries get stored in a
+    dictionary which itself is stored in the parent dictionary with
+    keyword 'entryDDD' where DDD is the position in the parent dictionary.
+    The printing is again in List format - the keyword is only printed as
+    comment. Can be used to e.g. manipulate polyMesh/boundary files.
 
 SourceFiles
     dictionaryListEntry.C

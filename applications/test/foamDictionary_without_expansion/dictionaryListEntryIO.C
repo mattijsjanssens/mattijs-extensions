@@ -52,7 +52,7 @@ Foam::dictionaryListEntry::dictionaryListEntry
 :
     dictionaryEntry
     (
-        Foam::name(realSize(parentDict)),
+        word("entry" + Foam::name(realSize(parentDict))),
         parentDict,
         dictionary::null
     )
@@ -106,7 +106,7 @@ Foam::dictionaryListEntry::dictionaryListEntry
 void Foam::dictionaryListEntry::write(Ostream& os) const
 {
     os  << nl << indent << size()
-        << token::SPACE << "// entry " << keyword() << nl
+        << token::SPACE << "// " << keyword() << nl
         << indent << token::BEGIN_LIST << incrIndent << nl;
 
     // Write contents

@@ -100,6 +100,15 @@ Usage
             -entry boundaryField
         \endverbatim
 
+      - Change patch type:
+        \verbatim
+          foamDictionary constant/polyMesh/boundary \
+            -entry entry0.fixedWalls.type -set patch
+        \endverbatim
+        This uses special parsing of Lists which stores these in the
+        dictionary with keyword 'entryDDD' where DDD is the position
+        in the dictionary (after ignoring the FoamFile entry).
+
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
