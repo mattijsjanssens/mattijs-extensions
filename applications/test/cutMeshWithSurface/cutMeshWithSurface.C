@@ -84,64 +84,245 @@ int main(int argc, char *argv[])
     // Find the edges intersecting the surface
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    const edgeList& edges = mesh.edges();
-    const pointField& points = mesh.points();
-
-    List<pointIndexHit> info;
-    {
-        vectorField start(edges.size());
-        vectorField end(edges.size());
-        forAll(edges, edgei)
-        {
-            const edge& e = edges[edgei];
-            start[edgei] = points[e[0]];
-            end[edgei] = points[e[1]];
-        }
-        surfMesh.findLineAny(start, end, info);
-        //vectorField normal;
-        //surfMesh.getNormal(info, normal);
-    }
-
-
     DynamicList<label> cutVerts;
     DynamicList<label> cutEdges;
     DynamicField<scalar> cutEdgeWeights;
 
-    forAll(info, edgei)
+
+    // Option 1: always cut edges
+    if (false)
     {
-        if (info[edgei].hit())
+        const edgeList& edges = mesh.edges();
+        const pointField& points = mesh.points();
+
+        List<pointIndexHit> info;
         {
-            const edge& e = edges[edgei];
-            const point& pt = info[edgei].hitPoint();
-
-            vector eVec(e.vec(points));
-            scalar f = eVec&(pt-points[e.start()])/magSqr(eVec);
-
-            // if (f < 0.1)
-            // {
-            //     cutVerts.append(e.start());
-            // }
-            // else if (f > 0.9)
-            // {
-            //     cutVerts.append(e.end());
-            // }
-            // else
+            vectorField start(edges.size());
+            vectorField end(edges.size());
+            forAll(edges, edgei)
             {
-                cutEdges.append(edgei);
-                cutEdgeWeights.append(f);
+                const edge& e = edges[edgei];
+                start[edgei] = points[e[0]];
+                end[edgei] = points[e[1]];
+            }
+            surfMesh.findLineAny(start, end, info);
+            //vectorField normal;
+            //surfMesh.getNormal(info, normal);
+        }
+
+
+        forAll(info, edgei)
+        {
+            if (info[edgei].hit())
+            {
+                const edge& e = edges[edgei];
+                const point& pt = info[edgei].hitPoint();
+
+                vector eVec(e.vec(points));
+                scalar f = eVec&(pt-points[e.start()])/magSqr(eVec);
+
+                // if (f < 0.1)
+                // {
+                //     cutVerts.append(e.start());
+                // }
+                // else if (f > 0.9)
+                // {
+                //     cutVerts.append(e.end());
+                // }
+                // else
+                {
+                    cutEdges.append(edgei);
+                    cutEdgeWeights.append(f);
+                }
+            }
+        }
+    }
+
+    // Option 2: approximate the surface through motion and cutting
+    if (false)
+    {
+        const labelList& own = mesh.faceOwner();
+        const labelList& nei = mesh.faceNeighbour();
+        const pointField& cellCentres = mesh.cellCentres();
+
+        pointField start(mesh.nFaces());
+        pointField end(mesh.nFaces());
+        for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
+        {
+            start[facei] = cellCentres[own[facei]];
+            end[facei] = cellCentres[nei[facei]];
+        }
+        for
+        (
+            label facei = mesh.nInternalFaces();
+            facei < mesh.nFaces();
+            facei++
+        )
+        {
+            start[facei] = cellCentres[own[facei]];
+            vector d(mesh.faceCentres()[facei]-start[facei]);
+            end[facei] = start[facei]+2*d;
+        }
+
+        List<pointIndexHit> info;
+        surfMesh.findLineAny(start, end, info);
+        vectorField normal;
+        surfMesh.getNormal(info, normal);
+    }
+
+
+    // Option 3: always cut vertices by moving edges along
+    {
+        const edgeList& edges = mesh.edges();
+        const pointField& points = mesh.points();
+
+
+        List<pointIndexHit> info;
+        vectorField normal;
+        for (label iter = 0;; iter++)
+        {
+            // Update intersections
+            {
+                vectorField start(edges.size());
+                vectorField end(edges.size());
+                forAll(edges, edgei)
+                {
+                    const edge& e = edges[edgei];
+                    start[edgei] = points[e[0]];
+                    end[edgei] = points[e[1]];
+                }
+                surfMesh.findLineAny(start, end, info);
+                surfMesh.getNormal(info, normal);
+            }
+
+            if (iter == 10)
+            {
+                break;
+            }
+
+
+            pointField newPoints(points);
+            label nAdjusted = 0;
+
+            const labelListList& pointEdges = mesh.pointEdges();
+            forAll(pointEdges, pointi)
+            {
+                const point& pt = points[pointi];
+                const labelList& pEdges = pointEdges[pointi];
+
+                // Get the nearest intersection
+                label minEdgei = -1;
+                scalar minFraction = 0.5;   // Harpoon 0.25; // Samm?
+                forAll(pEdges, pEdgei)
+                {
+                    label edgei = pEdges[pEdgei];
+                    if (info[edgei].hit())
+                    {
+                        const point& hitPt = info[edgei].hitPoint();
+
+                        const edge& e = edges[edgei];
+                        label otherPointi = e.otherVertex(pointi);
+                        const point& otherPt = points[otherPointi];
+
+                        vector eVec(otherPt-pt);
+                        scalar f = eVec&(hitPt-pt)/magSqr(eVec);
+
+                        if (f < minFraction)
+                        {
+                            minEdgei = edgei;
+                            minFraction = f;
+                        }
+                    }
+                }
+                if (minEdgei != -1 && minFraction >= 0.01)
+                {
+                    // Move point to intersection with minEdgei
+                    newPoints[pointi] = info[minEdgei].hitPoint();
+                    nAdjusted++;
+                }
+            }
+
+            Info<< "Iter:" << iter << " adjusting " << nAdjusted << " points"
+                << endl;
+
+            if (nAdjusted == 0)
+            {
+                break;
+            }
+            mesh.movePoints(newPoints);
+        }
+
+
+        forAll(info, edgei)
+        {
+            if (info[edgei].hit())
+            {
+                const edge& e = edges[edgei];
+                const point& pt = info[edgei].hitPoint();
+
+                vector eVec(e.vec(points));
+                scalar f = eVec&(pt-points[e.start()])/magSqr(eVec);
+
+                if (f < 0.01)
+                {
+                    cutVerts.append(e.start());
+                }
+                else if (f > 0.99)
+                {
+                    cutVerts.append(e.end());
+                }
+                else
+                {
+                    cutEdges.append(edgei);
+                    cutEdgeWeights.append(f);
+                }
             }
         }
     }
 
 
+
 DebugVar(cutEdges);
 DebugVar(cutEdgeWeights);
+DebugVar(cutVerts);
 
 
     //- Construct from pattern of cuts. Detect cells to cut.
     cellCuts cuts(mesh, cutVerts, cutEdges, cutEdgeWeights);
 
     DebugVar(cuts.nLoops());
+
+    // See if we need to flip anything
+    {
+        const labelListList& cellLoops = cuts.cellLoops();
+        const labelListList& cellAnchorPoints = cuts.cellAnchorPoints();
+
+
+        DynamicList<label> testCells(cuts.nLoops());
+        DynamicField<point> testPoints(cuts.nLoops());
+
+        forAll(cellLoops, celli)
+        {
+            if (cellLoops[celli].size())
+            {
+                const labelList& anchors = cellAnchorPoints[celli];
+                testCells.append(celli);
+                testPoints.append(mesh.points()[anchors[0]]);
+            }
+        }
+
+        List<volumeType> side;
+        surfMesh.getVolumeType(testPoints, side);
+        forAll(side, i)
+        {
+            if (side[i] == volumeType::OUTSIDE)
+            {
+                Pout<< "Flipping cell " << mesh.cellCentres()[testCells[i]]
+                    << endl;
+                cuts.flip(testCells[i]);
+            }
+        }
+    }
 
 
     // Read objects in time directory
@@ -184,20 +365,20 @@ DebugVar(cutEdgeWeights);
     // Topo changes container
     polyTopoChange meshMod(mesh);
 
-    meshCutAndRemove cutter(mesh);
-    // Insert mesh refinement into polyTopoChange.
-    cutter.setRefinement
-    (
-        0,                  //exposedPatci
-        cuts,
-        labelList(mesh.nCells(), 0),    //exposedPatchi
-        meshMod
-    );
+//     meshCutAndRemove cutter(mesh);
+//     // Insert mesh refinement into polyTopoChange.
+//     cutter.setRefinement
+//     (
+//         0,                  //exposedPatci
+//         cuts,
+//         labelList(mesh.nCells(), 0),    //exposedPatchi
+//         meshMod
+//     );
 
 
     // Mesh change engine
-    //meshCutter cutter(mesh);
-    //cutter.setRefinement(cuts, meshMod);
+    meshCutter cutter(mesh);
+    cutter.setRefinement(cuts, meshMod);
 
 
 

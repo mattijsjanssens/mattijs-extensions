@@ -1,2 +1,0 @@
--np 1 xterm -font fixed -title 'processor'0 -geometry 120x15+0+0 -e /home/mattijs/OpenFOAM/mattijs-extensions/applications/test/processorAgglomeration/cavity/processor0.sh
--np 1 xterm -font fixed -title 'processor'1 -geometry 120x15+0+200 -e /home/mattijs/OpenFOAM/mattijs-extensions/applications/test/processorAgglomeration/cavity/processor1.sh

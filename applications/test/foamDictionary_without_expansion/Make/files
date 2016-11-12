@@ -1,3 +1,5 @@
+dictionaryListEntry.C
+dictionaryListEntryIO.C
 entry.C
 entryIO.C
 functionEntry.C
