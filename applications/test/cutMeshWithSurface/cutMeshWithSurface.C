@@ -46,6 +46,7 @@ Description
 #include "meshCutter.H"
 #include "pointSet.H"
 #include "cellSet.H"
+#include "OBJstream.H"
 
 using namespace Foam;
 
@@ -327,6 +328,12 @@ int main(int argc, char *argv[])
         }
 
 
+//XXXX
+Filter out edge cuts if vertices have been cut!!!
+
+        cutVerts.clear();
+        cutEdges.clear();
+        cutEdgeWeights.clear();
         forAll(info, edgei)
         {
             if (info[edgei].hit())
@@ -356,9 +363,31 @@ int main(int argc, char *argv[])
 
 
 
-DebugVar(cutEdges);
-DebugVar(cutEdgeWeights);
-DebugVar(cutVerts);
+//DebugVar(cutEdges);
+//DebugVar(cutEdgeWeights);
+//DebugVar(cutVerts);
+    {
+        const edgeList& edges = mesh.edges();
+        const pointField& points = mesh.points();
+
+        OBJstream str(runTime.path()/"allCuts.obj");
+        Pout<< "Writing " << returnReduce(cutVerts.size(), sumOp<label>())
+            << " cut vertices and "
+            << returnReduce(cutEdges.size(), sumOp<label>())
+            << " cut edges to " << str.name() << endl;
+        forAll(cutVerts, i)
+        {
+            str.write(points[cutVerts[i]]);
+        }
+        forAll(cutEdges, i)
+        {
+            const edge& e = edges[cutEdges[i]];
+            const scalar f = cutEdgeWeights[i];
+            str.write((1.0-f)*points[e[0]]+f*points[e[1]]);
+        }
+    }
+
+
 
     pointSet cutVertsSet(mesh, "cutVerts", cutVerts);
     cutVertsSet.instance() = mesh.pointsInstance();
