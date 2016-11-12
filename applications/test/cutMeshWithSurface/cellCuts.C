@@ -1026,7 +1026,7 @@ DebugVar(mesh().faceNeighbour()[facei]);
         label celli = cutCells[i];
 
 
-if (celli == 47432)
+if (celli == 19472)
 {
     DebugVar(celli);
     DebugVar(nCutFaces[celli]);
@@ -1040,7 +1040,7 @@ if (celli == 47432)
         {
             const labelList& cFaces = mesh().cells()[celli];
 
-            if (celli == 47432)
+            if (celli == 19472)
             {
                 Pout<< "**** cell:" << celli << " cut faces:" << endl;
                 forAll(cFaces, i)

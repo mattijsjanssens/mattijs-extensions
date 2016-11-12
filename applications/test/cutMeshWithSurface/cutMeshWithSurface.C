@@ -47,6 +47,7 @@ Description
 #include "pointSet.H"
 #include "cellSet.H"
 #include "OBJstream.H"
+#include "zeroGradientFvPatchFields.H"
 
 using namespace Foam;
 
@@ -218,7 +219,7 @@ int main(int argc, char *argv[])
         const edgeList& edges = mesh.edges();
         const pointField& points = mesh.points();
 
-
+        PackedBoolList isCutVert(points.size());
         List<pointIndexHit> info;
         vectorField normal;
         for (label iter = 0;; iter++)
@@ -245,7 +246,6 @@ int main(int argc, char *argv[])
 
             pointField newPoints(points);
             label nAdjusted = 0;
-            pointSet cutVertsSet(mesh, "cutVerts", points.size()/100);
 
             const labelListList& pointEdges = mesh.pointEdges();
             forAll(pointEdges, pointi)
@@ -280,9 +280,11 @@ int main(int argc, char *argv[])
                 if (minEdgei != -1 && minFraction >= 0.01)
                 {
                     // Move point to intersection with minEdgei
-                    newPoints[pointi] = info[minEdgei].hitPoint();
-                    nAdjusted++;
-                    cutVertsSet.insert(pointi);
+                    if (isCutVert.set(pointi))
+                    {
+                        newPoints[pointi] = info[minEdgei].hitPoint();
+                        nAdjusted++;
+                    }
                 }
             }
 
@@ -309,9 +311,6 @@ int main(int argc, char *argv[])
             Info<< "Writing mesh to time " << runTime.timeName() << endl;
             mesh.write();
 
-            cutVertsSet.instance() = mesh.pointsInstance();
-            cutVertsSet.write();
-
             PackedBoolList isCut(isFaceCut(mesh, surfMesh));
             faceSet f0(mesh, "cutFaces", isCut.count());
             forAll(isCut, facei)
@@ -328,9 +327,7 @@ int main(int argc, char *argv[])
         }
 
 
-//XXXX
-Filter out edge cuts if vertices have been cut!!!
-
+        // Filter out edge cuts if endpoints have been cut
         cutVerts.clear();
         cutEdges.clear();
         cutEdgeWeights.clear();
@@ -339,24 +336,49 @@ Filter out edge cuts if vertices have been cut!!!
             if (info[edgei].hit())
             {
                 const edge& e = edges[edgei];
-                const point& pt = info[edgei].hitPoint();
 
-                vector eVec(e.vec(points));
-                scalar f = eVec&(pt-points[e.start()])/magSqr(eVec);
+                if (!isCutVert[e[0]] && !isCutVert[e[1]])
+                {
+                    const point& pt = info[edgei].hitPoint();
 
-                if (f < 0.01)
-                {
-                    cutVerts.append(e.start());
+                    vector eVec(e.vec(points));
+                    scalar f = eVec&(pt-points[e[0]])/magSqr(eVec);
+
+                    if (f < 0.01)
+                    {
+                        isCutVert[e[0]] = true;
+                    }
+                    else if (f > 0.99)
+                    {
+                        isCutVert[e[1]] = true;
+                    }
                 }
-                else if (f > 0.99)
+            }
+        }
+
+        forAll(info, edgei)
+        {
+            if (info[edgei].hit())
+            {
+                const edge& e = edges[edgei];
+
+                if (!isCutVert[e[0]] && !isCutVert[e[1]])
                 {
-                    cutVerts.append(e.end());
-                }
-                else
-                {
+                    const point& pt = info[edgei].hitPoint();
+                    vector eVec(e.vec(points));
+                    scalar f = eVec&(pt-points[e[0]])/magSqr(eVec);
+
                     cutEdges.append(edgei);
                     cutEdgeWeights.append(f);
                 }
+            }
+        }
+
+        forAll(isCutVert, pointi)
+        {
+            if (isCutVert[pointi])
+            {
+                cutVerts.append(pointi);
             }
         }
     }
@@ -388,10 +410,6 @@ Filter out edge cuts if vertices have been cut!!!
     }
 
 
-
-    pointSet cutVertsSet(mesh, "cutVerts", cutVerts);
-    cutVertsSet.instance() = mesh.pointsInstance();
-    cutVertsSet.write();
 
     //- Construct from pattern of cuts. Detect cells to cut.
     cellCuts cuts(mesh, cutVerts, cutEdges, cutEdgeWeights);
@@ -528,7 +546,6 @@ Filter out edge cuts if vertices have been cut!!!
 
     // Update numbering of cells/vertices.
     cutter.updateMesh(morphMap);
-    cutVertsSet.updateMesh(morphMap);
 
     if (!overwrite)
     {
@@ -543,9 +560,6 @@ Filter out edge cuts if vertices have been cut!!!
     Info<< "Writing mesh to time " << runTime.timeName() << endl;
     mesh.write();
 
-    cutVertsSet.instance() = mesh.facesInstance();
-    cutVertsSet.write();
-
     PackedBoolList isCut(isFaceCut(mesh, surfMesh));
     faceSet f0(mesh, "cutFaces", isCut.count());
     forAll(isCut, facei)
@@ -558,6 +572,29 @@ Filter out edge cuts if vertices have been cut!!!
     Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
         << " faces to faceSet " << f0.name() << endl;
     f0.write();
+
+    {
+        volScalarField fld
+        (
+            IOobject
+            (
+                "cellMap",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimless, 0.0),
+            zeroGradientFvPatchScalarField::typeName
+        );
+        forAll(fld, celli)
+        {
+            fld[celli] = 1.0*morphMap().cellMap()[celli];
+        }
+        fld.write();
+    }
 
 
     Info<< "End\n" << endl;
