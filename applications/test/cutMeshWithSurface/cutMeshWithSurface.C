@@ -22,7 +22,12 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
+    cutMeshWithSurface
 
+Description
+    cut mesh at the intersections with a surface. Either cut cells
+    into two (uncomment meshCut) or cut-and-remove the neighbour side
+    of the cut (uncomment meshCutAndRemove)
 
 \*---------------------------------------------------------------------------*/
 
