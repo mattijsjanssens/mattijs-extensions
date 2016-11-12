@@ -44,10 +44,51 @@ Description
 #include "cellCuts.H"
 #include "meshCutAndRemove.H"
 #include "meshCutter.H"
+#include "pointSet.H"
+#include "cellSet.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+PackedBoolList isFaceCut(const polyMesh& mesh, const triSurfaceMesh& surfMesh)
+{
+    const labelList& own = mesh.faceOwner();
+    const labelList& nei = mesh.faceNeighbour();
+    const pointField& cellCentres = mesh.cellCentres();
+
+    pointField start(mesh.nFaces());
+    pointField end(mesh.nFaces());
+    for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
+    {
+        start[facei] = cellCentres[own[facei]];
+        end[facei] = cellCentres[nei[facei]];
+    }
+    for
+    (
+        label facei = mesh.nInternalFaces();
+        facei < mesh.nFaces();
+        facei++
+    )
+    {
+        start[facei] = cellCentres[own[facei]];
+        vector d(mesh.faceCentres()[facei]-start[facei]);
+        end[facei] = start[facei]+2*d;
+    }
+
+    List<pointIndexHit> info;
+    surfMesh.findLineAny(start, end, info);
+
+    PackedBoolList isCut(mesh.nFaces());
+    forAll(info, facei)
+    {
+        if (info[facei].hit())
+        {
+            isCut[facei] = true;
+        }
+    }
+    return isCut;
+}
 
 
 int main(int argc, char *argv[])
@@ -203,6 +244,7 @@ int main(int argc, char *argv[])
 
             pointField newPoints(points);
             label nAdjusted = 0;
+            pointSet cutVertsSet(mesh, "cutVerts", points.size()/100);
 
             const labelListList& pointEdges = mesh.pointEdges();
             forAll(pointEdges, pointi)
@@ -239,6 +281,7 @@ int main(int argc, char *argv[])
                     // Move point to intersection with minEdgei
                     newPoints[pointi] = info[minEdgei].hitPoint();
                     nAdjusted++;
+                    cutVertsSet.insert(pointi);
                 }
             }
 
@@ -250,6 +293,37 @@ int main(int argc, char *argv[])
                 break;
             }
             mesh.movePoints(newPoints);
+
+
+            if (!overwrite)
+            {
+                runTime++;
+            }
+            else
+            {
+                mesh.setInstance(oldInstance);
+            }
+
+            // Take over refinement levels and write to new time directory.
+            Info<< "Writing mesh to time " << runTime.timeName() << endl;
+            mesh.write();
+
+            cutVertsSet.instance() = mesh.pointsInstance();
+            cutVertsSet.write();
+
+            PackedBoolList isCut(isFaceCut(mesh, surfMesh));
+            faceSet f0(mesh, "cutFaces", isCut.count());
+            forAll(isCut, facei)
+            {
+                if (isCut[facei])
+                {
+                    f0.insert(facei);
+                }
+            }
+            Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
+                << " faces to faceSet " << f0.name() << endl;
+            f0.instance() = mesh.pointsInstance();
+            f0.write();
         }
 
 
@@ -286,6 +360,9 @@ DebugVar(cutEdges);
 DebugVar(cutEdgeWeights);
 DebugVar(cutVerts);
 
+    pointSet cutVertsSet(mesh, "cutVerts", cutVerts);
+    cutVertsSet.instance() = mesh.pointsInstance();
+    cutVertsSet.write();
 
     //- Construct from pattern of cuts. Detect cells to cut.
     cellCuts cuts(mesh, cutVerts, cutEdges, cutEdgeWeights);
@@ -322,6 +399,34 @@ DebugVar(cutVerts);
                 cuts.flip(testCells[i]);
             }
         }
+    }
+
+    // Dump failed cuts to cellSet
+    {
+        cellSet candidates(mesh, "failedCandidates", mesh.nCells()/100);
+        forAll(cutEdges, i)
+        {
+            const labelList& cEdges = mesh.edgeCells()[cutEdges[i]];
+            candidates.insert(cEdges);
+        }
+        DebugVar(candidates.size());
+        forAll(cutVerts, i)
+        {
+            const labelList& pCells = mesh.pointCells()[cutVerts[i]];
+            candidates.insert(pCells);
+        }
+        DebugVar(candidates.size());
+        const labelListList& cellLoops = cuts.cellLoops();
+        forAll(cellLoops, celli)
+        {
+            if (cellLoops[celli].size())
+            {
+                candidates.erase(celli);
+            }
+        }
+        DebugVar(candidates.size());
+
+        candidates.write();
     }
 
 
@@ -394,6 +499,7 @@ DebugVar(cutVerts);
 
     // Update numbering of cells/vertices.
     cutter.updateMesh(morphMap);
+    cutVertsSet.updateMesh(morphMap);
 
     if (!overwrite)
     {
@@ -405,10 +511,27 @@ DebugVar(cutVerts);
     }
 
     // Take over refinement levels and write to new time directory.
-    Pout<< "Writing mesh to time " << runTime.timeName() << endl;
+    Info<< "Writing mesh to time " << runTime.timeName() << endl;
     mesh.write();
 
-    Pout<< "End\n" << endl;
+    cutVertsSet.instance() = mesh.facesInstance();
+    cutVertsSet.write();
+
+    PackedBoolList isCut(isFaceCut(mesh, surfMesh));
+    faceSet f0(mesh, "cutFaces", isCut.count());
+    forAll(isCut, facei)
+    {
+        if (isCut[facei])
+        {
+            f0.insert(facei);
+        }
+    }
+    Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
+        << " faces to faceSet " << f0.name() << endl;
+    f0.write();
+
+
+    Info<< "End\n" << endl;
 
     return 0;
 }
