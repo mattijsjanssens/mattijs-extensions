@@ -517,15 +517,15 @@ int main(int argc, char *argv[])
     // Topo changes container
     polyTopoChange meshMod(mesh);
 
-//     meshCutAndRemove cutter(mesh);
-//     // Insert mesh refinement into polyTopoChange.
-//     cutter.setRefinement
-//     (
-//         0,                  //exposedPatci
-//         cuts,
-//         labelList(mesh.nCells(), 0),    //exposedPatchi
-//         meshMod
-//     );
+    //meshCutAndRemove cutter(mesh);
+    //// Insert mesh refinement into polyTopoChange.
+    //cutter.setRefinement
+    //(
+    //    0,                  //exposedPatci
+    //    cuts,
+    //    labelList(mesh.nCells(), 0),    //exposedPatchi
+    //    meshMod
+    //);
 
 
     // Mesh change engine
@@ -560,18 +560,50 @@ int main(int argc, char *argv[])
     Info<< "Writing mesh to time " << runTime.timeName() << endl;
     mesh.write();
 
-    PackedBoolList isCut(isFaceCut(mesh, surfMesh));
-    faceSet f0(mesh, "cutFaces", isCut.count());
-    forAll(isCut, facei)
+
+    // Detect face on surface:
+    // - cut
+    // - or all vertices on surface
     {
-        if (isCut[facei])
+        // 1. Get cut faces
+        const Map<label>& addedFaces = cutter.addedFaces();
+        faceSet f0(mesh, "cutFaces", addedFaces.size());
+        forAllConstIter(Map<label>, addedFaces, iter)
         {
-            f0.insert(facei);
+            f0.insert(iter());
         }
+
+        // 2. Get faces with all vertices snapped
+        PackedBoolList isOldVertCut(morphMap().nOldPoints());
+        isOldVertCut.set(cutVerts);
+
+        const faceList& faces = mesh.faces();
+        const labelList& pointMap = morphMap().pointMap();
+
+        forAll(faces, facei)
+        {
+            const face& f = faces[facei];
+
+            bool allSnapped = true;
+            forAll(f, fp)
+            {
+                label oldPointi = pointMap[f[fp]];
+                if (!isOldVertCut[oldPointi])
+                {
+                    allSnapped = false;
+                    break;
+                }
+            }
+            if (allSnapped)
+            {
+                f0.insert(facei);
+            }
+        }
+
+        Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
+            << " faces to faceSet " << f0.name() << endl;
+        f0.write();
     }
-    Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
-        << " faces to faceSet " << f0.name() << endl;
-    f0.write();
 
     {
         volScalarField fld
