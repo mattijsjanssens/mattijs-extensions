@@ -1122,10 +1122,10 @@ if (celli == 19472)
             {
                 // Invalid loop. Leave cellLoops_[celli] zero size which
                 // flags this.
-                Pout<< "calcCellLoops(const labelList&) : did not find valid"
-                    << " loop for cell " << celli << endl;
+                //Pout<< "calcCellLoops(const labelList&) : did not find valid"
+                //    << " loop for cell " << celli << endl;
                 // Dump cell and cuts on cell.
-                writeUncutOBJ(".", celli);
+                //writeUncutOBJ(".", celli);
 
                 cellLoops_[celli].setSize(0);
             }

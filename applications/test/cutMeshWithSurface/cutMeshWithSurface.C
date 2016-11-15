@@ -310,20 +310,6 @@ int main(int argc, char *argv[])
             // Take over refinement levels and write to new time directory.
             Info<< "Writing mesh to time " << runTime.timeName() << endl;
             mesh.write();
-
-            PackedBoolList isCut(isFaceCut(mesh, surfMesh));
-            faceSet f0(mesh, "cutFaces", isCut.count());
-            forAll(isCut, facei)
-            {
-                if (isCut[facei])
-                {
-                    f0.insert(facei);
-                }
-            }
-            Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
-                << " faces to faceSet " << f0.name() << endl;
-            f0.instance() = mesh.pointsInstance();
-            f0.write();
         }
 
 
@@ -384,10 +370,6 @@ int main(int argc, char *argv[])
     }
 
 
-
-//DebugVar(cutEdges);
-//DebugVar(cutEdgeWeights);
-//DebugVar(cutVerts);
     {
         const edgeList& edges = mesh.edges();
         const pointField& points = mesh.points();
