@@ -15,9 +15,14 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+DebugSwitches
+{
+    //vtkPVFoam 1;
+}
+
 application     buoyantBoussinesqSimpleFoam;
 
-startFrom       latestTime; //startTime;
+startFrom       startTime;
 
 startTime       0;
 

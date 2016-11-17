@@ -48,6 +48,8 @@ Description
 #include "cellSet.H"
 #include "OBJstream.H"
 #include "zeroGradientFvPatchFields.H"
+#include "fvMeshSubset.H"
+#include "regionSplit.H"
 
 using namespace Foam;
 
@@ -90,6 +92,74 @@ PackedBoolList isFaceCut(const polyMesh& mesh, const triSurfaceMesh& surfMesh)
         }
     }
     return isCut;
+}
+
+
+label createBaffle
+(
+    const fvMesh& mesh,
+    const label facei,
+    const label ownPatch,
+    const label neiPatch,
+    polyTopoChange& meshMod
+)
+{
+    const face& f = mesh.faces()[facei];
+    label zoneID = mesh.faceZones().whichZone(facei);
+    bool zoneFlip = false;
+
+    if (zoneID >= 0)
+    {
+        const faceZone& fZone = mesh.faceZones()[zoneID];
+        zoneFlip = fZone.flipMap()[fZone.whichFace(facei)];
+    }
+
+    meshMod.modifyFace
+    (
+        f,                          // modified face
+        facei,                      // label of face
+        mesh.faceOwner()[facei],    // owner
+        -1,                         // neighbour
+        false,                      // face flip
+        ownPatch,                   // patch for face
+        zoneID,                     // zone for face
+        zoneFlip                    // face flip in zone
+    );
+
+
+    label dupFacei = -1;
+
+    if (mesh.isInternalFace(facei))
+    {
+        if (neiPatch == -1)
+        {
+            FatalErrorInFunction
+                << "No neighbour patch for internal face " << facei
+                << " fc:" << mesh.faceCentres()[facei]
+                << " ownPatch:" << ownPatch << abort(FatalError);
+        }
+
+        bool reverseFlip = false;
+        if (zoneID >= 0)
+        {
+            reverseFlip = !zoneFlip;
+        }
+
+        dupFacei = meshMod.addFace
+        (
+            f.reverseFace(),            // modified face
+            mesh.faceNeighbour()[facei],// owner
+            -1,                         // neighbour
+            -1,                         // masterPointID
+            -1,                         // masterEdgeID
+            facei,                      // masterFaceID,
+            true,                       // face flip
+            neiPatch,                   // patch for face
+            zoneID,                     // zone for face
+            reverseFlip                 // face flip in zone
+        );
+    }
+    return dupFacei;
 }
 
 
@@ -478,21 +548,23 @@ int main(int argc, char *argv[])
     PtrList<volTensorField> vtFlds;
     ReadFields(mesh, objects, vtFlds);
 
-    // Read surface fields.
-    PtrList<surfaceScalarField> ssFlds;
-    ReadFields(mesh, objects, ssFlds);
-
-    PtrList<surfaceVectorField> svFlds;
-    ReadFields(mesh, objects, svFlds);
-
-    PtrList<surfaceSphericalTensorField> sstFlds;
-    ReadFields(mesh, objects, sstFlds);
-
-    PtrList<surfaceSymmTensorField> ssymtFlds;
-    ReadFields(mesh, objects, ssymtFlds);
-
-    PtrList<surfaceTensorField> stFlds;
-    ReadFields(mesh, objects, stFlds);
+//- Reads meshPhi which does not get mapped sufficiently (patch does
+//  not get extended for added faces)
+//    // Read surface fields.
+//    PtrList<surfaceScalarField> ssFlds;
+//    ReadFields(mesh, objects, ssFlds);
+//
+//    PtrList<surfaceVectorField> svFlds;
+//    ReadFields(mesh, objects, svFlds);
+//
+//    PtrList<surfaceSphericalTensorField> sstFlds;
+//    ReadFields(mesh, objects, sstFlds);
+//
+//    PtrList<surfaceSymmTensorField> ssymtFlds;
+//    ReadFields(mesh, objects, ssymtFlds);
+//
+//    PtrList<surfaceTensorField> stFlds;
+//    ReadFields(mesh, objects, stFlds);
 
 
 
@@ -546,13 +618,13 @@ int main(int argc, char *argv[])
     // Detect face on surface:
     // - cut
     // - or all vertices on surface
+    faceSet cutFaces(mesh, "cutFaces", cutter.addedFaces().size());
     {
         // 1. Get cut faces
         const Map<label>& addedFaces = cutter.addedFaces();
-        faceSet f0(mesh, "cutFaces", addedFaces.size());
         forAllConstIter(Map<label>, addedFaces, iter)
         {
-            f0.insert(iter());
+            cutFaces.insert(iter());
         }
 
         // 2. Get faces with all vertices snapped
@@ -578,13 +650,13 @@ int main(int argc, char *argv[])
             }
             if (allSnapped)
             {
-                f0.insert(facei);
+                cutFaces.insert(facei);
             }
         }
 
-        Info<< "Writing " << returnReduce(f0.size(), sumOp<label>())
-            << " faces to faceSet " << f0.name() << endl;
-        f0.write();
+        Info<< "Writing " << returnReduce(cutFaces.size(), sumOp<label>())
+            << " faces to faceSet " << cutFaces.name() << endl;
+        cutFaces.write();
     }
 
     {
@@ -608,6 +680,71 @@ int main(int argc, char *argv[])
             fld[celli] = 1.0*morphMap().cellMap()[celli];
         }
         fld.write();
+    }
+
+
+    // Create some baffles
+    {
+        // Topo changes container
+        polyTopoChange meshMod(mesh);
+
+        forAllConstIter(faceSet, cutFaces, iter)
+        {
+            createBaffle
+            (
+                mesh,
+                iter.key(),
+                0,          // ownPatch,
+                0,          // neiPatch,
+                meshMod
+	        );
+        }
+
+        autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
+
+        mesh.updateMesh(morphMap);
+
+        // Move mesh (since morphing does not do this)
+        if (morphMap().hasMotionPoints())
+        {
+            mesh.movePoints(morphMap().preMotionPoints());
+        }
+
+        // Update numbering of cells/vertices.
+        cutter.updateMesh(morphMap);
+
+        if (!overwrite)
+        {
+            runTime++;
+        }
+        else
+        {
+            mesh.setInstance(oldInstance);
+        }
+
+        // Take over refinement levels and write to new time directory.
+        Info<< "Writing baffle mesh to time " << runTime.timeName() << endl;
+        mesh.write();
+    }
+
+
+    // Split into separate meshes
+    {
+        regionSplit cellRegion(mesh);
+        Info<< "Mesh has " << cellRegion.nRegions() << " regions" << endl;
+
+        fvMeshSubset subsetter(mesh);
+
+        for (label regioni = 0; regioni < cellRegion.nRegions(); regioni++)
+        {
+            subsetter.setLargeCellSubset(cellRegion, regioni, -1);
+
+            runTime++;
+
+            Info<< "Writing region " << regioni
+                << " mesh to time " << runTime.timeName() << endl;
+            subsetter.subMesh().write();
+        }
     }
 
 
