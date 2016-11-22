@@ -336,6 +336,22 @@ Foam::scalar Foam::particle::trackToFace
             pPts[f[fPtBI]]
         );
 
+        if (!tet.inside(position_))
+        {
+            meshTools::writeOBJ(Pout, tet.a());
+            meshTools::writeOBJ(Pout, tet.b());
+            meshTools::writeOBJ(Pout, tet.c());
+            meshTools::writeOBJ(Pout, tet.d());
+
+            Pout<< "f 1 3 2" << nl
+                << "f 2 3 4" << nl
+                << "f 1 4 3" << nl
+                << "f 1 2 4" << endl;
+            meshTools::writeOBJ(Pout, position_);
+            meshTools::writeOBJ(Pout, endPosition);
+        }
+
+
         if (lambdaMin < SMALL)
         {
             // Apply tracking correction towards tet centre
