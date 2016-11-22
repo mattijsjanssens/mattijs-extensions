@@ -1,0 +1,9 @@
+meshRefinementBaffles.C
+meshRefinement.C
+meshRefinementCut.C
+
+snappyRefineDriver.C
+cellCuts.C
+snappyHexMesh.C
+
+EXE = $(FOAM_USER_APPBIN)/snappyHexMesh_with_cutting
