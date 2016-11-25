@@ -1231,7 +1231,7 @@ void Foam::snappyRefineDriver::doRefine
     removeInsideCells
     (
         refineParams,
-        1       // nBufferLayers
+        0           //1       // nBufferLayers
     );
 
     // Internal mesh refinement
