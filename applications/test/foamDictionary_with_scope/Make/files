@@ -1,0 +1,4 @@
+dictionary.C
+foamDictionary.C
+
+EXE = $(FOAM_APPBIN)/foamDictionary_with_scope
