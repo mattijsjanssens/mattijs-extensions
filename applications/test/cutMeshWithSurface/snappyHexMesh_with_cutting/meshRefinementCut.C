@@ -31,6 +31,8 @@ License
 #include "polyTopoChange.H"
 #include "volumeType.H"
 #include "searchableSurfaces.H"
+#include "OBJstream.H"
+#include "faceSet.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -78,7 +80,8 @@ void Foam::meshRefinement::snapToSurface
         
         surfaces_.findNearestIntersection
         (
-            labelList(1, 0),    //identity(surfaces_.surfaces().size()),
+            //labelList(1, 0),    //identity(surfaces_.surfaces().size()),
+            identity(surfaces_.surfaces().size()),
             start,
             end,
 
@@ -256,6 +259,10 @@ void Foam::meshRefinement::snapToSurface
             const_cast<Time&>(mesh_.time())++;
             Pout<< "Writing snapped mesh to time " << timeName()
                 << endl;
+
+            // Prevent meshPhi from being written.
+            mesh_.clearOut();
+
             write
             (
                 debugType(debug),
@@ -315,6 +322,29 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::meshRefinement::cutWithSurface
         }
     }
 
+    // Write some obj file
+    {
+        const edgeList& edges = mesh_.edges();
+        const pointField& points = mesh_.points();
+
+        OBJstream str(mesh_.time().path()/"allCuts.obj");
+        Pout<< "Writing " << returnReduce(cutVerts.size(), sumOp<label>())
+            << " cut vertices and "
+            << returnReduce(cutEdges.size(), sumOp<label>())
+            << " cut edges to " << str.name() << endl;
+        forAll(cutVerts, i)
+        {
+            str.write(points[cutVerts[i]]);
+        }
+        forAll(cutEdges, i)
+        {
+            const edge& e = edges[cutEdges[i]];
+            const scalar f = cutEdgeWeights[i];
+            str.write((1.0-f)*points[e[0]]+f*points[e[1]]);
+        }
+    }
+
+
 
     //- Construct from pattern of cuts. Detect cells to cut.
     cellCuts cuts(mesh_, cutVerts, cutEdges, cutEdgeWeights);
@@ -349,26 +379,29 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::meshRefinement::cutWithSurface
             insideSurfaces.setSize(testPoints.size());
             insideSurfaces = -1;
 
-            //forAll(surfaces_.surfaces(), surfi)
-            //{
-                //label geomi = surfaces_.surfaces()[surfi];
-                label geomi = 0;
+            forAll(surfaces_.surfaces(), surfi)
+            {
+                label geomi = surfaces_.surfaces()[surfi];
+                //label geomi = 0;
                 const searchableSurface& geom = surfaces_.geometry()[geomi];
 
-                List<volumeType> volType;
-                geom.getVolumeType(testPoints, volType);
-
-                forAll(insideSurfaces, pointi)
+                if (geom.hasVolumeType())
                 {
-                    if (insideSurfaces[pointi] == -1)
+                    List<volumeType> volType;
+                    geom.getVolumeType(testPoints, volType);
+
+                    forAll(insideSurfaces, pointi)
                     {
-                        if (volType[pointi] == volumeType::INSIDE)
+                        if (insideSurfaces[pointi] == -1)
                         {
-                            insideSurfaces[pointi] = geomi;
+                            if (volType[pointi] == volumeType::INSIDE)
+                            {
+                                insideSurfaces[pointi] = geomi;
+                            }
                         }
                     }
                 }
-            //}
+            }
         }
 
         forAll(insideSurfaces, i)
@@ -423,6 +456,54 @@ Foam::autoPtr<Foam::mapPolyMesh> Foam::meshRefinement::cutWithSurface
     cutter.updateMesh(map);
 
     updateMesh(map, identity(mesh_.nFaces()));
+
+
+    // Detect face on surface:
+    // - cut
+    // - or all vertices on surface
+    if (debug)
+    {
+        faceSet cutFaces(mesh_, "cutFaces", cutter.addedFaces().size());
+
+        // 1. Get cut faces
+        const Map<label>& addedFaces = cutter.addedFaces();
+        forAllConstIter(Map<label>, addedFaces, iter)
+        {
+            cutFaces.insert(iter());
+        }
+
+        // 2. Get faces with all vertices snapped
+        PackedBoolList isOldVertCut(map().nOldPoints());
+        isOldVertCut.set(cutVerts);
+
+        const faceList& faces = mesh_.faces();
+        const labelList& pointMap = map().pointMap();
+
+        forAll(faces, facei)
+        {
+            const face& f = faces[facei];
+
+            bool allSnapped = true;
+            forAll(f, fp)
+            {
+                label oldPointi = pointMap[f[fp]];
+                if (!isOldVertCut[oldPointi])
+                {
+                    allSnapped = false;
+                    break;
+                }
+            }
+            if (allSnapped)
+            {
+                cutFaces.insert(facei);
+            }
+        }
+
+        Info<< "Writing " << returnReduce(cutFaces.size(), sumOp<label>())
+            << " faces to faceSet " << cutFaces.name() << endl;
+        cutFaces.write();
+    }
+
 
     return map;
 }
