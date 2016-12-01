@@ -161,6 +161,16 @@ class dictionary
 
    // Private Member Functions
 
+        //- Find and return an entry data stream pointer if present
+        //  otherwise return nullptr. Allows scoping using scopeChar('.')
+        const entry* lookupScopedSubEntryPtr
+        (
+            const word&,
+            bool recursive,
+            bool patternMatch,
+            const char scopeChar = '.'
+        ) const;
+
         //- Search patterns table for exact match or regular expression match
         bool findInPatterns
         (
@@ -364,7 +374,8 @@ public:
             ) const;
 
             //- Find and return an entry data stream pointer if present
-            //  otherwise return nullptr. Allows scoping using scopeChar('.')
+            //  otherwise return nullptr. Allows scoping using scopeChar('.').
+            //  Special handling for ':' at start of keyword and '..'.
             const entry* lookupScopedEntryPtr
             (
                 const word&,

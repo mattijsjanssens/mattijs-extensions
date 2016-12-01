@@ -110,27 +110,6 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//- Converts old scope syntax to new syntax
-word scope(const fileName& entryName, const char scopeChar)
-{
-    if (entryName.find(':') != string::npos)
-    {
-        wordList entryNames(entryName.components(':'));
-
-        word entry(entryNames[0]);
-        for (label i = 1; i < entryNames.size(); i++)
-        {
-            entry += word(scopeChar) + entryNames[i];
-        }
-        return entry;
-    }
-    else
-    {
-        return entryName;
-    }
-}
-
-
 //- Extracts dict name and keyword
 Pair<word> dictAndKeyword(const word& scopedName, const char scopeChar)
 {
@@ -352,8 +331,6 @@ int main(int argc, char *argv[])
     word entryName;
     if (args.optionReadIfPresent("entry", entryName))
     {
-        word scopedName(scope(entryName, scopeChar));
-
         string newValue;
         if
         (
@@ -363,7 +340,7 @@ int main(int argc, char *argv[])
         {
             bool overwrite = args.optionFound("set");
 
-            Pair<word> dAk(dictAndKeyword(scopedName, scopeChar));
+            Pair<word> dAk(dictAndKeyword(entryName, scopeChar));
 
             IStringStream str(string(dAk.second()) + ' ' + newValue + ';');
             entry* ePtr(entry::New(str).ptr());
@@ -382,7 +359,7 @@ int main(int argc, char *argv[])
             // Print the changed entry
             const entry* entPtr = dict.lookupScopedEntryPtr
             (
-                scopedName,
+                entryName,
                 false,
                 true,           // Support wildcards
                 scopeChar
@@ -395,7 +372,7 @@ int main(int argc, char *argv[])
         else if (args.optionFound("remove"))
         {
             // Extract dictionary name and keyword
-            Pair<word> dAk(dictAndKeyword(scopedName, scopeChar));
+            Pair<word> dAk(dictAndKeyword(entryName, scopeChar));
 
             const dictionary& d(lookupScopedDict(dict, dAk.first(), scopeChar));
             const_cast<dictionary&>(d).remove(dAk.second());
@@ -406,7 +383,7 @@ int main(int argc, char *argv[])
             // Optionally remove a second dictionary
             if (args.optionFound("diff"))
             {
-                Pair<word> dAk(dictAndKeyword(scopedName, scopeChar));
+                Pair<word> dAk(dictAndKeyword(entryName, scopeChar));
 
                 const dictionary& d
                 (
@@ -453,7 +430,7 @@ int main(int argc, char *argv[])
 
             const entry* entPtr = dict.lookupScopedEntryPtr
             (
-                scopedName,
+                entryName,
                 false,
                 true,           // Support wildcards
                 scopeChar
