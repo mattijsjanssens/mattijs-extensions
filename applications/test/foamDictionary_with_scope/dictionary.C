@@ -131,7 +131,7 @@ const Foam::entry* Foam::dictionary::lookupScopedSubEntryPtr
                     const entry* subEntPtr = lookupEntryPtr
                     (
                         keyword.substr(0, nextDotPos),
-                        recursive,
+                        false,  //recursive,
                         patternMatch
                     );
                     if (nextDotPos == string::npos)
