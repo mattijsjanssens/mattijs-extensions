@@ -42,7 +42,7 @@ Description
 
 #include "polyTopoChange.H"
 #include "cellCuts.H"
-#include "meshCutAndRemove.H"
+//#include "meshCutAndRemove.H"
 #include "meshCutter.H"
 #include "pointSet.H"
 #include "cellSet.H"
@@ -50,6 +50,8 @@ Description
 #include "zeroGradientFvPatchFields.H"
 #include "fvMeshSubset.H"
 #include "regionSplit.H"
+#include "surfaceFeatures.H"
+#include "treeDataFace.H"
 
 using namespace Foam;
 
@@ -161,6 +163,178 @@ label createBaffle
     }
     return dupFacei;
 }
+
+
+// Do feature points
+void snapToFeaturePoints
+(
+    fvMesh& mesh,
+    const triSurfaceMesh& surfMesh,
+    const surfaceFeatures& feats,
+    PackedBoolList& isCutVert
+)
+{
+    treeBoundBox bb(surfMesh.bounds());
+    bb.inflate(1e-3);
+
+    // Find cells containing the feature points
+    const labelList& featurePoints = feats.featurePoints();
+
+    Info<< "For surface " << surfMesh.searchableSurface::name()
+        << " detected " << featurePoints.size() << " feature points." << endl;
+
+    pointField newPoints(mesh.points());
+
+    forAll(featurePoints, feati)
+    {
+        const point& featPt = surfMesh.localPoints()[featurePoints[feati]];
+
+        label celli = mesh.findCell(featPt);
+        if (celli != -1)
+        {
+            const labelList& cPoints = mesh.cellPoints(celli);
+
+
+            scalar minDistSqr = GREAT;
+            label minFp = -1;
+            forAll(cPoints, fp)
+            {
+                label pointi = cPoints[fp];
+                const point& pt = mesh.points()[pointi];
+                scalar distSqr = magSqr(pt-featPt);
+                if (distSqr < minDistSqr)
+                {
+                    minDistSqr = distSqr;
+                    minFp = fp;
+                }
+            }
+            if (minFp != -1)
+            {
+                label pointi = cPoints[minFp];
+                newPoints[pointi] = featPt;
+                isCutVert[pointi] = true;
+            }
+        }
+    }
+    mesh.movePoints(newPoints);
+    const_cast<Time&>(mesh.time())++;
+    Info<< "Writing feature-point snapped mesh to time "
+        << mesh.time().timeName() << endl;
+    mesh.write();
+}
+
+
+// Do feature edges
+void snapToFeatureEdges
+(
+    fvMesh& mesh,
+    const triSurfaceMesh& surfMesh,
+    const surfaceFeatures& feats,
+    PackedBoolList& isCutVert
+)
+{
+    treeBoundBox bb(surfMesh.bounds());
+    bb.inflate(1e-3);
+
+    indexedOctree<treeDataFace> tree
+    (
+        treeDataFace
+        (
+            false,                  // do not cache bb
+            mesh,
+            identity(mesh.nFaces())
+        ),
+        bb,     // overall search domain
+        8,      // maxLevel
+        10,     // leafsize
+        3.0     // duplicity
+    );
+
+    // Find intersections of feature edges with mesh faces
+    const labelList& featureEdges = feats.featureEdges();
+
+    Info<< "For surface " << surfMesh.searchableSurface::name()
+        << " detected " << featureEdges.size() << " feature edges." << endl;
+
+    {
+        OBJstream str(mesh.time().path()/"featureEdges.obj");
+        forAll(featureEdges, feati)
+        {
+            const edge& surfE = surfMesh.edges()[featureEdges[feati]];
+            const point& start = surfMesh.localPoints()[surfE[0]];
+            const point& end = surfMesh.localPoints()[surfE[1]];
+            str.write(linePointRef(start, end));
+        }
+    }
+
+
+
+    pointField newPoints(mesh.points());
+    scalarField snapDistSqr(mesh.nPoints(), GREAT);
+
+
+    OBJstream str(mesh.time().path()/"featureIntersections.obj");
+    forAll(featureEdges, feati)
+    {
+        label surfEdgei = featureEdges[feati];
+        const edge& surfE = surfMesh.edges()[surfEdgei];
+        point start = surfMesh.localPoints()[surfE[0]];
+        const point& end = surfMesh.localPoints()[surfE[1]];
+        const vector vec(end-start);
+        const vector smallVec(1e-6*(vec));
+
+        while (magSqr(end-start) > SMALL)
+        {
+            pointIndexHit info = tree.findLine(start, end-smallVec);
+
+            if (!info.hit())
+            {
+                break;
+            }
+
+            str.write(info.hitPoint());
+
+            // Find the nearest vertex to attract
+            const label facei = info.index();
+            const face& f = mesh.faces()[facei];
+
+            scalar minDistSqr = GREAT;
+            label minFp = -1;
+
+            forAll(f, fp)
+            {
+                label pointi = f[fp];
+                const point& pt = mesh.points()[pointi];
+                scalar distSqr = magSqr(pt-info.hitPoint());
+                if (distSqr < minDistSqr)
+                {
+                    minDistSqr = distSqr;
+                    minFp = fp;
+                }
+            }
+            if (minFp != -1)
+            {
+                label pointi = f[minFp];
+                if (!isCutVert[pointi] && (minDistSqr < snapDistSqr[pointi]))
+                {
+                    snapDistSqr[pointi] = minDistSqr;
+                    newPoints[pointi] = info.hitPoint();
+
+                    isCutVert[pointi] = true;
+                }
+            }
+
+            start = info.hitPoint() + smallVec;
+        }
+    }
+
+    mesh.movePoints(newPoints);
+    const_cast<Time&>(mesh.time())++;
+    Info<< "Writing feature-edge snapped mesh to time "
+        << mesh.time().timeName() << endl;
+    mesh.write();
+}
+
 
 
 int main(int argc, char *argv[])
@@ -290,6 +464,14 @@ int main(int argc, char *argv[])
         const pointField& points = mesh.points();
 
         PackedBoolList isCutVert(points.size());
+
+
+        surfaceFeatures feats(surfMesh, 180.0-45.0);
+
+        snapToFeaturePoints(mesh, surfMesh, feats, isCutVert);
+        snapToFeatureEdges(mesh, surfMesh, feats, isCutVert);
+
+
         List<pointIndexHit> info;
         vectorField normal;
         for (label iter = 0;; iter++)
@@ -320,38 +502,38 @@ int main(int argc, char *argv[])
             const labelListList& pointEdges = mesh.pointEdges();
             forAll(pointEdges, pointi)
             {
-                const point& pt = points[pointi];
-                const labelList& pEdges = pointEdges[pointi];
-
-                // Get the nearest intersection
-                label minEdgei = -1;
-                scalar minFraction = 0.5;   // Harpoon 0.25; // Samm?
-                forAll(pEdges, pEdgei)
+                if (!isCutVert[pointi])
                 {
-                    label edgei = pEdges[pEdgei];
-                    if (info[edgei].hit())
+                    const point& pt = points[pointi];
+                    const labelList& pEdges = pointEdges[pointi];
+
+                    // Get the nearest intersection
+                    label minEdgei = -1;
+                    scalar minFraction = 0.5;   // Harpoon 0.25; // Samm?
+                    forAll(pEdges, pEdgei)
                     {
-                        const point& hitPt = info[edgei].hitPoint();
-
-                        const edge& e = edges[edgei];
-                        label otherPointi = e.otherVertex(pointi);
-                        const point& otherPt = points[otherPointi];
-
-                        vector eVec(otherPt-pt);
-                        scalar f = eVec&(hitPt-pt)/magSqr(eVec);
-
-                        if (f < minFraction)
+                        label edgei = pEdges[pEdgei];
+                        if (info[edgei].hit())
                         {
-                            minEdgei = edgei;
-                            minFraction = f;
+                            const point& hitPt = info[edgei].hitPoint();
+
+                            const edge& e = edges[edgei];
+                            label otherPointi = e.otherVertex(pointi);
+                            const point& otherPt = points[otherPointi];
+
+                            vector eVec(otherPt-pt);
+                            scalar f = eVec&(hitPt-pt)/magSqr(eVec);
+
+                            if (f < minFraction)
+                            {
+                                minEdgei = edgei;
+                                minFraction = f;
+                            }
                         }
                     }
-                }
-                if (minEdgei != -1 && minFraction >= 0.01)
-                {
-                    // Move point to intersection with minEdgei
-                    if (isCutVert.set(pointi))
+                    if (minEdgei != -1 && minFraction >= 0.01)
                     {
+                        // Move point to intersection with minEdgei
                         newPoints[pointi] = info[minEdgei].hitPoint();
                         nAdjusted++;
                     }
@@ -529,25 +711,25 @@ int main(int argc, char *argv[])
     }
 
 
-    // Read objects in time directory
-    IOobjectList objects(mesh, runTime.timeName());
-
-    // Read vol fields.
-    PtrList<volScalarField> vsFlds;
-    ReadFields(mesh, objects, vsFlds);
-
-    PtrList<volVectorField> vvFlds;
-    ReadFields(mesh, objects, vvFlds);
-
-    PtrList<volSphericalTensorField> vstFlds;
-    ReadFields(mesh, objects, vstFlds);
-
-    PtrList<volSymmTensorField> vsymtFlds;
-    ReadFields(mesh, objects, vsymtFlds);
-
-    PtrList<volTensorField> vtFlds;
-    ReadFields(mesh, objects, vtFlds);
-
+//     // Read objects in time directory
+//     IOobjectList objects(mesh, runTime.timeName());
+//
+//     // Read vol fields.
+//     PtrList<volScalarField> vsFlds;
+//     ReadFields(mesh, objects, vsFlds);
+//
+//     PtrList<volVectorField> vvFlds;
+//     ReadFields(mesh, objects, vvFlds);
+//
+//     PtrList<volSphericalTensorField> vstFlds;
+//     ReadFields(mesh, objects, vstFlds);
+//
+//     PtrList<volSymmTensorField> vsymtFlds;
+//     ReadFields(mesh, objects, vsymtFlds);
+//
+//     PtrList<volTensorField> vtFlds;
+//     ReadFields(mesh, objects, vtFlds);
+//
 //- Reads meshPhi which does not get mapped sufficiently (patch does
 //  not get extended for added faces)
 //    // Read surface fields.
@@ -697,7 +879,7 @@ int main(int argc, char *argv[])
                 0,          // ownPatch,
                 0,          // neiPatch,
                 meshMod
-	        );
+            );
         }
 
         autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
