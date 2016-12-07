@@ -142,7 +142,7 @@ void Foam::staticDisplacementMotionSolver::movePoints
     const pointField& newPoints
 )
 {
-    solver_().movePoints(newPoints);
+    //solver_().movePoints(newPoints);
 }
 
 
