@@ -454,9 +454,9 @@ void Foam::cellCuts::calcFaceCuts() const
 
         if (allVerticesCut)
         {
-            WarningInFunction
-                << "Face " << facei << " vertices " << f
-                << " has all its vertices cut. Not cutting face." << endl;
+            //WarningInFunction
+            //    << "Face " << facei << " vertices " << f
+            //    << " has all its vertices cut. Not cutting face." << endl;
 
             cutI = 0;
         }
