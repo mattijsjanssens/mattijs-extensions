@@ -39,6 +39,7 @@ Description
 #include "radiationModel.H"
 #include "fvOptions.H"
 #include "coordinateSystem.H"
+#include "meshToMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -59,6 +60,9 @@ int main(int argc, char *argv[])
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
+        // Fine to coarse
+
+        Info<< "\nFine to coarse solution" << endl;
         forAll(solidRegions, i)
         {
             Info<< "\nSolving for solid region "
@@ -69,11 +73,49 @@ int main(int argc, char *argv[])
 
             if (i > 0)
             {
-                const volScalarField& Tfine = Ts[i-1];
-                volScalarField res("res", Tfine-Tfine.prevIter());
-                DebugVar(res);
+                const volScalarField& fineT = Ts[i-1];
+                volScalarField fineRes("res", fineT-fineT.prevIter());
+                DebugVar(fineRes);
+
+                const meshToMesh& mapper = solidMappers[i-1];
+                tmp<volScalarField> tcoarseRes(mapper.mapSrcToTgt(fineRes));
+                DebugVar(tcoarseRes());
+                T += tcoarseRes;
             }
 
+
+            fvScalarMatrix TEqn
+            (
+                fvm::ddt(T) - fvm::laplacian(DT, T)
+             ==
+                fvOptions(T)
+            );
+
+            fvOptions.constrain(TEqn);
+            TEqn.solve();
+            fvOptions.correct(T);
+        }
+
+
+        Info<< "\nCoarse to fine solution" << endl;
+        for (label i = solidRegions.size()-2; i >= 0; --i)
+        {
+            Info<< "\nSolving for solid region "
+                << solidRegions[i].name() << endl;
+            #include "setRegionSolidFields.H"
+
+            T.storePrevIter();
+
+            {
+                const volScalarField& coarseT = Ts[i+1];
+                volScalarField coarseRes("res", coarseT-coarseT.prevIter());
+                DebugVar(coarseRes);
+
+                const meshToMesh& mapper = solidMappers[i];
+                tmp<volScalarField> tfineRes(mapper.mapTgtToSrc(coarseRes));
+                DebugVar(tfineRes());
+                T += tfineRes;
+            }
 
             fvScalarMatrix TEqn
             (

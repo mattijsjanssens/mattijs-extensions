@@ -1,6 +1,7 @@
     const wordList solidsNames(rp["solid"]);
 
     PtrList<fvMesh> solidRegions(solidsNames.size());
+    PtrList<meshToMesh> solidMappers(solidsNames.size());
 
     forAll(solidsNames, i)
     {
@@ -26,4 +27,17 @@
         // later in e.g. some boundary evaluation
         //(void)solidRegions[i].weights();
         //(void)solidRegions[i].deltaCoeffs();
+    }
+    for (label i = 0; i < solidRegions.size()-1; i++)
+    {
+        solidMappers.set
+        (
+            i,
+            new meshToMesh
+            (
+                solidRegions[i],
+                solidRegions[i+1],
+                meshToMesh::imCellVolumeWeight
+            )
+        );
     }
