@@ -1,0 +1,16 @@
+AMIInterpolationName.C
+AMIPatchToPatchInterpolation.C
+
+mapLagrangian.C
+mapFieldsPar.C
+
+meshToMesh/meshToMesh.C
+meshToMesh/meshToMeshParallelOps.C
+meshToMeshMethods = meshToMesh/calcMethod
+$(meshToMeshMethods)/meshToMeshMethod/meshToMeshMethod.C
+$(meshToMeshMethods)/meshToMeshMethod/meshToMeshMethodNew.C
+$(meshToMeshMethods)/cellVolumeWeight/cellVolumeWeightMethod.C
+$(meshToMeshMethods)/direct/directMethod.C
+$(meshToMeshMethods)/mapNearest/mapNearestMethod.C
+
+EXE = $(FOAM_USER_APPBIN)/mapFieldsPar_with_volPointInterpolation
