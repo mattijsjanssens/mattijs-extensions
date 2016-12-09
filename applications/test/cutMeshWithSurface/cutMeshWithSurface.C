@@ -225,12 +225,54 @@ void snapToFeaturePoints
 
 
 // Do feature edges
+bool onCell(const fvMesh& mesh, const label facei, const label otherFacei)
+{
+    label own = mesh.faceOwner()[facei];
+    label otherOwn = mesh.faceOwner()[otherFacei];
+
+    if (otherOwn == own)
+    {
+        return true;
+    }
+
+    if (mesh.isInternalFace(facei))
+    {
+        label nei = mesh.faceNeighbour()[facei];
+        if (otherOwn == nei)
+        {
+            return true;
+        }
+
+        if (mesh.isInternalFace(otherFacei))
+        {
+            label otherNei = mesh.faceNeighbour()[otherFacei];
+            if (otherNei == own || otherNei == nei)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    else
+    {
+        if (mesh.isInternalFace(otherFacei))
+        {
+            label otherNei = mesh.faceNeighbour()[otherFacei];
+            if (otherNei == own)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+}
 void snapToFeatureEdges
 (
     fvMesh& mesh,
     const triSurfaceMesh& surfMesh,
     const surfaceFeatures& feats,
-    PackedBoolList& isCutVert
+    PackedBoolList& isCutVert,
+    labelList& whichFace
 )
 {
     treeBoundBox bb(surfMesh.bounds());
@@ -272,6 +314,9 @@ void snapToFeatureEdges
     pointField newPoints(mesh.points());
     scalarField snapDistSqr(mesh.nPoints(), GREAT);
 
+    // Index of face that caused feature attraction
+    whichFace.setSize(mesh.nPoints());
+    whichFace = -1;
 
     OBJstream str(mesh.time().path()/"featureIntersections.obj");
     forAll(featureEdges, feati)
@@ -321,12 +366,79 @@ void snapToFeatureEdges
                     newPoints[pointi] = info.hitPoint();
 
                     isCutVert[pointi] = true;
+
+                    if (whichFace[pointi] == -1)
+                    {
+                        whichFace[pointi] = facei;
+                    }
+                    else
+                    {
+                        whichFace[pointi] = -2;
+                    }
                 }
             }
 
             start = info.hitPoint() + smallVec;
         }
     }
+
+
+    // Shift whole planes
+    {
+        OBJstream str(mesh.time().path()/"planeSnap.obj");
+
+        forAll(isCutVert, pointi)
+        {
+            if (isCutVert[pointi] && whichFace[pointi] >= 0)
+            {
+                label facei = whichFace[pointi];
+                //label own = mesh.faceOwner()[facei];
+                //label nei = mesh.faceNeighbour()[facei];
+
+                const labelList& pFaces = mesh.pointFaces()[pointi];
+                forAll(pFaces, pFacei)
+                {
+                    label otherFacei = pFaces[pFacei];
+
+                    if (otherFacei != facei && onCell(mesh, facei, otherFacei))
+                    {
+                        label nAttract = 0;
+                        const face& otherF = mesh.faces()[otherFacei];
+                        forAll(otherF, fp)
+                        {
+                            if (isCutVert[otherF[fp]])
+                            {
+                                nAttract++;
+                            }
+                        }
+
+                        if (nAttract == 1)
+                        {
+                            Pout<< "found face:"
+                                << mesh.faceCentres()[otherFacei];
+                            str.write(otherF, mesh.points(), false);
+
+                            const vector d
+                            (
+                                newPoints[pointi]
+                               -mesh.points()[pointi]
+                            );
+
+                            forAll(otherF, fp)
+                            {
+                                if (otherF[fp] != pointi)
+                                {
+                                    newPoints[otherF[fp]] += d;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
 
     mesh.movePoints(newPoints);
     const_cast<Time&>(mesh.time())++;
@@ -335,6 +447,53 @@ void snapToFeatureEdges
     mesh.write();
 }
 
+
+//void planeSnap
+//(
+//    fvMesh& mesh,
+//    const triSurfaceMesh& surfMesh,
+//    const surfaceFeatures& feats,
+//    PackedBoolList& isCutVert,
+//    labelList& whichFace
+//)
+//{
+//    OBJstream str(mesh.time().path()/"planeSnap.obj");
+//
+//    forAll(isCutVert, pointi)
+//    {
+//        if (isCutVert[pointi] && whichFace[pointi] >= 0)
+//        {
+//            label facei = whichFace[pointi];
+//            //label own = mesh.faceOwner()[facei];
+//            //label nei = mesh.faceNeighbour()[facei];
+//
+//            const labelList& pFaces = mesh.pointFaces()[pointi];
+//            forAll(pFaces, pFacei)
+//            {
+//                label otherFacei = pFaces[pFacei];
+//
+//                if (otherFacei != facei && onCell(mesh, facei, otherFacei))
+//                {
+//                    label nAttract = 0;
+//                    const face& otherF = mesh.faces()[otherFacei];
+//                    forAll(otherF, fp)
+//                    {
+//                        if (isCutVert[otherF[fp]])
+//                        {
+//                            nAttract++;
+//                        }
+//                    }
+//
+//                    if (nAttract == 1)
+//                    {
+//                        Pout<< "found face:" << mesh.faceCentres()[otherFacei];
+//                        str.write(otherF, mesh.points(), false);
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
 
 
 int main(int argc, char *argv[])
@@ -469,7 +628,19 @@ int main(int argc, char *argv[])
         surfaceFeatures feats(surfMesh, 180.0-45.0);
 
         snapToFeaturePoints(mesh, surfMesh, feats, isCutVert);
-        snapToFeatureEdges(mesh, surfMesh, feats, isCutVert);
+        labelList whichFace;
+        snapToFeatureEdges(mesh, surfMesh, feats, isCutVert, whichFace);
+
+        //{
+        //    planeSnap
+        //    (
+        //        mesh,
+        //        surfMesh,
+        //        feats,
+        //        isCutVert,
+        //        whichFace
+        //    );
+        //}
 
 
         List<pointIndexHit> info;

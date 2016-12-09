@@ -15,7 +15,7 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // Which of the steps to run
-castellatedMesh false;  //true;
+castellatedMesh true;
 snap            true;
 addLayers       false;  //true;
 
@@ -130,10 +130,10 @@ castellatedMeshControls
     // This is a featureEdgeMesh, read from constant/triSurface for now.
     features
     (
-        {
-            file "fridgeA.eMesh";
-            levels ((0.01 3));
-        }
+//        {
+//            file "fridgeA.eMesh";
+//            levels ((0.01 3));
+//        }
     );
 
 
@@ -149,39 +149,35 @@ castellatedMeshControls
 
     refinementSurfaces
     {
-        twoFridgeFreezers
-        {
-            // Surface-wise min and max refinement level
-            level (2 2);
-
-            regions
-            {
-                // Region-wise override
-                "cook.*"
-                {
-                    level (3 3);
-                }
-            }
-
-            // Optional specification of patch type (default is wall). No
-            // constraint types (cyclic, symmetry) etc. are allowed.
-            patchInfo
-            {
-                type        wall;
-            }
-        }
+//        twoFridgeFreezers
+//        {
+//            // Surface-wise min and max refinement level
+//            level (2 2);
+//
+//            regions
+//            {
+//                // Region-wise override
+//                "cook.*"
+//                {
+//                    level (3 3);
+//                }
+//            }
+//
+//            // Optional specification of patch type (default is wall). No
+//            // constraint types (cyclic, symmetry) etc. are allowed.
+//            patchInfo
+//            {
+//                type        wall;
+//            }
+//        }
 
         "iglo.*"
         {
             // Surface-wise min and max refinement level
-            level (1 1);
+            level (0 0);
 
-            // Optional specification of patch type (default is wall). No
-            // constraint types (cyclic, symmetry) etc. are allowed.
-            patchInfo
-            {
-                type        wall;
-            }
+            faceZone    igloo;
+            faceType    internal;
         }
     }
 
@@ -245,18 +241,18 @@ snapControls
     //  before upon reaching a correct mesh.
     nRelaxIter 5;
 
-
-    // Feature snapping
-
-        //- Number of feature edge snapping iterations.
-        //  Leave out altogether to disable.
-        nFeatureSnapIter 10;
-
-        //- Detect (geometric) features by sampling the surface (default=false)
-        implicitFeatureSnap true;
-
-        //- Use castellatedMeshControls::features (default = true)
-        explicitFeatureSnap false;
+//
+//    // Feature snapping
+//
+//        //- Number of feature edge snapping iterations.
+//        //  Leave out altogether to disable.
+//        nFeatureSnapIter 10;
+//
+//        //- Detect (geometric) features by sampling the surface (default=false)
+//        implicitFeatureSnap true;
+//
+//        //- Use castellatedMeshControls::features (default = true)
+//        explicitFeatureSnap false;
 }
 
 
