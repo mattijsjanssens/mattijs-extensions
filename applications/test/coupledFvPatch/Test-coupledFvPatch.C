@@ -47,18 +47,24 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-    Info<< "Reading field p\n" << endl;
+//     Info<< "Reading field p\n" << endl;
+//     volScalarField p
+//     (
+//         IOobject
+//         (
+//             "p",
+//             runTime.timeName(),
+//             mesh,
+//             IOobject::MUST_READ,
+//             IOobject::AUTO_WRITE
+//         ),
+//         mesh
+//     );
+    Info<< "Constructing field p\n" << endl;
     volScalarField p
     (
-        IOobject
-        (
-            "p",
-            runTime.timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh
+        "p",
+        mesh.C().component(vector::X)
     );
 
     const surfaceScalarField& deltaCoeffs =
