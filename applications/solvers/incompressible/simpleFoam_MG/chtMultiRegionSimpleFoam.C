@@ -37,6 +37,7 @@ Description
 #include "fvOptions.H"
 #include "regionProperties.H"
 #include "meshToMesh.H"
+#include "meshToMesh0.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -75,12 +76,39 @@ int main(int argc, char *argv[])
             if (i > 0)
             {
                 const volVectorField& fineU = UFluid[i-1];
-                volVectorField fineRes("res", fineU-fineU.prevIter());
-                DebugVar(fineRes);
+                volVectorField fineRes
+                (
+                    "restrictFineRes",
+                    fineU-fineU.prevIter()
+                );
 
-                const meshToMesh& mapper = fluidMappers[i-1];
-                tmp<volVectorField> tcoarseRes(mapper.mapSrcToTgt(fineRes));
-                DebugVar(tcoarseRes());
+                //DebugVar(fineRes);
+                if (runTime.outputTime())
+                {
+                    fineRes.write();
+                }
+
+                //const meshToMesh& mapper = fluidMappers[i-1];
+                //tmp<volVectorField> tcoarseRes(mapper.mapSrcToTgt(fineRes));
+
+                const meshToMesh0& mapper = fineToCoarseMappers[i-1];
+                tmp<volVectorField> tcoarseRes
+                (
+                    mapper.interpolate
+                    (
+                        fineRes,
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<vector>()
+                    )
+                );
+
+                //DebugVar(tcoarseRes());
+                if (runTime.outputTime())
+                {
+                    tcoarseRes.ref().rename("restrictCoarseRes");
+                    tcoarseRes().write();
+                }
+
                 U += tcoarseRes;
             }
 
@@ -101,12 +129,38 @@ int main(int argc, char *argv[])
 
             {
                 const volVectorField& coarseU = UFluid[i+1];
-                volVectorField coarseRes("res", coarseU-coarseU.prevIter());
-                DebugVar(coarseRes);
+                volVectorField coarseRes
+                (
+                    "prolongCoarseRes",
+                    coarseU-coarseU.prevIter()
+                );
 
-                const meshToMesh& mapper = fluidMappers[i];
-                tmp<volVectorField> tfineRes(mapper.mapTgtToSrc(coarseRes));
-                DebugVar(tfineRes());
+                //DebugVar(coarseRes);
+                if (runTime.outputTime())
+                {
+                    coarseRes.write();
+                }
+
+                //const meshToMesh& mapper = fluidMappers[i];
+                //tmp<volVectorField> tfineRes(mapper.mapTgtToSrc(coarseRes));
+                const meshToMesh0& mapper = coarseToFineMappers[i];
+                tmp<volVectorField> tfineRes
+                (
+                    mapper.interpolate
+                    (
+                        coarseRes,
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<vector>()
+                    )
+                );
+
+                //DebugVar(tfineRes());
+                if (runTime.outputTime())
+                {
+                    tfineRes.ref().rename("prolongFineRes");
+                    tfineRes().write();
+                }
+
                 U += tfineRes;
             }
 

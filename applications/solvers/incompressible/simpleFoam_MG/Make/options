@@ -1,4 +1,5 @@
 EXE_INC = \
+    -DFULLDEBUG -O0 -g \
     -I. \
     /* -I$(FOAM_SOLVERS)/heatTransfer/chtMultiRegionFoam */ \
     -Ifluid \

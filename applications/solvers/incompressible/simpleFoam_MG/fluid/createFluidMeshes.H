@@ -1,7 +1,8 @@
     const wordList fluidNames(rp["fluid"]);
 
     PtrList<fvMesh> fluidRegions(fluidNames.size());
-    PtrList<meshToMesh> fluidMappers(fluidNames.size());
+    PtrList<meshToMesh0> fineToCoarseMappers(fluidNames.size());
+    PtrList<meshToMesh0> coarseToFineMappers(fluidNames.size());
 
     forAll(fluidNames, i)
     {
@@ -23,16 +24,28 @@
             )
         );
     }
-    for (label i = 0; i < fluidRegions.size()-1; i++)
+    forAll(fluidRegions, i)
     {
-        fluidMappers.set
-        (
-            i,
-            new meshToMesh
+        if (i < fluidRegions.size()-1)
+        {
+            fineToCoarseMappers.set
             (
-                fluidRegions[i],
-                fluidRegions[i+1],
-                meshToMesh::imCellVolumeWeight
-            )
-        );
+                i,
+                new meshToMesh0
+                (
+                    fluidRegions[i],
+                    fluidRegions[i+1]
+                    //meshToMesh::imCellVolumeWeight
+                )
+            );
+            coarseToFineMappers.set
+            (
+                i,
+                new meshToMesh0
+                (
+                    fluidRegions[i+1],
+                    fluidRegions[i]
+                )
+            );
+        }
     }
