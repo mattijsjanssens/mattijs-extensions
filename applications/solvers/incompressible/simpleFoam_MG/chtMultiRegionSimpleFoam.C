@@ -58,6 +58,14 @@ int main(int argc, char *argv[])
 
     Info<< "\nStarting time loop\n" << endl;
 
+    const scalar pRelax = 0.5;
+    const scalar URelax = 0.5;
+    const scalar phiRelax = 0.0;
+
+DebugVar(pRelax);
+DebugVar(URelax);
+DebugVar(phiRelax);
+
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
@@ -72,24 +80,27 @@ int main(int argc, char *argv[])
             #include "setRegionFluidFields.H"
 
             U.storePrevIter();
+            p.storePrevIter();
 
+            if (runTime.outputTime())
+            {
+                volVectorField("UStart", U).write();
+                volScalarField("pStart", p).write();
+            }
+
+            // Update U,phi
             if (i > 0)
             {
                 const volVectorField& fineU = UFluid[i-1];
                 volVectorField fineRes
                 (
-                    "restrictFineRes",
+                    "UrestrictFineRes",
                     fineU-fineU.prevIter()
                 );
-
-                //DebugVar(fineRes);
                 if (runTime.outputTime())
                 {
                     fineRes.write();
                 }
-
-                //const meshToMesh& mapper = fluidMappers[i-1];
-                //tmp<volVectorField> tcoarseRes(mapper.mapSrcToTgt(fineRes));
 
                 const meshToMesh0& mapper = fineToCoarseMappers[i-1];
                 tmp<volVectorField> tcoarseRes
@@ -105,16 +116,57 @@ int main(int argc, char *argv[])
                 //DebugVar(tcoarseRes());
                 if (runTime.outputTime())
                 {
-                    tcoarseRes.ref().rename("restrictCoarseRes");
+                    tcoarseRes.ref().rename("UrestrictCoarseRes");
                     tcoarseRes().write();
                 }
 
-                U += tcoarseRes;
+                phi += phiRelax*fvc::flux(tcoarseRes());
+                U += URelax*tcoarseRes;
+
+                if (runTime.outputTime())
+                {
+                    volVectorField("UPredict", U).write();
+                }
+            }
+            // Update p
+            if (i > 0)
+            {
+                const volScalarField& fineP = pFluid[i-1];
+                volScalarField fineRes
+                (
+                    "prestrictFineRes",
+                    fineP-fineP.prevIter()
+                );
+
+                const meshToMesh0& mapper = fineToCoarseMappers[i-1];
+                tmp<volScalarField> tcoarseRes
+                (
+                    mapper.interpolate
+                    (
+                        fineRes,
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<scalar>()
+                    )
+                );
+
+                p += pRelax*tcoarseRes;
+
+                if (runTime.outputTime())
+                {
+                    fineRes.write();
+                    volScalarField("pPredict", p).write();
+                }
             }
 
             #include "UEqn.H"
             #include "pEqn.H"
             turb.correct();
+
+            if (runTime.outputTime())
+            {
+                volVectorField("UDown", U).write();
+                volScalarField("pDown", p).write();
+            }
         }
 
 
@@ -126,7 +178,10 @@ int main(int argc, char *argv[])
             #include "setRegionFluidFields.H"
 
             U.storePrevIter();
+            p.storePrevIter();
 
+
+            // U, phi
             {
                 const volVectorField& coarseU = UFluid[i+1];
                 volVectorField coarseRes
@@ -135,14 +190,11 @@ int main(int argc, char *argv[])
                     coarseU-coarseU.prevIter()
                 );
 
-                //DebugVar(coarseRes);
                 if (runTime.outputTime())
                 {
                     coarseRes.write();
                 }
 
-                //const meshToMesh& mapper = fluidMappers[i];
-                //tmp<volVectorField> tfineRes(mapper.mapTgtToSrc(coarseRes));
                 const meshToMesh0& mapper = coarseToFineMappers[i];
                 tmp<volVectorField> tfineRes
                 (
@@ -154,14 +206,47 @@ int main(int argc, char *argv[])
                     )
                 );
 
-                //DebugVar(tfineRes());
                 if (runTime.outputTime())
                 {
                     tfineRes.ref().rename("prolongFineRes");
                     tfineRes().write();
                 }
 
-                U += tfineRes;
+                phi += phiRelax*fvc::flux(tfineRes());
+                U += URelax*tfineRes;
+
+                if (runTime.outputTime())
+                {
+                    volVectorField("U_updated_from_coarse", U).write();
+                }
+            }
+
+            // p
+            {
+                const volScalarField& coarseP = pFluid[i+1];
+                volScalarField coarseRes
+                (
+                    "prolongCoarseRes",
+                    coarseP-coarseP.prevIter()
+                );
+
+                const meshToMesh0& mapper = coarseToFineMappers[i];
+                tmp<volScalarField> tfineRes
+                (
+                    mapper.interpolate
+                    (
+                        coarseRes,
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<scalar>()
+                    )
+                );
+
+                p += pRelax*tfineRes;
+
+                if (runTime.outputTime())
+                {
+                    volScalarField("p_updated_from_coarse", p).write();
+                }
             }
 
             #include "UEqn.H"

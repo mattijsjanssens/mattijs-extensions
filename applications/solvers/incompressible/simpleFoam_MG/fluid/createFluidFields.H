@@ -22,7 +22,7 @@ forAll(fluidRegions, i)
     pFluid.set
     (
         i,
-        volScalarField
+        new volScalarField
         (
             IOobject
             (

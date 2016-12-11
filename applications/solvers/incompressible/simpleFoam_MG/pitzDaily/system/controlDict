@@ -15,10 +15,14 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//DebugSwitches
-//{
-//    fileMonitor 1;
-//}
+DebugSwitches
+{
+    //fileMonitor 1;
+    //regIOobject 2;
+    //OFstream    1;
+    //objectRegistry 1;
+}
+
 
 application     simpleFoam;
 
@@ -28,13 +32,13 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         20;
+endTime         1000;
 
 deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   1;
+writeInterval   10;
 
 purgeWrite      0;
 
