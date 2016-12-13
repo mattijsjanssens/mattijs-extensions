@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
 
     Info<< "\nStarting time loop\n" << endl;
 
-    const scalar pRelax = 0.5;
-    const scalar URelax = 0.5;
-    const scalar phiRelax = 0.0;
+    const scalar pRelax = 1;
+    const scalar URelax = 1;
+    const scalar phiRelax = 1.0;    //0.0;
 
 DebugVar(pRelax);
 DebugVar(URelax);
@@ -91,6 +91,8 @@ DebugVar(phiRelax);
             // Update U,phi
             if (i > 0)
             {
+                const meshToMesh0& mapper = fineToCoarseMappers[i-1];
+
                 const volVectorField& fineU = UFluid[i-1];
                 volVectorField fineRes
                 (
@@ -102,7 +104,6 @@ DebugVar(phiRelax);
                     fineRes.write();
                 }
 
-                const meshToMesh0& mapper = fineToCoarseMappers[i-1];
                 tmp<volVectorField> tcoarseRes
                 (
                     mapper.interpolate
@@ -171,7 +172,7 @@ DebugVar(phiRelax);
 
 
         Info<< "\nCoarse to fine solution" << endl;
-        for (label i = fluidRegions.size()-2; i >= 0; --i)
+        for (label i = fluidRegions.size()-2; i >= 1; --i)
         {
             Info<< "\nSolving for fluid region "
                 << fluidRegions[i].name() << endl;
@@ -252,6 +253,37 @@ DebugVar(phiRelax);
             #include "UEqn.H"
             #include "pEqn.H"
             turb.correct();
+
+            if (i == 1)
+            {
+                // Map to finest level. Gets solved in next iteration.
+
+                const meshToMesh0& mapper = coarseToFineMappers[0];
+
+                tmp<volVectorField> tURes
+                (
+                    mapper.interpolate
+                    (
+                        U-U.prevIter(),
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<vector>()
+                    )
+                );
+                phiFluid[0] += phiRelax*fvc::flux(tURes());
+                UFluid[0] += URelax*tURes;
+
+
+                tmp<volScalarField> tpRes
+                (
+                    mapper.interpolate
+                    (
+                        p-p.prevIter(),
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<scalar>()
+                    )
+                );
+                pFluid[0] += pRelax*tpRes;
+            }
         }
 
         runTime.write();
