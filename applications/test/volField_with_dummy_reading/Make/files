@@ -1,0 +1,5 @@
+volMesh.C
+/* volFields.C */
+Test-volField.C
+
+EXE = $(FOAM_USER_APPBIN)/Test-volField_with_dummy_reading
