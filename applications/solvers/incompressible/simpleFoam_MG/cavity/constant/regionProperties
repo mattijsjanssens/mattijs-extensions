@@ -17,7 +17,7 @@ FoamFile
 
 regions
 (
-    fluid       (level0 level1 level2)
+    fluid       (level0 level1 level2 level3 level4)
 );
 
 // ************************************************************************* //

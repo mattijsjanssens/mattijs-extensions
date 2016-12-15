@@ -7,6 +7,8 @@ cd ${0%/*} || exit 1    # Run from this directory
 runApplication -s level0 blockMesh -region level0
 runApplication -s level1 blockMesh -region level1
 runApplication -s level2 blockMesh -region level2
+runApplication -s level3 blockMesh -region level3
+runApplication -s level4 blockMesh -region level4
 
 runApplication simpleFoam_MG
 
