@@ -159,9 +159,13 @@ DebugVar(phiRelax);
                 }
             }
 
-            #include "UEqn.H"
-            #include "pEqn.H"
-            turb.correct();
+            label nSmooth = (i == 0 ? 1: 4);
+            for (label smoothi = 0; smoothi < nSmooth; smoothi++)
+            {
+                #include "UEqn.H"
+                #include "pEqn.H"
+                turb.correct();
+            }
 
             if (runTime.outputTime())
             {
@@ -250,9 +254,14 @@ DebugVar(phiRelax);
                 }
             }
 
-            #include "UEqn.H"
-            #include "pEqn.H"
-            turb.correct();
+
+            label nSmooth = 4;
+            for (label smoothi = 0; smoothi < nSmooth; smoothi++)
+            {
+                #include "UEqn.H"
+                #include "pEqn.H"
+                turb.correct();
+            }
 
             if (i == 1)
             {
