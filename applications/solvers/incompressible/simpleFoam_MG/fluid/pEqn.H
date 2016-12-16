@@ -28,6 +28,8 @@
             fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
         );
 
+        pEqn -= pRes;
+
         pEqn.setReference(pRefCell, pRefValue);
 
         pEqn.solve();

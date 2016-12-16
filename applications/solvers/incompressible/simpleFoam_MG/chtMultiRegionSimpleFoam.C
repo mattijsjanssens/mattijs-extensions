@@ -36,40 +36,10 @@ Description
 #include "simpleControl.H"
 #include "fvOptions.H"
 #include "regionProperties.H"
-#include "meshToMesh.H"
+//#include "meshToMesh.H"
 #include "meshToMesh0.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-tmp<fvVectorMatrix> constructU
-(
-    volVectorField& U,
-    const surfaceScalarField& phi,
-    const volScalarField& p,
-    const incompressible::turbulenceModel& turb,
-    const IOMRFZoneList& MRF,
-    fv::options& fvOptions
-)
-{
-    MRF.correctBoundaryVelocity(U);
-
-    tmp<fvVectorMatrix> tUEqn
-    (
-        fvm::div(phi, U)
-      + MRF.DDt(U)
-      + turb.divDevReff(U)
-     ==
-        fvOptions(U)
-    );
-    fvVectorMatrix& UEqn = tUEqn.ref();
-
-    UEqn.relax();
-
-    fvOptions.constrain(UEqn);
-
-    return tUEqn;
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -91,10 +61,6 @@ int main(int argc, char *argv[])
     const scalar pRelax = 1;
     const scalar URelax = 1;
     const scalar phiRelax = 1.0;    //0.0;
-//
-//DebugVar(pRelax);
-//DebugVar(URelax);
-//DebugVar(phiRelax);
 
     while (simple.loop())
     {
@@ -121,89 +87,8 @@ int main(int argc, char *argv[])
             label nSmooth = 1;  //(i == 0 ? 1: 4);
             for (label smoothi = 0; smoothi < nSmooth; smoothi++)
             {
-                // UEqn.H
-                tmp<fvVectorMatrix> tUEqn
-                (
-                    constructU
-                    (
-                        U,
-                        phi,
-                        p,
-                        turb,
-                        MRF,
-                        fvOptions
-                    )
-                );
-                fvVectorMatrix& UEqn = tUEqn.ref();
-
-                if (simple.momentumPredictor())
-                {
-                    tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));
-
-                    fvVectorMatrix& UpEqn = tUpEqn.ref();
-
-                    UpEqn += UFluidRes[i];
-
-                    solve(UpEqn);
-                    fvOptions.correct(U);
-                }
-
-                // pEqn.H
-                {
-                    volScalarField rAU(1.0/UEqn.A());
-                    volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
-                    surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
-                    MRF.makeRelative(phiHbyA);
-                    adjustPhi(phiHbyA, U, p);
-
-                    tmp<volScalarField> rAtU(rAU);
-
-                    if (simple.consistent())
-                    {
-                        rAtU = 1.0/(1.0/rAU - UEqn.H1());
-                        phiHbyA +=
-                            fvc::interpolate(rAtU() - rAU)
-                           *fvc::snGrad(p)*mesh.magSf();
-                        HbyA -= (rAU - rAtU())*fvc::grad(p);
-                    }
-
-                    tUEqn.clear();
-
-                    // Update the pressure BCs to ensure flux consistency
-                    constrainPressure(p, U, phiHbyA, rAtU(), MRF);
-
-                    // Non-orthogonal pressure corrector loop
-                    while (simple.correctNonOrthogonal())
-                    {
-                        fvScalarMatrix pEqn
-                        (
-                            fvm::laplacian(rAtU(), p)
-                         ==
-                            fvc::div(phiHbyA)
-                        );
-
-                        pEqn -= pFluidRes[i];
-
-                        pEqn.setReference(pRefCell, pRefValue);
-
-                        pEqn.solve();
-
-                        if (simple.finalNonOrthogonalIter())
-                        {
-                            phi = phiHbyA - pEqn.flux();
-                        }
-                    }
-
-                    #include "continuityErrs.H"
-
-                    // Explicitly relax pressure for momentum corrector
-                    p.relax();
-
-                    // Momentum corrector
-                    U = HbyA - rAtU()*fvc::grad(p);
-                    U.correctBoundaryConditions();
-                    fvOptions.correct(U);
-                }
+                #include "UEqn.H"
+                #include "pEqn.H"
 
                 transport.correct();
                 turb.correct();
@@ -214,19 +99,8 @@ int main(int argc, char *argv[])
             // Re-evaluate residual and map to coarser level
             if (i < fluidRegions.size()-1)
             {
-                tmp<fvVectorMatrix> tUEqn
-                (
-                    constructU
-                    (
-                        U,
-                        phi,
-                        p,
-                        turb,
-                        MRF,
-                        fvOptions
-                    )
-                );
-                fvVectorMatrix& UEqn = tUEqn.ref();
+                #include "assembleUEqn.H"
+
 
                 {
                     tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));

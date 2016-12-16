@@ -1,7 +1,9 @@
     const fvMesh& mesh = fluidRegions[i];
 
     volScalarField& p = pFluid[i];
+    DimensionedField<scalar, volMesh>& pRes = pFluidRes[i];
     volVectorField& U = UFluid[i];
+    DimensionedField<vector, volMesh>& URes = UFluidRes[i];
     surfaceScalarField& phi = phiFluid[i];
 
     singlePhaseTransportModel& transport = laminarTransport[i];
