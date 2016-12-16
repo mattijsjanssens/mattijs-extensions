@@ -179,7 +179,6 @@ DebugVar(nLevels);
         );
 
         // Solve the finest mesh
-        timeLevels[0]++;
         eqnLevels[0].solve(nFinestIter);
 
         forAll(timeLevels, level)

@@ -8,7 +8,7 @@
 
         fvVectorMatrix& UpEqn = tUpEqn.ref();
 
-        UpEqn += URes;
+        UpEqn += UDefect;
 
         solve(UpEqn);
 

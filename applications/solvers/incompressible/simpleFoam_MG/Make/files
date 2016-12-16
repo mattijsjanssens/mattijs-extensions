@@ -1,3 +1,4 @@
-chtMultiRegionSimpleFoam.C
+/* chtMultiRegionSimpleFoam.C */
+chtMultiRegionSimpleFoam_coarseFirst.C
 
 EXE = $(FOAM_USER_APPBIN)/simpleFoam_MG

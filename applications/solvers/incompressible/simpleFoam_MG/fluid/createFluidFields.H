@@ -1,8 +1,10 @@
 // Initialise fluid field pointer lists
 PtrList<volScalarField> pFluid(fluidRegions.size());
 PtrList<DimensionedField<scalar, volMesh>> pFluidRes(fluidRegions.size());
+PtrList<DimensionedField<scalar, volMesh>> pFluidDefect(fluidRegions.size());
 PtrList<volVectorField> UFluid(fluidRegions.size());
 PtrList<DimensionedField<vector, volMesh>> UFluidRes(fluidRegions.size());
+PtrList<DimensionedField<vector, volMesh>> UFluidDefect(fluidRegions.size());
 PtrList<surfaceScalarField> phiFluid(fluidRegions.size());
 
 PtrList<singlePhaseTransportModel> laminarTransport(fluidRegions.size());
@@ -44,11 +46,35 @@ forAll(fluidRegions, i)
         (
             IOobject
             (
-                "p",
+                "pRes",
                 runTime.timeName(),
                 fluidRegions[i],
                 IOobject::NO_READ,
-                IOobject::AUTO_WRITE
+                IOobject::NO_WRITE,
+                false
+            ),
+            fluidRegions[i],
+            dimensionedScalar
+            (
+                "zero",
+                pFluid[i].dimensions()*dimTime/dimLength/dimLength,
+                0.0
+            )
+        )
+    );
+    pFluidDefect.set
+    (
+        i,
+        new DimensionedField<scalar, volMesh>
+        (
+            IOobject
+            (
+                "pDefect",
+                runTime.timeName(),
+                fluidRegions[i],
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
             ),
             fluidRegions[i],
             dimensionedScalar
@@ -84,11 +110,35 @@ forAll(fluidRegions, i)
         (
             IOobject
             (
-                "U",
+                "URes",
                 runTime.timeName(),
                 fluidRegions[i],
                 IOobject::NO_READ,
-                IOobject::AUTO_WRITE
+                IOobject::NO_WRITE,
+                false
+            ),
+            fluidRegions[i],
+            dimensionedVector
+            (
+                "zero",
+                UFluid[i].dimensions()/dimTime,
+                vector::zero
+            )
+        )
+    );
+    UFluidDefect.set
+    (
+        i,
+        new DimensionedField<vector, volMesh>
+        (
+            IOobject
+            (
+                "UDefect",
+                runTime.timeName(),
+                fluidRegions[i],
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
             ),
             fluidRegions[i],
             dimensionedVector

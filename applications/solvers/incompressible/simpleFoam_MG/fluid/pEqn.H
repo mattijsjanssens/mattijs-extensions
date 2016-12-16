@@ -28,7 +28,7 @@
             fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
         );
 
-        pEqn -= pRes;
+        pEqn -= pDefect;
 
         pEqn.setReference(pRefCell, pRefValue);
 
