@@ -41,6 +41,36 @@ Description
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+tmp<fvVectorMatrix> constructU
+(
+    volVectorField& U,
+    const surfaceScalarField& phi,
+    const volScalarField& p,
+    const incompressible::turbulenceModel& turb,
+    const IOMRFZoneList& MRF,
+    fv::options& fvOptions
+)
+{
+    MRF.correctBoundaryVelocity(U);
+
+    tmp<fvVectorMatrix> tUEqn
+    (
+        fvm::div(phi, U)
+      + MRF.DDt(U)
+      + turb.divDevReff(U)
+     ==
+        fvOptions(U)
+    );
+    fvVectorMatrix& UEqn = tUEqn.ref();
+
+    UEqn.relax();
+
+    fvOptions.constrain(UEqn);
+
+    return tUEqn;
+}
+
+
 int main(int argc, char *argv[])
 {
 //     #define NO_CONTROL
@@ -79,127 +109,201 @@ int main(int argc, char *argv[])
                 << fluidRegions[i].name() << endl;
             #include "setRegionFluidFields.H"
 
-
-            // Restrict to coarse mesh source terms
-            if (i > 0)
+            if (i == fluidRegions.size()-1)
             {
-                const meshToMesh0& mapper = fineToCoarseMappers[i-1];
+                p.storePrevIter();
+                U.storePrevIter();
+            }
 
-                tmp<volVectorField> tcoarseResU
+
+            // Restrict to coarse mesh
+
+            label nSmooth = 1;  //(i == 0 ? 1: 4);
+            for (label smoothi = 0; smoothi < nSmooth; smoothi++)
+            {
+                // UEqn.H
+                tmp<fvVectorMatrix> tUEqn
                 (
-                    mapper.interpolate
+                    constructU
                     (
-                        UFluidRes[i-1],
-                        meshToMesh0::INTERPOLATE,
-                        eqOp<vector>()
+                        U,
+                        phi,
+                        p,
+                        turb,
+                        MRF,
+                        fvOptions
                     )
                 );
-                tmp<volScalarField> tcoarseResP
-                (
-                    mapper.interpolate
-                    (
-                        pFluidRes[i-1],
-                        meshToMesh0::INTERPOLATE,
-                        eqOp<scalar>()
-                    )
-                );
+                fvVectorMatrix& UEqn = tUEqn.ref();
 
-                label nSmooth = 1;  //(i == 0 ? 1: 4);
-                for (label smoothi = 0; smoothi < nSmooth; smoothi++)
+                if (simple.momentumPredictor())
                 {
-                    // UEqn.H
-                    MRF.correctBoundaryVelocity(U);
+                    tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));
 
-                    tmp<fvVectorMatrix> tUEqn
-                    (
-                        fvm::div(phi, U)
-                      + MRF.DDt(U)
-                      + turb.divDevReff(U)
-                     ==
-                        fvOptions(U) + tcoarseResU
-                    );
-                    fvVectorMatrix& UEqn = tUEqn.ref();
+                    fvVectorMatrix& UpEqn = tUpEqn.ref();
 
-                    UEqn.relax();
+                    UpEqn += UFluidRes[i];
 
-                    fvOptions.constrain(UEqn);
-
-                    if (simple.momentumPredictor())
-                    {
-                        tmp<fvVectorMatrix> UpEqn(UEqn == -fvc::grad(p));
-                        fvVectorMatrix& m = UpEqn.ref();
-                        solve(m);
-
-                        URes.primitiveFieldRef() = m.residual();
-
-                        fvOptions.correct(U);
-                    }
-
-
-                    // pEqn.H
-                    {
-                        volScalarField rAU(1.0/UEqn.A());
-                        volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
-                        surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
-                        MRF.makeRelative(phiHbyA);
-                        adjustPhi(phiHbyA, U, p);
-
-                        tmp<volScalarField> rAtU(rAU);
-
-                        if (simple.consistent())
-                        {
-                            rAtU = 1.0/(1.0/rAU - UEqn.H1());
-                            phiHbyA +=
-                                fvc::interpolate(rAtU() - rAU)
-                               *fvc::snGrad(p)*mesh.magSf();
-                            HbyA -= (rAU - rAtU())*fvc::grad(p);
-                        }
-
-                        tUEqn.clear();
-
-                        // Update the pressure BCs to ensure flux consistency
-                        constrainPressure(p, U, phiHbyA, rAtU(), MRF);
-
-                        // Non-orthogonal pressure corrector loop
-                        while (simple.correctNonOrthogonal())
-                        {
-                            fvScalarMatrix pEqn
-                            (
-                                fvm::laplacian(rAtU(), p)
-                             ==
-                                fvc::div(phiHbyA)
-                              + tcoarseResP
-                            );
-
-                            pEqn.setReference(pRefCell, pRefValue);
-
-                            pEqn.solve();
-                            pRes.primitiveFieldRef() = pEqn.residual();
-
-                            if (simple.finalNonOrthogonalIter())
-                            {
-                                phi = phiHbyA - pEqn.flux();
-                            }
-                        }
-
-                        #include "continuityErrs.H"
-
-                        // Explicitly relax pressure for momentum corrector
-                        p.relax();
-
-                        // Momentum corrector
-                        U = HbyA - rAtU()*fvc::grad(p);
-                        U.correctBoundaryConditions();
-                        fvOptions.correct(U);
-                    }
+                    solve(UpEqn);
+                    fvOptions.correct(U);
                 }
 
+                // pEqn.H
+                {
+                    volScalarField rAU(1.0/UEqn.A());
+                    volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
+                    surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+                    MRF.makeRelative(phiHbyA);
+                    adjustPhi(phiHbyA, U, p);
+
+                    tmp<volScalarField> rAtU(rAU);
+
+                    if (simple.consistent())
+                    {
+                        rAtU = 1.0/(1.0/rAU - UEqn.H1());
+                        phiHbyA +=
+                            fvc::interpolate(rAtU() - rAU)
+                           *fvc::snGrad(p)*mesh.magSf();
+                        HbyA -= (rAU - rAtU())*fvc::grad(p);
+                    }
+
+                    tUEqn.clear();
+
+                    // Update the pressure BCs to ensure flux consistency
+                    constrainPressure(p, U, phiHbyA, rAtU(), MRF);
+
+                    // Non-orthogonal pressure corrector loop
+                    while (simple.correctNonOrthogonal())
+                    {
+                        fvScalarMatrix pEqn
+                        (
+                            fvm::laplacian(rAtU(), p)
+                         ==
+                            fvc::div(phiHbyA)
+                        );
+
+                        pEqn -= pFluidRes[i];
+
+                        pEqn.setReference(pRefCell, pRefValue);
+
+                        pEqn.solve();
+
+                        if (simple.finalNonOrthogonalIter())
+                        {
+                            phi = phiHbyA - pEqn.flux();
+                        }
+                    }
+
+                    #include "continuityErrs.H"
+
+                    // Explicitly relax pressure for momentum corrector
+                    p.relax();
+
+                    // Momentum corrector
+                    U = HbyA - rAtU()*fvc::grad(p);
+                    U.correctBoundaryConditions();
+                    fvOptions.correct(U);
+                }
+
+                transport.correct();
                 turb.correct();
+            }
+
+
+
+            // Re-evaluate residual and map to coarser level
+            if (i < fluidRegions.size()-1)
+            {
+                tmp<fvVectorMatrix> tUEqn
+                (
+                    constructU
+                    (
+                        U,
+                        phi,
+                        p,
+                        turb,
+                        MRF,
+                        fvOptions
+                    )
+                );
+                fvVectorMatrix& UEqn = tUEqn.ref();
+
+                {
+                    tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));
+
+                    volVectorField res
+                    (
+                        IOobject
+                        (
+                            "URes",
+                            runTime.timeName(),
+                            fluidRegions[i],
+                            IOobject::NO_READ,
+                            IOobject::NO_WRITE,
+                            false
+                        ),
+                        fluidRegions[i],
+                        dimensionedVector
+                        (
+                            "zero",
+                            U.dimensions()/dimTime,
+                            vector::zero
+                        )
+                    );
+                    res.primitiveFieldRef() = tUpEqn().residual();
+                    if (runTime.outputTime())
+                    {
+                        res.write();
+                    }
+
+                    fineToCoarseMappers[i].interpolateInternalField
+                    (
+                        UFluidRes[i+1],
+                        res,
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<vector>()
+                    );
+                }
+
+                {
+                    volScalarField res
+                    (
+                        IOobject
+                        (
+                            "pRes",
+                            runTime.timeName(),
+                            fluidRegions[i],
+                            IOobject::NO_READ,
+                            IOobject::NO_WRITE,
+                            false
+                        ),
+                        fluidRegions[i],
+                        dimensionedScalar
+                        (
+                            "zero",
+                            pFluid[i].dimensions()
+                           *dimTime/dimLength/dimLength,
+                            0.0
+                        )
+                    );
+                    res.primitiveFieldRef() = fvc::div(phi);
+                    if (runTime.outputTime())
+                    {
+                        res.write();
+                    }
+                    fineToCoarseMappers[i].interpolateInternalField
+                    (
+                        pFluidRes[i+1],
+                        res,
+                        meshToMesh0::INTERPOLATE,
+                        eqOp<scalar>()
+                    );
+                }
             }
         }
 
 
-        // Prolongation - fine to coarse
+        // Prolongation - coarse to fine
 
         Info<< "\nCoarse to fine solution" << endl;
         for (label i = fluidRegions.size()-2; i >= 1; --i)
@@ -212,52 +316,37 @@ int main(int argc, char *argv[])
             p.storePrevIter();
 
 
-            // U, phi
+            // Update fields
             {
                 const meshToMesh0& mapper = coarseToFineMappers[i];
 
                 const volVectorField& coarseU = UFluid[i+1];
-                volVectorField coarseRes
-                (
-                    "prolongCoarseRes",
-                    coarseU-coarseU.prevIter()
-                );
-
-                tmp<volVectorField> tfineRes
+                tmp<volVectorField> tfineDeltaU
                 (
                     mapper.interpolate
                     (
-                        coarseRes,
+                        coarseU-coarseU.prevIter(),
                         meshToMesh0::INTERPOLATE,
                         eqOp<vector>()
                     )
                 );
 
-                phi += phiRelax*fvc::flux(tfineRes());
-                U += URelax*tfineRes;
-            }
+                phi += phiRelax*fvc::flux(tfineDeltaU());
+                U += URelax*tfineDeltaU;
 
-            // p
-            {
+
                 const volScalarField& coarseP = pFluid[i+1];
-                volScalarField coarseRes
-                (
-                    "prolongCoarseRes",
-                    coarseP-coarseP.prevIter()
-                );
-
-                const meshToMesh0& mapper = coarseToFineMappers[i];
-                tmp<volScalarField> tfineRes
+                tmp<volScalarField> tfineDeltaP
                 (
                     mapper.interpolate
                     (
-                        coarseRes,
+                        coarseP-coarseP.prevIter(),
                         meshToMesh0::INTERPOLATE,
                         eqOp<scalar>()
                     )
                 );
 
-                p += pRelax*tfineRes;
+                p += pRelax*tfineDeltaP;
             }
 
 
@@ -266,6 +355,7 @@ int main(int argc, char *argv[])
             {
                 #include "UEqn.H"
                 #include "pEqn.H"
+                transport.correct();
                 turb.correct();
             }
 
@@ -275,7 +365,7 @@ int main(int argc, char *argv[])
 
                 const meshToMesh0& mapper = coarseToFineMappers[0];
 
-                tmp<volVectorField> tURes
+                tmp<volVectorField> tfineDeltaU
                 (
                     mapper.interpolate
                     (
@@ -284,11 +374,11 @@ int main(int argc, char *argv[])
                         eqOp<vector>()
                     )
                 );
-                phiFluid[0] += phiRelax*fvc::flux(tURes());
-                UFluid[0] += URelax*tURes;
+                phiFluid[0] += phiRelax*fvc::flux(tfineDeltaU());
+                UFluid[0] += URelax*tfineDeltaU;
 
 
-                tmp<volScalarField> tpRes
+                tmp<volScalarField> tfineDeltaP
                 (
                     mapper.interpolate
                     (
@@ -297,7 +387,7 @@ int main(int argc, char *argv[])
                         eqOp<scalar>()
                     )
                 );
-                pFluid[0] += pRelax*tpRes;
+                pFluid[0] += pRelax*tfineDeltaP;
             }
         }
 

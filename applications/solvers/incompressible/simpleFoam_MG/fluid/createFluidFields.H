@@ -1,8 +1,8 @@
 // Initialise fluid field pointer lists
 PtrList<volScalarField> pFluid(fluidRegions.size());
-PtrList<volScalarField> pFluidRes(fluidRegions.size());
+PtrList<DimensionedField<scalar, volMesh>> pFluidRes(fluidRegions.size());
 PtrList<volVectorField> UFluid(fluidRegions.size());
-PtrList<volVectorField> UFluidRes(fluidRegions.size());
+PtrList<DimensionedField<vector, volMesh>> UFluidRes(fluidRegions.size());
 PtrList<surfaceScalarField> phiFluid(fluidRegions.size());
 
 PtrList<singlePhaseTransportModel> laminarTransport(fluidRegions.size());
@@ -40,7 +40,7 @@ forAll(fluidRegions, i)
     pFluidRes.set
     (
         i,
-        new volScalarField
+        new DimensionedField<scalar, volMesh>
         (
             IOobject
             (
@@ -51,7 +51,12 @@ forAll(fluidRegions, i)
                 IOobject::AUTO_WRITE
             ),
             fluidRegions[i],
-            dimensionedScalar("zero", pFluid[i].dimensions()/dimTime, 0.0)
+            dimensionedScalar
+            (
+                "zero",
+                pFluid[i].dimensions()*dimTime/dimLength/dimLength,
+                0.0
+            )
         )
     );
 
@@ -75,7 +80,7 @@ forAll(fluidRegions, i)
     UFluidRes.set
     (
         i,
-        new volVectorField
+        new DimensionedField<vector, volMesh>
         (
             IOobject
             (
@@ -86,7 +91,12 @@ forAll(fluidRegions, i)
                 IOobject::AUTO_WRITE
             ),
             fluidRegions[i],
-            dimensionedVector("zero", UFluid[i].dimensions()/dimTime, vector::zero)
+            dimensionedVector
+            (
+                "zero",
+                UFluid[i].dimensions()/dimTime,
+                vector::zero
+            )
         )
     );
 
