@@ -8,7 +8,6 @@ cd ${0%/*} || exit 1    # Run from this directory
 (cd MG/level2 && cleanCase)
 (cd MG/level3 && cleanCase)
 (cd MG/level4 && cleanCase)
-(cd MG/level5 && cleanCase)
 cleanCase
 
 #------------------------------------------------------------------------------

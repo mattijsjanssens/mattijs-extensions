@@ -59,7 +59,7 @@ SIMPLE
 
 MG
 {
-    nLevels         5;
+    nLevels         4;
     nFinestIter     1;
     nCoarsestIter   1;
     nIter           1;
