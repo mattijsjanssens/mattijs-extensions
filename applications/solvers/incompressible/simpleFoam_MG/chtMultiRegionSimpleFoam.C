@@ -41,6 +41,47 @@ Description
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+template<class Type>
+void interpolate
+(
+    Field<Type>& dest,
+    const meshToMesh0& mapper,
+    const Field<Type>& source
+)
+{
+    // Helper function to interpolate from Field to Field
+
+    GeometricField<Type, fvPatchField, volMesh> res
+    (
+        IOobject
+        (
+            "res",
+            mapper.fromMesh().time().timeName(),
+            mapper.fromMesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        mapper.fromMesh(),
+        dimensioned<Type>
+        (
+            "zero",
+            dimless,
+            pTraits<Type>::zero
+        )
+    );
+    res.primitiveFieldRef() = source;
+
+    mapper.interpolateInternalField
+    (
+        dest,
+        res,
+        meshToMesh0::INTERPOLATE,
+        eqOp<Type>()
+    );
+}
+
+
 int main(int argc, char *argv[])
 {
 //     #define NO_CONTROL
@@ -75,6 +116,18 @@ int main(int argc, char *argv[])
                 << fluidRegions[i].name() << endl;
             #include "setRegionFluidFields.H"
 
+            // Update the defect
+            if (i > 0)
+            {
+                #include "assembleUEqn.H"
+                tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));
+                UDefect = URes;
+                UDefect.Field<vector>::operator-=(tUpEqn().residual());
+                //pDefect = pRes;
+                //pDefect -= fvc::div(phi)();
+            }
+
+
             if (i == fluidRegions.size()-1)
             {
                 p.storePrevIter();
@@ -84,7 +137,14 @@ int main(int argc, char *argv[])
 
             // Restrict to coarse mesh
 
-            label nSmooth = 1;  //(i == 0 ? 1: 4);
+            Pout<< "pRes:" << gAverage(pRes)
+                << " pDefect:" << gAverage(pDefect)
+                << "  URes:" << gAverage(URes)
+                << " UDefect:" << gAverage(UDefect)
+                << endl;
+
+
+            label nSmooth = 0;  //(i == 0 ? 1: 4);
             for (label smoothi = 0; smoothi < nSmooth; smoothi++)
             {
                 #include "UEqn.H"
@@ -101,78 +161,20 @@ int main(int argc, char *argv[])
             {
                 #include "assembleUEqn.H"
 
+                tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));
+                interpolate
+                (
+                    UFluidRes[i+1],
+                    fineToCoarseMappers[i],
+                    tUpEqn().residual()()
+                );
 
-                {
-                    tmp<fvVectorMatrix> tUpEqn(UEqn == -fvc::grad(p));
-
-                    volVectorField res
-                    (
-                        IOobject
-                        (
-                            "URes",
-                            runTime.timeName(),
-                            fluidRegions[i],
-                            IOobject::NO_READ,
-                            IOobject::NO_WRITE,
-                            false
-                        ),
-                        fluidRegions[i],
-                        dimensionedVector
-                        (
-                            "zero",
-                            U.dimensions()/dimTime,
-                            vector::zero
-                        )
-                    );
-                    res.primitiveFieldRef() = tUpEqn().residual();
-                    if (runTime.outputTime())
-                    {
-                        res.write();
-                    }
-
-                    fineToCoarseMappers[i].interpolateInternalField
-                    (
-                        UFluidRes[i+1],
-                        res,
-                        meshToMesh0::INTERPOLATE,
-                        eqOp<vector>()
-                    );
-                }
-
-                {
-                    volScalarField res
-                    (
-                        IOobject
-                        (
-                            "pRes",
-                            runTime.timeName(),
-                            fluidRegions[i],
-                            IOobject::NO_READ,
-                            IOobject::NO_WRITE,
-                            false
-                        ),
-                        fluidRegions[i],
-                        dimensionedScalar
-                        (
-                            "zero",
-                            pFluid[i].dimensions()
-                           *dimTime/dimLength/dimLength,
-                            0.0
-                        )
-                    );
-                    res.primitiveFieldRef() = fvc::div(phi);
-                    if (runTime.outputTime())
-                    {
-                        res.write();
-                    }
-                    fineToCoarseMappers[i].interpolateInternalField
-                    (
-                        pFluidRes[i+1],
-                        res,
-                        meshToMesh0::INTERPOLATE,
-                        eqOp<scalar>()
-                    );
-                }
+                interpolate
+                (
+                    pFluidRes[i+1],
+                    fineToCoarseMappers[i],
+                    fvc::div(phi)()
+                );
             }
         }
 
