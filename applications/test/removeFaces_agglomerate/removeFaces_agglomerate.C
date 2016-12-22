@@ -22,10 +22,11 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    removeFaces
+    removeFaces_agglomerate
 
 Description
-    Utility to remove faces (combines cells on both sides).
+    Utility to remove faces (combines cells on both sides) using
+    facePairAgglomeration.
 
 \*---------------------------------------------------------------------------*/
 
@@ -37,6 +38,8 @@ Description
 #include "ReadFields.H"
 #include "volFields.H"
 #include "surfaceFields.H"
+#include "pairGAMGAgglomeration.H"
+
 
 using namespace Foam;
 
@@ -45,71 +48,10 @@ using namespace Foam;
 
 int main(int argc, char *argv[])
 {
-    #include "addOverwriteOption.H"
     #include "setRootCase.H"
     #include "createTime.H"
     runTime.functionObjects().off();
     #include "createMesh.H"
-    const word oldInstance = mesh.pointsInstance();
-
-
-    scalarField faceWeights
-    (
-        mag
-        (
-            cmptMultiply
-            (
-                mesh.Sf().primitiveField()
-               /sqrt(mesh.magSf().primitiveField()),
-                vector(1, 1.01, 1.02)
-                //vector::one
-            )
-        )
-    );
-
-    tmp<labelField> pairGAMGAgglomeration::agglomerate
-    (
-        label& nCoarseCells,
-        const lduAddressing& fineMatrixAddressing,
-        const scalarField& faceWeights
-    );
-
-
-
-
-
-
-    // Face removal engine. No checking for not merging boundary faces.
-    removeFaces faceRemover(mesh, 2);
-
-    // Get compatible set of faces and connected sets of cells.
-    labelList cellRegion;
-    labelList cellRegionMaster;
-    labelList facesToRemove;
-
-    faceRemover.compatibleRemoves
-    (
-        candidates,
-        cellRegion,
-        cellRegionMaster,
-        facesToRemove
-    );
-
-    {
-        faceSet compatibleRemoves(mesh, "compatibleRemoves", facesToRemove);
-
-        Pout<< "Original faces to be removed:" << candidateSet.size() << nl
-            << "New faces to be removed:" << compatibleRemoves.size() << nl
-            << endl;
-
-        Pout<< "Writing new faces to be removed to faceSet "
-            << compatibleRemoves.instance()
-              /compatibleRemoves.local()
-              /compatibleRemoves.name()
-            << endl;
-
-        compatibleRemoves.write();
-    }
 
 
     // Read objects in time directory
@@ -148,45 +90,114 @@ int main(int argc, char *argv[])
     ReadFields(mesh, objects, stFlds);
 
 
-    // Topo changes container
-    polyTopoChange meshMod(mesh);
-
-    // Insert mesh refinement into polyTopoChange.
-    faceRemover.setRefinement
-    (
-        facesToRemove,
-        cellRegion,
-        cellRegionMaster,
-        meshMod
-    );
-
-    autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
-
-    mesh.updateMesh(morphMap);
-
-    // Move mesh (since morphing does not do this)
-    if (morphMap().hasMotionPoints())
-    {
-        mesh.movePoints(morphMap().preMotionPoints());
-    }
-
-    // Update numbering of cells/vertices.
-    faceRemover.updateMesh(morphMap);
-
-    if (!overwrite)
+    while (true)
     {
         runTime++;
-    }
-    else
-    {
-        mesh.setInstance(oldInstance);
+
+        Info<< "Time = " << runTime.timeName() << nl << endl;
+
+        scalarField faceWeights
+        (
+            mag
+            (
+                cmptMultiply
+                (
+                    mesh.Sf().primitiveField()
+                   /sqrt(mesh.magSf().primitiveField()),
+                    vector(1, 1.01, 1.02)
+                    //vector::one
+                )
+            )
+        );
+
+        label nCoarseCells = 0;
+        labelField cellRegion
+        (
+            pairGAMGAgglomeration::agglomerate
+            (
+                nCoarseCells,
+                mesh.lduAddr(),
+                faceWeights
+            )
+        );
+
+        label nTotalCoarseCells = returnReduce(nCoarseCells, sumOp<label>());
+
+        if (nTotalCoarseCells == mesh.globalData().nTotalCells())
+        {
+            Info<< "Exiting since number of coarse cells " << nTotalCoarseCells
+                << " same as the number of mesh cells "
+                << mesh.globalData().nTotalCells() << nl << endl;
+
+            break;
+        }
+
+        labelList cellRegionMaster(nCoarseCells, labelMax);
+        forAll(cellRegion, celli)
+        {
+            label region = cellRegion[celli];
+            if (cellRegionMaster[region] == labelMax)
+            {
+                cellRegionMaster[region] = celli;
+            }
+        }
+
+
+        // Remove internal faces inbetween same coarse cell
+        DynamicList<label> facesToRemove(mesh.nInternalFaces());
+
+        for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
+        {
+            label own = mesh.faceOwner()[facei];
+            label nei = mesh.faceNeighbour()[facei];
+
+            if (cellRegion[own] == cellRegion[nei])
+            {
+                facesToRemove.append(facei);
+            }
+        }
+
+
+
+
+        // Topo changes container
+        polyTopoChange meshMod(mesh);
+
+        removeFaces faceRemover(mesh, 2);
+
+        // Insert mesh refinement into polyTopoChange.
+        faceRemover.setRefinement
+        (
+            facesToRemove,
+            cellRegion,
+            cellRegionMaster,
+            meshMod
+        );
+
+        autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
+
+        mesh.updateMesh(morphMap);
+
+        // Move mesh (since morphing does not do this)
+        if (morphMap().hasMotionPoints())
+        {
+            mesh.movePoints(morphMap().preMotionPoints());
+        }
+
+        // Update numbering of cells/vertices.
+        faceRemover.updateMesh(morphMap);
+
+
+        Info<< "Coarsened from "
+            << returnReduce(morphMap().nOldCells(), sumOp<label>())
+            << " to "
+            << nTotalCoarseCells
+            << " cells" << nl << endl;
+
+        mesh.write();
     }
 
-    // Take over refinement levels and write to new time directory.
-    Pout<< "Writing mesh to time " << runTime.timeName() << endl;
-    mesh.write();
-
-    Pout<< "End\n" << endl;
+    Info<< "End\n" << endl;
 
     return 0;
 }
