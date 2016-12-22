@@ -1,0 +1,4 @@
+simpleSolver.C
+MGsimpleFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/MGsimpleFoam_meshToMesh0
