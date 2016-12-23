@@ -149,6 +149,8 @@ int main(int argc, char *argv[])
         // Restrict residuals from fine to coarse meshes
         for (label level=0; level<nLevels-1; level++)
         {
+            Info<< "   Restricting residual from level " << level
+                << " to level " << level+1 << endl;
             eqnLevels[level+1].setError
             (
                 eqnLevels[level],
@@ -158,6 +160,7 @@ int main(int argc, char *argv[])
 
 
         // Solve the coarsest mesh
+        Info<< "   Solving coarsest level" << endl;
         timeLevels[nLevels-1]++;
         eqnLevels[nLevels-1].solve(nCoarsestIter);
 
@@ -176,6 +179,7 @@ int main(int argc, char *argv[])
         }
 
         // Prolong correction to finest mesh
+        Info<< "Prolonging solution to finest level 0" << endl;
         eqnLevels[0].correct
         (
             eqnLevels[1],
@@ -183,7 +187,13 @@ int main(int argc, char *argv[])
         );
 
         // Solve the finest mesh
+        Info<< "Solving finest level 0" << endl;
         eqnLevels[0].solve(nFinestIter);
+
+        forAll(timeLevels, level)
+        {
+            timeLevels[level].write();
+        }
 
         Info<< "ExecutionTime = " << timeLevels[0].elapsedCpuTime() << " s"
             << "  ClockTime = " << timeLevels[0].elapsedClockTime() << " s"

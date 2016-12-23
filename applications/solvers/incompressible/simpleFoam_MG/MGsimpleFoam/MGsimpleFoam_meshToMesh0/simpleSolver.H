@@ -186,6 +186,9 @@ public:
 
         //- Prolongate the coarse-mesh correction to the fine-mesh
         void correct(const simpleSolver& coarseEqns, const meshToMesh0&);
+
+        //- Helper: limit field values
+        static void limitField(volVectorField&, const volVectorField&);
 };
 
 

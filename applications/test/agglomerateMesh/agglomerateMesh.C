@@ -39,7 +39,7 @@ Description
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "pairGAMGAgglomeration.H"
-
+#include "unitConversion.H"
 
 using namespace Foam;
 
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
         // Topo changes container
         polyTopoChange meshMod(mesh);
 
-        removeFaces faceRemover(mesh, 2);
+        removeFaces faceRemover(mesh, Foam::cos(degToRad(45.0)));
 
         // Insert mesh refinement into polyTopoChange.
         faceRemover.setRefinement

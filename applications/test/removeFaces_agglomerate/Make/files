@@ -1,4 +1,0 @@
-removeFaces_agglomerate.C
-
-EXE = $(FOAM_USER_APPBIN)/removeFaces_agglomerate
-

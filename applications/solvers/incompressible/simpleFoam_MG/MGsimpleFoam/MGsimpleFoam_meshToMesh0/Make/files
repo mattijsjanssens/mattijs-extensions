@@ -1,3 +1,6 @@
+calculateMeshToMesh0Addressing.C
+calculateMeshToMesh0Weights.C
+meshToMesh0.C
 simpleSolver.C
 MGsimpleFoam.C
 

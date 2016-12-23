@@ -1,0 +1,4 @@
+removeFaces.C
+agglomerateMesh.C
+
+EXE = $(FOAM_USER_APPBIN)/agglomerateMesh

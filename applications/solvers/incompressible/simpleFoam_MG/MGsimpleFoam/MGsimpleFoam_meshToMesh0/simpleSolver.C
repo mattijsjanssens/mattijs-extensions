@@ -222,6 +222,30 @@ tmp<volScalarField> Foam::simpleSolver::pRes(const bool addErr)
 }
 
 
+void Foam::simpleSolver::limitField
+(
+    volVectorField& fld,
+    const volVectorField& otherFld
+)
+{
+    volScalarField magFld
+    (
+        stabilise
+        (
+            mag(fld),
+            dimensionedScalar
+            (
+                "small",
+                fld.dimensions(),
+                SMALL
+            )
+        )
+    );
+    volScalarField clippedMagFld(min(magFld, 2*average(magFld)));
+    fld *= (clippedMagFld/magFld);
+}
+
+
 void Foam::simpleSolver::setError
 (
     simpleSolver& fineEqns,
@@ -276,14 +300,81 @@ void Foam::simpleSolver::setError
     //nut = fineToCoarse.mapTgtToSrc
     //(fineEqns.mesh_.lookupObject<volScalarField>("nut"), plusEqOp<scalar>());
 
-    Uerr_ =
+    tmp<volVectorField> thisRes(Ures(false));
+    DebugVar(gMax(thisRes()));
+    DebugVar(gMin(thisRes()));
+    DebugVar(gAverage(thisRes()));
+
+    tmp<volVectorField> fineRes(fineEqns.Ures());
+    DebugVar(gMax(fineRes()));
+    DebugVar(gMin(fineRes()));
+    DebugVar(gAverage(fineRes()));
+
+    // Note: make sure interpolation is zero where there is no overlap
+    volVectorField interpolatedFineRes("interpolatedRes", thisRes());
+    volScalarField weightField
+    (
+        IOobject
+        (
+            "weightField",
+            fineToCoarse.toMesh().time().timeName(),
+            fineToCoarse.toMesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        fineToCoarse.toMesh(),
+        dimensionedScalar("one", dimless, 1.0)
+    );
+    {
+        interpolatedFineRes == dimensionedVector
+        (
+            "zero",
+            interpolatedFineRes.dimensions(),
+            vector::zero
+        );
         fineToCoarse.interpolate
         (
-            fineEqns.Ures(),
+            interpolatedFineRes,
+            fineRes,
             meshToMesh0::INTERPOLATE,
-            eqOp<vector>()
-        )
-      - Ures(false);
+            plusEqOp<vector>()
+        );
+        forAll(fineToCoarse.inverseDistanceWeights(), coarsei)
+        {
+            if (fineToCoarse.inverseDistanceWeights()[coarsei].size() <= 0)
+            {
+                Pout<< "Coarse cell :" << coarsei
+                    << " at:" << fineToCoarse.toMesh().cellCentres()[coarsei]
+                    << " fine celli:"
+                    << fineToCoarse.cellAddressing()[coarsei]
+                    << " weights:"
+                    << fineToCoarse.inverseDistanceWeights()[coarsei]
+                    << endl;
+
+                weightField[coarsei] = 0.0;
+            }
+        }
+
+        // Limit field
+        //limitField(interpolatedFineRes, thisRes());
+    }
+    DebugVar(gMax(interpolatedFineRes));
+    DebugVar(gMin(interpolatedFineRes));
+    DebugVar(gAverage(interpolatedFineRes));
+
+    Uerr_ = weightField*(interpolatedFineRes - thisRes);
+    Uerr_.ref().rename("Uerr");
+
+    if (fineToCoarse.toMesh().time().outputTime())
+    {
+        Uerr_().write();
+    }
+
+    DebugVar(max(Uerr_()));
+    DebugVar(min(Uerr_()));
+    DebugVar(average(Uerr_()));
+
 
     // pErr_ =
     //     fineToCoarse.interpolate(fineEqns.pRes(), plusEqOp<scalar>())
@@ -297,15 +388,67 @@ void Foam::simpleSolver::correct
     const meshToMesh0& coarseToFine
 )
 {
-    volVectorField Ucorr
-    (
-        coarseToFine.interpolate
+    //volVectorField Ucorr
+    //(
+    //    coarseToFine.interpolate
+    //    (
+    //        coarseEqns.Ucorr(),
+    //        meshToMesh0::INTERPOLATE,
+    //        eqOp<vector>()
+    //    )
+    //);
+
+    // Construct with correct bc
+    volVectorField Ucorr("coarseUcorr", U_);
+    {
+        // Make sure that any unmapped bit gets zero correction.
+        Ucorr == dimensionedVector
         (
-            coarseEqns.Ucorr(),
-            meshToMesh0::INTERPOLATE,
-            eqOp<vector>()
-        )
-    );
+            "zero",
+            Ucorr.dimensions(),
+            vector::zero
+        );
+//         coarseToFine.interpolate
+//         (
+//             Ucorr,
+//             coarseEqns.Ucorr(),
+//             meshToMesh0::INTERPOLATE,
+//             eqOp<vector>()
+//         );
+        DebugVar(gMax(Ucorr()));
+        DebugVar(gMin(Ucorr()));
+        DebugVar(gAverage(Ucorr()));
+
+        forAll(coarseToFine.inverseDistanceWeights(), finei)
+        {
+            if (coarseToFine.inverseDistanceWeights()[finei].size() <= 0)
+            {
+                Pout<< "Fine cell :" << finei
+                    << " at:" << coarseToFine.toMesh().cellCentres()[finei]
+                    << " coarse celli:"
+                    << coarseToFine.cellAddressing()[finei]
+                    << " weights:"
+                    << coarseToFine.inverseDistanceWeights()[finei] << endl;
+
+                Ucorr[finei] = vector::zero;
+            }
+        }
+
+        // Limit field
+        //limitField(Ucorr, U_);
+
+        DebugVar(gMax(Ucorr()));
+        DebugVar(gMin(Ucorr()));
+        DebugVar(gAverage(Ucorr()));
+        DebugVar(gMax(U_));
+        DebugVar(gMin(U_));
+        DebugVar(gAverage(U_));
+
+        if (coarseToFine.toMesh().time().outputTime())
+        {
+            Ucorr.write();
+        }
+    }
 
     U_ += Ucorr;
     phi_ += (mesh_.Sf() & fvc::interpolate(Ucorr));
