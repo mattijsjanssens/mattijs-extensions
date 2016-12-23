@@ -2,7 +2,10 @@
 - mapMethod does the distribution
 - mapMethod determines the boundary handling
 - mapMethod does the normalisation
-  or does it return a weight field as well? E.g. percentage mapped?
+
+- needs to return a weight field as well? E.g. percentage mapped?
+  (which equals the volume for cellVolumeWeight)
+
 - who does unmapped cells?
     - for sequential these are after all processor meshes are done
       (how to decide if all mapped? Easiest is normalised weight field)
