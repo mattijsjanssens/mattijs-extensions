@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -408,13 +408,13 @@ void Foam::simpleSolver::correct
             Ucorr.dimensions(),
             vector::zero
         );
-//         coarseToFine.interpolate
-//         (
-//             Ucorr,
-//             coarseEqns.Ucorr(),
-//             meshToMesh0::INTERPOLATE,
-//             eqOp<vector>()
-//         );
+        coarseToFine.interpolate
+        (
+            Ucorr,
+            coarseEqns.Ucorr(),
+            meshToMesh0::INTERPOLATE,
+            eqOp<vector>()
+        );
         DebugVar(gMax(Ucorr()));
         DebugVar(gMin(Ucorr()));
         DebugVar(gAverage(Ucorr()));
@@ -436,6 +436,8 @@ void Foam::simpleSolver::correct
 
         // Limit field
         //limitField(Ucorr, U_);
+        Ucorr *= 0.1;
+
 
         DebugVar(gMax(Ucorr()));
         DebugVar(gMin(Ucorr()));
