@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -83,11 +83,7 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
         false
     );
 
-    
     bool headerOk = io.headerOk();
-//    Type fieldAverage = pTraits<Type>::zero;
-
-DebugVar(headerOk);
 
     if (headerOk)
     {
@@ -96,21 +92,6 @@ DebugVar(headerOk);
         this->close();
 
         readFields(dict);
-
-//DebugVar(dict);
-//
-//        Internal::readField(dict, "internalField");
-//
-//        boundaryField_.readField(*this, dict.subDict("boundaryField"));
-//
-//        fieldAverage = pTraits<Type>
-//        (
-//            dict.lookupOrDefault
-//            (
-//                "referenceLevel",
-//                pTraits<Type>::zero
-//            )
-//        );
     }
 
 
@@ -122,96 +103,98 @@ DebugVar(headerOk);
 DebugVar(masterProci);
 
 
-
-        // Construct zero-sized mesh for exchanging PatchFields
-        autoPtr<fvMesh> dummyPtr
-        (
-            volMesh::New
+        PstreamBuffers pBufs(Pstream::nonBlocking);
+        if (Pstream::master())  // masterProci
+        {
+            // Construct zero-sized mesh for exchanging PatchFields
+            autoPtr<fvMesh> dummyPtr
             (
-                IOobject("dummy", this->db()),
-                this->mesh(),
-                false       // no comms
-            )
-        );
-        const fvMesh& dummy = dummyPtr();
+                volMesh::New
+                (
+                    IOobject("dummy", this->db()),
+                    this->mesh(),
+                    false       // no comms
+                )
+            );
+            const fvMesh& dummy = dummyPtr();
 
 
 DebugVar(dummy.boundary().size());
 
 
-        // Bit of trickery to clone the field onto the dummy mesh. The
-        // missing bit is the clone constructor which requires an
-        // fvPatchFieldMapper instead of a generic FieldMapper.
+            // Bit of trickery to clone the field onto the dummy mesh. The
+            // missing bit is the clone constructor which requires an
+            // fvPatchFieldMapper instead of a generic FieldMapper.
 
-        tmp<GeometricField<Type, PatchField, GeoMesh>> tresF;
-        {
-            // Create boundaryField with zero sized patches
-
-            Boundary patchFields(dummy.boundary());
-
-            forAll(patchFields, patchi)
+            tmp<GeometricField<Type, PatchField, GeoMesh>> tresF;
             {
-                patchFields.set
-                (
-                    patchi,
-                    PatchField<Type>::New
-                    (
-                        PatchField<Type>::calculatedType(),
-                        dummy.boundary()[patchi],
-                        DimensionedField<Type, volMesh>::null()
-                    )
-                );
-            }
+                // Create boundaryField with zero sized patches
 
-            tresF = tmp<GeometricField<Type, PatchField, GeoMesh>>
-            (
-                new GeometricField<Type, PatchField, GeoMesh>
-                (
-                    IOobject
+                Boundary patchFields(dummy.boundary());
+
+                forAll(patchFields, patchi)
+                {
+                    patchFields.set
                     (
-                        "subset"+this->name(),
-                        dummy.time().timeName(),
+                        patchi,
+                        PatchField<Type>::New
+                        (
+                            PatchField<Type>::calculatedType(),
+                            dummy.boundary()[patchi],
+                            DimensionedField<Type, volMesh>::null()
+                        )
+                    );
+                }
+
+                tresF = tmp<GeometricField<Type, PatchField, GeoMesh>>
+                (
+                    new GeometricField<Type, PatchField, GeoMesh>
+                    (
+                        IOobject
+                        (
+                            "subset"+this->name(),
+                            dummy.time().timeName(),
+                            dummy,
+                            IOobject::NO_READ,
+                            IOobject::NO_WRITE
+                        ),
                         dummy,
-                        IOobject::NO_READ,
-                        IOobject::NO_WRITE
-                    ),
-                    dummy,
-                    this->dimensions(),
-                    Field<Type>(this->primitiveField(), labelList(0)),
-                    patchFields
-                )
-            );
-            GeometricField<Type, PatchField, GeoMesh>& resF = tresF.ref();
-
-            // 2. Change the fvPatchFields to the correct type using a mapper
-            //  constructor (with reference to the now correct internal field)
-
-            typename GeometricField<Type, fvPatchField, volMesh>::
-                Boundary& bf = resF.boundaryFieldRef();
-
-            forAll(bf, patchi)
-            {
-                bf.set
-                (
-                    patchi,
-                    PatchField<Type>::New
-                    (
-                        patchFields[patchi],    //this->boundaryField()[patchi],
-                        dummy.boundary()[patchi],
-                        resF(),
-                        directFvPatchFieldMapper(labelList(0))
+                        this->dimensions(),
+                        Field<Type>(this->primitiveField(), labelList(0)),
+                        patchFields
                     )
                 );
-            }
-        }
-        GeometricField<Type, PatchField, GeoMesh>& resF = tresF.ref();
+                GeometricField<Type, PatchField, GeoMesh>& resF = tresF.ref();
 
-        // Send resF to all processors
-        PstreamBuffers pBufs(Pstream::nonBlocking);
-        if (Pstream::master())
-        {
+                // 2. Change the fvPatchFields to the correct type using
+                //    a mapper
+                //    constructor (with reference to the now correct
+                //    internal field)
+
+                typename GeometricField<Type, fvPatchField, volMesh>::
+                    Boundary& bf = resF.boundaryFieldRef();
+
+                forAll(bf, patchi)
+                {
+                    bf.set
+                    (
+                        patchi,
+                        PatchField<Type>::New
+                        (
+                            this->boundaryField()[patchi],
+                            dummy.boundary()[patchi],
+                            resF(),
+                            directFvPatchFieldMapper(labelList(0))
+                        )
+                    );
+                }
+            }
+            GeometricField<Type, PatchField, GeoMesh>& resF = tresF.ref();
 DebugVar(resF);
 
+
+
+            // Send resF to all processors
             for (label proci = 1; proci < Pstream::nProcs(); proci++)
             {
                 UOPstream str(proci, pBufs);
