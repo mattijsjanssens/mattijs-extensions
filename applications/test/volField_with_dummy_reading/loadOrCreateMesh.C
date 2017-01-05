@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2012-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2012-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -112,10 +112,7 @@ Foam::autoPtr<Foam::fvMesh> Foam::loadOrCreateMesh
 
     // Check who has a mesh
 
-DebugVar(io.time().path()/io.instance()/meshSubDir);
     const bool haveMesh = isDir(io.time().path()/io.instance()/meshSubDir);
-
-DebugVar(haveMesh);
 
     if (!haveMesh)
     {

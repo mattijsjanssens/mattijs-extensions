@@ -83,9 +83,11 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
         false
     );
 
-    bool headerOk = io.headerOk();
 
-    if (headerOk)
+    boolList headerOk(Pstream::nProcs(), false);
+    headerOk[Pstream::myProcNo()] = io.headerOk();
+
+    if (headerOk[Pstream::myProcNo()])
     {
         const IOdictionary dict(io, this->readStream(typeName));
 
@@ -95,8 +97,12 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
     }
 
 
-    if (!returnReduce(headerOk, andOp<bool>()))
+    if (!returnReduce(headerOk[Pstream::myProcNo()], andOp<bool>()))
     {
+        Pstream::gatherList(headerOk);
+        //Pstream::scatterList(headerOk);
+
+
         // Not all have the file. Get a processor which does have it.
         label masterProci = 0;  //(headerOk ? Pstream::myProcNo() : labelMax);
 
@@ -107,19 +113,16 @@ DebugVar(masterProci);
         if (Pstream::master())  // masterProci
         {
             // Construct zero-sized mesh for exchanging PatchFields
-            autoPtr<fvMesh> dummyPtr
+            autoPtr<typename GeoMesh::Mesh> dummyPtr
             (
-                volMesh::New
+                GeoMesh::New
                 (
                     IOobject("dummy", this->db()),
                     this->mesh(),
                     false       // no comms
                 )
             );
-            const fvMesh& dummy = dummyPtr();
-
-
-DebugVar(dummy.boundary().size());
+            const typename GeoMesh::Mesh& dummy = dummyPtr();
 
 
             // Bit of trickery to clone the field onto the dummy mesh. The
@@ -141,7 +144,7 @@ DebugVar(dummy.boundary().size());
                         (
                             PatchField<Type>::calculatedType(),
                             dummy.boundary()[patchi],
-                            DimensionedField<Type, volMesh>::null()
+                            DimensionedField<Type, GeoMesh>::null()
                         )
                     );
                 }
@@ -171,7 +174,7 @@ DebugVar(dummy.boundary().size());
                 //    constructor (with reference to the now correct
                 //    internal field)
 
-                typename GeometricField<Type, fvPatchField, volMesh>::
+                typename GeometricField<Type, PatchField, GeoMesh>::
                     Boundary& bf = resF.boundaryFieldRef();
 
                 forAll(bf, patchi)
@@ -197,23 +200,22 @@ DebugVar(resF);
             // Send resF to all processors
             for (label proci = 1; proci < Pstream::nProcs(); proci++)
             {
-                UOPstream str(proci, pBufs);
-                str << resF;
+                if (!headerOk[proci])
+                {
+                    UOPstream str(proci, pBufs);
+                    str << resF;
+                }
             }
         }
         pBufs.finishedSends();
 
-        // Clone *this from resF
-        if (!Pstream::master())
+        if (!headerOk[Pstream::myProcNo()])
         {
+            // Read field from master
             UIPstream str(Pstream::masterNo(), pBufs);
             dictionary dict(str);
             DebugVar(dict);
-
-            if (!headerOk)
-            {
-                readFields(dict);
-            }
+            readFields(dict);
         }
     }
 }
