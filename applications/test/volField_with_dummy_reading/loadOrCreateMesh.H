@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2012 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,61 +21,38 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Application
-    Test-volField
+InNamespace
+    Foam
+
+Description
+    Load or create (0 size) a mesh. Used in distributing meshes to a
+    larger number of processors
+
+SourceFiles
+    loadOrCreateMesh.C
 
 \*---------------------------------------------------------------------------*/
 
-#include "volFields.H"
-#include "IOstreams.H"
-#include "argList.H"
-#include "Time.H"
-#include "loadOrCreateMesh.H"
+#ifndef loadOrCreateMesh_H
+#define loadOrCreateMesh_H
 
-using namespace Foam;
+#include "fvMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+namespace Foam
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    //#include "createMesh.H"
 
-    autoPtr<fvMesh> meshPtr
-    (
-        loadOrCreateMesh
-        (
-            IOobject
-            (
-                fvMesh::defaultRegion,
-                runTime.constant(),
-                runTime,
-                Foam::IOobject::MUST_READ
-            )
-        )
-    );
-    fvMesh& mesh = meshPtr();
+//- Load (if it exists) or create zero cell mesh given an IOobject:
+//      name     : regionName
+//      instance : exact directory where to find mesh (i.e. does not
+//                 do a findInstance
+autoPtr<fvMesh> loadOrCreateMesh(const IOobject& io);
 
-
-    Pout<< "Reading field p\n" << endl;
-    volScalarField p
-    (
-        IOobject
-        (
-            "p",
-            runTime.timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh
-    );
-
-    DebugVar(p);
-
-    return 0;
 }
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
 
 // ************************************************************************* //

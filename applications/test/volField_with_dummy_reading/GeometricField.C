@@ -85,7 +85,9 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
 
     
     bool headerOk = io.headerOk();
-    Type fieldAverage = pTraits<Type>::zero;
+//    Type fieldAverage = pTraits<Type>::zero;
+
+DebugVar(headerOk);
 
     if (headerOk)
     {
@@ -93,24 +95,35 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
 
         this->close();
 
-        //readFields(dict);
+        readFields(dict);
 
-        Internal::readField(dict, "internalField");
-
-        boundaryField_.readField(*this, dict.subDict("boundaryField"));
-
-        fieldAverage = pTraits<Type>
-        (
-            dict.lookupOrDefault
-            (
-                "referenceLevel",
-                pTraits<Type>::zero
-            )
-        );
+//DebugVar(dict);
+//
+//        Internal::readField(dict, "internalField");
+//
+//        boundaryField_.readField(*this, dict.subDict("boundaryField"));
+//
+//        fieldAverage = pTraits<Type>
+//        (
+//            dict.lookupOrDefault
+//            (
+//                "referenceLevel",
+//                pTraits<Type>::zero
+//            )
+//        );
     }
+
 
     if (!returnReduce(headerOk, andOp<bool>()))
     {
+        // Not all have the file. Get a processor which does have it.
+        label masterProci = 0;  //(headerOk ? Pstream::myProcNo() : labelMax);
+
+DebugVar(masterProci);
+
+
+
+        // Construct zero-sized mesh for exchanging PatchFields
         autoPtr<fvMesh> dummyPtr
         (
             volMesh::New
@@ -122,6 +135,13 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
         );
         const fvMesh& dummy = dummyPtr();
 
+
+DebugVar(dummy.boundary().size());
+
+
+        // Bit of trickery to clone the field onto the dummy mesh. The
+        // missing bit is the clone constructor which requires an
+        // fvPatchFieldMapper instead of a generic FieldMapper.
 
         tmp<GeometricField<Type, PatchField, GeoMesh>> tresF;
         {
@@ -176,7 +196,7 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
                     patchi,
                     PatchField<Type>::New
                     (
-                        this->boundaryField()[patchi],
+                        patchFields[patchi],    //this->boundaryField()[patchi],
                         dummy.boundary()[patchi],
                         resF(),
                         directFvPatchFieldMapper(labelList(0))
@@ -185,6 +205,33 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
             }
         }
         GeometricField<Type, PatchField, GeoMesh>& resF = tresF.ref();
+
+        // Send resF to all processors
+        PstreamBuffers pBufs(Pstream::nonBlocking);
+        if (Pstream::master())
+        {
+DebugVar(resF);
+
+            for (label proci = 1; proci < Pstream::nProcs(); proci++)
+            {
+                UOPstream str(proci, pBufs);
+                str << resF;
+            }
+        }
+        pBufs.finishedSends();
+
+        // Clone *this from resF
+        if (!Pstream::master())
+        {
+            UIPstream str(Pstream::masterNo(), pBufs);
+            dictionary dict(str);
+            DebugVar(dict);
+
+            if (!headerOk)
+            {
+                readFields(dict);
+            }
+        }
     }
 }
 
