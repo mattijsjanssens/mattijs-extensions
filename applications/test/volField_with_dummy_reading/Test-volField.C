@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
-    //#include "createMesh.H"
 
+    //#include "createMesh.H"
     autoPtr<fvMesh> meshPtr
     (
         loadOrCreateMesh
@@ -56,6 +56,51 @@ int main(int argc, char *argv[])
         )
     );
     fvMesh& mesh = meshPtr();
+
+
+//    {
+//        OStringStream os;
+//        {
+//            autoPtr<fvMesh> dummyMeshPtr
+//            (
+//                volMesh::New
+//                (
+//                    IOobject
+//                    (
+//                        fvMesh::defaultRegion,
+//                        runTime.constant(),
+//                        runTime,
+//                        Foam::IOobject::MUST_READ
+//                    ),
+//                    mesh,
+//                    true
+//                )
+//            );
+//
+//            volMesh::write(os, dummyMeshPtr());
+//        }
+//        {
+//            IStringStream is(os.str());
+//            autoPtr<fvMesh> dummyMeshPtr
+//            (
+//                volMesh::New
+//                (
+//                    IOobject
+//                    (
+//                        fvMesh::defaultRegion,
+//                        runTime.constant(),
+//                        runTime,
+//                        Foam::IOobject::MUST_READ
+//                    ),
+//                    is,
+//                    true
+//                )
+//            );
+//        }
+//    }
+
+
+
 
 
     Pout<< "Reading field p\n" << endl;

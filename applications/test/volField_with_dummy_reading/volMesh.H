@@ -118,6 +118,9 @@ public:
             Istream& is,
             const bool validBoundary
         );
+
+        //- Write mesh suitable for above construct from Istream
+        static void write(Ostream& os, const fvMesh&);
 };
 
 

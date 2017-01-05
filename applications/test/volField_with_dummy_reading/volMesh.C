@@ -154,4 +154,11 @@ Foam::autoPtr<Foam::fvMesh> Foam::volMesh::New
 }
 
 
+void Foam::volMesh::write(Ostream& os, const fvMesh& mesh)
+{
+    os  << mesh.points() << mesh.faces() << mesh.cells()
+        << mesh.boundaryMesh();
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
