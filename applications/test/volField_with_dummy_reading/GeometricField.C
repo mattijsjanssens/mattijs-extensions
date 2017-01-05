@@ -29,7 +29,6 @@ License
 #include "dictionary.H"
 #include "data.H"
 #include "volMesh.H"
-#include "directFvPatchFieldMapper.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -125,9 +124,7 @@ DebugVar(masterProci);
             const typename GeoMesh::Mesh& dummy = dummyPtr();
 
 
-            // Bit of trickery to clone the field onto the dummy mesh. The
-            // missing bit is the clone constructor which requires an
-            // fvPatchFieldMapper instead of a generic FieldMapper.
+            // Bit of trickery to clone the field onto the dummy mesh.
 
             tmp<GeometricField<Type, PatchField, GeoMesh>> tresF;
             {
@@ -169,13 +166,16 @@ DebugVar(masterProci);
                 );
                 GeometricField<Type, PatchField, GeoMesh>& resF = tresF.ref();
 
-                // 2. Change the fvPatchFields to the correct type using
+                // 2. Change the PatchFields to the correct type using
                 //    a mapper
                 //    constructor (with reference to the now correct
                 //    internal field)
 
                 typename GeometricField<Type, PatchField, GeoMesh>::
                     Boundary& bf = resF.boundaryFieldRef();
+
+
+                GeoMesh vm(dummy);
 
                 forAll(bf, patchi)
                 {
@@ -187,7 +187,7 @@ DebugVar(masterProci);
                             this->boundaryField()[patchi],
                             dummy.boundary()[patchi],
                             resF(),
-                            directFvPatchFieldMapper(labelList(0))
+                            vm.mapper()
                         )
                     );
                 }

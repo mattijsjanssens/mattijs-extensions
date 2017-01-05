@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -25,6 +25,21 @@ License
 
 #include "volMesh.H"
 #include "polyPatch.H"
+#include "dummyFvPatchFieldMapper.H"
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::volMesh::volMesh(const fvMesh& mesh)
+:
+    GeoMesh<fvMesh>(mesh)
+{}
+
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::volMesh::~volMesh()
+{}
+
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -69,6 +84,16 @@ Foam::autoPtr<Foam::fvMesh> Foam::volMesh::New
     dummyMesh.addFvPatches(newBoundary, validBoundary);
 
     return dummyMeshPtr;
+}
+
+
+const Foam::fvPatchFieldMapper& Foam::volMesh::mapper() const
+{
+    if (!mapperPtr_.valid())
+    {
+        mapperPtr_.reset(new dummyFvPatchFieldMapper());
+    }
+    return mapperPtr_();
 }
 
 

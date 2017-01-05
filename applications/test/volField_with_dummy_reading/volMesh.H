@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -48,6 +48,11 @@ Description
 namespace Foam
 {
 
+// Forward declaration of classes
+
+class dummyFvPatchFieldMapper;
+class fvPatchFieldMapper;
+
 /*---------------------------------------------------------------------------*\
                            Class volMesh Declaration
 \*---------------------------------------------------------------------------*/
@@ -56,16 +61,19 @@ class volMesh
 :
     public GeoMesh<fvMesh>
 {
+    mutable autoPtr<dummyFvPatchFieldMapper> mapperPtr_;
+
 
 public:
 
     // Constructors
 
         //- Construct from fvMesh
-        explicit volMesh(const fvMesh& mesh)
-        :
-            GeoMesh<fvMesh>(mesh)
-        {}
+        explicit volMesh(const fvMesh& mesh);
+
+
+    //- Destructor
+    ~volMesh();
 
 
     // Member Functions
@@ -88,13 +96,20 @@ public:
             return mesh_.C();
         }
 
-        // New zero-sized clone of mesh. Optionally no parallel comms.
-        static autoPtr<fvMesh> New
-        (
-            const IOobject&,
-            const fvMesh& mesh,
-            const bool validBoundary
-        );
+
+        // Dummy mesh handling
+
+            // New zero-sized clone of mesh. Optionally no parallel comms.
+            static autoPtr<fvMesh> New
+            (
+                const IOobject&,
+                const fvMesh& mesh,
+                const bool validBoundary
+            );
+
+            //- Return dummy mapper
+            const fvPatchFieldMapper& mapper() const;
+
 
         // New mesh read from Istream. Optionally no parallel comms.
         static autoPtr<fvMesh> New
