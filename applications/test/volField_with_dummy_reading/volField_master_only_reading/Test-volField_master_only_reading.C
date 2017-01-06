@@ -24,6 +24,17 @@ License
 Application
     Test-volField
 
+Description
+    The idea is that argList allocates a fileServer (through command-line
+    arguments or environment vars). This has operations to do
+    - file existence checking
+    - mkDir, rm etc.
+    - open an IFstream
+    - open an OFstream
+    and everywhere instead of constructing an I/OFstream we do a
+        fileServer::NewIFstream(io)
+        fileServer::NewOFstream(io)
+
 \*---------------------------------------------------------------------------*/
 
 #include "IOstreams.H"
@@ -31,6 +42,8 @@ Application
 #include "Time.H"
 #include "volFields.H"
 #include "IFstream.H"
+#include "OFstream.H"
+#include "masterOFstream.H"
 
 using namespace Foam;
 
@@ -179,7 +192,7 @@ fileName objectPath
 
 
 // Master-only reading of files
-autoPtr<Istream> createStream(const IOobject& io)
+autoPtr<Istream> createReadStream(const IOobject& io)
 {
     if (Pstream::parRun())
     {
@@ -198,9 +211,6 @@ autoPtr<Istream> createStream(const IOobject& io)
                     searchType,
                     newInstancePath
                 );
-Pout<< "Master detected type:" << label(searchType)
-    << " at:" << filePaths[Pstream::myProcNo()] << endl;
-
             }
             label masterType(searchType);
             Pstream::scatter(masterType);
@@ -218,7 +228,6 @@ Pout<< "Master detected type:" << label(searchType)
                     searchType,
                     newInstancePath
                 );
-Pout<< "Slave constructed filename:" << filePaths[Pstream::myProcNo()] << endl;
             }
         }
         Pstream::gatherList(filePaths);
@@ -344,9 +353,9 @@ Pout<< "Slave constructed filename:" << filePaths[Pstream::myProcNo()] << endl;
 
 
 // Replacement for regIOobject::readStream
-autoPtr<Istream> readStream(IOobject& io)
+autoPtr<Istream> NewIFstream(IOobject& io)
 {
-    autoPtr<Istream> isPtr(createStream(io));
+    autoPtr<Istream> isPtr(createReadStream(io));
 
     if (!io.readHeader(isPtr()))
     {
@@ -356,6 +365,107 @@ autoPtr<Istream> readStream(IOobject& io)
     }
 
     return isPtr;
+}
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Master-only writing
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Replacement for regIOobject::writeObject
+bool writeObject
+(
+    const regIOobject& io,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+)
+{
+    if (!io.good())
+    {
+        SeriousErrorInFunction
+            << "bad object " << io.name()
+            << endl;
+
+        return false;
+    }
+
+    if (io.instance().empty())
+    {
+        SeriousErrorInFunction
+            << "instance undefined for object " << io.name()
+            << endl;
+
+        return false;
+    }
+
+    if
+    (
+        io.instance() != io.time().timeName()
+     && io.instance() != io.time().system()
+     && io.instance() != io.time().caseSystem()
+     && io.instance() != io.time().constant()
+     && io.instance() != io.time().caseConstant()
+    )
+    {
+        const_cast<regIOobject&>(io).instance() = io.time().timeName();
+    }
+
+    if (OFstream::debug)
+    {
+        InfoInFunction << "Writing file " << io.objectPath();
+    }
+
+
+    bool osGood = false;
+
+    {
+        // Try opening an OFstream for object
+        //mkDir(io.path());
+        //OFstream os(io.objectPath(), fmt, ver, cmp);
+        autoPtr<Ostream> osPtr
+        (
+            new masterOFstream(io.objectPath(), fmt, ver, cmp)
+        );
+        Ostream& os = osPtr();
+
+        // If any of these fail, return (leave error handling to Ostream class)
+        if (!os.good())
+        {
+            return false;
+        }
+
+        if (!io.writeHeader(os))
+        {
+            return false;
+        }
+
+        // Write the data to the Ostream
+        if (!io.writeData(os))
+        {
+            return false;
+        }
+
+        io.writeEndDivider(os);
+
+        osGood = os.good();
+    }
+
+    if (OFstream::debug)
+    {
+        Info<< " .... written" << endl;
+    }
+
+    // Only update the lastModified_ time if this object is re-readable,
+    // i.e. lastModified_ is already set
+    if (io.watchIndex() != -1)
+    {
+        io.time().setUnmodified(io.watchIndex());
+    }
+
+    return osGood;
 }
 
 
@@ -383,9 +493,18 @@ int main(int argc, char *argv[])
     );
 
     {
-        autoPtr<Istream> isPtr(readStream(io));
+        autoPtr<Istream> isPtr(NewIFstream(io));
         IOdictionary dict(io, isPtr());
         DebugVar(dict);
+
+        dict.instance() = runTime.timeName();
+        writeObject
+        (
+            dict,
+            IOstream::ASCII,
+            IOstream::currentVersion,
+            IOstream::UNCOMPRESSED
+        );
     }
 
     return 0;

@@ -1,3 +1,4 @@
+masterOFstream.C
 Test-volField_master_only_reading.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-volField_master_only_reading
