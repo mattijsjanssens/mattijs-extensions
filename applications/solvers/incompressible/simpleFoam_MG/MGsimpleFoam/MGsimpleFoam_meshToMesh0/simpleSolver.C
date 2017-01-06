@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -259,6 +259,7 @@ void Foam::simpleSolver::setError
     else
     {
         U0_ = tmp<volVectorField>(new volVectorField("U0", U_));
+        U0_.ref().writeOpt() = IOobject::AUTO_WRITE;
     }
 
     /*
@@ -366,8 +367,18 @@ void Foam::simpleSolver::setError
     Uerr_ = weightField*(interpolatedFineRes - thisRes);
     Uerr_.ref().rename("Uerr");
 
-    if (fineToCoarse.toMesh().time().outputTime())
+    if (Uerr_().mesh().relaxField(Uerr_().name()))
     {
+        scalar relax = Uerr_().mesh().fieldRelaxationFactor(Uerr_().name());
+        Info<< "Relaxing " << Uerr_().name() << " by " << relax << endl;
+        Uerr_.ref() *= relax;
+    }
+
+
+    //if (Uerr_().time().outputTime())
+    {
+        Info<< "Writing " << Uerr_().name() << " to "
+            << Uerr_().time().timeName() << endl;
         Uerr_().write();
     }
 
@@ -388,6 +399,20 @@ void Foam::simpleSolver::correct
     const meshToMesh0& coarseToFine
 )
 {
+    dimensionedScalar UMax
+    (
+        "UMax",
+        U_.dimensions(),
+        100.0
+    );
+    dimensionedScalar USmall
+    (
+        "USmall",
+        U_.dimensions(),
+        SMALL
+    );
+
+
     //volVectorField Ucorr
     //(
     //    coarseToFine.interpolate
@@ -408,6 +433,9 @@ void Foam::simpleSolver::correct
             Ucorr.dimensions(),
             vector::zero
         );
+
+        DebugVar(gMax(coarseEqns.Ucorr()()));
+
         coarseToFine.interpolate
         (
             Ucorr,
@@ -415,9 +443,14 @@ void Foam::simpleSolver::correct
             meshToMesh0::INTERPOLATE,
             eqOp<vector>()
         );
-        DebugVar(gMax(Ucorr()));
-        DebugVar(gMin(Ucorr()));
-        DebugVar(gAverage(Ucorr()));
+
+        // Limit correction
+        {
+            volScalarField magU(mag(Ucorr));
+            volScalarField limitMagU(min(magU, UMax));
+
+            Ucorr *= limitMagU/stabilise(magU, USmall);
+        }
 
         forAll(coarseToFine.inverseDistanceWeights(), finei)
         {
@@ -436,18 +469,20 @@ void Foam::simpleSolver::correct
 
         // Limit field
         //limitField(Ucorr, U_);
-        Ucorr *= 0.1;
+        //Ucorr *= 0.1;
 
 
-        DebugVar(gMax(Ucorr()));
-        DebugVar(gMin(Ucorr()));
-        DebugVar(gAverage(Ucorr()));
         DebugVar(gMax(U_));
         DebugVar(gMin(U_));
         DebugVar(gAverage(U_));
+        DebugVar(gMax(Ucorr()));
+        DebugVar(gMin(Ucorr()));
+        DebugVar(gAverage(Ucorr()));
 
-        if (coarseToFine.toMesh().time().outputTime())
+        //if (Ucorr.time().outputTime())
         {
+            Info<< "Writing " << Ucorr.name() << " to "
+                << Ucorr.time().timeName() << endl;
             Ucorr.write();
         }
     }
