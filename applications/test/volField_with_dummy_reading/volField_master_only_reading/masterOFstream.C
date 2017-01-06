@@ -36,7 +36,6 @@ Foam::autoPtr<Foam::Ostream> Foam::masterOFstream::open
 ) const
 {
     mkDir(fName.path());
-Pout<< "Openinig file " << fName << Foam::endl;
     autoPtr<Ostream> osPtr
     (
         new OFstream
@@ -70,9 +69,7 @@ Foam::masterOFstream::masterOFstream
     OStringStream(format, version),
     pathName_(pathName),
     compression_(compression)
-{
-    DebugVar(pathName_);
-}
+{}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
@@ -87,9 +84,6 @@ Foam::masterOFstream::~masterOFstream()
 
         if (Pstream::master())
         {
-    DebugVar(filePaths);
-
-
             bool uniform = true;
             const fileName& object0 = filePaths[0];
             for (label proci = 1; proci < Pstream::nProcs(); proci++)
@@ -100,14 +94,13 @@ Foam::masterOFstream::~masterOFstream()
                     break;
                 }
             }
-    DebugVar(uniform);
 
 
             if (uniform)
             {
                 const fileName& fName = object0;
                 autoPtr<Ostream> osPtr(open(fName));
-                osPtr() << str();
+                osPtr().writeQuoted(str(), false);
                 if (!osPtr().good())
                 {
                     FatalIOErrorInFunction(osPtr())
@@ -117,55 +110,46 @@ Foam::masterOFstream::~masterOFstream()
             }
         }
 
-    DebugVar("here");
-
         // Different files
         PstreamBuffers pBufs(Pstream::nonBlocking);
-    DebugVar("here");
 
         // Send my buffer to master
         if (!Pstream::master())
         {
             UOPstream os(Pstream::masterNo(), pBufs);
-            os << str();
+            string s(this->str());
+            os.write(&s[0], s.size());
         }
-    DebugVar("here");
 
         labelList recvSizes;
         pBufs.finishedSends(recvSizes);
 
-    DebugVar(recvSizes);
         if (Pstream::master())
         {
             // Write my own data
             {
                 const fileName& fName = filePaths[Pstream::myProcNo()];
+
                 autoPtr<Ostream> osPtr(open(fName));
-                osPtr() << str();
+                osPtr().writeQuoted(str(), false);
                 if (!osPtr().good())
                 {
                     FatalIOErrorInFunction(osPtr())
                         << "Failed writing to " << fName << exit(FatalIOError);
                 }
             }
-    DebugVar("here");
 
             for (label proci = 1; proci < Pstream::nProcs(); proci++)
             {
-    DebugVar("here");
                 UIPstream is(proci, pBufs);
                 List<char> buf(recvSizes[proci]);
 
-Pout<< "REading from " << proci << " size:" << buf.size() << Foam::endl;
                 is.read(buf.begin(), buf.size());
 
-    DebugVar("here");
                 const fileName& fName = filePaths[proci];
 
                 autoPtr<Ostream> osPtr(open(fName));
-//                osPtr().write(buf.begin(), buf.size());
-
-    DebugVar("here");
+                osPtr().writeQuoted(string(buf.begin(), buf.size()), false);
                 if (!osPtr().good())
                 {
                     FatalIOErrorInFunction(osPtr())
@@ -175,10 +159,17 @@ Pout<< "REading from " << proci << " size:" << buf.size() << Foam::endl;
             }
         }
     }
+    else
+    {
+        autoPtr<Ostream> osPtr(open(pathName_));
+        osPtr().writeQuoted(str(), false);
+        if (!osPtr().good())
+        {
+            FatalIOErrorInFunction(osPtr())
+                << "Failed writing to " << pathName_ << exit(FatalIOError);
+        }
+    }
 }
-
-
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 
 // ************************************************************************* //

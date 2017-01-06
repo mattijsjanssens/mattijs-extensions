@@ -497,6 +497,7 @@ int main(int argc, char *argv[])
         IOdictionary dict(io, isPtr());
         DebugVar(dict);
 
+        runTime++;
         dict.instance() = runTime.timeName();
         writeObject
         (
