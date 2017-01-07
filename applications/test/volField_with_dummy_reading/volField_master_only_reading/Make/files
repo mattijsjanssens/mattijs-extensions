@@ -1,6 +1,7 @@
 masterOFstream.C
 
 fileServer.C
+localFileServer.C
 masterFileServer.C
 
 Test-volField_master_only_reading.C

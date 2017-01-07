@@ -44,6 +44,8 @@ Description
 #include "IFstream.H"
 #include "OFstream.H"
 #include "masterOFstream.H"
+#include "fileServer.H"
+#include "masterFileServer.H"
 
 using namespace Foam;
 
@@ -353,16 +355,69 @@ autoPtr<Istream> createReadStream(const IOobject& io)
 
 
 // Replacement for regIOobject::readStream
-autoPtr<Istream> NewIFstream(IOobject& io)
+autoPtr<Istream> readStream(const fileServer& server, IOobject& io)
 {
-    autoPtr<Istream> isPtr(createReadStream(io));
-
-    if (!io.readHeader(isPtr()))
+    if (IFstream::debug)
     {
-        FatalIOErrorInFunction(isPtr())
-            << "problem while reading header for object " << io.name()
-            << exit(FatalIOError);
+        InfoInFunction
+            << "Reading object " << io.name()
+            << " from file " << io.objectPath()
+            << endl;
     }
+
+    if (io.readOpt() == IOobject::NO_READ)
+    {
+        FatalErrorInFunction
+            << "NO_READ specified for read-constructor of object " << io.name()
+            << " of class " << io.headerClassName()
+            << abort(FatalError);
+    }
+
+    // Construct object stream and read header if not already constructed
+    //if (!isPtr_)
+    autoPtr<Istream> isPtr;
+    {
+
+        fileName objPath;
+        //if (io.watchIndex() != -1)
+        //{
+        //    // File is being watched. Read exact file that is being watched.
+        //    objPath = io.time().getFile(io.watchIndex());
+        //}
+        //else
+        {
+            // Search intelligently for file
+            objPath = server.filePath(io);
+
+            if (!objPath.size())
+            {
+                FatalIOError
+                (
+                    "regIOobject::readStream()",
+                    __FILE__,
+                    __LINE__,
+                    io.objectPath(),
+                    0
+                )   << "cannot find file"
+                    << exit(FatalIOError);
+            }
+        }
+
+        //if (!(isPtr_ = objectStream(objPath)))
+        isPtr = server.NewIFstream(objPath);
+        if (!io.readHeader(isPtr()))
+        {
+            FatalIOErrorInFunction(isPtr())
+                << "problem while reading header for object " << io.name()
+                << exit(FatalIOError);
+        }
+    }
+
+    //// Mark as uptodate if read successfully
+    //if (io.watchIndex() != -1)
+    //{
+    //    io.time().setUnmodified(io.watchIndex());
+    //}
 
     return isPtr;
 }
@@ -377,6 +432,7 @@ autoPtr<Istream> NewIFstream(IOobject& io)
 // Replacement for regIOobject::writeObject
 bool writeObject
 (
+    const fileServer& server,
     const regIOobject& io,
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
@@ -427,7 +483,13 @@ bool writeObject
         //OFstream os(io.objectPath(), fmt, ver, cmp);
         autoPtr<Ostream> osPtr
         (
-            new masterOFstream(io.objectPath(), fmt, ver, cmp)
+            server.NewOFstream
+            (
+                io.objectPath(),
+                fmt,
+                ver,
+                cmp
+            )
         );
         Ostream& os = osPtr();
 
@@ -492,8 +554,18 @@ int main(int argc, char *argv[])
         IOobject::NO_WRITE
     );
 
+    //masterFileServer server;
+    autoPtr<fileServer> serverPtr
+    (
+        fileServer::New
+        (
+            fileServers::masterFileServer::typeName
+        )
+    );
+    const fileServer& server = serverPtr();
+
     {
-        autoPtr<Istream> isPtr(NewIFstream(io));
+        autoPtr<Istream> isPtr(readStream(server, io));
         IOdictionary dict(io, isPtr());
         DebugVar(dict);
 
@@ -501,6 +573,7 @@ int main(int argc, char *argv[])
         dict.instance() = runTime.timeName();
         writeObject
         (
+            server,
             dict,
             IOstream::ASCII,
             IOstream::currentVersion,

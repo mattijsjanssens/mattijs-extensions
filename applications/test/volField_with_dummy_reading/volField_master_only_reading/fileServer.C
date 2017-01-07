@@ -30,12 +30,37 @@ License
 namespace Foam
 {
     defineTypeNameAndDebug(fileServer, 0);
+    defineRunTimeSelectionTable(fileServer, word);
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fileServer::fileServer()
 {}
+
+
+Foam::autoPtr<Foam::fileServer> Foam::fileServer::New(const word& type)
+{
+    if (debug)
+    {
+        InfoInFunction << "Constructing fileServer" << endl;
+    }
+
+    wordConstructorTable::iterator cstrIter =
+        wordConstructorTablePtr_->find(type);
+
+    if (cstrIter == wordConstructorTablePtr_->end())
+    {
+        FatalErrorInFunction
+            << "Unknown fileServer type "
+            << type << nl << nl
+            << "Valid fileServer types are" << endl
+            << wordConstructorTablePtr_->sortedToc()
+            << abort(FatalError);
+    }
+
+    return autoPtr<fileServer>(cstrIter()());
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //

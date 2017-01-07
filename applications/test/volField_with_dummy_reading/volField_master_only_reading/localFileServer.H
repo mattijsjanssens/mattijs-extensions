@@ -22,76 +22,48 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fileServer
+    Foam::fileServers::localFileServer
+
+Description
+    fileServer that assumes file operations are local.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fileServer_H
-#define fileServer_H
+#ifndef fileServers_localFileServer_H
+#define fileServers_localFileServer_H
 
-#include "Istream.H"
-#include "Ostream.H"
-#include "autoPtr.H"
-#include "IOobject.H"
-#include "fileNameList.H"
+#include "fileServer.H"
+#include "OSspecific.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
-/*---------------------------------------------------------------------------*\
-                         Class fileServer Declaration
-\*---------------------------------------------------------------------------*/
-
-class fileServer
+namespace fileServers
 {
 
+/*---------------------------------------------------------------------------*\
+                      Class localFileServer Declaration
+\*---------------------------------------------------------------------------*/
+
+class localFileServer
+:
+    public fileServer
+{
 public:
 
-    // Public data types
-
-        //- Enumeration for the location of an IOobject
-        enum pathType
-        {
-            NOTFOUND,           // not found
-            ABSOLUTE,           // instance is absolute directory
-            OBJECT,             // objectPath exists
-            PARENTOBJECT,       // parent of object path
-            FINDINSTANCE        // file found in time directory
-        };
-
-
         //- Runtime type information
-        TypeName("fileServer");
+        TypeName("localFileServer");
 
 
     // Constructors
 
         //- Construct null
-        fileServer();
-
-
-    // Declare run-time constructor selection table
-
-        declareRunTimeSelectionTable
-        (
-            autoPtr,
-            fileServer,
-            word,
-            (),
-            ()
-        );
-
-
-    // Selectors
-
-        //- Select type
-        static autoPtr<fileServer> New(const word& type);
+        localFileServer();
 
 
     //- Destructor
-    virtual ~fileServer();
+    virtual ~localFileServer();
 
 
     // Member Functions
@@ -99,16 +71,16 @@ public:
         // OSSpecific equivalents
 
             //- Make directory
-            virtual bool mkDir(const fileName&, mode_t=0777) const = 0;
+            virtual bool mkDir(const fileName&, mode_t=0777) const;
 
             //- Set the file mode
-            virtual bool chMod(const fileName&, const mode_t) const = 0;
+            virtual bool chMod(const fileName&, const mode_t) const;
 
             //- Return the file mode
-            virtual mode_t mode(const fileName&) const = 0;
+            virtual mode_t mode(const fileName&) const;
 
             //- Return the file type: DIRECTORY or FILE
-            virtual fileName::Type type(const fileName&) const = 0;
+            virtual fileName::Type type(const fileName&) const;
 
             //- Does the name exist (as DIRECTORY or FILE) in the file system?
             //  Optionally enable/disable check for gzip file.
@@ -116,10 +88,10 @@ public:
             (
                 const fileName&,
                 const bool checkGzip=true
-            ) const = 0;
+            ) const;
 
             //- Does the name exist as a DIRECTORY in the file system?
-            virtual bool isDir(const fileName&) const = 0;
+            virtual bool isDir(const fileName&) const;
 
             //- Does the name exist as a FILE in the file system?
             //  Optionally enable/disable check for gzip file.
@@ -127,16 +99,16 @@ public:
             (
                 const fileName&,
                 const bool checkGzip=true
-            ) const = 0;
+            ) const;
 
             //- Return size of file
-            virtual off_t fileSize(const fileName&) const = 0;
+            virtual off_t fileSize(const fileName&) const;
 
             //- Return time of last file modification
-            virtual time_t lastModified(const fileName&) const = 0;
+            virtual time_t lastModified(const fileName&) const;
 
             //- Return time of last file modification
-            virtual double highResLastModified(const fileName&) const = 0;
+            virtual double highResLastModified(const fileName&) const;
 
             //- Read a directory and return the entries as a string list
             virtual fileNameList readDir
@@ -144,17 +116,17 @@ public:
                 const fileName&,
                 const fileName::Type=fileName::FILE,
                 const bool filtergz=true
-            ) const = 0;
+            ) const;
 
             //- Copy, recursively if necessary, the source to the destination
-            virtual bool cp(const fileName& src, const fileName& dst) const = 0;
+            virtual bool cp(const fileName& src, const fileName& dst) const;
 
             //- Create a softlink. dst should not exist. Returns true if
             //  successful.
-            virtual bool ln(const fileName& src, const fileName& dst) const = 0;
+            virtual bool ln(const fileName& src, const fileName& dst) const;
 
             //- Rename src to dst
-            virtual bool mv(const fileName& src, const fileName& dst) const = 0;
+            virtual bool mv(const fileName& src, const fileName& dst) const;
 
             //- Rename to a corresponding backup file
             //  If the backup file already exists, attempt with
@@ -163,13 +135,13 @@ public:
             (
                 const fileName&,
                 const std::string& ext = "bak"
-            ) const = 0;
+            ) const;
 
             //- Remove a file, returning true if successful otherwise false
-            virtual bool rm(const fileName&) const = 0;
+            virtual bool rm(const fileName&) const;
 
             //- Remove a dirctory and its contents
-            virtual bool rmDir(const fileName&) const = 0;
+            virtual bool rmDir(const fileName&) const;
 
 //            //- Open a shared library. Return handle to library. Print error
 //            //  message if library cannot be loaded (check = true)
@@ -177,14 +149,14 @@ public:
 //            (
 //                const fileName& lib,
 //                const bool check = true
-//            ) const = 0;
+//            ) const;
 
 
         //- Search for an object.
-        virtual fileName filePath(const IOobject&) const = 0;
+        virtual fileName filePath(const IOobject&) const;
 
         //- Generate an Istream that reads a file
-        virtual autoPtr<Istream> NewIFstream(const fileName&) const = 0;
+        virtual autoPtr<Istream> NewIFstream(const fileName&) const;
 
         //- Generate an Ostream that reads a file
         virtual autoPtr<Ostream> NewOFstream
@@ -193,12 +165,13 @@ public:
             IOstream::streamFormat format=IOstream::ASCII,
             IOstream::versionNumber version=IOstream::currentVersion,
             IOstream::compressionType compression=IOstream::UNCOMPRESSED
-        ) const = 0;
+        ) const;
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End namespace fileServers
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

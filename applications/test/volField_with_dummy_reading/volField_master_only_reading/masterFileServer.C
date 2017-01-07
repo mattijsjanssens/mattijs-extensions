@@ -26,21 +26,25 @@ License
 #include "masterFileServer.H"
 #include "masterOFstream.H"
 #include "Pstream.H"
-#include "OSspecific.H"
 #include "Time.H"
 #include "IFstream.H"
+#include "addToRunTimeSelectionTable.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
 namespace Foam
 {
+namespace fileServers
+{
     defineTypeNameAndDebug(masterFileServer, 0);
+    addToRunTimeSelectionTable(fileServer, masterFileServer, word);
+}
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-Foam::fileName Foam::masterFileServer::filePath
+Foam::fileName Foam::fileServers::masterFileServer::filePath
 (
     const IOobject& io,
     pathType& searchType,
@@ -52,7 +56,7 @@ Foam::fileName Foam::masterFileServer::filePath
     if (io.instance().isAbsolute())
     {
         fileName objectPath = io.instance()/io.name();
-        if (isFile(objectPath))
+        if (Foam::isFile(objectPath))
         {
             searchType = fileServer::ABSOLUTE;
             return objectPath;
@@ -68,7 +72,7 @@ Foam::fileName Foam::masterFileServer::filePath
         fileName path = io.path();
         fileName objectPath = path/io.name();
 
-        if (isFile(objectPath))
+        if (Foam::isFile(objectPath))
         {
             searchType = fileServer::OBJECT;
             return objectPath;
@@ -88,14 +92,14 @@ Foam::fileName Foam::masterFileServer::filePath
                     io.rootPath()/io.time().globalCaseName()
                    /io.instance()/io.db().dbDir()/io.local()/io.name();
 
-                if (isFile(parentObjectPath))
+                if (Foam::isFile(parentObjectPath))
                 {
                     searchType = fileServer::PARENTOBJECT;
                     return parentObjectPath;
                 }
             }
 
-            if (!isDir(path))
+            if (!Foam::isDir(path))
             {
                 newInstancePath = io.time().findInstancePath
                 (
@@ -110,7 +114,7 @@ Foam::fileName Foam::masterFileServer::filePath
                        /newInstancePath/io.db().dbDir()/io.local()/io.name()
                     );
 
-                    if (isFile(fName))
+                    if (Foam::isFile(fName))
                     {
                         searchType = fileServer::FINDINSTANCE;
                         return fName;
@@ -124,7 +128,7 @@ Foam::fileName Foam::masterFileServer::filePath
 }
 
 
-Foam::fileName Foam::masterFileServer::objectPath
+Foam::fileName Foam::fileServers::masterFileServer::objectPath
 (
     const IOobject& io,
     const pathType& searchType,
@@ -174,20 +178,204 @@ Foam::fileName Foam::masterFileServer::objectPath
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::masterFileServer::masterFileServer()
+Foam::fileServers::masterFileServer::masterFileServer()
 {}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::masterFileServer::~masterFileServer()
+Foam::fileServers::masterFileServer::~masterFileServer()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+bool Foam::fileServers::masterFileServer::mkDir
+(
+    const fileName& dir,
+    mode_t mode
+) const
+{
+    return masterFileOperation<mode_t, mkDirOp>(dir, mkDirOp(mode));
+}
+
+
+bool Foam::fileServers::masterFileServer::chMod
+(
+    const fileName& fName,
+    mode_t mode
+) const
+{
+    return masterFileOperation<mode_t, chModOp>(fName, chModOp(mode));
+}
+
+
+mode_t Foam::fileServers::masterFileServer::mode(const fileName& fName) const
+{
+    return masterFileOperation<mode_t, modeOp>(fName, modeOp());
+}
+
+
+Foam::fileName::Type Foam::fileServers::masterFileServer::type
+(
+    const fileName& fName
+) const
+{
+    return fileName::Type(masterFileOperation<label, typeOp>(fName, typeOp()));
+}
+
+
+bool Foam::fileServers::masterFileServer::exists
+(
+    const fileName& fName,
+    const bool checkGzip
+) const
+{
+    return masterFileOperation<bool, existsOp>(fName, existsOp(checkGzip));
+}
+
+
+bool Foam::fileServers::masterFileServer::isDir(const fileName& fName) const
+{
+    return masterFileOperation<bool, isDirOp>(fName, isDirOp());
+}
+
+
+bool Foam::fileServers::masterFileServer::isFile
+(
+    const fileName& fName,
+    const bool checkGzip
+) const
+{
+    return masterFileOperation<bool, isFileOp>(fName, isFileOp());
+}
+
+
+off_t Foam::fileServers::masterFileServer::fileSize(const fileName& fName) const
+{
+    return masterFileOperation<off_t, fileSizeOp>(fName, fileSizeOp());
+}
+
+
+time_t Foam::fileServers::masterFileServer::lastModified
+(
+    const fileName& fName
+) const
+{
+    return masterFileOperation<time_t, lastModifiedOp>(fName, lastModifiedOp());
+}
+
+
+double Foam::fileServers::masterFileServer::highResLastModified
+(
+    const fileName& fName
+) const
+{
+    return masterFileOperation<double, lastModifiedHROp>
+    (
+        fName,
+        lastModifiedHROp()
+    );
+}
+
+
+bool Foam::fileServers::masterFileServer::mvBak
+(
+    const fileName& fName,
+    const std::string& ext
+) const
+{
+    return masterFileOperation<bool, mvBakOp>(fName, mvBakOp(ext));
+}
+
+
+bool Foam::fileServers::masterFileServer::rm(const fileName& fName) const
+{
+    return masterFileOperation<bool, rmOp>(fName, rmOp());
+}
+
+
+bool Foam::fileServers::masterFileServer::rmDir(const fileName& dir) const
+{
+    return masterFileOperation<bool, rmDirOp>(dir, rmDirOp());
+}
+
+
+Foam::fileNameList Foam::fileServers::masterFileServer::readDir
+(
+    const fileName& dir,
+    const fileName::Type type,
+    const bool filtergz
+) const
+{
+    return masterFileOperation<fileNameList, readDirOp>
+    (
+        dir,
+        readDirOp(type, filtergz)
+    );
+}
+
+
+bool Foam::fileServers::masterFileServer::cp
+(
+    const fileName& src,
+    const fileName& dst
+) const
+{
+    return masterFileOperation<bool, cpOp>(src, dst, cpOp());
+}
+
+
+bool Foam::fileServers::masterFileServer::ln
+(
+    const fileName& src,
+    const fileName& dst
+) const
+{
+    return masterFileOperation<bool, lnOp>(src, dst, lnOp());
+}
+
+
+bool Foam::fileServers::masterFileServer::mv
+(
+    const fileName& src,
+    const fileName& dst
+) const
+{
+    return masterFileOperation<bool, mvOp>(src, dst, mvOp());
+}
+
+
+Foam::fileName Foam::fileServers::masterFileServer::filePath
+(
+    const IOobject& io
+) const
+{
+    fileName objPath;
+    pathType searchType = fileServer::NOTFOUND;
+    word newInstancePath;
+    if (Pstream::master())
+    {
+        objPath = filePath(io, searchType, newInstancePath);
+    }
+    label masterType(searchType);
+    Pstream::scatter(masterType);
+    searchType = pathType(masterType);
+    if (searchType == fileServer::FINDINSTANCE)
+    {
+        Pstream::scatter(newInstancePath);
+    }
+
+    if (!Pstream::master())
+    {
+        objPath = objectPath(io, searchType, newInstancePath);
+    }
+    return objPath;
+}
+
+
 Foam::autoPtr<Foam::Istream>
-Foam::masterFileServer::NewIFstream(IOobject& io) const
+Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
 {
     if (Pstream::parRun())
     {
@@ -195,36 +383,7 @@ Foam::masterFileServer::NewIFstream(IOobject& io) const
         // on the master it is absolute also on the slaves etc.
 
         List<fileName> filePaths(Pstream::nProcs());
-        {
-            pathType searchType = fileServer::NOTFOUND;
-            word newInstancePath;
-            if (Pstream::master())
-            {
-                filePaths[Pstream::myProcNo()] = filePath
-                (
-                    io,
-                    searchType,
-                    newInstancePath
-                );
-            }
-            label masterType(searchType);
-            Pstream::scatter(masterType);
-            searchType = pathType(masterType);
-            if (searchType == fileServer::FINDINSTANCE)
-            {
-                Pstream::scatter(newInstancePath);
-            }
-
-            if (!Pstream::master())
-            {
-                filePaths[Pstream::myProcNo()] = objectPath
-                (
-                    io,
-                    searchType,
-                    newInstancePath
-                );
-            }
-        }
+        filePaths[Pstream::myProcNo()] = filePath;
         Pstream::gatherList(filePaths);
 
         PstreamBuffers pBufs(Pstream::nonBlocking);
@@ -316,7 +475,7 @@ Foam::masterFileServer::NewIFstream(IOobject& io) const
         {
             if (IFstream::debug)
             {
-                Pout<< "Reading " << io.objectPath()
+                Pout<< "Reading " << filePath
                     << " from processor " << Pstream::masterNo()
                     << endl;
             }
@@ -338,16 +497,12 @@ Foam::masterFileServer::NewIFstream(IOobject& io) const
     else
     {
         // Read myself
-        pathType searchType;
-        word newInstancePath;
-        fileName fName(filePath(io, searchType, newInstancePath));
-
-        return autoPtr<Istream>(new IFstream(fName));
+        return autoPtr<Istream>(new IFstream(filePath));
     }
 }
 
 
-Foam::autoPtr<Foam::Ostream> Foam::masterFileServer::NewOFstream
+Foam::autoPtr<Foam::Ostream> Foam::fileServers::masterFileServer::NewOFstream
 (
     const fileName& pathName,
     IOstream::streamFormat fmt,
@@ -356,38 +511,6 @@ Foam::autoPtr<Foam::Ostream> Foam::masterFileServer::NewOFstream
 ) const
 {
     return autoPtr<Ostream>(new masterOFstream(pathName, fmt, ver, cmp));
-}
-
-
-bool Foam::masterFileServer::mkDir(const fileName& dir) const
-{
-    if (Pstream::parRun())
-    {
-        List<fileName> filePaths(Pstream::nProcs());
-        filePaths[Pstream::myProcNo()] = dir;
-        Pstream::gatherList(filePaths);
-
-        if (Pstream::master())
-        {
-            for (label i = 1; i < filePaths.size(); i++)
-            {
-                if (filePaths[i] != filePaths[0])
-                {
-                    Foam::mkDir(filePaths[i]);
-                }
-            }
-            // Or scatter back result?
-            return Foam::mkDir(filePaths[0]);
-        }
-        else
-        {
-            return true;
-        }
-    }
-    else
-    {
-        return Foam::mkDir(dir);
-    }
 }
 
 
