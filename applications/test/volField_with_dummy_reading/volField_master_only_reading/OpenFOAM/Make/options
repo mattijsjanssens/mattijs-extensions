@@ -1,0 +1,8 @@
+EXE_INC = \
+    -g -DFULLDEBUG -O0 \
+    -I$(OBJECTS_DIR)
+
+LIB_LIBS = \
+    $(FOAM_LIBBIN)/libOSspecific.o \
+    -L$(FOAM_LIBBIN)/dummy -lPstream \
+    -lz
