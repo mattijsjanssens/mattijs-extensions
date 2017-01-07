@@ -25,6 +25,7 @@ License
 
 #include "masterFileServer.H"
 #include "Pstream.H"
+#include "IFstream.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -35,6 +36,10 @@ Type Foam::fileServers::masterFileServer::masterFileOperation
     const fileOp& fop
 ) const
 {
+    if (IFstream::debug)
+    {
+        Pout<< "masterFileServer : Operation on " << fName << endl;
+    }
     if (Pstream::parRun())
     {
         List<fileName> filePaths(Pstream::nProcs());
@@ -72,6 +77,11 @@ Type Foam::fileServers::masterFileServer::masterFileOperation
     const fileOp& fop
 ) const
 {
+    if (IFstream::debug)
+    {
+        Pout<< "masterFileServer : Operation on src:" << src
+            << " dest:" << dest << endl;
+    }
     if (Pstream::parRun())
     {
         List<fileName> srcs(Pstream::nProcs());

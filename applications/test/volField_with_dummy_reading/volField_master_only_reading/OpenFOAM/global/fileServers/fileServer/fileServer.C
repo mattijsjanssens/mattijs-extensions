@@ -79,7 +79,28 @@ const Foam::fileServer& Foam::server()
 {
     if (!Foam::fileServer::serverPtr_.valid())
     {
+        cout<< "Foam::server() : Allocating fileServer" << std::endl;
+
         Foam::fileServer::serverPtr_.reset(new fileServers::localFileServer());
+    }
+    return Foam::fileServer::serverPtr_();
+}
+
+
+const Foam::fileServer& Foam::server(autoPtr<fileServer>& newServerPtr)
+{
+    if (Foam::fileServer::serverPtr_.valid())
+    {
+        cout<< "Foam::server() : Deleting fileServer of type "
+            << Foam::fileServer::serverPtr_().type() << std::endl;
+    }
+    Foam::fileServer::serverPtr_.clear();
+
+    if (newServerPtr.valid())
+    {
+        cout<< "Foam::server() : Inserting fileServer of type "
+            << newServerPtr().type() << std::endl;
+        Foam::fileServer::serverPtr_ = newServerPtr;
     }
     return Foam::fileServer::serverPtr_();
 }

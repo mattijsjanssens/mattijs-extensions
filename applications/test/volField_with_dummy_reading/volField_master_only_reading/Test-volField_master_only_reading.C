@@ -48,6 +48,7 @@ Description
 #include "fileServer.H"
 #include "localFileServer.H"
 #include "masterFileServer.H"
+#include "pointFields.H"
 
 using namespace Foam;
 
@@ -298,7 +299,8 @@ using namespace Foam;
 //                    if (IFstream::debug)
 //                    {
 //                        Pout<< "From " << filePaths[proci]
-//                            <<  " reading " << label(count) << " bytes" << endl;
+//                            <<  " reading " << label(count) << " bytes"
+//                            << endl;
 //                    }
 //                    List<char> buf(count);
 //                    is.read(buf.begin(), count);
@@ -389,9 +391,7 @@ autoPtr<Istream> readStream(const fileServer& server, IOobject& io)
         //else
         {
             // Search intelligently for file
-DebugVar(io.objectPath());
             objPath = server.filePath(io);
-DebugVar(objPath);
             if (!objPath.size())
             {
                 FatalIOError
@@ -540,22 +540,33 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createPolyMesh.H"
 
-//     IOobject io
-//     (
-//         "pointDisplacement",
-//         runTime.timeName(),
-//         mesh,
-//         IOobject::MUST_READ,
-//         IOobject::AUTO_WRITE
-//     );
+    const pointMesh& pm = pointMesh::New(mesh);
+
     IOobject io
     (
-        "fvSolution",
-        runTime.system(),
+        "pointDisplacement",
+        runTime.timeName(),
         mesh,
         IOobject::MUST_READ,
-        IOobject::NO_WRITE
+        IOobject::AUTO_WRITE
     );
+    pointVectorField pointDisplacement(io, pm);
+
+DebugVar(pointDisplacement);
+
+    IOdictionary sol
+    (
+        IOobject
+        (
+            "fvSolution",
+            runTime.system(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false
+        )
+    );
+DebugVar(sol);
 
     //fileServers::masterFileServer server;
     //autoPtr<fileServer> serverPtr
@@ -566,24 +577,24 @@ int main(int argc, char *argv[])
     //    )
     //);
     //const fileServer& server = serverPtr();
-    const fileServer& server = Foam::server();
-
-    {
-        autoPtr<Istream> isPtr(readStream(server, io));
-        IOdictionary dict(io, isPtr());
-        DebugVar(dict);
-
-        runTime++;
-        dict.instance() = runTime.timeName();
-        writeObject
-        (
-            server,
-            dict,
-            IOstream::ASCII,
-            IOstream::currentVersion,
-            IOstream::UNCOMPRESSED
-        );
-    }
+//    const fileServer& server = Foam::server();
+//
+//    {
+//        autoPtr<Istream> isPtr(readStream(server, io));
+//        IOdictionary dict(io, isPtr());
+//        DebugVar(dict);
+//
+//        runTime++;
+//        dict.instance() = runTime.timeName();
+//        writeObject
+//        (
+//            server,
+//            dict,
+//            IOstream::ASCII,
+//            IOstream::currentVersion,
+//            IOstream::UNCOMPRESSED
+//        );
+//    }
 
     return 0;
 }

@@ -206,6 +206,8 @@ public:
 
 const fileServer& server();
 
+const fileServer& server(autoPtr<fileServer>&);
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

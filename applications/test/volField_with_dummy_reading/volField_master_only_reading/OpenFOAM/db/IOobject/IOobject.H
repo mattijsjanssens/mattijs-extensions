@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -161,11 +161,12 @@ protected:
 
         //- Construct and return an IFstream for the object.
         //  The results is nullptr if the stream construction failed
-        Istream* objectStream();
+        autoPtr<Istream> objectStream();
 
         //- Construct and return an IFstream for the object given the
-        //  exact file. The results is nullptr if the stream construction failed
-        Istream* objectStream(const fileName&);
+        //  exact file. The results is nullptr if the stream construction
+        //  failed
+        autoPtr<Istream> objectStream(const fileName&);
 
         //- Set the object state to bad
         void setBad(const string&);

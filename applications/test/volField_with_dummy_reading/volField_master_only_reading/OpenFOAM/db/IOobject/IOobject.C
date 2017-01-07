@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -26,6 +26,7 @@ License
 #include "IOobject.H"
 #include "Time.H"
 #include "IFstream.H"
+#include "fileServer.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -368,32 +369,24 @@ Foam::fileName Foam::IOobject::filePath() const
 }
 
 
-Foam::Istream* Foam::IOobject::objectStream()
+Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream()
 {
     return objectStream(filePath());
 }
 
 
-Foam::Istream* Foam::IOobject::objectStream(const fileName& fName)
+Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream(const fileName& fName)
 {
     if (fName.size())
     {
-        IFstream* isPtr = new IFstream(fName);
+        autoPtr<Istream> isPtr = server().NewIFstream(fName);
 
         if (isPtr->good())
         {
             return isPtr;
         }
-        else
-        {
-            delete isPtr;
-            return nullptr;
-        }
     }
-    else
-    {
-        return nullptr;
-    }
+    return autoPtr<Istream>(nullptr);
 }
 
 
@@ -401,10 +394,18 @@ bool Foam::IOobject::headerOk()
 {
     bool ok = true;
 
-    Istream* isPtr = objectStream();
+//    if (IFstream::debug)
+//    {
+//        Pout<< "headerOk for " << objectPath() << endl;
+//        error::printStack(Pout);
+//    }
+
+
+    //Istream* isPtr = objectStream();
+    autoPtr<Istream> isPtr = objectStream();
 
     // If the stream has failed return
-    if (!isPtr)
+    if (!isPtr.valid())
     {
         if (objectRegistry::debug)
         {
@@ -418,11 +419,11 @@ bool Foam::IOobject::headerOk()
     else
     {
         // Try reading header
-        if (!readHeader(*isPtr))
+        if (!readHeader(isPtr()))
         {
             if (objectRegistry::debug)
             {
-                IOWarningInFunction((*isPtr))
+                IOWarningInFunction((isPtr()))
                     << "Failed to read header of file " << objectPath()
                     << endl;
             }
@@ -430,8 +431,6 @@ bool Foam::IOobject::headerOk()
             ok = false;
         }
     }
-
-    delete isPtr;
 
     return ok;
 }

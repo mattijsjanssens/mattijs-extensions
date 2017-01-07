@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -127,8 +127,7 @@ Foam::regIOobject::regIOobject(const IOobject& io, const bool isTime)
         isTime
       ? 0
       : db().getEvent()
-    ),
-    isPtr_(nullptr)
+    )
 {
     // Register with objectRegistry if requested
     if (registerObject())
@@ -144,8 +143,7 @@ Foam::regIOobject::regIOobject(const regIOobject& rio)
     registered_(false),
     ownedByRegistry_(false),
     watchIndex_(rio.watchIndex_),
-    eventNo_(db().getEvent()),
-    isPtr_(nullptr)
+    eventNo_(db().getEvent())
 {
     // Do not register copy with objectRegistry
 }
@@ -157,8 +155,7 @@ Foam::regIOobject::regIOobject(const regIOobject& rio, bool registerCopy)
     registered_(false),
     ownedByRegistry_(false),
     watchIndex_(-1),
-    eventNo_(db().getEvent()),
-    isPtr_(nullptr)
+    eventNo_(db().getEvent())
 {
     if (registerCopy && rio.registered_)
     {
@@ -179,8 +176,7 @@ Foam::regIOobject::regIOobject
     registered_(false),
     ownedByRegistry_(false),
     watchIndex_(-1),
-    eventNo_(db().getEvent()),
-    isPtr_(nullptr)
+    eventNo_(db().getEvent())
 {
     if (registerCopy)
     {
@@ -199,8 +195,7 @@ Foam::regIOobject::regIOobject
     registered_(false),
     ownedByRegistry_(false),
     watchIndex_(-1),
-    eventNo_(db().getEvent()),
-    isPtr_(nullptr)
+    eventNo_(db().getEvent())
 {
     if (registerObject())
     {
@@ -219,12 +214,6 @@ Foam::regIOobject::~regIOobject()
             << " of type " << type()
             << " in directory " << path()
             << endl;
-    }
-
-    if (isPtr_)
-    {
-        delete isPtr_;
-        isPtr_ = nullptr;
     }
 
     // Check out of objectRegistry if not owned by the registry
@@ -422,11 +411,7 @@ void Foam::regIOobject::rename(const word& newName)
 
 void Foam::regIOobject::operator=(const IOobject& io)
 {
-    if (isPtr_)
-    {
-        delete isPtr_;
-        isPtr_ = nullptr;
-    }
+    isPtr_.clear();
 
     // Check out of objectRegistry
     checkOut();
