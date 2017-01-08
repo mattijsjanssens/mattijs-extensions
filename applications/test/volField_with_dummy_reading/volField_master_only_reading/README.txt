@@ -4,3 +4,5 @@ parallel version.
 - headerOk() + readData() in one function so we don't open file twice
 
 - findInstance master-only version
+
+- handle local-only files? Threading?

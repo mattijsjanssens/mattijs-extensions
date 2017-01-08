@@ -212,6 +212,24 @@ Foam::fileName Foam::fileServers::localFileServer::filePath
 }
 
 
+Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::objectStream
+(
+    const fileName& fName
+) const
+{
+    if (fName.size())
+    {
+        autoPtr<Istream> isPtr = NewIFstream(fName);
+
+        if (isPtr->good())
+        {
+            return isPtr;
+        }
+    }
+    return autoPtr<Istream>(nullptr);
+}
+
+
 Foam::autoPtr<Foam::Istream>
 Foam::fileServers::localFileServer::NewIFstream(const fileName& filePath) const
 {

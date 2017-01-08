@@ -77,7 +77,7 @@ Foam::Istream& Foam::regIOobject::readStream()
             }
         }
 
-        isPtr_ = objectStream(objPath);
+        isPtr_ = server().objectStream(objPath);
 
         if (!isPtr_.valid())
         {

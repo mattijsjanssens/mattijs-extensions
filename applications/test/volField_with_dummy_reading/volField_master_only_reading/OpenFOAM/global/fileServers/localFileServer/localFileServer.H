@@ -152,20 +152,26 @@ public:
 //            ) const;
 
 
-        //- Search for an object.
-        virtual fileName filePath(const IOobject&) const;
+        // (reg)IOobject functinality
 
-        //- Generate an Istream that reads a file
-        virtual autoPtr<Istream> NewIFstream(const fileName&) const;
+            //- Search for an object.
+            virtual fileName filePath(const IOobject&) const;
 
-        //- Generate an Ostream that reads a file
-        virtual autoPtr<Ostream> NewOFstream
-        (
-            const fileName& pathname,
-            IOstream::streamFormat format=IOstream::ASCII,
-            IOstream::versionNumber version=IOstream::currentVersion,
-            IOstream::compressionType compression=IOstream::UNCOMPRESSED
-        ) const;
+            //- Generate an Istream for an IOobject. Returns a null stream
+            //  if the file is not valid.
+            virtual autoPtr<Istream> objectStream(const fileName&) const;
+
+            //- Generate an Istream that reads a file
+            virtual autoPtr<Istream> NewIFstream(const fileName&) const;
+
+            //- Generate an Ostream that writes a file
+            virtual autoPtr<Ostream> NewOFstream
+            (
+                const fileName& pathname,
+                IOstream::streamFormat format=IOstream::ASCII,
+                IOstream::versionNumber version=IOstream::currentVersion,
+                IOstream::compressionType compression=IOstream::UNCOMPRESSED
+            ) const;
 };
 
 
