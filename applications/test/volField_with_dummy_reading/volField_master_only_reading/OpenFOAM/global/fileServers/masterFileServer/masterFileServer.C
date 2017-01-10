@@ -427,11 +427,15 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
                     Pout<< "Opening global file " << object0 << endl;
                 }
 
+
+                // get length of file:
+                off_t count(fileSize(object0));
+
                 std::ifstream is(object0);
                 // get length of file:
-                is.seekg(0, ios_base::end);
-                std::streamoff count = is.tellg();
-                is.seekg(0, ios_base::beg);
+                //is.seekg(0, ios_base::end);
+                //std::streamoff count = is.tellg();
+                //is.seekg(0, ios_base::beg);
 
                 if (IFstream::debug)
                 {
