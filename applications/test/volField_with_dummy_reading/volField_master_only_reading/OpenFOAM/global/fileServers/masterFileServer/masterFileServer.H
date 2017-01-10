@@ -376,6 +376,16 @@ public:
             //  if the file is not valid.
             virtual autoPtr<Istream> objectStream(const fileName&) const;
 
+            //- Writes a regIOobject (so header, contents and divider).
+            //  Returns success state.
+            virtual bool writeObject
+            (
+                const regIOobject&,
+                IOstream::streamFormat format=IOstream::ASCII,
+                IOstream::versionNumber version=IOstream::currentVersion,
+                IOstream::compressionType compression=IOstream::UNCOMPRESSED
+            ) const;
+
             //- Generate an Istream that reads a file
             virtual autoPtr<Istream> NewIFstream(const fileName&) const;
 

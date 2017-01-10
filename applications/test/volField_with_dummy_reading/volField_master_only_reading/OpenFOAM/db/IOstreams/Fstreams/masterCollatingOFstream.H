@@ -22,18 +22,18 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::masterOFstream
+    Foam::masterCollatingOFstream
 
 Description
     Master-only drop-in replacement for OFstream.
 
 SourceFiles
-    masterOFstream.C
+    masterCollatingOFstream.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef masterOFstream_H
-#define masterOFstream_H
+#ifndef masterCollatingOFstream_H
+#define masterCollatingOFstream_H
 
 #include "OStringStream.H"
 #include "autoPtr.H"
@@ -44,10 +44,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class masterOFstream Declaration
+                       Class masterCollatingOFstream Declaration
 \*---------------------------------------------------------------------------*/
 
-class masterOFstream
+class masterCollatingOFstream
 :
     public OStringStream
 {
@@ -69,7 +69,7 @@ public:
     // Constructors
 
         //- Construct and set stream status
-        masterOFstream
+        masterCollatingOFstream
         (
             const fileName& pathname,
             streamFormat format=ASCII,
@@ -79,7 +79,7 @@ public:
 
 
     //- Destructor
-    ~masterOFstream();
+    ~masterCollatingOFstream();
 
 
         // Print

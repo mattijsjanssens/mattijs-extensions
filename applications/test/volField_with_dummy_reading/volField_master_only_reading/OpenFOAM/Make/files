@@ -154,6 +154,7 @@ Fstreams = $(Streams)/Fstreams
 $(Fstreams)/IFstream.C
 $(Fstreams)/OFstream.C
 $(Fstreams)/masterOFstream.C
+$(Fstreams)/masterCollatingOFstream.C
 
 Tstreams = $(Streams)/Tstreams
 $(Tstreams)/ITstream.C

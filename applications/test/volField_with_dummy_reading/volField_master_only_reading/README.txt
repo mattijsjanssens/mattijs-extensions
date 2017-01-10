@@ -5,7 +5,10 @@ parallel version.
 
 - findInstance master-only version
 
-- handle local-only files? Threading?
+- handle local-only files? Threading? Store request, gather them and
+  execute them. Or store and wait until next synchronised call is
+  and we gather them then. Might be overkill to have thread polling all the
+  time.
 
 - processor-indexed regIOobjects.
     readStream(const word& typeName)

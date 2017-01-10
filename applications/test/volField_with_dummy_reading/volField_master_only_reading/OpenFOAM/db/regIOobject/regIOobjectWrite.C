@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -30,6 +30,7 @@ Description
 #include "Time.H"
 #include "OSspecific.H"
 #include "OFstream.H"
+#include "fileServer.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -70,7 +71,7 @@ bool Foam::regIOobject::writeObject
         const_cast<regIOobject&>(*this).instance() = time().timeName();
     }
 
-    mkDir(path());
+    //mkDir(path());
 
     if (OFstream::debug)
     {
@@ -81,29 +82,41 @@ bool Foam::regIOobject::writeObject
     bool osGood = false;
 
     {
-        // Try opening an OFstream for object
-        OFstream os(objectPath(), fmt, ver, cmp);
+        //// Try opening an OFstream for object
+        ////OFstream os(objectPath(), fmt, ver, cmp);
+        //autoPtr<Ostream> osPtr
+        //(
+        //    server().NewOFstream
+        //    (
+        //        objectPath(),
+        //        fmt,
+        //        ver,
+        //        cmp
+        //    )
+        //);
+        //Ostream& os = osPtr();
+        //
+        //// If any of these fail, return (leave error handling to Ostream
+        //// class)
+        //if (!os.good())
+        //{
+        //    return false;
+        //}
+        //
+        //if (!writeHeader(os))
+        //{
+        //    return false;
+        //}
+        //
+        //// Write the data to the Ostream
+        //if (!writeData(os))
+        //{
+        //    return false;
+        //}
+        //
+        //writeEndDivider(os);
 
-        // If any of these fail, return (leave error handling to Ostream class)
-        if (!os.good())
-        {
-            return false;
-        }
-
-        if (!writeHeader(os))
-        {
-            return false;
-        }
-
-        // Write the data to the Ostream
-        if (!writeData(os))
-        {
-            return false;
-        }
-
-        writeEndDivider(os);
-
-        osGood = os.good();
+        osGood = server().writeObject(*this, fmt, ver, cmp);
     }
 
     if (OFstream::debug)

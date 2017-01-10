@@ -24,11 +24,12 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "masterFileServer.H"
-#include "masterOFstream.H"
+#include "addToRunTimeSelectionTable.H"
 #include "Pstream.H"
 #include "Time.H"
 #include "IFstream.H"
-#include "addToRunTimeSelectionTable.H"
+#include "masterOFstream.H"
+#include "masterCollatingOFstream.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -392,6 +393,53 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
 }
 
 
+bool Foam::fileServers::masterFileServer::writeObject
+(
+    const regIOobject& io,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    mkDir(io.path());
+
+    fileName pathName(io.objectPath());
+
+    autoPtr<Ostream> osPtr
+    (
+        new masterCollatingOFstream
+        (
+            pathName,
+            fmt,
+            ver,
+            cmp
+        )
+    );
+    Ostream& os = osPtr();
+
+    // If any of these fail, return (leave error handling to Ostream class)
+    if (!os.good())
+    {
+        return false;
+    }
+
+    if (!io.writeHeader(os))
+    {
+        return false;
+    }
+
+    // Write the data to the Ostream
+    if (!io.writeData(os))
+    {
+        return false;
+    }
+
+    IOobject::writeEndDivider(os);
+
+    return true;
+}
+
+
 Foam::autoPtr<Foam::Istream>
 Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
 {
@@ -429,7 +477,7 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
 
 
                 // get length of file:
-                off_t count(fileSize(object0));
+                off_t count(Foam::fileSize(object0));
 
                 std::ifstream is(object0);
                 // get length of file:

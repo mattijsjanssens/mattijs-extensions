@@ -26,6 +26,7 @@ License
 #include "fileServer.H"
 //#include "masterFileServer.H"
 #include "localFileServer.H"
+#include "regIOobject.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -74,6 +75,59 @@ Foam::fileServer::~fileServer()
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::fileServer::writeObject
+(
+    const regIOobject& io,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    mkDir(io.path());
+
+    fileName pathName(io.objectPath());
+
+    autoPtr<Ostream> osPtr
+    (
+        NewOFstream
+        (
+            pathName,
+            fmt,
+            ver,
+            cmp
+        )
+    );
+
+    if (!osPtr.valid())
+    {
+        return false;
+    }
+
+    Ostream& os = osPtr();
+
+    // If any of these fail, return (leave error handling to Ostream class)
+    if (!os.good())
+    {
+        return false;
+    }
+
+    if (!io.writeHeader(os))
+    {
+        return false;
+    }
+
+    // Write the data to the Ostream
+    if (!io.writeData(os))
+    {
+        return false;
+    }
+
+    IOobject::writeEndDivider(os);
+
+    return true;
+}
+
 
 const Foam::fileServer& Foam::server()
 {
