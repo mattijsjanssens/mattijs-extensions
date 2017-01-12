@@ -472,12 +472,13 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
     {
         //const bool uniform = uniformFile(filePaths);
 
-        isPtr.reset(new IFstream(fName));
+        autoPtr<IFstream> ifsPtr(new IFstream(fName));
+        IFstream& is = ifsPtr();
 
         // Read header
-        if (!io.readHeader(isPtr()))
+        if (!io.readHeader(is))
         {
-            FatalIOErrorInFunction(isPtr())
+            FatalIOErrorInFunction(is)
                 << "problem while reading header for object " << io.name()
                 << exit(FatalIOError);
         }
@@ -494,81 +495,162 @@ DebugVar(io.headerClassName());
             )
         )
         {
+            // Construct dictionary with header information so we can
+            // stream this to the individual processors
             dictionary headerDict;
-            headerDict.add("version", isPtr().version());
-            headerDict.add("format", isPtr().format());
-            headerDict.add("class", baseName);
-            if (io.note().size())
             {
-                headerDict.add("note", io.note());
-            }
-            headerDict.add
-            (
-                "location",
-                io.instance()/io.db().dbDir()/io.local()
-            );
-            headerDict.add("object", io.name());
-
-DebugVar(headerDict);
-
-
-            dictionary dict;
-            dict.read(isPtr(), true);
-
-            {
-                // Extract processor0 subdict. Put in pBufs
-                const word procName
+                headerDict.add("version", is.version());
+                headerDict.add("format", is.format());
+                headerDict.add("class", baseName);
+                if (io.note().size())
+                {
+                    headerDict.add("note", io.note());
+                }
+                headerDict.add
                 (
-                    "processor" + Foam::name(Pstream::myProcNo())
+                    "location",
+                    io.instance()/io.db().dbDir()/io.local()
                 );
-                const dictionary& procDict = dict.subDict(procName);
-
-//DebugVar(procDict);
-
-
-                OStringStream oss;
-                // Write header
-                oss.indent();
-                oss.write(word("FoamFile"));
-                headerDict.write(oss);
-                // Write contents
-                procDict.write(oss, false);
-
-                UOPstream os(Pstream::myProcNo(), pBufs);
-                string s(oss.str());
-DebugVar(s);
-                os.write(&s[0], s.size());
+                headerDict.add("object", io.name());
+                DebugVar(headerDict);
             }
 
 
-            // Extract slave processor subdicts. Put in pBufs
-            for (label proci = 1; proci < Pstream::nProcs(); proci++)
+            // See if index file present
+            List<std::streamoff> start;
+            List<std::streamoff> size;
+            std::streamoff overallSize = masterCollatingOFstream::readIndexFile
+            (
+                fName,
+                start,
+                size
+            );
+
+            DebugVar(overallSize);
+            DebugVar(Foam::fileSize(fName));
+
+
+            if (overallSize && overallSize == Foam::fileSize(fName))
             {
-                const word procName("processor" + Foam::name(proci));
-                const dictionary& procDict = dict.subDict(procName);
+                // Have index file. Can slice file directly
 
-//DebugVar(procDict);
+                is.format(IOstream::BINARY);
+
                 OStringStream oss;
-                // Write header
-                oss.indent();
-                oss.write(word("FoamFile"));
-                headerDict.write(oss);
-                // Write contents
-                procDict.write(oss, false);
+                {
+                    // Write header
+                    oss.indent();
+                    oss.write(word("FoamFile"));
+                    headerDict.write(oss);
 
-                UOPstream os(proci, pBufs);
-                string s(oss.str());
+                    // Read slice from file and add to OStringStream
+                    List<char> buf(size[Pstream::masterNo()]);
+                    is.stdStream().seekg
+                    (
+                        start[Pstream::masterNo()],
+                        ios_base::beg
+                    );
+                    is.read(buf.begin(), size[Pstream::masterNo()]);
+
+Pout<< "Read slice start:" << start[Pstream::masterNo()]
+    << endl;
+DebugVar(buf);
+
+                    oss.write(&buf[0], buf.size());
+
+                    UOPstream os(Pstream::myProcNo(), pBufs);
+                    string s(oss.str());
+
 DebugVar(s);
-                os.write(&s[0], s.size());
+
+                    os.write(&s[0], s.size());
+                }
+                for (label proci = 1; proci < Pstream::nProcs(); proci++)
+                {
+                    oss.rewind();
+
+                    // Write header
+                    oss.indent();
+                    oss.write(word("FoamFile"));
+                    headerDict.write(oss);
+
+                    // Read slice from file and add to OStringStream
+                    List<char> buf(size[proci]);
+                    is.stdStream().seekg(start[proci], ios_base::beg);
+                    is.read(buf.begin(), size[proci]);
+
+Pout<< "Read slice start:" << start[proci]
+    << endl;
+
+                    oss.write(&buf[0], buf.size());
+
+                    UOPstream os(Pstream::myProcNo(), pBufs);
+                    string s(oss.str());
+DebugVar(s);
+
+                    os.write(&s[0], s.size());
+                }
+            }
+            else
+            {
+                // Read complete dictionary
+                dictionary dict;
+                dict.read(is, true);
+
+                {
+                    // Extract processor0 subdict. Put in pBufs
+                    const word procName
+                    (
+                        "processor" + Foam::name(Pstream::myProcNo())
+                    );
+                    const dictionary& procDict = dict.subDict(procName);
+
+                    OStringStream oss;
+                    // Write header
+                    oss.indent();
+                    oss.write(word("FoamFile"));
+                    headerDict.write(oss);
+                    // Write contents
+                    procDict.write(oss, false);
+
+                    UOPstream os(Pstream::myProcNo(), pBufs);
+                    string s(oss.str());
+    DebugVar(s);
+                    os.write(&s[0], s.size());
+                }
+
+
+                // Extract slave processor subdicts. Put in pBufs
+                for (label proci = 1; proci < Pstream::nProcs(); proci++)
+                {
+                    const word procName("processor" + Foam::name(proci));
+                    const dictionary& procDict = dict.subDict(procName);
+
+                    OStringStream oss;
+                    // Write header
+                    oss.indent();
+                    oss.write(word("FoamFile"));
+                    headerDict.write(oss);
+                    // Write contents
+                    procDict.write(oss, false);
+
+                    UOPstream os(proci, pBufs);
+                    string s(oss.str());
+    DebugVar(s);
+                    os.write(&s[0], s.size());
+                }
             }
 
             // Close collection file (since information already extracted
             // out to pBufs)
-            isPtr.clear();
+            ifsPtr.clear();
         }
         else
         {
-            // Already read myself. Read slave files.
+            // Open master (steal from ifsPtr)
+            isPtr.reset(ifsPtr.ptr());
+
+            // Read slave files
             for (label proci = 1; proci < Pstream::nProcs(); proci++)
             {
                 if (IFstream::debug)
@@ -601,7 +683,8 @@ DebugVar(s);
     pBufs.finishedSends(recvSizes);
 
 
-    // isPtr will be valid on master if the file is not a Collection
+    // isPtr will be valid on master if the file is not a Collection. In
+    // all cases the information is in the PstreamBuffers
 
     if (!isPtr.valid())
     {

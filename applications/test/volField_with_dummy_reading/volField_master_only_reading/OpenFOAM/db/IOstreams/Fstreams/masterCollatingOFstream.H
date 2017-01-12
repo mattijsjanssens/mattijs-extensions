@@ -67,6 +67,14 @@ class masterCollatingOFstream
         //- Open file with checking
         autoPtr<OFstream> open(const fileName&) const;
 
+        //- Write file from OStringStream. (on master) sets start, size
+        //  to the slices of in the file.
+        std::streamoff writeBuffers
+        (
+            List<std::streamoff>&,
+            List<std::streamoff>&
+        ) const;
+
 
 public:
 
@@ -94,6 +102,15 @@ public:
 
         //- Is className a collating type? Extract typeName if so
         static bool isCollatingClassName(const word&, word&);
+
+        //- Detect index file for pathName and return overall size of file
+        //  and slices in file. Return 0 if no index file found
+        static std::streamoff readIndexFile
+        (
+            const fileName& pathName,
+            List<std::streamoff>& start,
+            List<std::streamoff>& size
+        );
 };
 
 

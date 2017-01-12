@@ -28,6 +28,7 @@ License
 #include "OSspecific.H"
 #include "PstreamBuffers.H"
 #include "IOdictionary.H"
+#include "IFstream.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -57,28 +58,15 @@ Foam::autoPtr<Foam::OFstream> Foam::masterCollatingOFstream::open
 }
 
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-Foam::masterCollatingOFstream::masterCollatingOFstream
+std::streamoff Foam::masterCollatingOFstream::writeBuffers
 (
-    const fileName& typeName,
-    const fileName& pathName,
-    streamFormat format,
-    versionNumber version,
-    compressionType compression
-)
-:
-    OStringStream(format, version),
-    typeName_(typeName),
-    pathName_(pathName),
-    compression_(compression)
-{}
-
-
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-Foam::masterCollatingOFstream::~masterCollatingOFstream()
+    List<std::streamoff>& start,
+    List<std::streamoff>& size
+) const
 {
+    start.setSize(Pstream::nProcs());
+    size.setSize(Pstream::nProcs());
+
     if (Pstream::parRun())
     {
         List<fileName> filePaths(Pstream::nProcs());
@@ -109,7 +97,7 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                     FatalIOErrorInFunction(osPtr())
                         << "Failed writing to " << fName << exit(FatalIOError);
                 }
-                return;
+                return osPtr().stdStream().tellp();
             }
         }
 
@@ -132,6 +120,7 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
             const fileName& fName = filePaths[Pstream::myProcNo()];
             autoPtr<OFstream> osPtr(open(fName));
 
+            // We don't have IOobject so cannot use writeHeader
             OFstream& os = osPtr();
             IOobject::writeBanner(os)
                 << "FoamFile\n{\n"
@@ -149,12 +138,11 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                 const word procName
                 (
                     "processor"
-                  + Foam::name(Pstream::masterNo())
+                  + Foam::name(Pstream::myProcNo())
                 );
                 os  << procName << " {\n";
 
-                Info<< "Starting entry for processor " << procName
-                    << " at " << os.stdStream().tellp() << Foam::endl;
+                start[Pstream::myProcNo()] = os.stdStream().tellp();
 
                 os.writeQuoted(str(), false);
                 if (!os.good())
@@ -163,9 +151,9 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                         << "Failed writing to " << fName << exit(FatalIOError);
                 }
 
-                Info<< "Finished entry processor " << procName
-                    << " at " << os.stdStream().tellp()
-                    << Foam::endl;
+                size[Pstream::myProcNo()] =
+                    os.stdStream().tellp()
+                   -start[Pstream::myProcNo()];
 
                 os  << "}\n\n";
             }
@@ -182,8 +170,7 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                 const word procName("processor" + Foam::name(proci));
                 os  << procName<< " {\n";
 
-                Info<< "Starting entry for processor " << procName
-                    << " at " << os.stdStream().tellp() << Foam::endl;
+                start[proci] = os.stdStream().tellp();
 
                 os.writeQuoted(string(buf.begin(), buf.size()), false);
                 if (!os.good())
@@ -193,25 +180,102 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                         << exit(FatalIOError);
                 }
 
-                Info<< "Finished entry processor " << procName
-                    << " at " << os.stdStream().tellp()
-                    << Foam::endl;
+                size[proci] = os.stdStream().tellp()-start[proci];
 
                 os  << "}\n\n";
             }
             IOobject::writeEndDivider(os);
+
+            return os.stdStream().tellp();
+        }
+        else
+        {
+            return 0;
         }
     }
     else
     {
         autoPtr<OFstream> osPtr(open(pathName_));
+
+        start[Pstream::myProcNo()] = 0;
+
         osPtr().writeQuoted(str(), false);
+
+        size[Pstream::myProcNo()] =
+            osPtr().stdStream().tellp()
+           -start[Pstream::myProcNo()];
+
         if (!osPtr().good())
         {
             FatalIOErrorInFunction(osPtr())
                 << "Failed writing to " << pathName_ << exit(FatalIOError);
         }
+
+        return osPtr().stdStream().tellp();
     }
+}
+
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::masterCollatingOFstream::masterCollatingOFstream
+(
+    const fileName& typeName,
+    const fileName& pathName,
+    streamFormat format,
+    versionNumber version,
+    compressionType compression
+)
+:
+    OStringStream(format, version),
+    typeName_(typeName),
+    pathName_(pathName),
+    compression_(compression)
+{}
+
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::masterCollatingOFstream::~masterCollatingOFstream()
+{
+    List<std::streamoff> start;
+    List<std::streamoff> size;
+    std::streamoff fileSize = writeBuffers(start, size);
+
+    dictionary dict;
+    dict.add("size", fileSize);
+
+    forAll(start, proci)
+    {
+        Info<< "    processor " << proci << " start:" << start[proci]
+            << " size:" << size[proci] << Foam::endl;
+
+        dictionary procDict;
+        // TBD: 64 bits!
+        procDict.add("start", start[proci]);
+        procDict.add("size", size[proci]);
+        dict.add(word("processor" + Foam::name(proci)), procDict);
+    }
+
+    // Write as a dictionary
+    OFstream os(pathName_ + ".index");
+    if (!os.good())
+    {
+        FatalIOErrorInFunction(os)
+            << "Problem writing index file" << exit(FatalIOError);
+    }
+
+    IOobject::writeBanner(os)
+        << "FoamFile\n{\n"
+        << "    version     " << version() << ";\n"
+        << "    format      " << format() << ";\n"
+        << "    class       " << IOdictionary::typeName << ";\n"
+        << "    location    " << os.name() << ";\n"
+        << "    object      " << os.name().name() << ";\n"
+        << "}" << nl;
+    IOobject::writeDivider(os) << nl;
+
+    dict.write(os, false);
 }
 
 
@@ -246,6 +310,48 @@ bool Foam::masterCollatingOFstream::isCollatingClassName
         }
     }
     return false;
+}
+
+
+std::streamoff Foam::masterCollatingOFstream::readIndexFile
+(
+    const fileName& pathName,
+    List<std::streamoff>& start,
+    List<std::streamoff>& size
+)
+{
+    std::streamoff overallSize = 0;
+
+    IFstream is(pathName + ".index");
+    if (!is.good())
+    {
+        start.clear();
+        size.clear();
+    }
+    else
+    {
+        dictionary dict(is);
+
+        dict.readIfPresent("size", overallSize);
+
+        start.setSize(Pstream::nProcs(), -1);
+        size.setSize(Pstream::nProcs(), -1);
+
+        forAll(start, proci)
+        {
+            const word procName("processor" + Foam::name(proci));
+
+            if (dict.found(procName))
+            {
+                const dictionary& procDict = dict.subDict(procName);
+
+                procDict.readIfPresent("start", start[proci]);
+                procDict.readIfPresent("size", size[proci]);
+            }
+        }
+    }
+
+    return overallSize;
 }
 
 
