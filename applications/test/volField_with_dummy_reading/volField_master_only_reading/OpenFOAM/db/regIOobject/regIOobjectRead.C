@@ -77,26 +77,7 @@ Foam::Istream& Foam::regIOobject::readStream()
             }
         }
 
-        isPtr_ = server().objectStream(objPath);
-
-        if (!isPtr_.valid())
-        {
-            FatalIOError
-            (
-                "regIOobject::readStream()",
-                __FILE__,
-                __LINE__,
-                objPath,
-                0
-            )   << "cannot open file"
-                << exit(FatalIOError);
-        }
-        else if (!readHeader(isPtr_()))
-        {
-            FatalIOErrorInFunction(isPtr_())
-                << "problem while reading header for object " << name()
-                << exit(FatalIOError);
-        }
+        isPtr_ = server().readStream(*this, objPath);
     }
 
     // Mark as uptodate if read successfully

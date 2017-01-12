@@ -584,8 +584,33 @@ DebugVar(sol);
 //        IOdictionary dict(io, isPtr());
 //        DebugVar(dict);
 //
-//        runTime++;
-//        dict.instance() = runTime.timeName();
+Pout<< "*** WRITING **" << endl;
+
+        runTime++;
+        pointDisplacement.instance() = runTime.timeName();
+        pointDisplacement.regIOobject::write();
+
+Pout<< "*** READING **" << endl;
+
+    {
+        pointVectorField pointDisplacement2
+        (
+            IOobject
+            (
+                "pointDisplacement",
+                runTime.timeName(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            pm
+        );
+        DebugVar(pointDisplacement2);
+    }
+
+
+
 //        writeObject
 //        (
 //            server,

@@ -43,6 +43,8 @@ SourceFiles
 namespace Foam
 {
 
+class OFstream;
+
 /*---------------------------------------------------------------------------*\
                        Class masterCollatingOFstream Declaration
 \*---------------------------------------------------------------------------*/
@@ -53,6 +55,8 @@ class masterCollatingOFstream
 {
     // Private data
 
+        const fileName typeName_;
+
         const fileName pathName_;
 
         const IOstream::compressionType compression_;
@@ -61,7 +65,7 @@ class masterCollatingOFstream
     // Private Member Functions
 
         //- Open file with checking
-        autoPtr<Ostream> open(const fileName&) const;
+        autoPtr<OFstream> open(const fileName&) const;
 
 
 public:
@@ -71,6 +75,7 @@ public:
         //- Construct and set stream status
         masterCollatingOFstream
         (
+            const fileName& headerClassName,
             const fileName& pathname,
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
@@ -82,10 +87,13 @@ public:
     ~masterCollatingOFstream();
 
 
-        // Print
+    // Member Functions
 
-            //- Print description to Ostream
-//            void print(Ostream&) const;
+        //- Construct headerClassName given typeName
+        static word collatingClassName(const word&);
+
+        //- Is className a collating type? Extract typeName if so
+        static bool isCollatingClassName(const word&, word&);
 };
 
 

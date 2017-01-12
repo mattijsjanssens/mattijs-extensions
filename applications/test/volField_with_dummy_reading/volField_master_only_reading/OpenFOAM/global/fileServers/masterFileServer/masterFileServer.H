@@ -58,7 +58,7 @@ class masterFileServer
         {
             mode_t mode_;
         public:
-            mkDirOp(const bool mode)
+            mkDirOp(const mode_t mode)
             :
                 mode_(mode)
             {}
@@ -73,7 +73,7 @@ class masterFileServer
         {
             mode_t mode_;
         public:
-            chModOp(const bool mode)
+            chModOp(const mode_t mode)
             :
                 mode_(mode)
             {}
@@ -264,6 +264,9 @@ class masterFileServer
             const word&
         );
 
+        //- Same file?
+        static bool uniformFile(const fileNameList&);
+
 
 public:
 
@@ -374,7 +377,15 @@ public:
 
             //- Generate an Istream for an IOobject. Returns a null stream
             //  if the file is not valid.
-            virtual autoPtr<Istream> objectStream(const fileName&) const;
+            //virtual autoPtr<Istream> objectStream(const fileName&) const;
+
+            //- Reads header for regIOobject and returns an Istream
+            //  to read the contents.
+            virtual autoPtr<Istream> readStream
+            (
+                regIOobject&,
+                const fileName&
+            ) const;
 
             //- Writes a regIOobject (so header, contents and divider).
             //  Returns success state.

@@ -31,13 +31,13 @@ License
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-Foam::autoPtr<Foam::Ostream> Foam::masterCollatingOFstream::open
+Foam::autoPtr<Foam::OFstream> Foam::masterCollatingOFstream::open
 (
     const fileName& fName
 ) const
 {
     mkDir(fName.path());
-    autoPtr<Ostream> osPtr
+    autoPtr<OFstream> osPtr
     (
         new OFstream
         (
@@ -61,6 +61,7 @@ Foam::autoPtr<Foam::Ostream> Foam::masterCollatingOFstream::open
 
 Foam::masterCollatingOFstream::masterCollatingOFstream
 (
+    const fileName& typeName,
     const fileName& pathName,
     streamFormat format,
     versionNumber version,
@@ -68,6 +69,7 @@ Foam::masterCollatingOFstream::masterCollatingOFstream
 )
 :
     OStringStream(format, version),
+    typeName_(typeName),
     pathName_(pathName),
     compression_(compression)
 {}
@@ -96,11 +98,11 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                 }
             }
 
-
             if (uniform)
             {
                 const fileName& fName = object0;
-                autoPtr<Ostream> osPtr(open(fName));
+
+                autoPtr<OFstream> osPtr(open(fName));
                 osPtr().writeQuoted(str(), false);
                 if (!osPtr().good())
                 {
@@ -128,18 +130,31 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
         if (Pstream::master())
         {
             const fileName& fName = filePaths[Pstream::myProcNo()];
-            autoPtr<Ostream> osPtr(open(fName));
+            autoPtr<OFstream> osPtr(open(fName));
 
-            Ostream& os = osPtr();
+            OFstream& os = osPtr();
             IOobject::writeBanner(os)
                 << "FoamFile\n{\n"
                 << "    version     " << version() << ";\n"
                 << "    format      " << format() << ";\n"
-                << "    class       " << IOdictionary::typeName << ";\n";
+                << "    class       " << collatingClassName(typeName_) << ";\n"
+                << "    location    " << fName << ";\n"
+                << "    object      " << fName.name() << ";\n"
+                << "}" << nl;
+            IOobject::writeDivider(os) << nl;
+
 
             // Write my own data
             {
-                os  << "processor" + Foam::name(Pstream::masterNo()) << " {\n";
+                const word procName
+                (
+                    "processor"
+                  + Foam::name(Pstream::masterNo())
+                );
+                os  << procName << " {\n";
+
+                Info<< "Starting entry for processor " << procName
+                    << " at " << os.stdStream().tellp() << Foam::endl;
 
                 os.writeQuoted(str(), false);
                 if (!os.good())
@@ -147,7 +162,12 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                     FatalIOErrorInFunction(os)
                         << "Failed writing to " << fName << exit(FatalIOError);
                 }
-                os  << "}\n";
+
+                Info<< "Finished entry processor " << procName
+                    << " at " << os.stdStream().tellp()
+                    << Foam::endl;
+
+                os  << "}\n\n";
             }
 
             for (label proci = 1; proci < Pstream::nProcs(); proci++)
@@ -159,7 +179,11 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
 
                 const fileName& fName = filePaths[proci];
 
-                os  << "processor" + Foam::name(proci) << " {\n";
+                const word procName("processor" + Foam::name(proci));
+                os  << procName<< " {\n";
+
+                Info<< "Starting entry for processor " << procName
+                    << " at " << os.stdStream().tellp() << Foam::endl;
 
                 os.writeQuoted(string(buf.begin(), buf.size()), false);
                 if (!os.good())
@@ -168,13 +192,19 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                         << "Failed writing to " << fName
                         << exit(FatalIOError);
                 }
-                os  << "}\n";
+
+                Info<< "Finished entry processor " << procName
+                    << " at " << os.stdStream().tellp()
+                    << Foam::endl;
+
+                os  << "}\n\n";
             }
+            IOobject::writeEndDivider(os);
         }
     }
     else
     {
-        autoPtr<Ostream> osPtr(open(pathName_));
+        autoPtr<OFstream> osPtr(open(pathName_));
         osPtr().writeQuoted(str(), false);
         if (!osPtr().good())
         {
@@ -182,6 +212,40 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                 << "Failed writing to " << pathName_ << exit(FatalIOError);
         }
     }
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::word Foam::masterCollatingOFstream::collatingClassName
+(
+    const word& baseName
+)
+{
+    return word("Collection<" + baseName + ">");
+}
+
+
+bool Foam::masterCollatingOFstream::isCollatingClassName
+(
+    const word& className,
+    word& baseName
+)
+{
+    size_t off = className.find("Collection<");
+
+    if (off != string::npos)
+    {
+        baseName = className.substr(11, className.size()-11);
+
+        label sz = baseName.size();
+        if (baseName[sz-1] == '>')
+        {
+            baseName.resize(sz-1);
+            return true;
+        }
+    }
+    return false;
 }
 
 

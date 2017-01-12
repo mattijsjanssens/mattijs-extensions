@@ -177,6 +177,24 @@ Foam::fileName Foam::fileServers::masterFileServer::objectPath
 }
 
 
+bool Foam::fileServers::masterFileServer::uniformFile
+(
+    const fileNameList& filePaths
+)
+{
+    const fileName& object0 = filePaths[0];
+
+    for (label i = 1; i < filePaths.size(); i++)
+    {
+        if (filePaths[i] != object0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fileServers::masterFileServer::masterFileServer()
@@ -375,21 +393,237 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
+//Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
+//(
+//    const fileName& fName
+//) const
+//{
+//    if (fName.size())
+//    {
+//        autoPtr<Istream> isPtr = NewIFstream(fName);
+//
+//        if (isPtr->good())
+//        {
+//            return isPtr;
+//        }
+//    }
+//    return autoPtr<Istream>(nullptr);
+//}
+
+
+//Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
+//(
+//    regIOobject& io,
+//    const fileName& fName
+//) const
+//{
+//    //autoPtr<Istream> isPtr = objectStream(fName);
+//
+//    if (!fName.size())
+//    {
+//        FatalErrorInFunction
+//            << "empty file name" << exit(FatalError);
+//    }
+//
+//    autoPtr<Istream> isPtr = NewIFstream(fName);
+//
+//    if (!isPtr.valid() || !isPtr->good())
+//    {
+//        FatalIOError
+//        (
+//            "masterFileServer::readStream()",
+//            __FILE__,
+//            __LINE__,
+//            fName,
+//            0
+//        )   << "cannot open file"
+//            << exit(FatalIOError);
+//    }
+//    else if (!io.readHeader(isPtr()))
+//    {
+//        FatalIOErrorInFunction(isPtr())
+//            << "problem while reading header for object " << io.name()
+//            << exit(FatalIOError);
+//    }
+//
+//    return isPtr;
+//}
+Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
 (
+    regIOobject& io,
     const fileName& fName
 ) const
 {
-    if (fName.size())
+    if (!fName.size())
     {
-        autoPtr<Istream> isPtr = NewIFstream(fName);
+        FatalErrorInFunction
+            << "empty file name" << exit(FatalError);
+    }
 
-        if (isPtr->good())
+    fileNameList filePaths(Pstream::nProcs());
+    filePaths[Pstream::myProcNo()] = fName;
+    Pstream::gatherList(filePaths);
+
+    PstreamBuffers pBufs(Pstream::nonBlocking);
+
+    autoPtr<Istream> isPtr;
+
+    if (Pstream::master())
+    {
+        //const bool uniform = uniformFile(filePaths);
+
+        isPtr.reset(new IFstream(fName));
+
+        // Read header
+        if (!io.readHeader(isPtr()))
         {
-            return isPtr;
+            FatalIOErrorInFunction(isPtr())
+                << "problem while reading header for object " << io.name()
+                << exit(FatalIOError);
+        }
+
+DebugVar(io.headerClassName());
+
+        word baseName;
+        if
+        (
+            masterCollatingOFstream::isCollatingClassName
+            (
+                io.headerClassName(),
+                baseName
+            )
+        )
+        {
+            dictionary headerDict;
+            headerDict.add("version", isPtr().version());
+            headerDict.add("format", isPtr().format());
+            headerDict.add("class", baseName);
+            if (io.note().size())
+            {
+                headerDict.add("note", io.note());
+            }
+            headerDict.add
+            (
+                "location",
+                io.instance()/io.db().dbDir()/io.local()
+            );
+            headerDict.add("object", io.name());
+
+DebugVar(headerDict);
+
+
+            dictionary dict;
+            dict.read(isPtr(), true);
+
+            {
+                // Extract processor0 subdict. Put in pBufs
+                const word procName
+                (
+                    "processor" + Foam::name(Pstream::myProcNo())
+                );
+                const dictionary& procDict = dict.subDict(procName);
+
+//DebugVar(procDict);
+
+
+                OStringStream oss;
+                // Write header
+                oss.indent();
+                oss.write(word("FoamFile"));
+                headerDict.write(oss);
+                // Write contents
+                procDict.write(oss, false);
+
+                UOPstream os(Pstream::myProcNo(), pBufs);
+                string s(oss.str());
+DebugVar(s);
+                os.write(&s[0], s.size());
+            }
+
+
+            // Extract slave processor subdicts. Put in pBufs
+            for (label proci = 1; proci < Pstream::nProcs(); proci++)
+            {
+                const word procName("processor" + Foam::name(proci));
+                const dictionary& procDict = dict.subDict(procName);
+
+//DebugVar(procDict);
+                OStringStream oss;
+                // Write header
+                oss.indent();
+                oss.write(word("FoamFile"));
+                headerDict.write(oss);
+                // Write contents
+                procDict.write(oss, false);
+
+                UOPstream os(proci, pBufs);
+                string s(oss.str());
+DebugVar(s);
+                os.write(&s[0], s.size());
+            }
+
+            // Close collection file (since information already extracted
+            // out to pBufs)
+            isPtr.clear();
+        }
+        else
+        {
+            // Already read myself. Read slave files.
+            for (label proci = 1; proci < Pstream::nProcs(); proci++)
+            {
+                if (IFstream::debug)
+                {
+                    Pout<< "For processor " << proci
+                        << " opening " << filePaths[proci] << endl;
+                }
+
+                std::ifstream is(filePaths[proci]);
+                // Get length of file
+                is.seekg(0, ios_base::end);
+                std::streamoff count = is.tellg();
+                is.seekg(0, ios_base::beg);
+
+                if (IFstream::debug)
+                {
+                    Pout<< "From " << filePaths[proci]
+                        <<  " reading " << label(count) << " bytes" << endl;
+                }
+                List<char> buf(count);
+                is.read(buf.begin(), count);
+
+                UOPstream os(proci, pBufs);
+                os.write(buf.begin(), count);
+            }
         }
     }
-    return autoPtr<Istream>(nullptr);
+
+    labelList recvSizes;
+    pBufs.finishedSends(recvSizes);
+
+
+    // isPtr will be valid on master if the file is not a Collection
+
+    if (!isPtr.valid())
+    {
+        UIPstream is(Pstream::masterNo(), pBufs);
+        string buf(recvSizes[Pstream::masterNo()], '\0');
+        is.read(&buf[0], recvSizes[Pstream::masterNo()]);
+
+        if (IFstream::debug)
+        {
+            Pout<< "Done reading " << buf.size() << " bytes" << endl;
+        }
+
+        isPtr.reset(new IStringStream(buf));
+
+        if (!io.readHeader(isPtr()))
+        {
+            FatalIOErrorInFunction(isPtr())
+                << "problem while reading header for object " << io.name()
+                << exit(FatalIOError);
+        }
+    }
+    return isPtr;
 }
 
 
@@ -402,13 +636,13 @@ bool Foam::fileServers::masterFileServer::writeObject
 ) const
 {
     mkDir(io.path());
-
     fileName pathName(io.objectPath());
 
     autoPtr<Ostream> osPtr
     (
         new masterCollatingOFstream
         (
+            io.type(),
             pathName,
             fmt,
             ver,
@@ -448,7 +682,7 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
         // Insert logic of filePath. We assume that if a file is absolute
         // on the master it is absolute also on the slaves etc.
 
-        List<fileName> filePaths(Pstream::nProcs());
+        fileNameList filePaths(Pstream::nProcs());
         filePaths[Pstream::myProcNo()] = filePath;
         Pstream::gatherList(filePaths);
 
@@ -456,30 +690,19 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
 
         if (Pstream::master())
         {
-            bool uniform = true;
-            const fileName& object0 = filePaths[0];
-
-            for (label proci = 1; proci < Pstream::nProcs(); proci++)
-            {
-                if (filePaths[proci] != object0)
-                {
-                    uniform = false;
-                    break;
-                }
-            }
+            const bool uniform = uniformFile(filePaths);
 
             if (uniform)
             {
                 if (IFstream::debug)
                 {
-                    Pout<< "Opening global file " << object0 << endl;
+                    Pout<< "Opening global file " << filePath << endl;
                 }
 
-
                 // get length of file:
-                off_t count(Foam::fileSize(object0));
+                off_t count(Foam::fileSize(filePath));
 
-                std::ifstream is(object0);
+                std::ifstream is(filePath);
                 // get length of file:
                 //is.seekg(0, ios_base::end);
                 //std::streamoff count = is.tellg();
@@ -487,7 +710,7 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
 
                 if (IFstream::debug)
                 {
-                    Pout<< "From " << object0
+                    Pout<< "From " << filePath
                         <<  " reading " << label(count) << " bytes" << endl;
                 }
                 List<char> buf(count);

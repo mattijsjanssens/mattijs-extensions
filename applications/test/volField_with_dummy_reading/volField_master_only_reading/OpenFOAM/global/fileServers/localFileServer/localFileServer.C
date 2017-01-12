@@ -212,21 +212,60 @@ Foam::fileName Foam::fileServers::localFileServer::filePath
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::objectStream
+//Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::objectStream
+//(
+//    const fileName& fName
+//) const
+//{
+//    if (fName.size())
+//    {
+//        autoPtr<Istream> isPtr = NewIFstream(fName);
+//
+//        if (isPtr->good())
+//        {
+//            return isPtr;
+//        }
+//    }
+//    return autoPtr<Istream>(nullptr);
+//}
+
+
+Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::readStream
 (
+    regIOobject& io,
     const fileName& fName
 ) const
 {
-    if (fName.size())
-    {
-        autoPtr<Istream> isPtr = NewIFstream(fName);
+    //autoPtr<Istream> isPtr = objectStream(fName);
 
-        if (isPtr->good())
-        {
-            return isPtr;
-        }
+    if (!fName.size())
+    {
+        FatalErrorInFunction
+            << "empty file name" << exit(FatalError);
     }
-    return autoPtr<Istream>(nullptr);
+
+    autoPtr<Istream> isPtr = NewIFstream(fName);
+
+    if (!isPtr.valid() || !isPtr->good())
+    {
+        FatalIOError
+        (
+            "localFileServer::readStream()",
+            __FILE__,
+            __LINE__,
+            fName,
+            0
+        )   << "cannot open file"
+            << exit(FatalIOError);
+    }
+    else if (!io.readHeader(isPtr()))
+    {
+        FatalIOErrorInFunction(isPtr())
+            << "problem while reading header for object " << io.name()
+            << exit(FatalIOError);
+    }
+
+    return isPtr;
 }
 
 
