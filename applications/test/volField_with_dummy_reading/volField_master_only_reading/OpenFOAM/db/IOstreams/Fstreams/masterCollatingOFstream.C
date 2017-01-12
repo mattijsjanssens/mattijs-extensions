@@ -125,7 +125,7 @@ std::streamoff Foam::masterCollatingOFstream::writeBuffers
             IOobject::writeBanner(os)
                 << "FoamFile\n{\n"
                 << "    version     " << version() << ";\n"
-                << "    format      " << format() << ";\n"
+                << "    format      " << osPtr().format() << ";\n"
                 << "    class       " << collatingClassName(typeName_) << ";\n"
                 << "    location    " << fName << ";\n"
                 << "    object      " << fName.name() << ";\n"

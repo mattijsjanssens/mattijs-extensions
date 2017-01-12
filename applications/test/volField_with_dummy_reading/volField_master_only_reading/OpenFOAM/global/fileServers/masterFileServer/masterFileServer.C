@@ -483,8 +483,6 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
                 << exit(FatalIOError);
         }
 
-DebugVar(io.headerClassName());
-
         word baseName;
         if
         (
@@ -512,7 +510,7 @@ DebugVar(io.headerClassName());
                     io.instance()/io.db().dbDir()/io.local()
                 );
                 headerDict.add("object", io.name());
-                DebugVar(headerDict);
+                //DebugVar(headerDict);
             }
 
 
@@ -526,68 +524,79 @@ DebugVar(io.headerClassName());
                 size
             );
 
-            DebugVar(overallSize);
-            DebugVar(Foam::fileSize(fName));
+            const std::streamoff realSize = Foam::fileSize(fName);
+
+            if (overallSize && overallSize != realSize)
+            {
+                IOWarningInFunction(is)
+                    << "Ignoring index file since contains wrong size "
+                    << overallSize << " and file size is " << realSize
+                    << endl;
+                overallSize = 0;
+            }
 
 
-            if (overallSize && overallSize == Foam::fileSize(fName))
+            if (overallSize && overallSize == realSize)
             {
                 // Have index file. Can slice file directly
-
-                is.format(IOstream::BINARY);
-
-                OStringStream oss;
+                if (IFstream::debug)
                 {
-                    // Write header
+                    Pout<< "For file " << fName
+                        << " found index file with size:" << overallSize
+                        << " and starts:" << start << Foam::endl;
+                }
+
+                string headerString;
+                {
+                    // Get header as string
+                    OStringStream oss;
                     oss.indent();
                     oss.write(word("FoamFile"));
                     headerDict.write(oss);
+                    headerString = oss.str();
+                }
 
-                    // Read slice from file and add to OStringStream
+
+                {
+                    // Read master slice from file
                     List<char> buf(size[Pstream::masterNo()]);
                     is.stdStream().seekg
                     (
                         start[Pstream::masterNo()],
                         ios_base::beg
                     );
-                    is.read(buf.begin(), size[Pstream::masterNo()]);
+                    is.stdStream().read(buf.begin(), size[Pstream::masterNo()]);
 
-Pout<< "Read slice start:" << start[Pstream::masterNo()]
-    << endl;
-DebugVar(buf);
-
-                    oss.write(&buf[0], buf.size());
-
+                    // Prepend header
+                    string s(headerString);
+                    label sz = s.size();
+                    s.resize(sz+buf.size());
+                    forAll(buf, i)
+                    {
+                        s[sz++] = buf[i];
+                    }
+//DebugVar(s);
                     UOPstream os(Pstream::myProcNo(), pBufs);
-                    string s(oss.str());
-
-DebugVar(s);
-
                     os.write(&s[0], s.size());
                 }
                 for (label proci = 1; proci < Pstream::nProcs(); proci++)
                 {
-                    oss.rewind();
+                    // Read slice from file
 
-                    // Write header
-                    oss.indent();
-                    oss.write(word("FoamFile"));
-                    headerDict.write(oss);
-
-                    // Read slice from file and add to OStringStream
                     List<char> buf(size[proci]);
                     is.stdStream().seekg(start[proci], ios_base::beg);
-                    is.read(buf.begin(), size[proci]);
+                    is.stdStream().read(buf.begin(), size[proci]);
 
-Pout<< "Read slice start:" << start[proci]
-    << endl;
-
-                    oss.write(&buf[0], buf.size());
-
-                    UOPstream os(Pstream::myProcNo(), pBufs);
-                    string s(oss.str());
-DebugVar(s);
-
+                    // Prepend header
+                    string s(headerString);
+                    label sz = s.size();
+                    s.resize(sz+buf.size());
+                    forAll(buf, i)
+                    {
+                        s[sz++] = buf[i];
+                    }
+//DebugVar(s);
+                    UOPstream os(proci, pBufs);
                     os.write(&s[0], s.size());
                 }
             }
@@ -597,6 +606,7 @@ DebugVar(s);
                 dictionary dict;
                 dict.read(is, true);
 
+                OStringStream oss;
                 {
                     // Extract processor0 subdict. Put in pBufs
                     const word procName
@@ -605,17 +615,15 @@ DebugVar(s);
                     );
                     const dictionary& procDict = dict.subDict(procName);
 
-                    OStringStream oss;
                     // Write header
                     oss.indent();
                     oss.write(word("FoamFile"));
                     headerDict.write(oss);
                     // Write contents
                     procDict.write(oss, false);
-
-                    UOPstream os(Pstream::myProcNo(), pBufs);
                     string s(oss.str());
-    DebugVar(s);
+//DebugVar(s);
+                    UOPstream os(Pstream::myProcNo(), pBufs);
                     os.write(&s[0], s.size());
                 }
 
@@ -626,17 +634,16 @@ DebugVar(s);
                     const word procName("processor" + Foam::name(proci));
                     const dictionary& procDict = dict.subDict(procName);
 
-                    OStringStream oss;
+                    oss.rewind();
                     // Write header
                     oss.indent();
                     oss.write(word("FoamFile"));
                     headerDict.write(oss);
                     // Write contents
                     procDict.write(oss, false);
-
-                    UOPstream os(proci, pBufs);
                     string s(oss.str());
-    DebugVar(s);
+//DebugVar(s);
+                    UOPstream os(proci, pBufs);
                     os.write(&s[0], s.size());
                 }
             }
@@ -682,7 +689,6 @@ DebugVar(s);
     labelList recvSizes;
     pBufs.finishedSends(recvSizes);
 
-
     // isPtr will be valid on master if the file is not a Collection. In
     // all cases the information is in the PstreamBuffers
 
@@ -696,7 +702,6 @@ DebugVar(s);
         {
             Pout<< "Done reading " << buf.size() << " bytes" << endl;
         }
-
         isPtr.reset(new IStringStream(buf));
 
         if (!io.readHeader(isPtr()))
