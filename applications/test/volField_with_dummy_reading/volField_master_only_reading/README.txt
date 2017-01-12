@@ -1,3 +1,5 @@
+- running distributed data?
+
 - handle timeStampMaster. How do we know low-level down not to use
 parallel version.
 
