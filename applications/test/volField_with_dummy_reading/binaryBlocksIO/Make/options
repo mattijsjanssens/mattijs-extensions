@@ -1,0 +1,8 @@
+EXE_INC = \
+    -Wshorten-64-to-32 \
+    -g -DFULLDEBUG -O0 \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume
