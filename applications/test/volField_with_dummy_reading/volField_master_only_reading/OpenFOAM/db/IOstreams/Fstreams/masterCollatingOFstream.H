@@ -25,7 +25,9 @@ Class
     Foam::masterCollatingOFstream
 
 Description
-    Master-only drop-in replacement for OFstream.
+    Master-only drop-in replacement for OFstream. Writes contents from all
+    processors into the file on the master. This gets a header class name
+    Collection<XXX> where XXX is the typeName it was constructed with.
 
 SourceFiles
     masterCollatingOFstream.C
@@ -46,7 +48,7 @@ namespace Foam
 class OFstream;
 
 /*---------------------------------------------------------------------------*\
-                       Class masterCollatingOFstream Declaration
+                   Class masterCollatingOFstream Declaration
 \*---------------------------------------------------------------------------*/
 
 class masterCollatingOFstream
@@ -105,7 +107,7 @@ public:
 
         //- Detect index file for pathName and return overall size of file
         //  and slices in file. Return 0 if no index file found
-        static std::streamoff readIndexFile
+        static std::streamoff readIndex
         (
             const fileName& pathName,
             List<std::streamoff>& start,

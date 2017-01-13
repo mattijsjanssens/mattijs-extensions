@@ -195,10 +195,51 @@ bool Foam::fileServers::masterFileServer::uniformFile
 }
 
 
+bool Foam::fileServers::masterFileServer::collating() const
+{
+    if (collating_ == -1)
+    {
+        bool collate = debug::optimisationSwitch("collateFiles", false);
+        if (collate)
+        {
+            WarningInFunction << "Switching on parallel file writing collation"
+                << endl;
+            collating_ = 1;
+        }
+        else
+        {
+            WarningInFunction << "No parallel file writing collation" << endl;
+            collating_ = 0;
+        }
+    }
+
+    return (collating_ == 1);
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fileServers::masterFileServer::masterFileServer()
-{}
+:
+    collating_(-1)
+{
+    if (regIOobject::fileModificationChecking == regIOobject::timeStampMaster)
+    {
+        WarningInFunction
+            << "Resetting fileModificationChecking to timeStamp" << endl;
+        regIOobject::fileModificationChecking = regIOobject::timeStamp;
+    }
+    else if
+    (
+        regIOobject::fileModificationChecking
+     == regIOobject::inotifyMaster
+    )
+    {
+        WarningInFunction
+            << "Resetting fileModificationChecking to inotifyMaster" << endl;
+        regIOobject::fileModificationChecking = regIOobject::inotifyMaster;
+    }
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
@@ -393,22 +434,22 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 }
 
 
-//Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
-//(
-//    const fileName& fName
-//) const
-//{
-//    if (fName.size())
-//    {
-//        autoPtr<Istream> isPtr = NewIFstream(fName);
-//
-//        if (isPtr->good())
-//        {
-//            return isPtr;
-//        }
-//    }
-//    return autoPtr<Istream>(nullptr);
-//}
+Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
+(
+   const fileName& fName
+) const
+{
+   if (fName.size())
+   {
+       autoPtr<Istream> isPtr = NewIFstream(fName);
+
+       if (isPtr->good())
+       {
+           return isPtr;
+       }
+   }
+   return autoPtr<Istream>(nullptr);
+}
 
 
 //Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
@@ -517,12 +558,23 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
             // See if index file present
             List<std::streamoff> start;
             List<std::streamoff> size;
-            std::streamoff overallSize = masterCollatingOFstream::readIndexFile
+            std::streamoff overallSize = masterCollatingOFstream::readIndex
             (
                 fName,
                 start,
                 size
             );
+
+            forAll(size, proci)
+            {
+                if (size[proci] > labelMax)
+                {
+                    FatalIOErrorInFunction(fName)
+                        << "Size of slice for processor " << proci
+                        << " exceeds range of label " << labelMax
+                        << exit(FatalIOError);
+                }
+            }
 
             const std::streamoff realSize = Foam::fileSize(fName);
 
@@ -559,13 +611,20 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
 
                 {
                     // Read master slice from file
-                    List<char> buf(size[Pstream::masterNo()]);
+                    List<char> buf
+                    (
+                        static_cast<label>(size[Pstream::masterNo()])
+                    );
                     is.stdStream().seekg
                     (
                         start[Pstream::masterNo()],
                         ios_base::beg
                     );
-                    is.stdStream().read(buf.begin(), size[Pstream::masterNo()]);
+                    is.stdStream().read
+                    (
+                        buf.begin(),
+                        size[Pstream::masterNo()]
+                    );
 
                     // Prepend header
                     string s(headerString);
@@ -583,7 +642,7 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
                 {
                     // Read slice from file
 
-                    List<char> buf(size[proci]);
+                    List<char> buf(static_cast<label>(size[proci]));
                     is.stdStream().seekg(start[proci], ios_base::beg);
                     is.stdStream().read(buf.begin(), size[proci]);
 
@@ -677,7 +736,7 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
                     Pout<< "From " << filePaths[proci]
                         <<  " reading " << label(count) << " bytes" << endl;
                 }
-                List<char> buf(count);
+                List<char> buf(static_cast<label>(count));
                 is.read(buf.begin(), count);
 
                 UOPstream os(proci, pBufs);
@@ -726,17 +785,35 @@ bool Foam::fileServers::masterFileServer::writeObject
     mkDir(io.path());
     fileName pathName(io.objectPath());
 
-    autoPtr<Ostream> osPtr
-    (
-        new masterCollatingOFstream
+    autoPtr<Ostream> osPtr;
+
+    if (collating())
+    {
+        osPtr.reset
         (
-            io.type(),
-            pathName,
-            fmt,
-            ver,
-            cmp
-        )
-    );
+            new masterCollatingOFstream
+            (
+                io.type(),
+                pathName,
+                fmt,
+                ver,
+                cmp
+            )
+        );
+    }
+    else
+    {
+        osPtr.reset
+        (
+            new masterOFstream
+            (
+                pathName,
+                fmt,
+                ver,
+                cmp
+            )
+        );
+    }
     Ostream& os = osPtr();
 
     // If any of these fail, return (leave error handling to Ostream class)
@@ -791,17 +868,13 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
                 off_t count(Foam::fileSize(filePath));
 
                 std::ifstream is(filePath);
-                // get length of file:
-                //is.seekg(0, ios_base::end);
-                //std::streamoff count = is.tellg();
-                //is.seekg(0, ios_base::beg);
 
                 if (IFstream::debug)
                 {
                     Pout<< "From " << filePath
                         <<  " reading " << label(count) << " bytes" << endl;
                 }
-                List<char> buf(count);
+                List<char> buf(static_cast<label>(count));
                 is.read(buf.begin(), count);
 
                 for (label proci = 1; proci < Pstream::nProcs(); proci++)
@@ -820,18 +893,16 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
                             << " opening " << filePaths[proci] << endl;
                     }
 
+                    off_t count(Foam::fileSize(filePaths[proci]));
+
                     std::ifstream is(filePaths[proci]);
-                    // Get length of file
-                    is.seekg(0, ios_base::end);
-                    std::streamoff count = is.tellg();
-                    is.seekg(0, ios_base::beg);
 
                     if (IFstream::debug)
                     {
                         Pout<< "From " << filePaths[proci]
                             <<  " reading " << label(count) << " bytes" << endl;
                     }
-                    List<char> buf(count);
+                    List<char> buf(static_cast<label>(count));
                     is.read(buf.begin(), count);
 
                     UOPstream os(proci, pBufs);

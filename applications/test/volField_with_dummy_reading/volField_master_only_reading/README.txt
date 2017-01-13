@@ -1,3 +1,19 @@
+- decomposedBlockData
+
+- system/controlDict gets read without
+
+- is fileHandler not server.
+
+- needs to be done in thread
+
+- needs to use scheduled communication optionally so master
+  does not need to read all of file.
+
+- change file format to be List<List<char>> so we can read without
+  index file.
+
+- is there a need for slaves to read their own slice?
+
 - running distributed data?
 
 - handle timeStampMaster. How do we know low-level down not to use

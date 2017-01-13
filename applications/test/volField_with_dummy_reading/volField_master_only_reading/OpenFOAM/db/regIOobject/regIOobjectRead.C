@@ -35,7 +35,8 @@ Foam::Istream& Foam::regIOobject::readStream()
 {
     if (IFstream::debug)
     {
-        InfoInFunction
+        //InfoInFunction
+        Pout<< "regIOobject::readStream() : "
             << "Reading object " << name()
             << " from file " << objectPath()
             << endl;
@@ -61,6 +62,7 @@ Foam::Istream& Foam::regIOobject::readStream()
         else
         {
             // Search intelligently for file
+            //objPath = filePath();
             objPath = server().filePath(*this);
 
             if (!objPath.size())

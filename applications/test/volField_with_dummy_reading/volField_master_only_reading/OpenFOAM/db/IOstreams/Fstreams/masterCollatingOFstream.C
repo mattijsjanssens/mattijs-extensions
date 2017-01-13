@@ -29,6 +29,7 @@ License
 #include "PstreamBuffers.H"
 #include "IOdictionary.H"
 #include "IFstream.H"
+#include "masterFileServer.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -69,33 +70,24 @@ std::streamoff Foam::masterCollatingOFstream::writeBuffers
 
     if (Pstream::parRun())
     {
-        List<fileName> filePaths(Pstream::nProcs());
+        fileNameList filePaths(Pstream::nProcs());
         filePaths[Pstream::myProcNo()] = pathName_;
         Pstream::gatherList(filePaths);
 
         if (Pstream::master())
         {
-            bool uniform = true;
-            const fileName& object0 = filePaths[0];
-            for (label proci = 1; proci < Pstream::nProcs(); proci++)
-            {
-                if (filePaths[proci] != object0)
-                {
-                    uniform = false;
-                    break;
-                }
-            }
+            bool uniform =
+                fileServers::masterFileServer::uniformFile(filePaths);
 
             if (uniform)
             {
-                const fileName& fName = object0;
-
-                autoPtr<OFstream> osPtr(open(fName));
+                autoPtr<OFstream> osPtr(open(filePaths[0]));
                 osPtr().writeQuoted(str(), false);
                 if (!osPtr().good())
                 {
                     FatalIOErrorInFunction(osPtr())
-                        << "Failed writing to " << fName << exit(FatalIOError);
+                        << "Failed writing to " << filePaths[0]
+                        << exit(FatalIOError);
                 }
                 return osPtr().stdStream().tellp();
             }
@@ -313,7 +305,7 @@ bool Foam::masterCollatingOFstream::isCollatingClassName
 }
 
 
-std::streamoff Foam::masterCollatingOFstream::readIndexFile
+std::streamoff Foam::masterCollatingOFstream::readIndex
 (
     const fileName& pathName,
     List<std::streamoff>& start,

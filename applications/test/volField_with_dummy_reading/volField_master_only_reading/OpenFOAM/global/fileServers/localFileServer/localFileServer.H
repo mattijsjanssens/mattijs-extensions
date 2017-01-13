@@ -159,7 +159,7 @@ public:
 
             //- Generate an Istream for an IOobject. Returns a null stream
             //  if the file is not valid.
-            //virtual autoPtr<Istream> objectStream(const fileName&) const;
+            virtual autoPtr<Istream> objectStream(const fileName&) const;
 
             //- Reads header for regIOobject and returns an Istream
             //  to read the contents.

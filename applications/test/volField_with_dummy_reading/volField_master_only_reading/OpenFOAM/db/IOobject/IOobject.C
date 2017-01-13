@@ -299,6 +299,8 @@ Foam::fileName Foam::IOobject::path
 
 Foam::fileName Foam::IOobject::filePath() const
 {
+DebugVar(objectPath());
+
     if (instance().isAbsolute())
     {
         fileName objectPath = instance()/name();
@@ -371,23 +373,24 @@ Foam::fileName Foam::IOobject::filePath() const
 
 Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream()
 {
-    return objectStream(filePath());
+    return server().objectStream(server().filePath(*this));
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream(const fileName& fName)
-{
-    if (fName.size())
-    {
-        autoPtr<Istream> isPtr = server().NewIFstream(fName);
-
-        if (isPtr->good())
-        {
-            return isPtr;
-        }
-    }
-    return autoPtr<Istream>(nullptr);
-}
+// Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream
+// (const fileName& fName)
+// {
+//     if (fName.size())
+//     {
+//         autoPtr<Istream> isPtr = server().NewIFstream(fName);
+//
+//         if (isPtr->good())
+//         {
+//             return isPtr;
+//         }
+//     }
+//     return autoPtr<Istream>(nullptr);
+// }
 
 
 bool Foam::IOobject::headerOk()

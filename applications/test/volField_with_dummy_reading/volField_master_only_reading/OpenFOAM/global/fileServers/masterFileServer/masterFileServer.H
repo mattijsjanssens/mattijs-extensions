@@ -51,6 +51,11 @@ class masterFileServer
 :
     public fileServer
 {
+    // Private data
+
+        //- Whether to collate files upon writing
+        mutable label collating_;
+
 
     // Private classes
 
@@ -264,9 +269,7 @@ class masterFileServer
             const word&
         );
 
-        //- Same file?
-        static bool uniformFile(const fileNameList&);
-
+        bool collating() const;
 
 public:
 
@@ -377,7 +380,7 @@ public:
 
             //- Generate an Istream for an IOobject. Returns a null stream
             //  if the file is not valid.
-            //virtual autoPtr<Istream> objectStream(const fileName&) const;
+            virtual autoPtr<Istream> objectStream(const fileName&) const;
 
             //- Reads header for regIOobject and returns an Istream
             //  to read the contents.
@@ -408,6 +411,11 @@ public:
                 IOstream::versionNumber version=IOstream::currentVersion,
                 IOstream::compressionType compression=IOstream::UNCOMPRESSED
             ) const;
+
+        // Other
+
+            //- Same file?
+            static bool uniformFile(const fileNameList&);
 };
 
 

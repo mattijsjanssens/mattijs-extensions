@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -26,6 +26,7 @@ License
 #include "Time.H"
 #include "PstreamReduceOps.H"
 #include "argList.H"
+#include "fileServer.H"
 
 #include <sstream>
 
@@ -397,7 +398,8 @@ Foam::Time::Time
         );
 
         // File might not exist yet.
-        fileName f(controlDict_.filePath());
+        //fileName f(controlDict_.filePath());
+        fileName f(server().filePath(controlDict_));
 
         if (!f.size())
         {
@@ -495,7 +497,8 @@ Foam::Time::Time
         );
 
         // File might not exist yet.
-        fileName f(controlDict_.filePath());
+        //fileName f(controlDict_.filePath());
+        fileName f(server().filePath(controlDict_));
 
         if (!f.size())
         {
@@ -592,7 +595,8 @@ Foam::Time::Time
         );
 
         // File might not exist yet.
-        fileName f(controlDict_.filePath());
+        //fileName f(controlDict_.filePath());
+        fileName f(server().filePath(controlDict_));
 
         if (!f.size())
         {

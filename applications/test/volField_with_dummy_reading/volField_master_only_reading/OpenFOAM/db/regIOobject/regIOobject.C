@@ -27,6 +27,7 @@ License
 #include "Time.H"
 #include "polyMesh.H"
 #include "registerSwitch.H"
+#include "fileServer.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -250,7 +251,7 @@ bool Foam::regIOobject::checkIn()
                     << abort(FatalError);
             }
 
-            fileName f = filePath();
+            fileName f = server().filePath(*this);
             if (!f.size())
             {
                 // We don't have this file but would like to re-read it.
