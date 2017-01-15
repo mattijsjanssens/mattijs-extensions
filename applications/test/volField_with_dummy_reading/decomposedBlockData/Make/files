@@ -1,3 +1,4 @@
+decomposedBlockData.C
 Test-binaryBlocksIO.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-binaryBlocksIO

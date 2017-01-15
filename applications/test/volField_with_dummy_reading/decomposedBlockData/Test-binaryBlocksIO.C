@@ -45,6 +45,7 @@ Description
 #include "IOPtrList.H"
 #include "volFields.H"
 #include "zeroGradientFvPatchFields.H"
+#include "decomposedBlockData.H"
 
 using namespace Foam;
 
@@ -256,7 +257,7 @@ int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
-    #include "createPolyMesh.H"
+    #include "createMesh.H"
 
 Pout<< "std::streamoff:" << sizeof(std::streamoff) << endl;
 Pout<< "off_t:" << sizeof(off_t) << endl;
@@ -272,16 +273,16 @@ Pout<< "label:" << sizeof(label) << endl;
 //         IOobject::NO_WRITE,
 //         false
 //     );
-// 
+//
 //     {
 //         // Allocate
 //         IOList<List<char>> bufs(io, 2);
-// 
+//
 //         // Fill
 //         forAll(bufs, proci)
 //         {
 //             //bufs.set(proci, new List<char>(0));
-// 
+//
 //             List<char>& buf = bufs[proci];
 //             buf.setSize(10);
 //             forAll(buf, i)
@@ -289,74 +290,100 @@ Pout<< "label:" << sizeof(label) << endl;
 //                 buf[i] = proci+'a'+i;
 //             }
 //         }
-// 
+//
 //         // Write
 //         bufs.write();
 //     }
 
-    
 
-//     IOobject io
-//     (
-//         "bufs2",
-//         runTime.timeName(),
-//         mesh,
-//         IOobject::NO_READ,
-//         IOobject::NO_WRITE,
-//         false
-//     );
-// 
-//     // Write a field
-//     {
-//         volScalarField fld
-//         (
-//             IOobject
-//             (
-//                 "myFld",
-//                 runTime.timeName(),
-//                 mesh,
-//                 IOobject::NO_READ,
-//                 IOobject::NO_WRITE,
-//                 false
-//             ),
-//             mesh,
-//             dimless,
-//             zeroGradientFvPatchScalarField::typeName
-//         );
-//         fld == dimensionedScalar("zero", dimless, 0.0);
-// 
-//         // Test normal writing
-//         {
-//             fld.write();
-//         }
-// 
-// 
-//         // Test collating writing
-//         OStringStream fldStream;
-//         fldStream << fld;
-// 
-//         string s(fldStream.str());
-//         UList<char> localData(const_cast<char*>(s.data()), s.size());
-// 
-// 
-//         autoPtr<OSstream> osPtr;
-//         if (Pstream::master())
-//         {
-//             osPtr.reset(new OFstream(io.objectPath(), IOstream::BINARY));
-//             io.writeHeader(osPtr());
-//         }
-//         List<std::streamoff> start;
-//         write(osPtr, localData, start);
-// 
-//         DebugVar(start);
-//     }
-// 
-// 
+
+    IOobject io
+    (
+        "bufs2",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE,
+        false
+    );
+
+    // Write a field
+    {
+        volScalarField fld
+        (
+            IOobject
+            (
+                "myFld",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimless,
+            zeroGradientFvPatchScalarField::typeName
+        );
+        fld == dimensionedScalar("zero", dimless, 0.0);
+
+        // Test normal writing
+        {
+            fld.write();
+        }
+
+
+        // Test collating writing
+        OStringStream fldStream;
+        fldStream << fld;
+
+        string s(fldStream.str());
+        //UList<char> localData(const_cast<char*>(s.data()), s.size());
+        //autoPtr<OSstream> osPtr;
+        //if (Pstream::master())
+        //{
+        //    osPtr.reset(new OFstream(io.objectPath(), IOstream::BINARY));
+        //    io.writeHeader(osPtr());
+        //}
+        //List<std::streamoff> start;
+        //write(osPtr, localData, start);
+        //DebugVar(start);
+        UList<char> slice(const_cast<char*>(s.data()), label(s.size()));
+        List<char> sList(slice);
+        decomposedBlockData localData(io, sList.xfer());
+        localData.write();
+    }
+    {
+        io.readOpt() = IOobject::MUST_READ;
+        decomposedBlockData localData(io);
+
+        string s(localData.begin(), localData.size());
+        IStringStream is(s);
+        dictionary dict(is);
+        volScalarField fld
+        (
+            IOobject
+            (
+                "myFld2",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dict
+        );
+        DebugVar(fld);
+    }
+
+
+//
+//
 //     // Scan for start and size of entries
 //     List<char> localData;
 //     {
 //         IOList<List<char>> bufs(io);
-// 
+//
 //         autoPtr<Istream> isPtr;
 //         if (Pstream::master())
 //         {
@@ -364,10 +391,10 @@ Pout<< "label:" << sizeof(label) << endl;
 //             io.readHeader(isPtr());
 //         }
 //         read(isPtr, localData);
-// 
+//
 //         DebugVar(localData);
 //     }
-// 
+//
 //     // Read a dictionary from the stream
 //     {
 //         string s(localData.begin(), localData.size());
