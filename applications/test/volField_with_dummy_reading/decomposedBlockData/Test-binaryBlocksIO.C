@@ -46,212 +46,60 @@ Description
 #include "volFields.H"
 #include "zeroGradientFvPatchFields.H"
 #include "decomposedBlockData.H"
+#include <pthread.h>
+#include "FIFOStack.H"
 
 using namespace Foam;
 
-namespace Foam
-{
-    defineTemplateTypeNameAndDebug(IOList<List<char>>, 0);
-}
-
-template<class T>
-bool read(autoPtr<Istream>& isPtr, T& localData)
-{
-    bool ok = false;
-
-    if (Pstream::master())
-    {
-        Istream& is = isPtr();
-
-        is.fatalCheck("read(Istream&)");
-
-        token firstToken(is);
-
-        is.fatalCheck
-        (
-            "read(Istream&) : "
-            "reading first token"
-        );
-
-        if (firstToken.isLabel())
-        {
-            // Read size of list
-            label s = firstToken.labelToken();
-
-            if (s != Pstream::nProcs())
-            {
-                FatalIOErrorInFunction
-                (
-                    is
-                )   << "size " << s
-                    << " differs from the number of processors "
-                    << Pstream::nProcs()
-                    << firstToken.info()
-                    << exit(FatalIOError);
-            }
-
-            // Read beginning of contents
-            char delimiter = is.readBeginList("List");
-
-            if (s)
-            {
-                if (delimiter == token::BEGIN_LIST)
-                {
-                    // Read master data
-                    {
-                        Pout<< "Reading data for master" << endl;
-                        is >> localData;
-                        is.fatalCheck
-                        (
-                            "read(Istream&) : "
-                            "reading entry"
-                        );
-                        Pout<< "Finished reading data for master" << endl;
-                    }
-
-                    for (label proci = 1; proci < s; proci++)
-                    {
-                        Pout<< "Reading file for processor " << proci << endl;
-
-                        T elems(is);
-
-                        Pout<< "Read file data:" << elems << endl;
-
-                        is.fatalCheck
-                        (
-                            "read(Istream&) : "
-                            "reading entry"
-                        );
-
-                        OPstream os(Pstream::scheduled, proci);
-                        os << elems;
-                    }
-                }
-                else
-                {
-                    FatalIOErrorInFunction
-                    (
-                        is
-                    )   << "incorrect delimiter, expected (, found "
-                        << delimiter
-                        << exit(FatalIOError);
-                }
-            }
-
-            // Read end of contents
-            is.readEndList("List");
-
-            ok = is.good();
-        }
-        else
-        {
-            FatalIOErrorInFunction
-            (
-                is
-            )   << "incorrect first token, expected <int>, found "
-                << firstToken.info()
-                << exit(FatalIOError);
-        }
-    }
-    else
-    {
-        Pout<< "Receiving data from master" << endl;
-
-        IPstream is(Pstream::scheduled, Pstream::masterNo());
-        is >> localData;
-        Pout<< "Received data:" << localData << endl;
-    }
-
-    Pstream::scatter(ok);
-
-    return ok;
-}
-
-
-bool write
-(
-    autoPtr<OSstream>& osPtr,
-    const UList<char>& L,
-    List<std::streamoff>& start
-)
-{
-    bool ok = false;
-
-    if (Pstream::master())
-    {
-        start.setSize(Pstream::nProcs());
-
-        OSstream& os = osPtr();
-
-        // Write size and start delimiter
-        os << nl << Pstream::nProcs() << nl << token::BEGIN_LIST;
-
-        // Write master data
-        {
-            // os << nl << L.size() << nl;
-            // if (L.size())
-            // {
-            //     os.write
-            //     (
-            //         reinterpret_cast<const char*>(L.begin()),
-            //         L.byteSize()
-            //     );
-            // }
-            os << nl;
-            start[Pstream::masterNo()] = os.stdStream().tellp();
-            os << L;
-        }
-        // Write slaves
-        for (label proci = 1; proci < Pstream::nProcs(); proci++)
-        {
-            Pout<< "Receiving and writing data for processor " << proci << endl;
-
-            IPstream is(Pstream::scheduled, proci);
-            List<char> elems(is);
-
-            is.fatalCheck
-            (
-                "write(Istream&) : "
-                "reading entry"
-            );
-
-            // os << nl << elems.size() << nl;
-            // if (elems.size())
-            // {
-            //     os.write
-            //     (
-            //         reinterpret_cast<const char*>(elems.begin()),
-            //         elems.byteSize()
-            //     );
-            // }
-            os << nl;
-            start[proci] = os.stdStream().tellp();
-            os << elems;
-        }
-
-        // Write end delimiter
-        os << nl << token::END_LIST << nl;
-
-        ok = os.good();
-    }
-    else
-    {
-        Pout<< "Sending data to processor " << Pstream::masterNo() << endl;
-
-        OPstream os(Pstream::scheduled, Pstream::masterNo());
-        os << L;
-
-        Pout<< "Done Sending data to processor " << Pstream::masterNo() << endl;
-    }
-
-Pout<< "scatter:" << ok << endl;
-    Pstream::scatter(ok);
-
-    return ok;
-}
-
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+class thread_data
+{
+public:
+    int id_;
+    pthread_mutex_t& mutex_;
+    FIFOStack<regIOobject*>& objects_;
+
+    thread_data
+    (
+        const int id,
+        pthread_mutex_t& mutex,
+        FIFOStack<regIOobject*>& objects
+    )
+    :
+        id_(id),
+        mutex_(mutex),
+        objects_(objects)
+    {}
+};
+
+void* writeFiles(void *threadarg)
+{
+    thread_data& my_data = *static_cast<thread_data *>(threadarg);
+    DebugVar(my_data.id_);
+
+    FIFOStack<regIOobject*>& objects = my_data.objects_;
+    pthread_mutex_t& mutex = my_data.mutex_;
+
+    while (true)
+    {
+        regIOobject* io = nullptr;
+
+        pthread_mutex_lock(&mutex);
+        if (objects.size())
+        {
+            io = objects.pop();
+        }
+        pthread_mutex_unlock(&mutex);
+
+        if (io)
+        {
+            Pout<< "Popped " << io->objectPath() << endl;
+            delete io;
+        }
+    }
+    pthread_exit(nullptr);
+}
 
 int main(int argc, char *argv[])
 {
@@ -259,43 +107,25 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
+    pthread_t writeThread;
+    pthread_mutex_t writeThreadMutex = PTHREAD_MUTEX_INITIALIZER;
+    FIFOStack<regIOobject*> objects;
+
+    thread_data data(0, writeThreadMutex, objects);
+    int rc = pthread_create(&writeThread, nullptr, writeFiles, &data);
+
+    if (rc)
+    {
+        FatalErrorInFunction << "problem created thread" << exit(FatalError);
+    }
+
+
+
+
+
 Pout<< "std::streamoff:" << sizeof(std::streamoff) << endl;
 Pout<< "off_t:" << sizeof(off_t) << endl;
 Pout<< "label:" << sizeof(label) << endl;
-
-
-//     IOobject io
-//     (
-//         "bufs",
-//         runTime.timeName(),
-//         mesh,
-//         IOobject::NO_READ,
-//         IOobject::NO_WRITE,
-//         false
-//     );
-//
-//     {
-//         // Allocate
-//         IOList<List<char>> bufs(io, 2);
-//
-//         // Fill
-//         forAll(bufs, proci)
-//         {
-//             //bufs.set(proci, new List<char>(0));
-//
-//             List<char>& buf = bufs[proci];
-//             buf.setSize(10);
-//             forAll(buf, i)
-//             {
-//                 buf[i] = proci+'a'+i;
-//             }
-//         }
-//
-//         // Write
-//         bufs.write();
-//     }
-
-
 
     IOobject io
     (
