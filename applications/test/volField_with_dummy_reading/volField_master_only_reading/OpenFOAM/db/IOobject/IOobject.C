@@ -26,7 +26,7 @@ License
 #include "IOobject.H"
 #include "Time.H"
 #include "IFstream.H"
-#include "fileServer.H"
+#include "fileOperation.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -373,7 +373,7 @@ DebugVar(objectPath());
 
 Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream()
 {
-    return server().objectStream(server().filePath(*this));
+    return fileHandler().objectStream(fileHandler().filePath(*this));
 }
 
 
@@ -382,7 +382,7 @@ Foam::autoPtr<Foam::Istream> Foam::IOobject::objectStream()
 // {
 //     if (fName.size())
 //     {
-//         autoPtr<Istream> isPtr = server().NewIFstream(fName);
+//         autoPtr<Istream> isPtr = fileHandler().NewIFstream(fName);
 //
 //         if (isPtr->good())
 //         {

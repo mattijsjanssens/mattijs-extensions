@@ -29,7 +29,7 @@ License
 #include "PstreamBuffers.H"
 #include "IOdictionary.H"
 #include "IFstream.H"
-#include "masterFileServer.H"
+#include "masterFileOperation.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -77,7 +77,7 @@ std::streamoff Foam::masterCollatingOFstream::writeBuffers
         if (Pstream::master())
         {
             bool uniform =
-                fileServers::masterFileServer::uniformFile(filePaths);
+                fileOperations::masterFileOperation::uniformFile(filePaths);
 
             if (uniform)
             {

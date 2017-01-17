@@ -23,32 +23,32 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "fileServer.H"
-//#include "masterFileServer.H"
-#include "localFileServer.H"
+#include "fileOperation.H"
+//#include "masterfileOperation.H"
+#include "localFileOperation.H"
 #include "regIOobject.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
 namespace Foam
 {
-    autoPtr<fileServer> fileServer::serverPtr_;
+    autoPtr<fileOperation> fileOperation::fileHandlerPtr_;
 
-    defineTypeNameAndDebug(fileServer, 0);
-    defineRunTimeSelectionTable(fileServer, word);
+    defineTypeNameAndDebug(fileOperation, 0);
+    defineRunTimeSelectionTable(fileOperation, word);
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fileServer::fileServer()
+Foam::fileOperation::fileOperation()
 {}
 
 
-Foam::autoPtr<Foam::fileServer> Foam::fileServer::New(const word& type)
+Foam::autoPtr<Foam::fileOperation> Foam::fileOperation::New(const word& type)
 {
     if (debug)
     {
-        InfoInFunction << "Constructing fileServer" << endl;
+        InfoInFunction << "Constructing fileOperation" << endl;
     }
 
     wordConstructorTable::iterator cstrIter =
@@ -57,26 +57,26 @@ Foam::autoPtr<Foam::fileServer> Foam::fileServer::New(const word& type)
     if (cstrIter == wordConstructorTablePtr_->end())
     {
         FatalErrorInFunction
-            << "Unknown fileServer type "
+            << "Unknown fileOperation type "
             << type << nl << nl
-            << "Valid fileServer types are" << endl
+            << "Valid fileOperation types are" << endl
             << wordConstructorTablePtr_->sortedToc()
             << abort(FatalError);
     }
 
-    return autoPtr<fileServer>(cstrIter()());
+    return autoPtr<fileOperation>(cstrIter()());
 }
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::fileServer::~fileServer()
+Foam::fileOperation::~fileOperation()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-bool Foam::fileServer::writeObject
+bool Foam::fileOperation::writeObject
 (
     const regIOobject& io,
     IOstream::streamFormat fmt,
@@ -129,34 +129,37 @@ bool Foam::fileServer::writeObject
 }
 
 
-const Foam::fileServer& Foam::server()
+const Foam::fileOperation& Foam::fileHandler()
 {
-    if (!Foam::fileServer::serverPtr_.valid())
+    if (!fileOperation::fileHandlerPtr_.valid())
     {
-        cout<< "Foam::server() : Allocating fileServer" << std::endl;
+        cout<< "fileHandler() : Allocating localFileOperation"
+            << std::endl;
 
-        Foam::fileServer::serverPtr_.reset(new fileServers::localFileServer());
+        fileOperation::fileHandlerPtr_.reset
+        (
+            new fileOperations::localFileOperation()
+        );
     }
-    return Foam::fileServer::serverPtr_();
+    return fileOperation::fileHandlerPtr_();
 }
 
 
-const Foam::fileServer& Foam::server(autoPtr<fileServer>& newServerPtr)
+void Foam::fileHandler(autoPtr<fileOperation>& newHandlerPtr)
 {
-    if (Foam::fileServer::serverPtr_.valid())
+    if (fileOperation::fileHandlerPtr_.valid())
     {
-        cout<< "Foam::server() : Deleting fileServer of type "
-            << Foam::fileServer::serverPtr_().type() << std::endl;
+        cout<< "fileHandler() : Deleting fileOperation of type "
+            << fileOperation::fileHandlerPtr_().type() << std::endl;
     }
-    Foam::fileServer::serverPtr_.clear();
+    fileOperation::fileHandlerPtr_.clear();
 
-    if (newServerPtr.valid())
+    if (newHandlerPtr.valid())
     {
-        cout<< "Foam::server() : Inserting fileServer of type "
-            << newServerPtr().type() << std::endl;
-        Foam::fileServer::serverPtr_ = newServerPtr;
+        cout<< "fileHandler() : Inserting fileOperation of type "
+            << newHandlerPtr().type() << std::endl;
+        fileOperation::fileHandlerPtr_ = newHandlerPtr;
     }
-    return Foam::fileServer::serverPtr_();
 }
 
 

@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "localFileServer.H"
+#include "localFileOperation.H"
 #include "Time.H"
 #include "IFstream.H"
 #include "OFstream.H"
@@ -33,29 +33,29 @@ License
 
 namespace Foam
 {
-namespace fileServers
+namespace fileOperations
 {
-    defineTypeNameAndDebug(localFileServer, 0);
-    addToRunTimeSelectionTable(fileServer, localFileServer, word);
+    defineTypeNameAndDebug(localFileOperation, 0);
+    addToRunTimeSelectionTable(fileOperation, localFileOperation, word);
 }
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fileServers::localFileServer::localFileServer()
+Foam::fileOperations::localFileOperation::localFileOperation()
 {}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::fileServers::localFileServer::~localFileServer()
+Foam::fileOperations::localFileOperation::~localFileOperation()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-bool Foam::fileServers::localFileServer::mkDir
+bool Foam::fileOperations::localFileOperation::mkDir
 (
     const fileName& dir,
     mode_t mode
@@ -65,7 +65,7 @@ bool Foam::fileServers::localFileServer::mkDir
 }
 
 
-bool Foam::fileServers::localFileServer::chMod
+bool Foam::fileOperations::localFileOperation::chMod
 (
     const fileName& fName,
     mode_t mode
@@ -75,13 +75,16 @@ bool Foam::fileServers::localFileServer::chMod
 }
 
 
-mode_t Foam::fileServers::localFileServer::mode(const fileName& fName) const
+mode_t Foam::fileOperations::localFileOperation::mode
+(
+    const fileName& fName
+) const
 {
     return Foam::mode(fName);
 }
 
 
-Foam::fileName::Type Foam::fileServers::localFileServer::type
+Foam::fileName::Type Foam::fileOperations::localFileOperation::type
 (
     const fileName& fName
 ) const
@@ -90,7 +93,7 @@ Foam::fileName::Type Foam::fileServers::localFileServer::type
 }
 
 
-bool Foam::fileServers::localFileServer::exists
+bool Foam::fileOperations::localFileOperation::exists
 (
     const fileName& fName,
     const bool checkGzip
@@ -100,13 +103,16 @@ bool Foam::fileServers::localFileServer::exists
 }
 
 
-bool Foam::fileServers::localFileServer::isDir(const fileName& fName) const
+bool Foam::fileOperations::localFileOperation::isDir
+(
+    const fileName& fName
+) const
 {
     return Foam::isDir(fName);
 }
 
 
-bool Foam::fileServers::localFileServer::isFile
+bool Foam::fileOperations::localFileOperation::isFile
 (
     const fileName& fName,
     const bool checkGzip
@@ -116,13 +122,16 @@ bool Foam::fileServers::localFileServer::isFile
 }
 
 
-off_t Foam::fileServers::localFileServer::fileSize(const fileName& fName) const
+off_t Foam::fileOperations::localFileOperation::fileSize
+(
+    const fileName& fName
+) const
 {
     return Foam::fileSize(fName);
 }
 
 
-time_t Foam::fileServers::localFileServer::lastModified
+time_t Foam::fileOperations::localFileOperation::lastModified
 (
     const fileName& fName
 ) const
@@ -131,7 +140,7 @@ time_t Foam::fileServers::localFileServer::lastModified
 }
 
 
-double Foam::fileServers::localFileServer::highResLastModified
+double Foam::fileOperations::localFileOperation::highResLastModified
 (
     const fileName& fName
 ) const
@@ -140,7 +149,7 @@ double Foam::fileServers::localFileServer::highResLastModified
 }
 
 
-bool Foam::fileServers::localFileServer::mvBak
+bool Foam::fileOperations::localFileOperation::mvBak
 (
     const fileName& fName,
     const std::string& ext
@@ -150,19 +159,19 @@ bool Foam::fileServers::localFileServer::mvBak
 }
 
 
-bool Foam::fileServers::localFileServer::rm(const fileName& fName) const
+bool Foam::fileOperations::localFileOperation::rm(const fileName& fName) const
 {
     return Foam::rm(fName);
 }
 
 
-bool Foam::fileServers::localFileServer::rmDir(const fileName& dir) const
+bool Foam::fileOperations::localFileOperation::rmDir(const fileName& dir) const
 {
     return Foam::rmDir(dir);
 }
 
 
-Foam::fileNameList Foam::fileServers::localFileServer::readDir
+Foam::fileNameList Foam::fileOperations::localFileOperation::readDir
 (
     const fileName& dir,
     const fileName::Type type,
@@ -173,7 +182,7 @@ Foam::fileNameList Foam::fileServers::localFileServer::readDir
 }
 
 
-bool Foam::fileServers::localFileServer::cp
+bool Foam::fileOperations::localFileOperation::cp
 (
     const fileName& src,
     const fileName& dst
@@ -183,7 +192,7 @@ bool Foam::fileServers::localFileServer::cp
 }
 
 
-bool Foam::fileServers::localFileServer::ln
+bool Foam::fileOperations::localFileOperation::ln
 (
     const fileName& src,
     const fileName& dst
@@ -193,7 +202,7 @@ bool Foam::fileServers::localFileServer::ln
 }
 
 
-bool Foam::fileServers::localFileServer::mv
+bool Foam::fileOperations::localFileOperation::mv
 (
     const fileName& src,
     const fileName& dst
@@ -203,7 +212,7 @@ bool Foam::fileServers::localFileServer::mv
 }
 
 
-Foam::fileName Foam::fileServers::localFileServer::filePath
+Foam::fileName Foam::fileOperations::localFileOperation::filePath
 (
     const IOobject& io
 ) const
@@ -212,7 +221,8 @@ Foam::fileName Foam::fileServers::localFileServer::filePath
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::objectStream
+Foam::autoPtr<Foam::Istream>
+Foam::fileOperations::localFileOperation::objectStream
 (
    const fileName& fName
 ) const
@@ -230,7 +240,8 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::objectStream
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::readStream
+Foam::autoPtr<Foam::Istream>
+Foam::fileOperations::localFileOperation::readStream
 (
     regIOobject& io,
     const fileName& fName
@@ -250,7 +261,7 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::readStream
     {
         FatalIOError
         (
-            "localFileServer::readStream()",
+            "localFileOperation::readStream()",
             __FILE__,
             __LINE__,
             fName,
@@ -270,13 +281,17 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::localFileServer::readStream
 
 
 Foam::autoPtr<Foam::Istream>
-Foam::fileServers::localFileServer::NewIFstream(const fileName& filePath) const
+Foam::fileOperations::localFileOperation::NewIFstream
+(
+    const fileName& filePath
+) const
 {
     return autoPtr<Istream>(new IFstream(filePath));
 }
 
 
-Foam::autoPtr<Foam::Ostream> Foam::fileServers::localFileServer::NewOFstream
+Foam::autoPtr<Foam::Ostream>
+Foam::fileOperations::localFileOperation::NewOFstream
 (
     const fileName& pathName,
     IOstream::streamFormat fmt,

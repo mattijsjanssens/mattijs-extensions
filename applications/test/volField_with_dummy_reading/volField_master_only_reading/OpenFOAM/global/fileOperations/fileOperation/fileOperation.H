@@ -22,12 +22,12 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fileServer
+    Foam::fileOperation
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fileServer_H
-#define fileServer_H
+#ifndef fileOperation_H
+#define fileOperation_H
 
 #include "Istream.H"
 #include "Ostream.H"
@@ -43,10 +43,10 @@ namespace Foam
 class regIOobject;
 
 /*---------------------------------------------------------------------------*\
-                         Class fileServer Declaration
+                         Class fileOperation Declaration
 \*---------------------------------------------------------------------------*/
 
-class fileServer
+class fileOperation
 {
 
 public:
@@ -65,17 +65,17 @@ public:
 
 
         //- Runtime type information
-        TypeName("fileServer");
+        TypeName("fileOperation");
 
 
-    //- Static fileServer
-    static autoPtr<fileServer> serverPtr_;
+    //- Static fileOperation
+    static autoPtr<fileOperation> fileHandlerPtr_;
 
 
     // Constructors
 
         //- Construct null
-        fileServer();
+        fileOperation();
 
 
     // Declare run-time constructor selection table
@@ -83,7 +83,7 @@ public:
         declareRunTimeSelectionTable
         (
             autoPtr,
-            fileServer,
+            fileOperation,
             word,
             (),
             ()
@@ -93,11 +93,11 @@ public:
     // Selectors
 
         //- Select type
-        static autoPtr<fileServer> New(const word& type);
+        static autoPtr<fileOperation> New(const word& type);
 
 
     //- Destructor
-    virtual ~fileServer();
+    virtual ~fileOperation();
 
 
     // Member Functions
@@ -229,11 +229,13 @@ public:
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-// Global declarations: defined in fileServer.C
+// Global declarations: defined in fileOperation.C
 
-const fileServer& server();
+//- Get current file handler
+const fileOperation& fileHandler();
 
-const fileServer& server(autoPtr<fileServer>&);
+//- Reset file handler
+void fileHandler(autoPtr<fileOperation>&);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

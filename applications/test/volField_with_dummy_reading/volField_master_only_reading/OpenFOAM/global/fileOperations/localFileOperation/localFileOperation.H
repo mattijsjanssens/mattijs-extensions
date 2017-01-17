@@ -22,48 +22,48 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fileServers::localFileServer
+    Foam::fileOperations::localFileOperation
 
 Description
-    fileServer that assumes file operations are local.
+    fileOperation that assumes file operations are local.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fileServers_localFileServer_H
-#define fileServers_localFileServer_H
+#ifndef fileOperations_localFileOperation_H
+#define fileOperations_localFileOperation_H
 
-#include "fileServer.H"
+#include "fileOperation.H"
 #include "OSspecific.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace fileServers
+namespace fileOperations
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class localFileServer Declaration
+                     Class localFileOperation Declaration
 \*---------------------------------------------------------------------------*/
 
-class localFileServer
+class localFileOperation
 :
-    public fileServer
+    public fileOperation
 {
 public:
 
         //- Runtime type information
-        TypeName("localFileServer");
+        TypeName("localFileOperation");
 
 
     // Constructors
 
         //- Construct null
-        localFileServer();
+        localFileOperation();
 
 
     //- Destructor
-    virtual ~localFileServer();
+    virtual ~localFileOperation();
 
 
     // Member Functions
@@ -185,7 +185,7 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace fileServers
+} // End namespace fileOperations
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

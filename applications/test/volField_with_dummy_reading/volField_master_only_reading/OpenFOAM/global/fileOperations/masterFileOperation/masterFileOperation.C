@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "masterFileServer.H"
+#include "masterFileOperation.H"
 #include "addToRunTimeSelectionTable.H"
 #include "Pstream.H"
 #include "Time.H"
@@ -35,17 +35,17 @@ License
 
 namespace Foam
 {
-namespace fileServers
+namespace fileOperations
 {
-    defineTypeNameAndDebug(masterFileServer, 0);
-    addToRunTimeSelectionTable(fileServer, masterFileServer, word);
+    defineTypeNameAndDebug(masterFileOperation, 0);
+    addToRunTimeSelectionTable(fileOperation, masterFileOperation, word);
 }
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-Foam::fileName Foam::fileServers::masterFileServer::filePath
+Foam::fileName Foam::fileOperations::masterFileOperation::filePath
 (
     const IOobject& io,
     pathType& searchType,
@@ -59,12 +59,12 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
         fileName objectPath = io.instance()/io.name();
         if (Foam::isFile(objectPath))
         {
-            searchType = fileServer::ABSOLUTE;
+            searchType = fileOperation::ABSOLUTE;
             return objectPath;
         }
         else
         {
-            searchType = fileServer::NOTFOUND;
+            searchType = fileOperation::NOTFOUND;
             return fileName::null;
         }
     }
@@ -75,7 +75,7 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 
         if (Foam::isFile(objectPath))
         {
-            searchType = fileServer::OBJECT;
+            searchType = fileOperation::OBJECT;
             return objectPath;
         }
         else
@@ -95,7 +95,7 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 
                 if (Foam::isFile(parentObjectPath))
                 {
-                    searchType = fileServer::PARENTOBJECT;
+                    searchType = fileOperation::PARENTOBJECT;
                     return parentObjectPath;
                 }
             }
@@ -117,7 +117,7 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 
                     if (Foam::isFile(fName))
                     {
-                        searchType = fileServer::FINDINSTANCE;
+                        searchType = fileOperation::FINDINSTANCE;
                         return fName;
                     }
                 }
@@ -129,7 +129,7 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 }
 
 
-Foam::fileName Foam::fileServers::masterFileServer::objectPath
+Foam::fileName Foam::fileOperations::masterFileOperation::objectPath
 (
     const IOobject& io,
     const pathType& searchType,
@@ -140,19 +140,19 @@ Foam::fileName Foam::fileServers::masterFileServer::objectPath
 
     switch (searchType)
     {
-        case fileServer::ABSOLUTE:
+        case fileOperation::ABSOLUTE:
         {
             return io.instance()/io.name();
         }
         break;
 
-        case fileServer::OBJECT:
+        case fileOperation::OBJECT:
         {
             return io.path()/io.name();
         }
         break;
 
-        case fileServer::PARENTOBJECT:
+        case fileOperation::PARENTOBJECT:
         {
             return
                 io.rootPath()/io.time().globalCaseName()
@@ -160,7 +160,7 @@ Foam::fileName Foam::fileServers::masterFileServer::objectPath
         }
         break;
 
-        case fileServer::FINDINSTANCE:
+        case fileOperation::FINDINSTANCE:
         {
             return
                 io.rootPath()/io.caseName()
@@ -168,7 +168,7 @@ Foam::fileName Foam::fileServers::masterFileServer::objectPath
         }
         break;
 
-        case fileServer::NOTFOUND:
+        case fileOperation::NOTFOUND:
         {
             return fileName::null;
         }
@@ -177,7 +177,7 @@ Foam::fileName Foam::fileServers::masterFileServer::objectPath
 }
 
 
-bool Foam::fileServers::masterFileServer::uniformFile
+bool Foam::fileOperations::masterFileOperation::uniformFile
 (
     const fileNameList& filePaths
 )
@@ -195,7 +195,7 @@ bool Foam::fileServers::masterFileServer::uniformFile
 }
 
 
-bool Foam::fileServers::masterFileServer::collating() const
+bool Foam::fileOperations::masterFileOperation::collating() const
 {
     if (collating_ == -1)
     {
@@ -219,7 +219,7 @@ bool Foam::fileServers::masterFileServer::collating() const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fileServers::masterFileServer::masterFileServer()
+Foam::fileOperations::masterFileOperation::masterFileOperation()
 :
     collating_(-1)
 {
@@ -244,94 +244,103 @@ Foam::fileServers::masterFileServer::masterFileServer()
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::fileServers::masterFileServer::~masterFileServer()
+Foam::fileOperations::masterFileOperation::~masterFileOperation()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-bool Foam::fileServers::masterFileServer::mkDir
+bool Foam::fileOperations::masterFileOperation::mkDir
 (
     const fileName& dir,
     mode_t mode
 ) const
 {
-    return masterFileOperation<mode_t, mkDirOp>(dir, mkDirOp(mode));
+    return masterOp<mode_t, mkDirOp>(dir, mkDirOp(mode));
 }
 
 
-bool Foam::fileServers::masterFileServer::chMod
+bool Foam::fileOperations::masterFileOperation::chMod
 (
     const fileName& fName,
     mode_t mode
 ) const
 {
-    return masterFileOperation<mode_t, chModOp>(fName, chModOp(mode));
+    return masterOp<mode_t, chModOp>(fName, chModOp(mode));
 }
 
 
-mode_t Foam::fileServers::masterFileServer::mode(const fileName& fName) const
-{
-    return masterFileOperation<mode_t, modeOp>(fName, modeOp());
-}
-
-
-Foam::fileName::Type Foam::fileServers::masterFileServer::type
+mode_t Foam::fileOperations::masterFileOperation::mode
 (
     const fileName& fName
 ) const
 {
-    return fileName::Type(masterFileOperation<label, typeOp>(fName, typeOp()));
+    return masterOp<mode_t, modeOp>(fName, modeOp());
 }
 
 
-bool Foam::fileServers::masterFileServer::exists
+Foam::fileName::Type Foam::fileOperations::masterFileOperation::type
+(
+    const fileName& fName
+) const
+{
+    return fileName::Type(masterOp<label, typeOp>(fName, typeOp()));
+}
+
+
+bool Foam::fileOperations::masterFileOperation::exists
 (
     const fileName& fName,
     const bool checkGzip
 ) const
 {
-    return masterFileOperation<bool, existsOp>(fName, existsOp(checkGzip));
+    return masterOp<bool, existsOp>(fName, existsOp(checkGzip));
 }
 
 
-bool Foam::fileServers::masterFileServer::isDir(const fileName& fName) const
+bool Foam::fileOperations::masterFileOperation::isDir
+(
+    const fileName& fName
+) const
 {
-    return masterFileOperation<bool, isDirOp>(fName, isDirOp());
+    return masterOp<bool, isDirOp>(fName, isDirOp());
 }
 
 
-bool Foam::fileServers::masterFileServer::isFile
+bool Foam::fileOperations::masterFileOperation::isFile
 (
     const fileName& fName,
     const bool checkGzip
 ) const
 {
-    return masterFileOperation<bool, isFileOp>(fName, isFileOp());
+    return masterOp<bool, isFileOp>(fName, isFileOp());
 }
 
 
-off_t Foam::fileServers::masterFileServer::fileSize(const fileName& fName) const
-{
-    return masterFileOperation<off_t, fileSizeOp>(fName, fileSizeOp());
-}
-
-
-time_t Foam::fileServers::masterFileServer::lastModified
+off_t Foam::fileOperations::masterFileOperation::fileSize
 (
     const fileName& fName
 ) const
 {
-    return masterFileOperation<time_t, lastModifiedOp>(fName, lastModifiedOp());
+    return masterOp<off_t, fileSizeOp>(fName, fileSizeOp());
 }
 
 
-double Foam::fileServers::masterFileServer::highResLastModified
+time_t Foam::fileOperations::masterFileOperation::lastModified
 (
     const fileName& fName
 ) const
 {
-    return masterFileOperation<double, lastModifiedHROp>
+    return masterOp<time_t, lastModifiedOp>(fName, lastModifiedOp());
+}
+
+
+double Foam::fileOperations::masterFileOperation::highResLastModified
+(
+    const fileName& fName
+) const
+{
+    return masterOp<double, lastModifiedHROp>
     (
         fName,
         lastModifiedHROp()
@@ -339,36 +348,39 @@ double Foam::fileServers::masterFileServer::highResLastModified
 }
 
 
-bool Foam::fileServers::masterFileServer::mvBak
+bool Foam::fileOperations::masterFileOperation::mvBak
 (
     const fileName& fName,
     const std::string& ext
 ) const
 {
-    return masterFileOperation<bool, mvBakOp>(fName, mvBakOp(ext));
+    return masterOp<bool, mvBakOp>(fName, mvBakOp(ext));
 }
 
 
-bool Foam::fileServers::masterFileServer::rm(const fileName& fName) const
+bool Foam::fileOperations::masterFileOperation::rm(const fileName& fName) const
 {
-    return masterFileOperation<bool, rmOp>(fName, rmOp());
+    return masterOp<bool, rmOp>(fName, rmOp());
 }
 
 
-bool Foam::fileServers::masterFileServer::rmDir(const fileName& dir) const
+bool Foam::fileOperations::masterFileOperation::rmDir
+(
+    const fileName& dir
+) const
 {
-    return masterFileOperation<bool, rmDirOp>(dir, rmDirOp());
+    return masterOp<bool, rmDirOp>(dir, rmDirOp());
 }
 
 
-Foam::fileNameList Foam::fileServers::masterFileServer::readDir
+Foam::fileNameList Foam::fileOperations::masterFileOperation::readDir
 (
     const fileName& dir,
     const fileName::Type type,
     const bool filtergz
 ) const
 {
-    return masterFileOperation<fileNameList, readDirOp>
+    return masterOp<fileNameList, readDirOp>
     (
         dir,
         readDirOp(type, filtergz)
@@ -376,43 +388,43 @@ Foam::fileNameList Foam::fileServers::masterFileServer::readDir
 }
 
 
-bool Foam::fileServers::masterFileServer::cp
+bool Foam::fileOperations::masterFileOperation::cp
 (
     const fileName& src,
     const fileName& dst
 ) const
 {
-    return masterFileOperation<bool, cpOp>(src, dst, cpOp());
+    return masterOp<bool, cpOp>(src, dst, cpOp());
 }
 
 
-bool Foam::fileServers::masterFileServer::ln
+bool Foam::fileOperations::masterFileOperation::ln
 (
     const fileName& src,
     const fileName& dst
 ) const
 {
-    return masterFileOperation<bool, lnOp>(src, dst, lnOp());
+    return masterOp<bool, lnOp>(src, dst, lnOp());
 }
 
 
-bool Foam::fileServers::masterFileServer::mv
+bool Foam::fileOperations::masterFileOperation::mv
 (
     const fileName& src,
     const fileName& dst
 ) const
 {
-    return masterFileOperation<bool, mvOp>(src, dst, mvOp());
+    return masterOp<bool, mvOp>(src, dst, mvOp());
 }
 
 
-Foam::fileName Foam::fileServers::masterFileServer::filePath
+Foam::fileName Foam::fileOperations::masterFileOperation::filePath
 (
     const IOobject& io
 ) const
 {
     fileName objPath;
-    pathType searchType = fileServer::NOTFOUND;
+    pathType searchType = fileOperation::NOTFOUND;
     word newInstancePath;
     if (Pstream::master())
     {
@@ -421,7 +433,7 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
     label masterType(searchType);
     Pstream::scatter(masterType);
     searchType = pathType(masterType);
-    if (searchType == fileServer::FINDINSTANCE)
+    if (searchType == fileOperation::FINDINSTANCE)
     {
         Pstream::scatter(newInstancePath);
     }
@@ -434,7 +446,8 @@ Foam::fileName Foam::fileServers::masterFileServer::filePath
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
+Foam::autoPtr<Foam::Istream>
+Foam::fileOperations::masterFileOperation::objectStream
 (
    const fileName& fName
 ) const
@@ -452,7 +465,8 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
 }
 
 
-//Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
+//Foam::autoPtr<Foam::Istream>
+//Foam::fileOperations::masterFileOperation::readStream
 //(
 //    regIOobject& io,
 //    const fileName& fName
@@ -472,7 +486,7 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
 //    {
 //        FatalIOError
 //        (
-//            "masterFileServer::readStream()",
+//            "masterFileOperation::readStream()",
 //            __FILE__,
 //            __LINE__,
 //            fName,
@@ -489,7 +503,8 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::objectStream
 //
 //    return isPtr;
 //}
-Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
+Foam::autoPtr<Foam::Istream>
+Foam::fileOperations::masterFileOperation::readStream
 (
     regIOobject& io,
     const fileName& fName
@@ -774,7 +789,7 @@ Foam::autoPtr<Foam::Istream> Foam::fileServers::masterFileServer::readStream
 }
 
 
-bool Foam::fileServers::masterFileServer::writeObject
+bool Foam::fileOperations::masterFileOperation::writeObject
 (
     const regIOobject& io,
     IOstream::streamFormat fmt,
@@ -787,22 +802,22 @@ bool Foam::fileServers::masterFileServer::writeObject
 
     autoPtr<Ostream> osPtr;
 
-    if (collating())
-    {
-        osPtr.reset
-        (
-            new masterCollatingOFstream
-            (
-                io.type(),
-                pathName,
-                fmt,
-                ver,
-                cmp
-            )
-        );
-    }
-    else
-    {
+    //if (collating())
+    //{
+    //    osPtr.reset
+    //    (
+    //        new masterCollatingOFstream
+    //        (
+    //            io.type(),
+    //            pathName,
+    //            fmt,
+    //            ver,
+    //            cmp
+    //        )
+    //    );
+    //}
+    //else
+    //{
         osPtr.reset
         (
             new masterOFstream
@@ -813,7 +828,7 @@ bool Foam::fileServers::masterFileServer::writeObject
                 cmp
             )
         );
-    }
+    //}
     Ostream& os = osPtr();
 
     // If any of these fail, return (leave error handling to Ostream class)
@@ -840,7 +855,10 @@ bool Foam::fileServers::masterFileServer::writeObject
 
 
 Foam::autoPtr<Foam::Istream>
-Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
+Foam::fileOperations::masterFileOperation::NewIFstream
+(
+    const fileName& filePath
+) const
 {
     if (Pstream::parRun())
     {
@@ -955,7 +973,8 @@ Foam::fileServers::masterFileServer::NewIFstream(const fileName& filePath) const
 }
 
 
-Foam::autoPtr<Foam::Ostream> Foam::fileServers::masterFileServer::NewOFstream
+Foam::autoPtr<Foam::Ostream>
+Foam::fileOperations::masterFileOperation::NewOFstream
 (
     const fileName& pathName,
     IOstream::streamFormat fmt,

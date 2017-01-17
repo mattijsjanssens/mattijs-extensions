@@ -22,34 +22,34 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fileServers::masterFileServer
+    Foam::fileOperations::masterFileOperation
 
 Description
-    fileServer that performs all file operations on the master processor.
+    fileOperations that performs all file operations on the master processor.
     Requires the calls to be parallel synchronised!
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fileServers_masterFileServer_H
-#define fileServers_masterFileServer_H
+#ifndef fileOperations_masterFileOperation_H
+#define fileOperations_masterFileOperation_H
 
-#include "fileServer.H"
+#include "fileOperation.H"
 #include "OSspecific.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace fileServers
+namespace fileOperations
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class masterFileServer Declaration
+                     Class masterFileOperation Declaration
 \*---------------------------------------------------------------------------*/
 
-class masterFileServer
+class masterFileOperation
 :
-    public fileServer
+    public fileOperation
 {
     // Private data
 
@@ -248,10 +248,10 @@ class masterFileServer
     // Private Member Functions
 
         template<class Type, class fileOp>
-        Type masterFileOperation(const fileName&, const fileOp& fop) const;
+        Type masterOp(const fileName&, const fileOp& fop) const;
 
         template<class Type, class fileOp>
-        Type masterFileOperation
+        Type masterOp
         (
             const fileName&,
             const fileName&,
@@ -274,17 +274,17 @@ class masterFileServer
 public:
 
         //- Runtime type information
-        TypeName("masterFileServer");
+        TypeName("masterFileOperation");
 
 
     // Constructors
 
         //- Construct null
-        masterFileServer();
+        masterFileOperation();
 
 
     //- Destructor
-    virtual ~masterFileServer();
+    virtual ~masterFileOperation();
 
 
     // Member Functions
@@ -421,13 +421,13 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace fileServers
+} // End namespace fileOperations
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "masterFileServerTemplates.C"
+    #include "masterFileOperationTemplates.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

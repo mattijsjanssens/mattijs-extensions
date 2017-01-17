@@ -30,7 +30,7 @@ Description
 #include "Time.H"
 #include "OSspecific.H"
 #include "OFstream.H"
-#include "fileServer.H"
+#include "fileOperation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -86,7 +86,7 @@ bool Foam::regIOobject::writeObject
         ////OFstream os(objectPath(), fmt, ver, cmp);
         //autoPtr<Ostream> osPtr
         //(
-        //    server().NewOFstream
+        //    fileHandler().NewOFstream
         //    (
         //        objectPath(),
         //        fmt,
@@ -116,7 +116,7 @@ bool Foam::regIOobject::writeObject
         //
         //writeEndDivider(os);
 
-        osGood = server().writeObject(*this, fmt, ver, cmp);
+        osGood = fileHandler().writeObject(*this, fmt, ver, cmp);
     }
 
     if (OFstream::debug)

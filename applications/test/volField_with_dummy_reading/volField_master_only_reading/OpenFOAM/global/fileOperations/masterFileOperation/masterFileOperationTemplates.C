@@ -23,14 +23,14 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "masterFileServer.H"
+#include "masterFileOperation.H"
 #include "Pstream.H"
 #include "IFstream.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type, class fileOp>
-Type Foam::fileServers::masterFileServer::masterFileOperation
+Type Foam::fileOperations::masterFileOperation::masterOp
 (
     const fileName& fName,
     const fileOp& fop
@@ -38,7 +38,7 @@ Type Foam::fileServers::masterFileServer::masterFileOperation
 {
     if (IFstream::debug)
     {
-        Pout<< "masterFileServer : Operation on " << fName << endl;
+        Pout<< "masterFileOperation : Operation on " << fName << endl;
     }
     if (Pstream::parRun())
     {
@@ -70,7 +70,7 @@ Type Foam::fileServers::masterFileServer::masterFileOperation
 
 
 template<class Type, class fileOp>
-Type Foam::fileServers::masterFileServer::masterFileOperation
+Type Foam::fileOperations::masterFileOperation::masterOp
 (
     const fileName& src,
     const fileName& dest,
@@ -79,7 +79,7 @@ Type Foam::fileServers::masterFileServer::masterFileOperation
 {
     if (IFstream::debug)
     {
-        Pout<< "masterFileServer : Operation on src:" << src
+        Pout<< "masterFileOperation : Operation on src:" << src
             << " dest:" << dest << endl;
     }
     if (Pstream::parRun())
