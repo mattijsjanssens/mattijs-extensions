@@ -27,7 +27,7 @@ License
 #include "IFstream.H"
 #include "Time.H"
 #include "Pstream.H"
-#include "fileServer.H"
+#include "fileOperation.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -63,7 +63,7 @@ Foam::Istream& Foam::regIOobject::readStream()
         {
             // Search intelligently for file
             //objPath = filePath();
-            objPath = server().filePath(*this);
+            objPath = fileHandler().filePath(*this);
 
             if (!objPath.size())
             {
@@ -79,7 +79,7 @@ Foam::Istream& Foam::regIOobject::readStream()
             }
         }
 
-        isPtr_ = server().readStream(*this, objPath);
+        isPtr_ = fileHandler().readStream(*this, objPath);
     }
 
     // Mark as uptodate if read successfully

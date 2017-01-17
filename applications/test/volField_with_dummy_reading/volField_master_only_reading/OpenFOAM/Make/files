@@ -5,9 +5,9 @@ global/argList/argList.C
 global/clock/clock.C
 global/etcFiles/etcFiles.C
 
-global/fileServers/fileServer/fileServer.C
-global/fileServers/localFileServer/localFileServer.C
-global/fileServers/masterFileServer/masterFileServer.C
+global/fileOperations/fileOperation/fileOperation.C
+global/fileOperations/localFileOperation/localFileOperation.C
+global/fileOperations/masterFileOperation/masterFileOperation.C
 
 bools = primitives/bools
 $(bools)/bool/bool.C

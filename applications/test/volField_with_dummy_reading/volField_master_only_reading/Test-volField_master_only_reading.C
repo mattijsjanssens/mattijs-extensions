@@ -45,9 +45,9 @@ Description
 #include "IFstream.H"
 #include "OFstream.H"
 //#include "masterOFstream.H"
-#include "fileServer.H"
-#include "localFileServer.H"
-#include "masterFileServer.H"
+#include "fileOperation.H"
+#include "localFileOperation.H"
+#include "masterFileOperation.H"
 #include "pointFields.H"
 
 using namespace Foam;

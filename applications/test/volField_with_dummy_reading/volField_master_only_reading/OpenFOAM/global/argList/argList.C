@@ -33,7 +33,7 @@ License
 #include "labelList.H"
 #include "regIOobject.H"
 #include "dynamicCode.H"
-#include "masterFileServer.H"
+#include "masterFileOperation.H"
 
 #include <cctype>
 
@@ -593,8 +593,11 @@ void Foam::argList::parse
     // If this actually is a parallel run
     if (parRunControl_.parRun())
     {
-        autoPtr<fileServer> masterPtr(new fileServers::masterFileServer());
-        Foam::server(masterPtr);
+        autoPtr<fileOperation> masterPtr
+        (
+            new fileOperations::masterFileOperation()
+        );
+        Foam::fileHandler(masterPtr);
 
         // For the master
         if (Pstream::master())

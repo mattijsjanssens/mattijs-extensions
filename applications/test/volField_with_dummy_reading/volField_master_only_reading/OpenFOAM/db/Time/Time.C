@@ -26,7 +26,7 @@ License
 #include "Time.H"
 #include "PstreamReduceOps.H"
 #include "argList.H"
-#include "fileServer.H"
+#include "fileOperation.H"
 
 #include <sstream>
 
@@ -399,7 +399,7 @@ Foam::Time::Time
 
         // File might not exist yet.
         //fileName f(controlDict_.filePath());
-        fileName f(server().filePath(controlDict_));
+        fileName f(fileHandler().filePath(controlDict_));
 
         if (!f.size())
         {
@@ -498,7 +498,7 @@ Foam::Time::Time
 
         // File might not exist yet.
         //fileName f(controlDict_.filePath());
-        fileName f(server().filePath(controlDict_));
+        fileName f(fileHandler().filePath(controlDict_));
 
         if (!f.size())
         {
@@ -596,7 +596,7 @@ Foam::Time::Time
 
         // File might not exist yet.
         //fileName f(controlDict_.filePath());
-        fileName f(server().filePath(controlDict_));
+        fileName f(fileHandler().filePath(controlDict_));
 
         if (!f.size())
         {
