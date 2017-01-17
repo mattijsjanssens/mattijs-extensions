@@ -58,17 +58,20 @@ class thread_data
 public:
     int id_;
     pthread_mutex_t& mutex_;
+    pthread_cond_t& condition_;
     FIFOStack<regIOobject*>& objects_;
 
     thread_data
     (
         const int id,
         pthread_mutex_t& mutex,
+        pthread_cond_t& condition,
         FIFOStack<regIOobject*>& objects
     )
     :
         id_(id),
         mutex_(mutex),
+        condition_(condition),
         objects_(objects)
     {}
 };
@@ -80,24 +83,56 @@ void* writeFiles(void *threadarg)
 
     FIFOStack<regIOobject*>& objects = my_data.objects_;
     pthread_mutex_t& mutex = my_data.mutex_;
+    pthread_cond_t& condition = my_data.condition_;
+    const int id = my_data.id_;
 
     while (true)
     {
-        regIOobject* io = nullptr;
+        Pout<< id << ":" << "starting consumption" << endl;
+        // Consume all objects
+        while (true)
+        {
+            regIOobject* io = nullptr;
 
+            pthread_mutex_lock(&mutex);
+            if (objects.size())
+            {
+                Pout<< id << ":" << "popping" << endl;
+                io = objects.pop();
+                Pout<< id << ":" << "popped " << io->objectPath() << endl;
+            }
+            pthread_mutex_unlock(&mutex);
+
+            if (io)
+            {
+                Pout<< id << ":" << "Consuming " << io->objectPath() << endl;
+                sleep(1);
+                delete io;
+            }
+            else
+            {
+                Pout<< id << ":" << "Empty stack. breaking" << endl;
+                break;
+            }
+        }
+
+
+        // Wait a bit
+        //Pout<< "starting sleep" << endl;
+        //sleep(1);
         pthread_mutex_lock(&mutex);
-        if (objects.size())
+        Pout<< id << ":" << "starting wait" << endl;
+        pthread_cond_wait(&condition, &mutex);
+        if (!objects.size())
         {
-            io = objects.pop();
+            Pout<< id << ":" << "** signalled to stop?" << endl;
+            break;
         }
+        Pout<< id << ":" << "finished wait" << endl;
         pthread_mutex_unlock(&mutex);
-
-        if (io)
-        {
-            Pout<< "Popped " << io->objectPath() << endl;
-            delete io;
-        }
     }
+
+    Pout<< id << ":" << "exiting thread" << endl;
     pthread_exit(nullptr);
 }
 
@@ -108,10 +143,11 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
 
     pthread_t writeThread;
-    pthread_mutex_t writeThreadMutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_t writeMutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t writeCondition = PTHREAD_COND_INITIALIZER;
     FIFOStack<regIOobject*> objects;
 
-    thread_data data(0, writeThreadMutex, objects);
+    thread_data data(0, writeMutex, writeCondition, objects);
     int rc = pthread_create(&writeThread, nullptr, writeFiles, &data);
 
     if (rc)
@@ -119,6 +155,57 @@ int main(int argc, char *argv[])
         FatalErrorInFunction << "problem created thread" << exit(FatalError);
     }
 
+    // Create test field
+    for (label i = 0; i < 5; i++)
+    {
+        DebugVar(i);
+
+        volScalarField* fldPtr = new volScalarField
+        (
+            IOobject
+            (
+                "myFld",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimless,
+            zeroGradientFvPatchScalarField::typeName
+        );
+        volScalarField& fld = *fldPtr;
+        fld == dimensionedScalar("zero", dimless, 0.0);
+
+        pthread_mutex_lock(&writeMutex);
+        Pout<< "pushed field" << endl;
+        objects.push(fldPtr);
+        // Signal consumer
+        Pout<< "signal consumer" << endl;
+        pthread_cond_signal(&writeCondition);
+        pthread_mutex_unlock(&writeMutex);
+        Pout<< "done pushed field" << endl;
+
+        Pout<< "** starting sleep" << endl;
+        sleep(1);
+    }
+
+
+    // Signal thread (by having zero size on stack)
+    pthread_mutex_lock(&writeMutex);
+    Pout<< "signal consumer to END" << endl;
+    pthread_cond_signal(&writeCondition);
+    pthread_mutex_unlock(&writeMutex);
+
+    void *status;
+    pthread_join(writeThread, &status);
+    //pthread_cancel(writeThread);
+
+    pthread_mutex_destroy(&writeMutex);
+    pthread_cond_destroy(&writeCondition);
+    pthread_exit(nullptr);
+    return 0;
 
 
 
