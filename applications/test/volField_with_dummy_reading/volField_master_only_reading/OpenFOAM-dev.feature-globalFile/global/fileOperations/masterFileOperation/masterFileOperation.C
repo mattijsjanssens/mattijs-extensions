@@ -174,6 +174,12 @@ Foam::fileName Foam::fileOperations::masterFileOperation::objectPath
             return fileName::null;
         }
         break;
+
+        default:
+        {
+            NotImplemented;
+            return fileName::null;
+        }
     }
 }
 
@@ -196,33 +202,9 @@ bool Foam::fileOperations::masterFileOperation::uniformFile
 }
 
 
-bool Foam::fileOperations::masterFileOperation::collating() const
-{
-    if (collating_ == -1)
-    {
-        bool collate = debug::optimisationSwitch("collateFiles", false);
-        if (collate)
-        {
-            WarningInFunction << "Switching on parallel file writing collation"
-                << endl;
-            collating_ = 1;
-        }
-        else
-        {
-            WarningInFunction << "No parallel file writing collation" << endl;
-            collating_ = 0;
-        }
-    }
-
-    return (collating_ == 1);
-}
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fileOperations::masterFileOperation::masterFileOperation()
-:
-    collating_(-1)
 {
     if (regIOobject::fileModificationChecking == regIOobject::timeStampMaster)
     {

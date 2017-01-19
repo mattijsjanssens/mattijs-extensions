@@ -5,9 +5,11 @@ global/argList/argList.C
 global/clock/clock.C
 global/etcFiles/etcFiles.C
 
-global/fileOperations/fileOperation/fileOperation.C
-global/fileOperations/localFileOperation/localFileOperation.C
-global/fileOperations/masterFileOperation/masterFileOperation.C
+fileOps = global/fileOperations
+$(fileOps)/fileOperation/fileOperation.C
+$(fileOps)/localFileOperation/localFileOperation.C
+$(fileOps)/masterFileOperation/masterFileOperation.C
+$(fileOps)/masterCollatingFileOperation/masterCollatingFileOperation.C
 
 bools = primitives/bools
 $(bools)/bool/bool.C
@@ -154,6 +156,7 @@ Fstreams = $(Streams)/Fstreams
 $(Fstreams)/IFstream.C
 $(Fstreams)/OFstream.C
 $(Fstreams)/masterOFstream.C
+$(Fstreams)/masterCollatingOFstream.C
 
 Tstreams = $(Streams)/Tstreams
 $(Tstreams)/ITstream.C
@@ -210,6 +213,7 @@ $(IOdictionary)/localIOdictionary.C
 $(IOdictionary)/unwatchedIOdictionary.C
 
 db/IOobjects/IOMap/IOMapName.C
+db/IOobjects/decomposedBlockData/decomposedBlockData.C
 
 IOobject = db/IOobject
 $(IOobject)/IOobject.C

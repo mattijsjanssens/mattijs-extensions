@@ -117,7 +117,7 @@ std::streamoff Foam::masterCollatingOFstream::writeBuffers
             IOobject::writeBanner(os)
                 << "FoamFile\n{\n"
                 << "    version     " << version() << ";\n"
-                << "    format      " << osPtr().format() << ";\n"
+                << "    format      " << os.format() << ";\n"
                 << "    class       " << collatingClassName(typeName_) << ";\n"
                 << "    location    " << fName << ";\n"
                 << "    object      " << fName.name() << ";\n"
@@ -188,22 +188,23 @@ std::streamoff Foam::masterCollatingOFstream::writeBuffers
     else
     {
         autoPtr<OFstream> osPtr(open(pathName_));
+        OFstream& os = osPtr();
 
         start[Pstream::myProcNo()] = 0;
 
-        osPtr().writeQuoted(str(), false);
+        os.writeQuoted(str(), false);
 
         size[Pstream::myProcNo()] =
-            osPtr().stdStream().tellp()
+            os.stdStream().tellp()
            -start[Pstream::myProcNo()];
 
-        if (!osPtr().good())
+        if (!os.good())
         {
-            FatalIOErrorInFunction(osPtr())
+            FatalIOErrorInFunction(os)
                 << "Failed writing to " << pathName_ << exit(FatalIOError);
         }
 
-        return osPtr().stdStream().tellp();
+        return os.stdStream().tellp();
     }
 }
 

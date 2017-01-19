@@ -565,27 +565,31 @@ Foam::fileName Foam::IOobject::globalFilePath() const
 }
 
 
-//Foam::Istream* Foam::IOobject::objectStream(const fileName& fName)
-//{
-//    if (fName.size())
-//    {
-//        IFstream* isPtr = new IFstream(fName);
-//
-//        if (isPtr->good())
-//        {
-//            return isPtr;
-//        }
-//        else
-//        {
-//            delete isPtr;
-//            return nullptr;
-//        }
-//    }
-//    else
-//    {
-//        return nullptr;
-//    }
-//}
+Foam::Istream* Foam::IOobject::objectStream(const fileName& fName)
+{
+Pout<< "** IOobject::objectStream(const fileName& fName)**" << endl;
+DebugVar(fName);
+
+
+    if (fName.size())
+    {
+        IFstream* isPtr = new IFstream(fName);
+
+        if (isPtr->good())
+        {
+            return isPtr;
+        }
+        else
+        {
+            delete isPtr;
+            return nullptr;
+        }
+    }
+    else
+    {
+        return nullptr;
+    }
+}
 
 
 void Foam::IOobject::setBad(const string& s)

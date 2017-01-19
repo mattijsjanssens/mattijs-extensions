@@ -68,37 +68,37 @@ int main(int argc, char *argv[])
 
 Pout<< "std::streamoff:" << sizeof(std::streamoff) << endl;
 
-    // Test IOList writing
-    {
-        IOList<List<char>> bufs
-        (
-            IOobject
-            (
-                "bufs",
-                runTime.timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            2
-        );
-
-        forAll(bufs, proci)
-        {
-            List<char>& buf = bufs[proci];
-
-            buf.setSize(10);
-            forAll(buf, i)
-            {
-                buf[i] = proci+'a'+i;
-            }
-        }
-
-        bufs.write();
-
-        return 0;
-    }
+//    // Test IOList writing
+//    {
+//        IOList<List<char>> bufs
+//        (
+//            IOobject
+//            (
+//                "bufs",
+//                runTime.timeName(),
+//                mesh,
+//                IOobject::NO_READ,
+//                IOobject::NO_WRITE,
+//                false
+//            ),
+//            2
+//        );
+//
+//        forAll(bufs, proci)
+//        {
+//            List<char>& buf = bufs[proci];
+//
+//            buf.setSize(10);
+//            forAll(buf, i)
+//            {
+//                buf[i] = proci+'a'+i;
+//            }
+//        }
+//
+//        bufs.write();
+//
+//        return 0;
+//    }
 
 
 

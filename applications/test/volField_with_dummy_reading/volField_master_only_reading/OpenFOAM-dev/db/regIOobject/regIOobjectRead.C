@@ -137,6 +137,8 @@ void Foam::regIOobject::close()
             << "Finished reading " << filePath()
             << endl;
     }
+
+    isPtr_.clear();
 }
 
 

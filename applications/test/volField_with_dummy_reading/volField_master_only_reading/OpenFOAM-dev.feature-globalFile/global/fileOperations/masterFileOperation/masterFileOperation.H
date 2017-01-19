@@ -53,9 +53,6 @@ class masterFileOperation
 {
     // Private data
 
-        //- Whether to collate files upon writing
-        mutable label collating_;
-
 
     // Private classes
 
@@ -269,7 +266,6 @@ class masterFileOperation
             const word&
         );
 
-        bool collating() const;
 
 public:
 

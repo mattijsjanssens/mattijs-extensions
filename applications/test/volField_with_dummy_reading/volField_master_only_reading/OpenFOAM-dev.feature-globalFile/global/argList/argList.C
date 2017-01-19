@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -33,6 +33,7 @@ License
 #include "labelList.H"
 #include "regIOobject.H"
 #include "dynamicCode.H"
+#include "masterFileOperation.H"
 
 #include <cctype>
 
@@ -592,6 +593,12 @@ void Foam::argList::parse
     // If this actually is a parallel run
     if (parRunControl_.parRun())
     {
+        autoPtr<fileOperation> masterPtr
+        (
+            new fileOperations::masterFileOperation()
+        );
+        Foam::fileHandler(masterPtr);
+
         // For the master
         if (Pstream::master())
         {
