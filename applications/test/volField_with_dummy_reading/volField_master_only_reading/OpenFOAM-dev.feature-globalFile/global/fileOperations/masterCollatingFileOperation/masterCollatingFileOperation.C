@@ -67,6 +67,31 @@ Foam::fileOperations::masterCollatingFileOperation::
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+//Foam::autoPtr<Foam::Istream>
+//Foam::fileOperations::masterFileOperation::readStream
+//(
+//    regIOobject& io,
+//    const fileName& fName
+//) const
+//{
+//    if (!fName.size())
+//    {
+//        FatalErrorInFunction
+//            << "empty file name" << exit(FatalError);
+//    }
+//
+//    autoPtr<Istream> isPtr;
+//    if (UPstream::master())
+//    {
+//        isPtr.reset(new IFstream(fName));
+//        io.readHeader(isPtr());
+//    }
+//    return readBlocks(isPtr, *this, commsType_);
+//
+//    IOobject
+//}
+
+
 bool Foam::fileOperations::masterCollatingFileOperation::writeObject
 (
     const regIOobject& io,
@@ -78,17 +103,7 @@ bool Foam::fileOperations::masterCollatingFileOperation::writeObject
     mkDir(io.path());
     fileName pathName(io.objectPath());
 
-    autoPtr<Ostream> osPtr
-    (
-        new masterCollatingOFstream
-        (
-            pathName,
-            UPstream::scheduled,
-            fmt,
-            ver,
-            cmp
-        )
-    );
+    autoPtr<Ostream> osPtr(NewOFstream(pathName, fmt, ver, cmp));
     Ostream& os = osPtr();
 
     // If any of these fail, return (leave error handling to Ostream class)
@@ -111,6 +126,29 @@ bool Foam::fileOperations::masterCollatingFileOperation::writeObject
     IOobject::writeEndDivider(os);
 
     return true;
+}
+
+
+Foam::autoPtr<Foam::Ostream>
+Foam::fileOperations::masterCollatingFileOperation::NewOFstream
+(
+    const fileName& pathName,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    return autoPtr<Ostream>
+    (
+        new masterCollatingOFstream
+        (
+            pathName,
+            UPstream::scheduled,
+            fmt,
+            ver,
+            cmp
+        )
+    );
 }
 
 

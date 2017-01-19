@@ -558,7 +558,7 @@ bool Foam::fileOperations::masterFileOperation::writeObject
 
     autoPtr<Ostream> osPtr
     (
-        new masterOFstream
+        NewOFstream
         (
             pathName,
             fmt,

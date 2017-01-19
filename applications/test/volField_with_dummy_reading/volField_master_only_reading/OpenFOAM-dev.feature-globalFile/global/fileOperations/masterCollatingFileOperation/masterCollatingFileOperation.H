@@ -76,6 +76,14 @@ public:
 
         // (reg)IOobject functinality
 
+            //- Reads header for regIOobject and returns an Istream
+            //  to read the contents.
+            virtual autoPtr<Istream> readStream
+            (
+                regIOobject&,
+                const fileName&
+            ) const;
+
             //- Writes a regIOobject (so header, contents and divider).
             //  Returns success state.
             virtual bool writeObject
@@ -88,15 +96,15 @@ public:
 
 //            //- Generate an Istream that reads a file
 //            virtual autoPtr<Istream> NewIFstream(const fileName&) const;
-//
-//            //- Generate an Ostream that writes a file
-//            virtual autoPtr<Ostream> NewOFstream
-//            (
-//                const fileName& pathname,
-//                IOstream::streamFormat format=IOstream::ASCII,
-//                IOstream::versionNumber version=IOstream::currentVersion,
-//                IOstream::compressionType compression=IOstream::UNCOMPRESSED
-//            ) const;
+
+            //- Generate an Ostream that writes a file
+            virtual autoPtr<Ostream> NewOFstream
+            (
+                const fileName& pathname,
+                IOstream::streamFormat format=IOstream::ASCII,
+                IOstream::versionNumber version=IOstream::currentVersion,
+                IOstream::compressionType compression=IOstream::UNCOMPRESSED
+            ) const;
 };
 
 

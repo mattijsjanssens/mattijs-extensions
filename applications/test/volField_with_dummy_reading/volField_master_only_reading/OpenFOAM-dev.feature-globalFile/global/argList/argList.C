@@ -33,7 +33,7 @@ License
 #include "labelList.H"
 #include "regIOobject.H"
 #include "dynamicCode.H"
-#include "masterFileOperation.H"
+#include "masterCollatingFileOperation.H"
 
 #include <cctype>
 
@@ -595,7 +595,7 @@ void Foam::argList::parse
     {
         autoPtr<fileOperation> masterPtr
         (
-            new fileOperations::masterFileOperation()
+            new fileOperations::masterCollatingFileOperation()
         );
         Foam::fileHandler(masterPtr);
 
