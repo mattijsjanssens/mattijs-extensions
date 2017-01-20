@@ -219,8 +219,7 @@ Foam::Istream& Foam::regIOobject::readStream()
         else
         {
             // Search intelligently for file
-            //objPath = filePath();
-            objPath = fileHandler().filePath(global(), *this);
+            objPath = filePath();
 
             if (IFstream::debug)
             {

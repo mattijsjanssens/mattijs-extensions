@@ -51,10 +51,9 @@ class masterFileOperation
 :
     public fileOperation
 {
-    // Private data
+protected:
 
-
-    // Private classes
+    // Protected classes
 
         class mkDirOp
         {
@@ -416,6 +415,13 @@ public:
 
             //- Same file?
             static bool uniformFile(const fileNameList&);
+
+            //- root+casename with any 'processorXXX' replaced by 'processsors'
+            static fileName processorsCasePath(const IOobject&);
+
+            //- Like io.path with provided instance and any 'processorXXX'
+            //  replaced by 'processsors'
+            static fileName processorsPath(const IOobject&, const word&);
 };
 
 

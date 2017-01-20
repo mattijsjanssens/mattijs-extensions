@@ -60,6 +60,53 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+
+Foam::label commonRoot(const fileNameList& files)
+{
+    const fileName& f0 = files[0];
+
+    // Common part
+    label commonSize = f0.size();
+
+    for (label i = 1; i < files.size(); i++)
+    {
+        const fileName& f = files[i];
+        label fSize = f.size();
+
+        label j;
+        for (j = 0; j < commonSize && j < fSize; j++)
+        {
+            if (f0[j] != f[j])
+            {
+                break;
+            }
+        }
+        commonSize = j;
+    }
+    //return f0(0, commonSize);
+
+
+    if (commonSize > 0 && f0[commonSize-1] != '/')
+    {
+        string::size_type i = f0.rfind('/', commonSize);
+
+        if (i == string::npos)
+        {
+            return 0;   //commonSize;
+        }
+        else
+        {
+            return i+1;
+        }
+    }
+    else
+    {
+        return commonSize;
+    }
+}
+
+
+
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
@@ -67,40 +114,6 @@ int main(int argc, char *argv[])
     #include "createPolyMesh.H"
 
 Pout<< "std::streamoff:" << sizeof(std::streamoff) << endl;
-
-//    // Test IOList writing
-//    {
-//        IOList<List<char>> bufs
-//        (
-//            IOobject
-//            (
-//                "bufs",
-//                runTime.timeName(),
-//                mesh,
-//                IOobject::NO_READ,
-//                IOobject::NO_WRITE,
-//                false
-//            ),
-//            2
-//        );
-//
-//        forAll(bufs, proci)
-//        {
-//            List<char>& buf = bufs[proci];
-//
-//            buf.setSize(10);
-//            forAll(buf, i)
-//            {
-//                buf[i] = proci+'a'+i;
-//            }
-//        }
-//
-//        bufs.write();
-//
-//        return 0;
-//    }
-
-
 
     const pointMesh& pm = pointMesh::New(mesh);
 

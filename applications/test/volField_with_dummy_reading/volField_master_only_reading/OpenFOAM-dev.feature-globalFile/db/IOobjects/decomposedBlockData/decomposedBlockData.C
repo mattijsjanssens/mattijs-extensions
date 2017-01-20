@@ -200,25 +200,17 @@ bool Foam::decomposedBlockData::readBlocks
                     {
                         // Read master data
                         {
-                            Pout<< "Reading data for master" << endl;
                             is >> data;
                             is.fatalCheck
                             (
                                 "read(Istream&) : "
                                 "reading entry"
                             );
-                            Pout<< "Finished reading data for master" << endl;
                         }
 
                         for (label proci = 1; proci < s; proci++)
                         {
-                            Pout<< "Reading file for processor " << proci
-                                << endl;
-
                             List<char> elems(is);
-
-                            Pout<< "Read file data:" << elems << endl;
-
                             is.fatalCheck
                             (
                                 "read(Istream&) : "
@@ -256,11 +248,8 @@ bool Foam::decomposedBlockData::readBlocks
         }
         else
         {
-            Pout<< "Receiving data from master" << endl;
-
             IPstream is(UPstream::scheduled, UPstream::masterNo());
             is >> data;
-            Pout<< "Received data:" << data << endl;
         }
     }
     else
@@ -298,24 +287,17 @@ bool Foam::decomposedBlockData::readBlocks
                     {
                         // Read master data
                         {
-                            Pout<< "Reading data for master" << endl;
                             is >> data;
                             is.fatalCheck
                             (
                                 "read(Istream&) : "
                                 "reading entry"
                             );
-                            Pout<< "Finished reading data for master" << endl;
                         }
 
                         for (label proci = 1; proci < s; proci++)
                         {
-                            Pout<< "Reading file for processor " << proci
-                                << endl;
-
                             List<char> elems(is);
-
-                            Pout<< "Read file data:" << elems << endl;
 
                             is.fatalCheck
                             (
@@ -358,11 +340,8 @@ bool Foam::decomposedBlockData::readBlocks
 
         if (!UPstream::master())
         {
-            Pout<< "Receiving data from master" << endl;
-
             UIPstream is(UPstream::masterNo(), pBufs);
             is >> data;
-            Pout<< "Received data:" << data << endl;
         }
     }
 

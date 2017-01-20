@@ -130,6 +130,32 @@ Foam::fileName Foam::fileOperations::masterFileOperation::filePath
 }
 
 
+Foam::fileName Foam::fileOperations::masterFileOperation::processorsCasePath
+(
+    const IOobject& io
+)
+{
+    return
+        io.rootPath()
+       /io.time().globalCaseName()
+       /"processors";
+}
+
+
+Foam::fileName Foam::fileOperations::masterFileOperation::processorsPath
+(
+    const IOobject& io,
+    const word& instance
+)
+{
+    return
+        processorsCasePath(io)
+       /instance
+       /io.db().dbDir()
+       /io.local();
+}
+
+
 Foam::fileName Foam::fileOperations::masterFileOperation::objectPath
 (
     const IOobject& io,
@@ -153,6 +179,12 @@ Foam::fileName Foam::fileOperations::masterFileOperation::objectPath
         }
         break;
 
+        case fileOperation::PROCESSORSOBJECT:
+        {
+            return processorsPath(io, io.instance())/io.name();
+        }
+        break;
+
         case fileOperation::PARENTOBJECT:
         {
             return
@@ -166,6 +198,12 @@ Foam::fileName Foam::fileOperations::masterFileOperation::objectPath
             return
                 io.rootPath()/io.caseName()
                /instancePath/io.db().dbDir()/io.local()/io.name();
+        }
+        break;
+
+        case fileOperation::PROCESSORSFINDINSTANCE:
+        {
+            return processorsPath(io, instancePath)/io.name();
         }
         break;
 
@@ -417,8 +455,15 @@ Foam::fileName Foam::fileOperations::masterFileOperation::filePath
     label masterType(searchType);
     Pstream::scatter(masterType);
     searchType = pathType(masterType);
-    if (searchType == fileOperation::FINDINSTANCE)
+    if
+    (
+        searchType == fileOperation::FINDINSTANCE
+     || searchType == fileOperation::PROCESSORSFINDINSTANCE
+    )
     {
+        // Note: PROCESSORSFINDINSTANCE should never appear since our filePath
+        // does not know about it
+
         Pstream::scatter(newInstancePath);
     }
 

@@ -420,18 +420,21 @@ Foam::fileName Foam::regIOobject::filePath() const
 }
 
 
-Foam::autoPtr<Foam::Istream> Foam::regIOobject::objectStream()
-{
-    //return IOobject::objectStream(filePath());
-    return fileHandler().objectStream(filePath());
-}
+// Foam::autoPtr<Foam::Istream> Foam::regIOobject::objectStream()
+// {
+//     //return IOobject::objectStream(filePath());
+//     return fileHandler().objectStream(filePath());
+// }
 
 
 bool Foam::regIOobject::headerOk()
 {
+    // Note: Should be consistent with IOobject::typeHeaderOk(false)
+
     bool ok = true;
 
-    autoPtr<Istream> isPtr = objectStream();
+    //autoPtr<Istream> isPtr = objectStream();
+    autoPtr<Istream> isPtr(fileHandler().objectStream(filePath()));
 
     // If the stream has failed return
     if (!isPtr.valid())

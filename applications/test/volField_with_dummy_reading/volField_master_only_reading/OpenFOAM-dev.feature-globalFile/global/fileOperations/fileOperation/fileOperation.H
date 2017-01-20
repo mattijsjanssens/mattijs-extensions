@@ -32,7 +32,6 @@ Class
 #include "Istream.H"
 #include "Ostream.H"
 #include "autoPtr.H"
-//#include "IOobject.H"
 #include "fileNameList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -57,11 +56,13 @@ public:
         //- Enumeration for the location of an IOobject
         enum pathType
         {
-            NOTFOUND,           // not found
-            ABSOLUTE,           // instance is absolute directory
-            OBJECT,             // objectPath exists
-            PARENTOBJECT,       // parent of object path
-            FINDINSTANCE        // file found in time directory
+            NOTFOUND,               // not found
+            ABSOLUTE,               // instance is absolute directory
+            OBJECT,                 // objectPath exists
+            PROCESSORSOBJECT,       // objectPath exists in processors/
+            PARENTOBJECT,           // parent of object path
+            FINDINSTANCE,           // file found in time directory
+            PROCESSORSFINDINSTANCE  // as above but in processors/
         };
 
 
@@ -209,7 +210,8 @@ public:
             ) const = 0;
 
             //- Writes a regIOobject (so header, contents and divider).
-            //  Returns success state.
+            //  Returns success state. Default action is to write to
+            //  the objectPath using writeData.
             virtual bool writeObject
             (
                 const regIOobject&,
@@ -217,7 +219,6 @@ public:
                 IOstream::versionNumber version=IOstream::currentVersion,
                 IOstream::compressionType compression=IOstream::UNCOMPRESSED
             ) const;
-
 
             //- Generate an Istream that reads a file
             virtual autoPtr<Istream> NewIFstream(const fileName&) const = 0;

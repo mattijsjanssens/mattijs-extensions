@@ -408,160 +408,15 @@ Foam::fileName Foam::IOobject::path
 
 Foam::fileName Foam::IOobject::localFilePath() const
 {
-    if (instance().isAbsolute())
-    {
-        fileName objectPath = instance()/name();
-
-        if (isFile(objectPath))
-        {
-            return objectPath;
-        }
-        else
-        {
-            return fileName::null;
-        }
-    }
-    else
-    {
-        fileName path = this->path();
-        fileName objectPath = path/name();
-
-        if (isFile(objectPath))
-        {
-            return objectPath;
-        }
-        else
-        {
-            if (!isDir(path))
-            {
-                word newInstancePath = time().findInstancePath
-                (
-                    instant(instance())
-                );
-
-                if (newInstancePath.size())
-                {
-                    fileName fName
-                    (
-                        rootPath()/caseName()
-                       /newInstancePath/db_.dbDir()/local()/name()
-                    );
-
-                    if (isFile(fName))
-                    {
-                        return fName;
-                    }
-                }
-            }
-        }
-
-        return fileName::null;
-    }
+    // Do not check for undecomposed files
+    return fileHandler().filePath(false, *this);
 }
 
 
 Foam::fileName Foam::IOobject::globalFilePath() const
 {
-    if (instance().isAbsolute())
-    {
-        fileName objectPath = instance()/name();
-
-        if (isFile(objectPath))
-        {
-            if (objectRegistry::debug)
-            {
-                Pout<< "globalFilePath : returning absolute:" << objectPath
-                    << endl;
-            }
-            return objectPath;
-        }
-        else
-        {
-            if (objectRegistry::debug)
-            {
-                Pout<< "globalFilePath : absolute not found:" << objectPath
-                    << endl;
-            }
-            return fileName::null;
-        }
-    }
-    else
-    {
-        fileName path = this->path();
-        fileName objectPath = path/name();
-
-        if (isFile(objectPath))
-        {
-            if (objectRegistry::debug)
-            {
-                Pout<< "globalFilePath : returning time:" << objectPath << endl;
-            }
-            return objectPath;
-        }
-        else
-        {
-            if
-            (
-                time().processorCase()
-             && (
-                    instance() == time().system()
-                 || instance() == time().constant()
-                )
-            )
-            {
-                // Constant & system can come from global case
-
-                fileName parentObjectPath =
-                    rootPath()/time().globalCaseName()
-                   /instance()/db_.dbDir()/local()/name();
-
-                if (isFile(parentObjectPath))
-                {
-                    if (objectRegistry::debug)
-                    {
-                        Pout<< "globalFilePath : returning parent:"
-                            << parentObjectPath << endl;
-                    }
-                    return parentObjectPath;
-                }
-            }
-
-            // Check for approximately same time
-            if (!isDir(path))
-            {
-                word newInstancePath = time().findInstancePath
-                (
-                    instant(instance())
-                );
-
-                if (newInstancePath.size())
-                {
-                    fileName fName
-                    (
-                        rootPath()/caseName()
-                       /newInstancePath/db_.dbDir()/local()/name()
-                    );
-
-                    if (isFile(fName))
-                    {
-                        if (objectRegistry::debug)
-                        {
-                            Pout<< "globalFilePath : returning similar time:"
-                                << fName << endl;
-                        }
-
-                        return fName;
-                    }
-                }
-            }
-        }
-
-        if (objectRegistry::debug)
-        {
-            Pout<< "globalFilePath : time not found:" << objectPath << endl;
-        }
-        return fileName::null;
-    }
+    // Check for undecomposed files
+    return fileHandler().filePath(true, *this);
 }
 
 
@@ -569,7 +424,7 @@ Foam::Istream* Foam::IOobject::objectStream(const fileName& fName)
 {
 Pout<< "** IOobject::objectStream(const fileName& fName)**" << endl;
 DebugVar(fName);
-
+error::printStack(Pout);
 
     if (fName.size())
     {

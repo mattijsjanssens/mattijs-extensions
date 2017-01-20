@@ -25,8 +25,14 @@ Class
     Foam::fileOperations::masterCollatingFileOperation
 
 Description
-    fileOperations that performs all file operations on the master processor.
-    Requires the calls to be parallel synchronised!
+    Version of masterFileOperation that collates regIOobjects into a container
+    in the processors/ subdirectory.
+
+See also
+    masterFileOperation
+
+SourceFiles
+    masterCollatingFileOperation.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -51,6 +57,12 @@ class masterCollatingFileOperation
 :
     public masterFileOperation
 {
+protected:
+
+    // Protected classes
+
+        //- Search for filePath; return info on how was found
+        static fileName filePath(const bool, const IOobject&, pathType&, word&);
 
 
 public:
@@ -71,10 +83,14 @@ public:
 
     // Member Functions
 
-        // OSSpecific equivalents
+        // (reg)IOobject functionality
 
-
-        // (reg)IOobject functinality
+            //- Search for an object. checkGlobal : also check undecomposed case
+            virtual fileName filePath
+            (
+                const bool checkGlobal,
+                const IOobject&
+            ) const;
 
             //- Reads header for regIOobject and returns an Istream
             //  to read the contents.
@@ -89,18 +105,6 @@ public:
             virtual bool writeObject
             (
                 const regIOobject&,
-                IOstream::streamFormat format=IOstream::ASCII,
-                IOstream::versionNumber version=IOstream::currentVersion,
-                IOstream::compressionType compression=IOstream::UNCOMPRESSED
-            ) const;
-
-//            //- Generate an Istream that reads a file
-//            virtual autoPtr<Istream> NewIFstream(const fileName&) const;
-
-            //- Generate an Ostream that writes a file
-            virtual autoPtr<Ostream> NewOFstream
-            (
-                const fileName& pathname,
                 IOstream::streamFormat format=IOstream::ASCII,
                 IOstream::versionNumber version=IOstream::currentVersion,
                 IOstream::compressionType compression=IOstream::UNCOMPRESSED

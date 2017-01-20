@@ -61,8 +61,6 @@ protected:
         const UPstream::commsTypes commsType_;
 
 
-    // Protected Member Functions
-
 public:
 
     TypeName("decomposedBlockData");
