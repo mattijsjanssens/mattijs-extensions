@@ -470,6 +470,9 @@ bool Foam::regIOobject::headerOk()
 
 void Foam::regIOobject::operator=(const IOobject& io)
 {
+    // Close any file
+    isPtr_.clear();
+
     // Check out of objectRegistry
     checkOut();
 

@@ -42,9 +42,10 @@ namespace Foam
         public:
         addArgsOptions()
         {
-            argList::addBoolOption
+            argList::addOption
             (
                 "fileHandler",
+                "handler",
                 "override the fileHandler"
             );
         }

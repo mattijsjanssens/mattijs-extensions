@@ -73,7 +73,6 @@ Foam::argList::initValidTables::initValidTables()
     );
 
     Pstream::addValidParOptions(validParOptions);
-//    fileOperation:addValidOptions(validOptions);
 }
 
 
