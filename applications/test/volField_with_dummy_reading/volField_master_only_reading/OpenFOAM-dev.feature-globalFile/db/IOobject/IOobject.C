@@ -422,6 +422,7 @@ Foam::fileName Foam::IOobject::globalFilePath() const
 
 Foam::Istream* Foam::IOobject::objectStream(const fileName& fName)
 {
+//Should not be used anymore. Should all redirect through fileHandler
 Pout<< "** IOobject::objectStream(const fileName& fName)**" << endl;
 DebugVar(fName);
 error::printStack(Pout);

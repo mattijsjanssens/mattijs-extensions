@@ -24,9 +24,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "fileOperation.H"
-//#include "masterfileOperation.H"
 #include "localFileOperation.H"
 #include "regIOobject.H"
+#include "argList.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -36,6 +36,21 @@ namespace Foam
 
     defineTypeNameAndDebug(fileOperation, 0);
     defineRunTimeSelectionTable(fileOperation, word);
+
+    class addArgsOptions
+    {
+        public:
+        addArgsOptions()
+        {
+            argList::addBoolOption
+            (
+                "fileHandler",
+                "override the fileHandler"
+            );
+        }
+    };
+
+    addArgsOptions intObj;
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -133,13 +148,15 @@ const Foam::fileOperation& Foam::fileHandler()
 {
     if (!fileOperation::fileHandlerPtr_.valid())
     {
-        cout<< "fileHandler() : Allocating localFileOperation"
-            << std::endl;
+        word handler(getEnv("FOAM_FILEHANDLER"));
+        if (!handler.size())
+        {
+            handler = fileOperations::localFileOperation::typeName;
+        }
 
-        fileOperation::fileHandlerPtr_.reset
-        (
-            new fileOperations::localFileOperation()
-        );
+        cout<< "fileHandler() : Inserting fileOperation of type "
+            << handler << std::endl;
+        fileOperation::fileHandlerPtr_ = fileOperation::New(handler);
     }
     return fileOperation::fileHandlerPtr_();
 }

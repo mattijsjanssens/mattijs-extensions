@@ -33,6 +33,7 @@ License
 #include "labelList.H"
 #include "regIOobject.H"
 #include "dynamicCode.H"
+#include "fileOperation.H"
 #include "masterCollatingFileOperation.H"
 
 #include <cctype>
@@ -72,6 +73,7 @@ Foam::argList::initValidTables::initValidTables()
     );
 
     Pstream::addValidParOptions(validParOptions);
+//    fileOperation:addValidOptions(validOptions);
 }
 
 
@@ -593,11 +595,11 @@ void Foam::argList::parse
     // If this actually is a parallel run
     if (parRunControl_.parRun())
     {
-        autoPtr<fileOperation> masterPtr
-        (
-            new fileOperations::masterCollatingFileOperation()
-        );
-        Foam::fileHandler(masterPtr);
+//         autoPtr<fileOperation> masterPtr
+//         (
+//             new fileOperations::masterCollatingFileOperation()
+//         );
+//         Foam::fileHandler(masterPtr);
 
         // For the master
         if (Pstream::master())
