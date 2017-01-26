@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2015 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -321,7 +321,12 @@ Foam::instantList Foam::timeSelector::select
         forAll(timeDirs, timeI)
         {
             selectTimes[timeI] =
-                !exists(runTime.path()/timeDirs[timeI].name()/fName);
+               !fileHandler().exists
+                (
+                    runTime.path()
+                   /timeDirs[timeI].name()
+                   /fName
+                );
         }
 
         return subset(selectTimes, timeDirs);

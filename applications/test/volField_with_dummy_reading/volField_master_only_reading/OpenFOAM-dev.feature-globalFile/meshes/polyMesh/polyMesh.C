@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -269,7 +269,7 @@ Foam::polyMesh::polyMesh(const IOobject& io)
     curMotionTimeIndex_(time().timeIndex()),
     oldPointsPtr_(nullptr)
 {
-    if (exists(owner_.objectPath()))
+    if (owner_.headerOk())
     {
         initMesh();
     }

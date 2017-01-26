@@ -4,11 +4,27 @@ Problems
 Cloud only gets output if there is size.
 Detection (headerOk etc) only gets done if there is a lagrangian/<cloudName>
 on the local processor.
-
 - src/meshTools/searchableSurface/triSurfaceMesh.C:bool Foam::triSurfaceMesh::writeObject
 Uses OFstream directly.
 - src/parallel/distributed/distributedTriSurfaceMesh/distributedTriSurfaceMesh.C:bool Foam::distributedTriSurfaceMesh::writeObject
 Uses OFstream directly.
+
+- uniform/time gets written to processorXXX, not processors
+
+
+- regIOobject bit:
+    - headerOk(syncPar, localValid) with optional typename checking
+    - filePath(syncPar, localValid)
+    - readHeaderOk
+    - read
+    - writeObject? But gets objectPath - maybe writeFilePath?
+
+- headerOk() gives (e.g. for phi)
+--> FOAM Warning :
+    From function bool Foam::IOobject::typeHeaderOk(const bool) [Type = Foam::GeometricField<double, fvsPatchField, Foam::surfaceMesh>]
+    in file /home/mattijs/OpenFOAM/OpenFOAM-dev.feature-globalFile/src/OpenFOAM/lnInclude/IOobjectTemplates.C at line 76
+    Reading "/home/mattijs/OpenFOAM/OpenFOAM-dev.feature-globalFile/tutorials/incompressible/icoFoam/cavity/cavity/processors/0.5/phi" at line 15
+    unexpected class name decomposedBlockData expected surfaceScalarField
 
 - masterOFstream and masterCollectingOFstream could be generalised by
 passing in a 'writer' that does something with the strings.

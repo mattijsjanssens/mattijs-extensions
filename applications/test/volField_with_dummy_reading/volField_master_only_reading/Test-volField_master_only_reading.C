@@ -111,7 +111,25 @@ int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
+
+//    // Read directory entries into a list
+//    fileNameList dirEntries
+//    (
+//        fileHandler().readDir
+//        (
+//            runTime.path(),
+//            fileName::DIRECTORY
+//        )
+//    );
+//    DebugVar(dirEntries);
+//Pout<< "**EXIT" << endl;
+//return 0;
+
+
     #include "createPolyMesh.H"
+
+
+
 
 Pout<< "std::streamoff:" << sizeof(std::streamoff) << endl;
 

@@ -92,6 +92,12 @@ Foam::fileOperation::~fileOperation()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+Foam::fileName Foam::fileOperation::objectPath(const IOobject& io) const
+{
+    return io.objectPath();
+}
+
+
 bool Foam::fileOperation::writeObject
 (
     const regIOobject& io,

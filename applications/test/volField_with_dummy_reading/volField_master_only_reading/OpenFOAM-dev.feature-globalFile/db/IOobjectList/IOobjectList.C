@@ -61,8 +61,11 @@ Foam::IOobjectList::IOobjectList
     }
 
     // Create a list of file names in this directory
-    fileNameList ObjectNames =
-        readDir(db.path(newInstance, db.dbDir()/local), fileName::FILE);
+    fileNameList ObjectNames = fileHandler().readDir
+    (
+        db.path(newInstance, db.dbDir()/local),
+        fileName::FILE
+    );
 
     forAll(ObjectNames, i)
     {

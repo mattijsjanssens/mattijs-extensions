@@ -58,8 +58,9 @@ Type Foam::fileOperations::masterFileOperation::masterOp
                 }
             }
         }
-        Pstream::scatterList(result);
 
+        // TBD: more efficient scatter
+        Pstream::scatter(result);
         return result[Pstream::myProcNo()];
     }
     else
@@ -104,8 +105,7 @@ Type Foam::fileOperations::masterFileOperation::masterOp
                 }
             }
         }
-        Pstream::scatterList(result);
-
+        Pstream::scatter(result);
         return result[Pstream::myProcNo()];
     }
     else

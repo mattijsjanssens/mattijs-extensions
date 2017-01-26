@@ -35,14 +35,14 @@ Foam::masterCollatingOFstream::masterCollatingOFstream
     const fileName& pathName,
     const UPstream::commsTypes commsType,
     streamFormat format,
-    versionNumber version,
-    compressionType compression
+    versionNumber version
+    //compressionType compression
 )
 :
     OStringStream(format, version),
     pathName_(pathName),
-    commsType_(commsType),
-    compression_(compression)
+    commsType_(commsType)
+    //compression_(compression)
 {}
 
 
@@ -62,7 +62,7 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
                 pathName_,
                 IOstream::BINARY,
                 version(),
-                compression()
+                IOstream::UNCOMPRESSED  //compression_
             )
         );
 

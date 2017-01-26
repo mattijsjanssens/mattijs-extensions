@@ -81,7 +81,7 @@ void Foam::functionObjectList::listDir
 {
     // Search specified directory for functionObject configuration files
     {
-        fileNameList foFiles(readDir(dir));
+        fileNameList foFiles(fileHandler().readDir(dir));
         forAll(foFiles, f)
         {
             if (foFiles[f].ext().empty())
@@ -93,7 +93,7 @@ void Foam::functionObjectList::listDir
 
     // Recurse into sub-directories
     {
-        fileNameList foDirs(readDir(dir, fileName::DIRECTORY));
+        fileNameList foDirs(fileHandler().readDir(dir, fileName::DIRECTORY));
         forAll(foDirs, fd)
         {
             listDir(dir/foDirs[fd], foMap);

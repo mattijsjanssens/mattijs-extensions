@@ -59,6 +59,68 @@ Foam::fileName Foam::fileOperations::masterCollatingFileOperation::filePath
     word& newInstancePath
 )
 {
+    if (io.name() == "controlDict" && io.instance() == "system")
+    {
+        // Special rules for system/controlDict since cannot use time() until
+        // it has been loaded.
+
+        fileName objectPath = io.path()/io.name();
+        if (Foam::isFile(objectPath))
+        {
+            searchType = fileOperation::PROCESSORSOBJECT;
+            return objectPath;
+        }
+        else if (Pstream::parRun())
+        {
+            // Search parent
+            // Find out from case name whether a processor directory
+
+            fileName globalCaseName;
+            std::string::size_type pos = io.caseName().find("processor");
+            if (pos != string::npos)
+            {
+                if (pos == 0)
+                {
+                    globalCaseName = ".";
+                }
+                else
+                {
+                    globalCaseName = io.caseName()(pos-1);
+                }
+            }
+
+DebugVar(globalCaseName);
+
+            if (globalCaseName.size())
+            {
+                fileName parentObjectPath =
+                    io.rootPath()
+                   /globalCaseName
+                   /io.instance()
+                   /io.db().dbDir()
+                   /io.local()
+                   /io.name();
+
+DebugVar(parentObjectPath);
+
+                if (Foam::isFile(parentObjectPath))
+                {
+                    searchType = fileOperation::PARENTOBJECT;
+                    return parentObjectPath;
+                }
+            }
+            return fileName::null;
+        }
+        else
+        {
+            return fileName::null;
+        }
+    }
+
+
+DebugVar(io.objectPath());
+DebugVar(checkGlobal);
+
     if (!io.time().processorCase())
     {
         return masterFileOperation::filePath
@@ -134,50 +196,50 @@ Foam::fileName Foam::fileOperations::masterCollatingFileOperation::filePath
         }
 
 
-        if (!Foam::isDir(path))
-        {
-            // 1. Check processors/
-            newInstancePath = io.time().findInstancePath
-            (
-                processorsCasePath(io),
-                instant(io.instance())
-            );
-
-            if (newInstancePath.size())
-            {
-                fileName fName(processorsPath(io, newInstancePath)/io.name());
-
-                if (Foam::isFile(fName))
-                {
-                    searchType = fileOperation::PROCESSORSFINDINSTANCE;
-                    return fName;
-                }
-            }
-        }
-
-        if (!Foam::isDir(io.path()))
-        {
-            // 2. Check local
-            newInstancePath = io.time().findInstancePath
-            (
-                instant(io.instance())
-            );
-
-            if (newInstancePath.size())
-            {
-                fileName fName
-                (
-                    io.rootPath()/io.caseName()
-                   /newInstancePath/io.db().dbDir()/io.local()/io.name()
-                );
-
-                if (Foam::isFile(fName))
-                {
-                    searchType = fileOperation::FINDINSTANCE;
-                    return fName;
-                }
-            }
-        }
+//        if (!Foam::isDir(path))
+//        {
+//            // 1. Check processors/
+//            newInstancePath = io.time().findInstancePath
+//            (
+//                processorsCasePath(io),
+//                instant(io.instance())
+//            );
+//
+//            if (newInstancePath.size())
+//            {
+//                fileName fName(processorsPath(io, newInstancePath)/io.name());
+//
+//                if (Foam::isFile(fName))
+//                {
+//                    searchType = fileOperation::PROCESSORSFINDINSTANCE;
+//                    return fName;
+//                }
+//            }
+//        }
+//
+//        if (!Foam::isDir(io.path()))
+//        {
+//            // 2. Check local
+//            newInstancePath = io.time().findInstancePath
+//            (
+//                instant(io.instance())
+//            );
+//
+//            if (newInstancePath.size())
+//            {
+//                fileName fName
+//                (
+//                    io.rootPath()/io.caseName()
+//                   /newInstancePath/io.db().dbDir()/io.local()/io.name()
+//                );
+//
+//                if (Foam::isFile(fName))
+//                {
+//                    searchType = fileOperation::FINDINSTANCE;
+//                    return fName;
+//                }
+//            }
+//        }
 
         return fileName::null;
     }
@@ -202,6 +264,21 @@ Foam::fileOperations::masterCollatingFileOperation::
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+Foam::fileName Foam::fileOperations::masterCollatingFileOperation::objectPath
+(
+    const IOobject& io
+) const
+{
+    // Replacement for objectPath
+    return masterFileOperation::objectPath
+    (
+        io,
+        fileOperation::PROCESSORSOBJECT,
+        io.instance()
+    );
+}
+
+
 Foam::fileName Foam::fileOperations::masterCollatingFileOperation::filePath
 (
     const bool checkGlobal,
@@ -218,6 +295,7 @@ Foam::fileName Foam::fileOperations::masterCollatingFileOperation::filePath
     label masterType(searchType);
     Pstream::scatter(masterType);
     searchType = pathType(masterType);
+
     if
     (
         searchType == fileOperation::FINDINSTANCE
@@ -229,7 +307,12 @@ Foam::fileName Foam::fileOperations::masterCollatingFileOperation::filePath
 
     if (!Pstream::master())
     {
-        objPath = objectPath(io, searchType, newInstancePath);
+        objPath = masterFileOperation::objectPath
+        (
+            io,
+            searchType,
+            newInstancePath
+        );
     }
     return objPath;
 }
@@ -260,6 +343,7 @@ Foam::fileOperations::masterCollatingFileOperation::readStream
         if (headerIO.headerClassName() != decomposedBlockData::typeName)
         {
             valid = false;
+            isPtr.clear();
         }
     }
 
@@ -277,7 +361,6 @@ Foam::fileOperations::masterCollatingFileOperation::readStream
                 << endl;
         }
 
-        isPtr.clear();
         return masterFileOperation::readStream(io, fName);
     }
 
@@ -360,8 +443,8 @@ bool Foam::fileOperations::masterCollatingFileOperation::writeObject
                 pathName,
                 UPstream::scheduled,
                 fmt,
-                ver,
-                cmp
+                ver
+                //cmp
             )
         );
     }

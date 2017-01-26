@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -231,7 +231,7 @@ Foam::polyMesh::readUpdateState Foam::polyMesh::readUpdate()
         // Boundary is set so can use initMesh now (uses boundary_ to
         // determine internal and active faces)
 
-        if (exists(owner_.objectPath()))
+        if (owner_.headerOk())
         {
             initMesh();
         }

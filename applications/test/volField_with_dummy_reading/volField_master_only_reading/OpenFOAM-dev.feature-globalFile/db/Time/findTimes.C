@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -46,7 +46,14 @@ Foam::instantList Foam::Time::findTimes
     }
 
     // Read directory entries into a list
-    fileNameList dirEntries(readDir(directory, fileName::DIRECTORY));
+    fileNameList dirEntries
+    (
+        fileHandler().readDir
+        (
+            directory,
+            fileName::DIRECTORY
+        )
+    );
 
     // Initialise instant list
     instantList Times(dirEntries.size() + 1);

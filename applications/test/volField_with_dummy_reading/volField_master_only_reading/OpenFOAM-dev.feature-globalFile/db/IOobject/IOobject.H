@@ -304,6 +304,12 @@ public:
                 return headerClassName_;
             }
 
+            //- Return name of the class name read from header
+            word& headerClassName()
+            {
+                return headerClassName_;
+            }
+
             //- Return non-constant access to the optional note
             string& note()
             {

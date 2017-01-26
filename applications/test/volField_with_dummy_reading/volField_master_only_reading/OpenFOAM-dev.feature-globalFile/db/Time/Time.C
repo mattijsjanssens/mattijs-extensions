@@ -180,7 +180,7 @@ void Foam::Time::setControls()
 
     // Check if time directory exists
     // If not increase time precision to see if it is formatted differently.
-    if (!exists(timePath(), false))
+    if (!fileHandler().exists(timePath(), false))
     {
         int oldPrecision = precision_;
         int requiredPrecision = -1;
@@ -196,7 +196,7 @@ void Foam::Time::setControls()
             setTime(startTime_, 0);
 
             // Check the existence of the time directory with the new format
-            found = exists(timePath(), false);
+            found = fileHandler().exists(timePath(), false);
 
             if (found)
             {
@@ -772,7 +772,10 @@ Foam::word Foam::Time::findInstancePath
 ) const
 {
     // Read directory entries into a list
-    fileNameList dirEntries(readDir(directory, fileName::DIRECTORY));
+    fileNameList dirEntries
+    (
+        fileHandler().readDir(directory, fileName::DIRECTORY)
+    );
 
     forAll(dirEntries, i)
     {

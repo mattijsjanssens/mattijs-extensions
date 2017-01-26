@@ -51,46 +51,55 @@ bool Foam::IOobject::typeHeaderOk(const bool checkType)
     {
         const fileOperation& fp = Foam::fileHandler();
 
-        autoPtr<Istream> isPtr =
-            fp.objectStream(typeFilePath<Type>(*this));
-
-        // If the stream has failed return
-        if (!isPtr.valid())
+//        autoPtr<Istream> isPtr =
+//            fp.objectStream(typeFilePath<Type>(*this));
+//
+//        // If the stream has failed return
+//        if (!isPtr.valid())
+//        {
+//            if (IOobject::debug)
+//            {
+//                InfoInFunction
+//                    << "file " << objectPath() << " could not be opened"
+//                    << endl;
+//            }
+//
+//            ok = false;
+//        }
+//        else
+//        {
+//            // Try reading header
+//            if (readHeader(isPtr()))
+//            {
+//                if (checkType && headerClassName_ != Type::typeName)
+//                {
+//                    IOWarningInFunction(isPtr())
+//                        << "unexpected class name " << headerClassName_
+//                        << " expected " << Type::typeName << endl;
+//
+//                    ok = false;
+//                }
+//            }
+//            else
+//            {
+//                if (IOobject::debug)
+//                {
+//                    IOWarningInFunction(isPtr())
+//                        << "failed to read header of file " << objectPath()
+//                        << endl;
+//                }
+//
+//                ok = false;
+//            }
+//        }
+        ok = fp.readHeader(typeGlobal<Type>(), *this);
+        if (checkType && headerClassName_ != Type::typeName)
         {
-            if (IOobject::debug)
-            {
-                InfoInFunction
-                    << "file " << objectPath() << " could not be opened"
-                    << endl;
-            }
+            WarningInFunction
+                << "unexpected class name " << headerClassName_
+                << " expected " << Type::typeName << endl;
 
             ok = false;
-        }
-        else
-        {
-            // Try reading header
-            if (readHeader(isPtr()))
-            {
-                if (checkType && headerClassName_ != Type::typeName)
-                {
-                    IOWarningInFunction(isPtr())
-                        << "unexpected class name " << headerClassName_
-                        << " expected " << Type::typeName << endl;
-
-                    ok = false;
-                }
-            }
-            else
-            {
-                if (IOobject::debug)
-                {
-                    IOWarningInFunction(isPtr())
-                        << "failed to read header of file " << objectPath()
-                        << endl;
-                }
-
-                ok = false;
-            }
         }
     }
 

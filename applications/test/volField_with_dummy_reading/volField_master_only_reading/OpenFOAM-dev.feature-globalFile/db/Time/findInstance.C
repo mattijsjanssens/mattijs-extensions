@@ -48,36 +48,42 @@ Foam::word Foam::Time::findInstance
     //         parent directory in case of parallel)
 
     const fileName tPath(path());
-    const fileName dirPath(tPath/timeName()/dir);
 
-    // check the current time directory
-    if
-    (
-        name.empty()
-      ? isDir(dirPath)
-      :
-        (
-            isFile(dirPath/name)
-         && IOobject
-            (
-                name,
-                timeName(),
-                dir,
-                *this
-            ).typeHeaderOk<IOList<label>>(false) // use object with local scope
-        )
-    )
     {
-        if (debug)
-        {
-            InfoInFunction
-                << "Found \"" << name
-                << "\" in " << timeName()/dir
-                << endl;
-        }
+        const fileName dirPath(tPath/timeName()/dir);
 
-        return timeName();
+        // check the current time directory
+        if
+        (
+            name.empty()
+          ? fileHandler().isDir(dirPath)
+          :
+            (
+                IOobject
+                (
+                    name,
+                    timeName(),
+                    dir,
+                    *this
+                ).typeHeaderOk<IOList<label>>(false) // object with local scope
+            )
+        )
+        {
+            //if (debug)
+            {
+                //InfoInFunction
+                Pout<< "findInstance : "
+                    << "Found \"" << name
+                    << "\" in " << timeName()/dir
+                    << endl;
+            }
+
+            return timeName();
+        }
     }
+
+Pout<< "Time searching " << endl;
+
 
     // Search back through the time directories to find the time
     // closest to and lower than current time
@@ -96,14 +102,15 @@ Foam::word Foam::Time::findInstance
     // continue searching from here
     for (; instanceI >= 0; --instanceI)
     {
+        const fileName dirPath(tPath/ts[instanceI].name()/dir);
+
         if
         (
             name.empty()
-          ? isDir(tPath/ts[instanceI].name()/dir)
+          ? fileHandler().isDir(dirPath)
           :
             (
-                isFile(tPath/ts[instanceI].name()/dir/name)
-             && IOobject
+                IOobject
                 (
                     name,
                     ts[instanceI].name(),
@@ -113,9 +120,10 @@ Foam::word Foam::Time::findInstance
             )
         )
         {
-            if (debug)
+            //if (debug)
             {
-                InfoInFunction
+                //InfoInFunction
+                Pout<< "findInstance : "
                     << "Found \"" << name
                     << "\" in " << ts[instanceI].name()/dir
                     << endl;
@@ -127,9 +135,10 @@ Foam::word Foam::Time::findInstance
         // Check if hit minimum instance
         if (ts[instanceI].name() == stopInstance)
         {
-            if (debug)
+            //if (debug)
             {
-                InfoInFunction
+                //InfoInFunction
+                Pout<< "findInstance : "
                     << "Hit stopInstance " << stopInstance
                     << endl;
             }
@@ -172,11 +181,10 @@ Foam::word Foam::Time::findInstance
     if
     (
         name.empty()
-      ? isDir(tPath/constant()/dir)
+      ? fileHandler().isDir(tPath/constant()/dir)
       :
         (
-            isFile(tPath/constant()/dir/name)
-         && IOobject
+            IOobject
             (
                 name,
                 constant(),
@@ -186,9 +194,10 @@ Foam::word Foam::Time::findInstance
         )
     )
     {
-        if (debug)
+        //if (debug)
         {
-            InfoInFunction
+            //InfoInFunction
+            Pout<< "findInstance : "
                 << "Found \"" << name
                 << "\" in " << constant()/dir
                 << endl;

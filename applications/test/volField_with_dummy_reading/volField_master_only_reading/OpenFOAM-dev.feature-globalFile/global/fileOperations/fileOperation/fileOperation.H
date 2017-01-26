@@ -190,6 +190,9 @@ public:
 
         // (reg)IOobject functinality
 
+            //- Generate disk file name for object. Opposite of filePath.
+            virtual fileName objectPath(const IOobject& io) const;
+
             //- Search for an object. checkGlobal : also check undecomposed case
             virtual fileName filePath
             (
@@ -197,9 +200,12 @@ public:
                 const IOobject&
             ) const = 0;
 
-            //- Generate an Istream for an IOobject. Returns a null stream
-            //  if the file is not valid.
-            virtual autoPtr<Istream> objectStream(const fileName&) const = 0;
+            //- Search for an object and read its header
+            virtual bool readHeader
+            (
+                const bool checkGlobal,
+                IOobject&
+            ) const = 0;
 
             //- Reads header for regIOobject and returns an Istream
             //  to read the contents.

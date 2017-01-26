@@ -101,28 +101,53 @@ Foam::fileName Foam::fileOperations::masterFileOperation::filePath
                 }
             }
 
-            if (!Foam::isDir(path))
+//- The big problem with findInstance is that it itself needs file
+//  access through the fileHandler. Since this routine is only called on the
+//  master we'll get a deadlock.
+//            if (!Foam::isDir(path))
+//            {
+//                newInstancePath = io.time().findInstancePath
+//                (
+//                    instant(io.instance())
+//                );
+//
+//                if (newInstancePath.size())
+//                {
+//                    fileName fName
+//                    (
+//                        io.rootPath()/io.caseName()
+//                       /newInstancePath/io.db().dbDir()/io.local()/io.name()
+//                    );
+//
+//                    if (Foam::isFile(fName))
+//                    {
+//                        searchType = fileOperation::FINDINSTANCE;
+//                        return fName;
+//                    }
+//                }
+//            }
+
+            // Try constant & local
             {
-                newInstancePath = io.time().findInstancePath
+                newInstancePath = io.time().constant();
+                fileName fName
                 (
-                    instant(io.instance())
+                    io.rootPath()
+                   /io.caseName()
+                   /newInstancePath
+                   /io.db().dbDir()
+                   /io.local()
+                   /io.name()
                 );
+                //DebugVar(fName);
 
-                if (newInstancePath.size())
+                if (Foam::isFile(fName))
                 {
-                    fileName fName
-                    (
-                        io.rootPath()/io.caseName()
-                       /newInstancePath/io.db().dbDir()/io.local()/io.name()
-                    );
-
-                    if (Foam::isFile(fName))
-                    {
-                        searchType = fileOperation::FINDINSTANCE;
-                        return fName;
-                    }
+                    searchType = fileOperation::FINDINSTANCE;
+                    return fName;
                 }
             }
+
         }
 
         return fileName::null;
@@ -445,6 +470,8 @@ Foam::fileName Foam::fileOperations::masterFileOperation::filePath
     const IOobject& io
 ) const
 {
+Pout<< "Starting filePath for:" << io.objectPath() << endl;
+
     fileName objPath;
     pathType searchType = fileOperation::NOTFOUND;
     word newInstancePath;
@@ -455,6 +482,7 @@ Foam::fileName Foam::fileOperations::masterFileOperation::filePath
     label masterType(searchType);
     Pstream::scatter(masterType);
     searchType = pathType(masterType);
+
     if
     (
         searchType == fileOperation::FINDINSTANCE
@@ -471,26 +499,51 @@ Foam::fileName Foam::fileOperations::masterFileOperation::filePath
     {
         objPath = objectPath(io, searchType, newInstancePath);
     }
+
+Pout<< "Returning from file searching:" << endl
+    << "    objectPath:" << io.objectPath() << endl
+    << "    filePath  :" << objPath << endl
+    << endl;
     return objPath;
 }
 
 
-Foam::autoPtr<Foam::Istream>
-Foam::fileOperations::masterFileOperation::objectStream
+bool Foam::fileOperations::masterFileOperation::readHeader
 (
-   const fileName& fName
+    const bool checkGlobal,
+    IOobject& io
 ) const
 {
-   if (fName.size())
-   {
-       autoPtr<Istream> isPtr = NewIFstream(fName);
+    bool ok = false;
 
-       if (isPtr->good())
-       {
-           return isPtr;
-       }
-   }
-   return autoPtr<Istream>(nullptr);
+Pout<< "Starting readHeader for:" << io.objectPath() << endl;
+
+
+    if (Pstream::master())
+    {
+        fileName objPath;
+        pathType searchType = fileOperation::NOTFOUND;
+        word newInstancePath;
+        fileName fName(filePath(checkGlobal, io, searchType, newInstancePath));
+
+        Pout<< "readHeader actual file:" << fName << endl;
+
+        if (!fName.empty() && Foam::isFile(fName))
+        {
+            IFstream is(fName);
+
+            if (is.good() && io.readHeader(is))
+            {
+                ok = true;
+            }
+        }
+    }
+    Pstream::scatter(ok);
+    Pstream::scatter(io.headerClassName());
+    Pstream::scatter(io.note());
+
+Pout<< "Done readHeader ok:" << ok << endl;
+    return ok;
 }
 
 

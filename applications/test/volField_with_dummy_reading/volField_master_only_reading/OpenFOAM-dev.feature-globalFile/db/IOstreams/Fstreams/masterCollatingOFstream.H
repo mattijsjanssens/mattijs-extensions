@@ -60,7 +60,7 @@ class masterCollatingOFstream
         //- Type to use for gather
         const UPstream::commsTypes commsType_;
 
-        const IOstream::compressionType compression_;
+        //const IOstream::compressionType compression_;
 
 
 public:
@@ -73,8 +73,8 @@ public:
             const fileName& pathname,
             const UPstream::commsTypes = UPstream::scheduled,
             streamFormat format=ASCII,
-            versionNumber version=currentVersion,
-            compressionType compression=UNCOMPRESSED
+            versionNumber version=currentVersion
+            //compressionType compression=UNCOMPRESSED
         );
 
 

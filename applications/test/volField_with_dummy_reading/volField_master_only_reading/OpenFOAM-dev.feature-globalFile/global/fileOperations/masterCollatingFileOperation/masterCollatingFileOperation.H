@@ -85,6 +85,9 @@ public:
 
         // (reg)IOobject functionality
 
+            //- Generate disk file name for object. Opposite of filePath.
+            virtual fileName objectPath(const IOobject& io) const;
+
             //- Search for an object. checkGlobal : also check undecomposed case
             virtual fileName filePath
             (

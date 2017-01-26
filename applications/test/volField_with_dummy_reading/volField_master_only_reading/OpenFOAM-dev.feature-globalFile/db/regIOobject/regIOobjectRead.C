@@ -312,7 +312,7 @@ void Foam::regIOobject::close()
     if (IFstream::debug)
     {
         Pout<< "regIOobject::close() : "
-            << "finished reading " << filePath()
+            << "finished reading " << isPtr_().name()
             << endl;
     }
 

@@ -34,7 +34,7 @@ License
 #include "regIOobject.H"
 #include "dynamicCode.H"
 #include "fileOperation.H"
-#include "masterCollatingFileOperation.H"
+//#include "masterCollatingFileOperation.H"
 
 #include <cctype>
 
@@ -594,11 +594,14 @@ void Foam::argList::parse
     // If this actually is a parallel run
     if (parRunControl_.parRun())
     {
-//         autoPtr<fileOperation> masterPtr
-//         (
-//             new fileOperations::masterCollatingFileOperation()
-//         );
-//         Foam::fileHandler(masterPtr);
+        if (options_.found("fileHandler"))
+        {
+            autoPtr<fileOperation> handlerPtr
+            (
+                fileOperation::New(options_["fileHandler"])
+            );
+            Foam::fileHandler(handlerPtr);
+        }
 
         // For the master
         if (Pstream::master())
