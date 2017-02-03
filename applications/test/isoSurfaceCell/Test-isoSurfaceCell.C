@@ -72,6 +72,36 @@ int main(int argc, char *argv[])
     }
 
 
+    point avgVert(point::zero);
+    label nVert = 0;
+
+    forAll(iso.usesCellCentre(), pointi)
+    {
+        if (!iso.usesCellCentre()[pointi])
+        {
+            avgVert += iso.points()[pointi];
+            nVert++;
+        }
+    }
+
+    avgVert /= nVert;
+
+    label nCc = iso.points().size()-nVert;
+    if (nCc > 0)
+    {
+        pointField newPoints(iso.points());
+        forAll(iso.usesCellCentre(), pointi)
+        {
+            if (iso.usesCellCentre()[pointi])
+            {
+                newPoints[pointi] = avgVert;
+            }
+        }
+        iso.movePoints(newPoints);
+        iso.write("newIso.obj");
+    }
+
+
     Info<< "End\n" << endl;
 
     return 0;
