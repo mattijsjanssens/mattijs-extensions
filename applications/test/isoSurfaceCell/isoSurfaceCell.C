@@ -30,6 +30,7 @@ License
 #include "tetMatcher.H"
 #include "syncTools.H"
 #include "addToRunTimeSelectionTable.H"
+#include "DynamicField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -170,6 +171,9 @@ Foam::isoSurfaceCell::cellCutType Foam::isoSurfaceCell::calcCutType
 
             if (nPyrCuts == cPoints.size())
             {
+                Pout<< "cell:" << celli
+                    << " cc:" << mesh_.cellCentres()[celli]
+                    << " has all points cut." << endl;
                 return SPHERE;
             }
             else
@@ -1360,6 +1364,161 @@ Foam::triSurface Foam::isoSurfaceCell::subsetMesh
 }
 
 
+void Foam::isoSurfaceCell::triangulateOutside
+(
+    const triSurface& s,
+    const label cellID,
+
+    label start,
+    label size,
+
+    face& f,
+    DynamicList<face>& triFaces,
+    DynamicList<labelledTri>& compactTris,
+    DynamicList<label>& compactCellIDs
+) const
+{
+    const pointField& points = s.points();
+
+    // All triangles of the current cell
+    SubList<labelledTri> cellTris(s, size, start);
+
+    PrimitivePatch<labelledTri, SubList, const pointField&> pp
+    (
+        cellTris,
+        points
+    );
+
+    // Retriangulate the exterior loops
+
+    const labelListList& edgeLoops = pp.edgeLoops();
+    const labelList& mp = pp.meshPoints();
+
+    forAll(edgeLoops, loopi)
+    {
+        const labelList& loop = edgeLoops[loopi];
+
+        if (loop.size() > 2)
+        {
+            f.setSize(loop.size());
+            forAll(f, i)
+            {
+                f[i] = mp[loop[i]];
+            }
+
+            triFaces.clear();
+            f.triangles(points, triFaces);
+
+            forAll(triFaces, i)
+            {
+                const face& f = triFaces[i];
+                compactTris.append(labelledTri(f[0], f[1], f[2], 0));
+                compactCellIDs.append(cellID);
+            }
+        }
+    }
+}
+
+
+Foam::triSurface Foam::isoSurfaceCell::removeInsidePoints
+(
+    const triSurface& s,
+    const labelList& cellIDs,
+    const boolList& usesCellCentre,
+    DynamicList<label>& pointCompactMap,    // per returned point the original
+    DynamicList<label>& compactCellIDs      // per returned tri the cellID
+) const
+{
+    const pointField& points = s.points();
+
+    if (cellIDs.size() != s.size() || usesCellCentre.size() != points.size())
+    {
+        FatalErrorInFunction << " Size mismatch" << exit(FatalError);
+    }
+
+    pointCompactMap.clear();
+    compactCellIDs.clear();
+
+    DynamicList<face> triFaces;
+    DynamicList<labelledTri> compactTris;
+    face f;
+
+
+    label start = 0;
+    forAll(s, trii)
+    {
+        if (trii > 0 && cellIDs[trii] != cellIDs[trii-1])
+        {
+            // All triangles of the current cell
+            triangulateOutside
+            (
+                s,
+                cellIDs[trii-1],
+
+                start,
+                trii-start,
+
+                f,
+                triFaces,
+                compactTris,
+                compactCellIDs
+            );
+
+            start = trii;
+        }
+    }
+
+    // Do final
+    triangulateOutside
+    (
+        s,
+        cellIDs[cellIDs.size()-1],
+
+        start,
+        cellIDs.size()-start,
+
+        f,
+        triFaces,
+        compactTris,
+        compactCellIDs
+    );
+
+
+
+
+    // Compact out unused points
+    // Pick up the used vertices
+    labelList oldToCompact(points.size(), -1);
+    DynamicField<point> compactPoints(points.size());
+    pointCompactMap.clear();
+
+    forAll(compactTris, i)
+    {
+        labelledTri& f = compactTris[i];
+        forAll(f, fp)
+        {
+            label pointi = f[fp];
+            label compacti = oldToCompact[pointi];
+            if (compacti == -1)
+            {
+                compacti = compactPoints.size();
+                oldToCompact[pointi] = compacti;
+                compactPoints.append(points[pointi]);
+                pointCompactMap.append(pointi);
+            }
+            f[fp] = compacti;
+        }
+    }
+
+    return triSurface
+    (
+        compactTris.xfer(),
+        geometricSurfacePatchList(0),
+        compactPoints.xfer()
+    );
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::isoSurfaceCell::isoSurfaceCell
@@ -1407,18 +1566,18 @@ Foam::isoSurfaceCell::isoSurfaceCell
 
     // Per cc -1 or a point inside snappedPoints.
     labelList snappedCc;
-    if (regularise)
-    {
-        calcSnappedCc
-        (
-            isTet,
-            cVals,
-            pVals,
-            snappedPoints,
-            snappedCc
-        );
-    }
-    else
+//    if (regularise)
+//    {
+//        calcSnappedCc
+//        (
+//            isTet,
+//            cVals,
+//            pVals,
+//            snappedPoints,
+//            snappedCc
+//        );
+//    }
+//    else
     {
         snappedCc.setSize(mesh_.nCells());
         snappedCc = -1;
@@ -1511,11 +1670,45 @@ Foam::isoSurfaceCell::isoSurfaceCell
         {
             meshCells_[i] = triMeshCells[triMap[i]];
         }
-        usesCellCentre_.setSize(nPoints());
-        forAll(triPointMergeMap_, oldi)
+
+        if (regularise)
         {
-            label mergedi = triPointMergeMap_[oldi];
-            usesCellCentre_[mergedi] = usesCellCentre[oldi];
+            const boolList oldUsesCellCentre(usesCellCentre.xfer());
+            usesCellCentre.setSize(points().size());
+            forAll(triPointMergeMap_, oldi)
+            {
+                label mergedi = triPointMergeMap_[oldi];
+                usesCellCentre[mergedi] = oldUsesCellCentre[oldi];
+            }
+
+
+            const label nOldPoints = points().size();
+
+            // Triangulate outside
+            DynamicList<label> pointCompactMap; // back to original point
+            DynamicList<label> compactCellIDs;  // per returned tri the cellID
+            triSurface::operator=
+            (
+                removeInsidePoints
+                (
+                    *this,
+                    meshCells_,
+                    usesCellCentre,
+                    pointCompactMap,
+                    compactCellIDs
+                )
+            );
+
+            if (debug)
+            {
+                Pout<< "isoSurfaceCell :"
+                    << " after removing cell centre triangles : " << size()
+                    << endl;
+            }
+
+            meshCells_.transfer(compactCellIDs);
+            labelList reversePointMap(invert(nOldPoints, pointCompactMap));
+            inplaceRenumber(reversePointMap, triPointMergeMap_);
         }
     }
 

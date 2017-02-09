@@ -23,8 +23,6 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-//#include "isoSurfaceCell.H"
-#include "polyMesh.H"
 #include "tetMatcher.H"
 #include "isoSurface.H"
 
@@ -80,18 +78,22 @@ void Foam::isoSurfaceCell::generateTriPoints
     const scalar s0,
     const Type& p0,
     const label p0Index,
+    const bool isCc0,
 
     const scalar s1,
     const Type& p1,
     const label p1Index,
+    const bool isCc1,
 
     const scalar s2,
     const Type& p2,
     const label p2Index,
+    const bool isCc2,
 
     const scalar s3,
     const Type& p3,
     const label p3Index,
+    const bool isCc3,
 
     DynamicList<Type>& pts,
     DynamicList<bool>& usesCc
@@ -125,21 +127,13 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x01:
         case 0x0E:
         {
-            pts.append
-            (
-                generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index)
-            );
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index)
-            );
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index)
-            );
-            usesCc.append(true);
+            pts.append(generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index));
+            usesCc.append(isCc0||isCc1);
+            pts.append(generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index));
+            usesCc.append(isCc0||isCc2);
+            pts.append(generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index));
+            usesCc.append(isCc0||isCc3);
+
             if (triIndex == 0x0E)
             {
                 // Flip normals
@@ -153,21 +147,12 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x02:
         case 0x0D:
         {
-            pts.append
-            (
-                generatePoint(snapped,s1,p1,p1Index,s0,p0,p0Index)
-            );
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index)
-            );
-            usesCc.append(true);
-            pts.append
-            (
-                generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index)
-            );
-            usesCc.append(false);
+            pts.append(generatePoint(snapped,s1,p1,p1Index,s0,p0,p0Index));
+            usesCc.append(isCc1||isCc0);
+            pts.append(generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index));
+            usesCc.append(isCc1||isCc3);
+            pts.append(generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index));
+            usesCc.append(isCc1||isCc2);
 
             if (triIndex == 0x0D)
             {
@@ -182,30 +167,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x03:
         case 0x0C:
         {
-            Type p0p2 =
-                generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index);
-            Type p1p3 =
-                generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index);
+            Type p0p2 = generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index);
+            Type p1p3 = generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index);
 
-            pts.append
-            (
-                generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index)
-            );
-            usesCc.append(true);
+            pts.append(generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index));
+            usesCc.append(isCc0||isCc3);
             pts.append(p1p3);
-            usesCc.append(true);
+            usesCc.append(isCc1||isCc3);
             pts.append(p0p2);
-            usesCc.append(false);
+            usesCc.append(isCc0||isCc2);
 
             pts.append(p1p3);
-            usesCc.append(true);
-            pts.append
-            (
-                generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index)
-            );
-            usesCc.append(false);
+            usesCc.append(isCc1||isCc3);
+            pts.append(generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index));
+            usesCc.append(isCc1||isCc2);
             pts.append(p0p2);
-            usesCc.append(false);
+            usesCc.append(isCc0||isCc2);
 
             if (triIndex == 0x0C)
             {
@@ -222,21 +199,12 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x04:
         case 0x0B:
         {
-            pts.append
-            (
-                generatePoint(snapped,s2,p2,p2Index,s0,p0,p0Index)
-            );
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s2,p2,p2Index,s1,p1,p1Index)
-            );
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index)
-            );
-            usesCc.append(true);
+            pts.append(generatePoint(snapped,s2,p2,p2Index,s0,p0,p0Index));
+            usesCc.append(isCc2||isCc0);
+            pts.append(generatePoint(snapped,s2,p2,p2Index,s1,p1,p1Index));
+            usesCc.append(isCc2||isCc1);
+            pts.append(generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index));
+            usesCc.append(isCc2||isCc3);
 
             if (triIndex == 0x0B)
             {
@@ -251,30 +219,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x05:
         case 0x0A:
         {
-            Type p0p1 =
-                generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index);
-            Type p2p3 =
-                generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index);
+            Type p0p1 = generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index);
+            Type p2p3 = generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index);
 
             pts.append(p0p1);
-            usesCc.append(false);
+            usesCc.append(isCc0||isCc1);
             pts.append(p2p3);
-            usesCc.append(true);
-            pts.append
-            (
-                generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index)
-            );
-            usesCc.append(true);
+            usesCc.append(isCc2||isCc3);
+            pts.append(generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index));
+            usesCc.append(isCc0||isCc3);
 
             pts.append(p0p1);
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index)
-            );
-            usesCc.append(false);
+            usesCc.append(isCc0||isCc1);
+            pts.append(generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index));
+            usesCc.append(isCc1||isCc2);
             pts.append(p2p3);
-            usesCc.append(true);
+            usesCc.append(isCc2||isCc3);
 
             if (triIndex == 0x0A)
             {
@@ -291,30 +251,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x06:
         case 0x09:
         {
-            Type p0p1 =
-                generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index);
-            Type p2p3 =
-                generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index);
+            Type p0p1 = generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index);
+            Type p2p3 = generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index);
 
             pts.append(p0p1);
-            usesCc.append(false);
-            pts.append
-            (
-                generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index)
-            );
-            usesCc.append(true);
+            usesCc.append(isCc0||isCc1);
+            pts.append(generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index));
+            usesCc.append(isCc1||isCc3);
             pts.append(p2p3);
-            usesCc.append(true);
+            usesCc.append(isCc2||isCc3);
 
             pts.append(p0p1);
-            usesCc.append(false);
+            usesCc.append(isCc0||isCc1);
             pts.append(p2p3);
-            usesCc.append(true);
-            pts.append
-            (
-                generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index)
-            );
-            usesCc.append(false);
+            usesCc.append(isCc2||isCc3);
+            pts.append(generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index));
+            usesCc.append(isCc0||isCc2);
 
             if (triIndex == 0x09)
             {
@@ -331,21 +283,12 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x08:
         case 0x07:
         {
-            pts.append
-            (
-                generatePoint(snapped,s3,p3,p3Index,s0,p0,p0Index)
-            );
-            usesCc.append(true);
-            pts.append
-            (
-                generatePoint(snapped,s3,p3,p3Index,s2,p2,p2Index)
-            );
-            usesCc.append(true);
-            pts.append
-            (
-                generatePoint(snapped,s3,p3,p3Index,s1,p1,p1Index)
-            );
-            usesCc.append(true);
+            pts.append(generatePoint(snapped,s3,p3,p3Index,s0,p0,p0Index));
+            usesCc.append(isCc3||isCc0);
+            pts.append(generatePoint(snapped,s3,p3,p3Index,s2,p2,p2Index));
+            usesCc.append(isCc3||isCc2);
+            pts.append(generatePoint(snapped,s3,p3,p3Index,s1,p1,p1Index));
+            usesCc.append(isCc3||isCc1);
             if (triIndex == 0x07)
             {
                 // Flip normals
@@ -419,18 +362,22 @@ void Foam::isoSurfaceCell::generateTriPoints
                         pVals[f0[1]],
                         pCoords[f0[1]],
                         snappedPoint[f0[1]],
+                        false,
 
                         pVals[f0[0]],
                         pCoords[f0[0]],
                         snappedPoint[f0[0]],
+                        false,
 
                         pVals[f0[2]],
                         pCoords[f0[2]],
                         snappedPoint[f0[2]],
+                        false,
 
                         pVals[oppositeI],
                         pCoords[oppositeI],
                         snappedPoint[oppositeI],
+                        false,
 
                         triPoints,
                         usesCellCentre
@@ -445,18 +392,22 @@ void Foam::isoSurfaceCell::generateTriPoints
                         pVals[f0[0]],
                         pCoords[f0[0]],
                         snappedPoint[f0[0]],
+                        false,
 
                         pVals[f0[1]],
                         pCoords[f0[1]],
                         snappedPoint[f0[1]],
+                        false,
 
                         pVals[f0[2]],
                         pCoords[f0[2]],
                         snappedPoint[f0[2]],
+                        false,
 
                         pVals[oppositeI],
                         pCoords[oppositeI],
                         snappedPoint[oppositeI],
+                        false,
 
                         triPoints,
                         usesCellCentre
@@ -496,18 +447,22 @@ void Foam::isoSurfaceCell::generateTriPoints
                                 pVals[tri[1]],
                                 pCoords[tri[1]],
                                 snappedPoint[tri[1]],
+                                false,
 
                                 pVals[tri[0]],
                                 pCoords[tri[0]],
                                 snappedPoint[tri[0]],
+                                false,
 
                                 pVals[tri[2]],
                                 pCoords[tri[2]],
                                 snappedPoint[tri[2]],
+                                false,
 
                                 cVals[celli],
                                 cCoords[celli],
                                 snappedCc[celli],
+                                true,
 
                                 triPoints,
                                 usesCellCentre
@@ -522,18 +477,22 @@ void Foam::isoSurfaceCell::generateTriPoints
                                 pVals[tri[0]],
                                 pCoords[tri[0]],
                                 snappedPoint[tri[0]],
+                                false,
 
                                 pVals[tri[1]],
                                 pCoords[tri[1]],
                                 snappedPoint[tri[1]],
+                                false,
 
                                 pVals[tri[2]],
                                 pCoords[tri[2]],
                                 snappedPoint[tri[2]],
+                                false,
 
                                 cVals[celli],
                                 cCoords[celli],
                                 snappedCc[celli],
+                                true,
 
                                 triPoints,
                                 usesCellCentre
@@ -544,7 +503,6 @@ void Foam::isoSurfaceCell::generateTriPoints
                     }
                 }
             }
-
 
             // Every three triPoints is a cell
             label nCells = (triPoints.size()-oldNPoints)/3;

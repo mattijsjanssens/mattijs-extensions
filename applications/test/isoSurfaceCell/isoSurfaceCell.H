@@ -106,8 +106,6 @@ class isoSurfaceCell
         //- For every unmerged triangle point the point in the triSurface
         labelList triPointMergeMap_;
 
-        labelList usesCellCentre_;
-
 
     // Private Member Functions
 
@@ -223,15 +221,19 @@ class isoSurfaceCell
             const scalar s0,
             const Type& p0,
             const label p0Index,
+            const bool isCc0,
             const scalar s1,
             const Type& p1,
             const label p1Index,
+            const bool isCc1,
             const scalar s2,
             const Type& p2,
             const label p2Index,
+            const bool isCc2,
             const scalar s3,
             const Type& p3,
             const label p3Index,
+            const bool isCc3,
             DynamicList<Type>& points,
             DynamicList<bool>& usesCc
         ) const;
@@ -300,6 +302,29 @@ class isoSurfaceCell
             labelList& newToOldPoints
         );
 
+        void triangulateOutside
+        (
+            const triSurface& s,
+            const label cellID,
+
+            label start,
+            label size,
+
+            face& f,
+            DynamicList<face>& triFaces,
+            DynamicList<labelledTri>& compactTris,
+            DynamicList<label>& compactCellIDs
+        ) const;
+
+        triSurface removeInsidePoints
+        (
+            const triSurface& s,
+            const labelList& cellIDs,
+            const boolList& usesCellCentre,
+            DynamicList<label>& compactToOldPoint,
+            DynamicList<label>& compactCellIDs
+        ) const;
+
 
 public:
 
@@ -328,13 +353,6 @@ public:
         {
             return meshCells_;
         }
-
-        //- Per point whether it originates from an edge using a cell centre
-        const labelList& usesCellCentre() const
-        {
-            return usesCellCentre_;
-        }
-
 
         //- Interpolates cCoords,pCoords.
         template<class Type>
