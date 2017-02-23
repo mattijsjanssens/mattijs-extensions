@@ -1,0 +1,41 @@
+A) Keeping CHT framework
+------------------------
+
+Implicit coupling
+-----------------
+- assemble matrix, make inter-region patches coupled.
+- needs overall field since
+  fvMatrix::solve uses boundary contributions and
+  does correctBoundaryConditions
+- overall field now also needs the overall mesh
+- maybe avoid overall mesh by having
+  fvMatrix::solve with multiple supplied meshes, fields:
+    static fvMatrix::solveSegregated
+    (
+        const UPtrList<fvMatrix>& eqns,
+        const lduMatrix& allMatrix,
+        const PtrList<labelList>& faceMaps, // how to collect/flip faces
+        const PtrList<cellList>& cellMaps,  // how to collect cells
+        const dictionary&
+    );
+
+Merging
+-------
+- assemble matrix, make inter-region patches internal
+faces. See overset on how to add internal faces and
+manipulate matrix accordingly.
+- solving same as above
+
+
+B) Single mesh
+--------------
+
+Masking
+-------
+- solve all equations everywhere. Use masking to suppress
+momentum eqn etc. in solids. Or is p-U coupling valid in solids?
+- usually not big overhead since fluid >> solid
+
+splitMeshRegions
+----------------
+- Generate subMeshes, subFields on the fly

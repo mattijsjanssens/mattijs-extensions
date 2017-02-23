@@ -1,0 +1,26 @@
+Edges discretised by interpolation
+----------------------------------
+
+- For 'normal' edge projection it uses points along a straight line
+between start and end as seeds to find the nearest surface point.
+
+- For edges along a highly curved geometry this is not sufficient and
+the edges will tend to cluster. For circular extrusions a
+specialised edge-projection method 'projectCurve' and
+corresponding geometry 'searchableCurve' will avoid this by calculating
+the seed points along surface directly from the curve parameter.
+
+- The searchableCurve geometry describes
+a circular extrusion along a discretised curve. The curve format is the
+edgeMesh format used in e.g. snappyHexMesh for inputting feature lines.
+
+
+- (projected) end point after the (projected) start point. If not you'll
+have to split the block into two
+
+- start and end plane cannot be perpendicular.
+
+- usual constraints on having too steep a curve with respect to
+the radius - there is no checking for crossovers.
+
+- mesh quality is low for a single block pipe.
