@@ -29,10 +29,89 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "meshToMesh.H"
 #include "fvCFD.H"
-#include "directMethod.H"
+#include "syncTools.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//autoPtr<mapDistribute>
+void calcGlobalCellCells
+(
+    const globalIndex& globalNumbering,
+    const fvMesh& mesh,
+    const PackedBoolList& needStencil,
+    labelListList& cellCells
+)
+{
+    const labelList& own = mesh.faceOwner();
+    const labelList& nei = mesh.faceNeighbour();
+    const cellList& cells = mesh.cells();
+    const polyBoundaryMesh& pbm = mesh.boundaryMesh();
+
+    labelList globalCellIDs(mesh.nCells());
+    forAll(globalCellIDs, celli)
+    {
+        globalCellIDs[celli] = globalNumbering.toGlobal(celli);
+    }
+
+    labelList nbrGlobalCellIDs;
+    syncTools::swapBoundaryCellList
+    (
+        mesh,
+        globalCellIDs,
+        nbrGlobalCellIDs
+    );
+
+    cellCells.setSize(mesh.nCells());
+    forAll(cellCells, celli)
+    {
+        if (needStencil[celli])
+        {
+            const cell& cFaces = cells[celli];
+
+            labelList& stencil = cellCells[celli];
+            stencil.setSize(1+cFaces.size());
+            label index = 0;
+            stencil[index++] = globalNumbering.toGlobal(celli);
+            forAll(cFaces, i)
+            {
+                label facei = cFaces[i];
+                if (mesh.isInternalFace(facei))
+                {
+                    label nbrCelli = own[facei];
+                    if (nbrCelli == celli)
+                    {
+                        nbrCelli = nei[facei];
+                    }
+                    stencil[index++] = globalNumbering.toGlobal(nbrCelli);
+                }
+                else
+                {
+                    label bFacei = facei-mesh.nInternalFaces();
+                    label patchi = pbm.patchID()[bFacei];
+                    if (pbm[patchi].coupled())
+                    {
+                        stencil[index++] = nbrGlobalCellIDs[bFacei];
+                    }
+                }
+            }
+            stencil.setSize(index);
+        }
+    }
+
+//    List<Map<label>> compactMap;
+//    return autoPtr<mapDistribute>
+//    (
+//        new mapDistribute
+//        (
+//            globalNumbering,
+//            cellCells,
+//            compactMap
+//        )
+//    );
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -40,7 +119,6 @@ int main(int argc, char *argv[])
     (
         "map volume fields from one mesh to another"
     );
-    argList::noParallel();
     argList::validArgs.append("sourceCase");
     argList args(argc, argv);
 
@@ -50,11 +128,12 @@ int main(int argc, char *argv[])
     }
 
     fileName rootDirTarget(args.rootPath());
-    fileName caseDirTarget(args.globalCaseName());
+    fileName caseDirTarget(args.caseName());
 
     fileName casePath = args[1];
     const fileName rootDirSource = casePath.path().toAbsolute();
-    const fileName caseDirSource = casePath.name();
+    const word myDir(word("processor") + Foam::name(Pstream::myProcNo()));
+    const fileName caseDirSource = casePath.name()/myDir;
 
     #include "createTimes.H"
     #include "setTimeIndex.H"
@@ -84,27 +163,22 @@ int main(int argc, char *argv[])
     );
 
 
-    Info<< "Source mesh size: " << meshSource.nCells() << tab
+    Pout<< "Source mesh size: " << meshSource.nCells() << tab
         << "Target mesh size: " << meshTarget.nCells() << nl << endl;
 
+    // Ignore all patches by making them cuttingPatches.
+    wordList cuttingPatches(meshTarget.boundaryMesh().names());
 
-    directMethod meshToMesh(meshSource, meshTarget);
-
-    labelListList srcToTgtAddr;
-    scalarListList srcToTgtWght;
-    labelListList tgtToSrcAddr;
-    scalarListList tgtToSrcWght;
-    meshToMesh.calculate
+    meshToMesh mapper
     (
-        srcToTgtAddr,
-        srcToTgtWght,
-        tgtToSrcAddr,
-        tgtToSrcWght
+        meshSource,
+        meshTarget,
+        meshToMesh::imDirect,
+        HashTable<word>(),
+        cuttingPatches
     );
 
-    tgtToSrcAddr.clear();
-    tgtToSrcWght.clear();
-
+    const labelListList& srcToTgtAddr = mapper.srcToTgtCellAddr();
     const pointField& srcCc = meshSource.cellCentres();
     const pointField& tgtCc = meshTarget.cellCentres();
 
@@ -114,51 +188,104 @@ int main(int argc, char *argv[])
 
     volTensorField gradCc(fvc::grad(1.0*meshTarget.C()));
 
-    forAll(srcToTgtAddr, srcCelli)
+DebugVar(mapper.singleMeshProc());
+
+    if (mapper.singleMeshProc() != -1)
     {
-        const point& srcPt = srcCc[srcCelli];
-
-        const labelList& tgtCells = srcToTgtAddr[srcCelli];
-
-        if (tgtCells.size())
+        forAll(srcToTgtAddr, srcCelli)
         {
-            Pout<< "srcCelli:" << srcPt
-                << " is inside tgt cells:"
-                << pointField(tgtCc, tgtCells)
-                << endl;
+            const point& srcPt = srcCc[srcCelli];
 
-            label tgtCelli = tgtCells[0];
-            const point& tgtPt = tgtCc[tgtCelli];
+            const labelList& tgtCells = srcToTgtAddr[srcCelli];
 
-            point interpolatedCc = srcPt + ((tgtPt-srcPt)&gradCc[srcCelli]);
-            Pout<< "tgt cc:" << interpolatedCc << endl;
-        }
-        else
-        {
-            Pout<< "srcCelli:" << srcPt << " does not overlap" << endl;
+            if (tgtCells.size())
+            {
+                Pout<< "srcCelli:" << srcPt
+                    << " is inside tgt cells:"
+                    << pointField(tgtCc, tgtCells)
+                    << endl;
+
+                label tgtCelli = tgtCells[0];
+                const point& tgtPt = tgtCc[tgtCelli];
+
+                point interpolatedCc = srcPt + ((tgtPt-srcPt)&gradCc[srcCelli]);
+                Pout<< "tgt cc:" << interpolatedCc << endl;
+            }
+            else
+            {
+                Pout<< "srcCelli:" << srcPt << " does not overlap" << endl;
+            }
         }
     }
+    else
+    {
+        // Get target cells local
+        pointField tgtCc(meshTarget.cellCentres());
+        mapper.tgtMap().distribute(tgtCc);
 
 
-    //DebugVar(tgtToSrcAddr);
-    //DebugVar(tgtToSrcWght);
+        pointField samples(srcCc.size(), vector::max);
 
-//     forAll(tgtToSrcAddr, tgtCelli)
-//     {
-//         const labelList& srcCells = tgtToSrcAddr[tgtCelli];
-//
-//         if (srcCells.size())
-//         {
-//             Pout<< "tgtcell:" << tgtCc[tgtCelli]
-//                 << " overlaps with src cells:" << pointField(srcCc, srcCells)
-//                 << endl;
-//         }
-//         else
-//         {
-//             Pout<< "tgtcell:" << tgtCc[tgtCelli]
-//                 << " does not overlap" << endl;
-//         }
-//     }
+        forAll(srcToTgtAddr, srcCelli)
+        {
+            const point& srcPt = srcCc[srcCelli];
+
+            const labelList& slots = srcToTgtAddr[srcCelli];
+
+            if (slots.size())
+            {
+                Pout<< "srcCelli:" << srcPt
+                    << " is inside tgt cells:"
+                    << pointField(tgtCc, slots)
+                    << endl;
+
+                label sloti = slots[0];
+                const point& tgtPt = tgtCc[sloti];
+
+                point interpolatedCc = srcPt + ((tgtPt-srcPt)&gradCc[srcCelli]);
+                Pout<< "tgt cc:" << interpolatedCc << endl;
+
+                samples[sloti] = srcPt;
+            }
+            else
+            {
+                Pout<< "srcCelli:" << srcPt << " does not overlap" << endl;
+            }
+        }
+
+        mapper.tgtMap().reverseDistribute(meshTarget.nCells(), samples);
+
+        PackedBoolList needStencil(meshTarget.nCells());
+        forAll(samples, tgtCelli)
+        {
+            if (samples[tgtCelli] != vector::max)
+            {
+                Pout<< "** target cell:" << meshTarget.cellCentres()[tgtCelli]
+                    << " contains source cellcc:" << samples[tgtCelli]
+                    << endl;
+                needStencil[tgtCelli] = true;
+            }
+        }
+
+        // Determine stencil (in global indices) for selected cells
+
+        globalIndex globalTgtNumbers(meshTarget.nCells());
+
+        //XXXXX
+        labelListList tgtCellCells;
+        calcGlobalCellCells
+        (
+            globalTgtNumbers,
+            meshTarget,
+            needStencil,
+            tgtCellCells
+        );
+
+        // Pull back to src
+        mapper.tgtMap().distribute(tgtCellCells);
+
+        // Src determine cell centres of stencil and weighting factors
+        labelListList srcCellToTgtCells(meshSource.nCells());
 
 
     Info<< "\nEnd\n" << endl;
