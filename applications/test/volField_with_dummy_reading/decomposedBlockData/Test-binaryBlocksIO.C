@@ -48,6 +48,7 @@ Description
 #include "decomposedBlockData.H"
 #include <pthread.h>
 #include "FIFOStack.H"
+#include "threadedOFstream.H"
 
 using namespace Foam;
 
@@ -141,6 +142,17 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
+
+{
+    pthread_t writeThread;
+    {
+        threadedOFstream os(writeThread, "junk.txt");
+        os << mesh.faces() << endl;
+    }
+    //void *status;
+    pthread_join(writeThread, nullptr);
+    return 0;
+}
 
     pthread_t writeThread;
     pthread_mutex_t writeMutex = PTHREAD_MUTEX_INITIALIZER;
