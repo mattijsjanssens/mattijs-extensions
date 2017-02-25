@@ -24,61 +24,16 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "threadedOFstream.H"
-#include "OFstream.H"
-#include "OSspecific.H"
-#include <pthread.h>
-#include "IOstreams.H"
+#include "OFstreamWriter.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-void* Foam::threadedOFstream::writeFile(void *threadarg)
-{
-    //Pout<< "threadedOFstream::writeFile" << Foam::endl;
-    writeData* dataPtr = static_cast<writeData*>(threadarg);
-    writeData& data = *dataPtr;
-
-    //Pout<< "threadedOFstream::writeFile:"
-    //    << " writing " << data.data_.size()
-    //    << " bytes to file " << data.pathName_ << Foam::endl;
-
-    mkDir(data.pathName_.path());
-    OFstream os
-    (
-        data.pathName_,
-        data.format_,
-        data.version_,
-        data.compression_
-    );
-
-    if (!os.good())
-    {
-        FatalIOErrorInFunction(os)
-            << "Could not open file"
-            << exit(FatalIOError);
-    }
-    os.writeQuoted(data.data_, false);
-
-    if (!os.good())
-    {
-        FatalIOErrorInFunction(os)
-            << "Failed writing data of size " << data.data_.size()
-            << exit(FatalIOError);
-    }
-
-    //Pout<< "threadedOFstream::writeFile:"
-    //    << " succesfully wrote " << data.pathName_ << Foam::endl;
-
-    delete dataPtr;
-
-    return nullptr;
-}
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::threadedOFstream::threadedOFstream
 (
-    pthread_t& thread,
+    OFstreamWriter& writer,
     const fileName& pathName,
     streamFormat format,
     versionNumber version,
@@ -86,7 +41,7 @@ Foam::threadedOFstream::threadedOFstream
 )
 :
     OStringStream(format, version),
-    thread_(thread),
+    writer_(writer),
     pathName_(pathName),
     compression_(compression)
 {}
@@ -96,29 +51,19 @@ Foam::threadedOFstream::threadedOFstream
 
 Foam::threadedOFstream::~threadedOFstream()
 {
-    writeData* dataPtr
+    bool ok = writer_.write
     (
-        new writeData
-        (
-            pathName_,
-            compression(),
-            format(),
-            version(),
-            str()
-        )
+        pathName_,
+        str(),
+        format(),
+        version(),
+        compression()
     );
 
-    int rc = pthread_create
-    (
-        &thread_,
-        nullptr,
-        writeFile,
-        dataPtr
-    );
-
-    if (rc)
+    if (!ok)
     {
-        FatalErrorInFunction << "problem creating thread" << exit(FatalError);
+        FatalErrorInFunction
+            << "Did not write file " << pathName_ << exit(FatalError);
     }
 }
 

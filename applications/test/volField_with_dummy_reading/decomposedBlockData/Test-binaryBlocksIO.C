@@ -49,6 +49,7 @@ Description
 #include <pthread.h>
 #include "FIFOStack.H"
 #include "threadedOFstream.H"
+#include "OFstreamWriter.H"
 
 using namespace Foam;
 
@@ -143,16 +144,19 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
+
 {
-    pthread_t writeThread;
+    OFstreamWriter writeServer(100);
+
+    for (label i = 0; i < 100; i++)
     {
-        threadedOFstream os(writeThread, "junk.txt");
-        os << mesh.faces() << endl;
+        DebugVar(i);
+
+        threadedOFstream os(writeServer, "junk.txt");
+        os << "nlabla" << endl;
     }
-    //void *status;
-    pthread_join(writeThread, nullptr);
-    return 0;
 }
+return 0;
 
     pthread_t writeThread;
     pthread_mutex_t writeMutex = PTHREAD_MUTEX_INITIALIZER;

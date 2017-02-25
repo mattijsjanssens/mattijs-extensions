@@ -24,7 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "masterCollatingOFstream.H"
-#include "OFstream.H"
+#include "threadedOFstream.H"
 #include "IOobject.H"
 #include "decomposedBlockData.H"
 #include "PstreamReduceOps.H"
@@ -34,15 +34,15 @@ License
 
 Foam::masterCollatingOFstream::masterCollatingOFstream
 (
-    pthread_t& thread,
+    OFstreamWriter& writer,
     const fileName& pathName,
     streamFormat format,
     versionNumber version,
     compressionType compression
 )
 :
-    thread_(thread),
     OStringStream(format, version),
+    writer_(writer),
     pathName_(pathName),
     compression_(compression)
 {}
@@ -59,8 +59,9 @@ Foam::masterCollatingOFstream::~masterCollatingOFstream()
         //       anyway. They have already be tokenised on the sending side.
         osPtr.reset
         (
-            new OFstream
+            new threadedOFstream
             (
+                writer_,
                 pathName_,
                 IOstream::BINARY,
                 version(),

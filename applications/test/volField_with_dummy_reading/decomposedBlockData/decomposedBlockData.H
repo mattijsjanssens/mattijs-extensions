@@ -61,20 +61,6 @@ protected:
         const UPstream::commsTypes commsType_;
 
 
-    // Protected Member Functions
-
-        //- Read data into *this. Istream is only valid on master.
-        bool readBlocks(autoPtr<Istream>& isPtr);
-
-        //- Write *this. Ostream only valid on master. Returns starts of
-        //  processor blocks
-        bool writeBlocks
-        (
-            autoPtr<OSstream>& osPtr,
-            List<std::streamoff>& start
-        ) const;
-
-
 public:
 
     TypeName("decomposedBlockData");
@@ -89,11 +75,11 @@ public:
             const UPstream::commsTypes = UPstream::scheduled
         );
 
-        //- Construct given an IOobject and List<char>
+        //- Construct given an IOobject and for READ_IF_MODIFIED a List<char>
         decomposedBlockData
         (
             const IOobject&,
-            const List<char>&,
+            const UList<char>&,
             const UPstream::commsTypes = UPstream::scheduled
         );
 
@@ -128,8 +114,44 @@ public:
         (
             IOstream::streamFormat,
             IOstream::versionNumber,
-            IOstream::compressionType
+            IOstream::compressionType,
+            const bool valid
         ) const;
+
+
+    // Helpers
+
+        //- Read header. Call only on master.
+        static bool readMasterHeader(IOobject&, Istream&);
+
+        //- Read selected block (non-seeking)
+        static bool readBlock
+        (
+            const label blocki,
+            Istream& is,
+            List<char>& data
+        );
+
+        //- Read data into *this. ISstream is only valid on master.
+        static bool readBlocks
+        (
+            autoPtr<ISstream>& isPtr,
+            List<char>& data,
+            const UPstream::commsTypes commsType
+        );
+
+        //- Write *this. Ostream only valid on master. Returns starts of
+        //  processor blocks
+        static bool writeBlocks
+        (
+            autoPtr<OSstream>& osPtr,
+            List<std::streamoff>& start,
+            const UList<char>&,
+            const UPstream::commsTypes
+        );
+
+        //- Detect number of blocks in a file
+        static label numBlocks(const fileName&);
 };
 
 

@@ -36,12 +36,14 @@ SourceFiles
 #define threadedOFstream_H
 
 #include "OStringStream.H"
-#include "autoPtr.H"
+//#include "autoPtr.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
+
+class OFstreamWriter;
 
 /*---------------------------------------------------------------------------*\
                       Class threadedOFstream Declaration
@@ -51,59 +53,23 @@ class threadedOFstream
 :
     public OStringStream
 {
-    // Private class
-
-        class writeData
-        {
-        public:
-
-            fileName pathName_;
-            IOstream::compressionType compression_;
-            IOstream::streamFormat format_;
-            IOstream::versionNumber version_;
-            string data_;
-
-            writeData
-            (
-                const fileName& pathName,
-                IOstream::compressionType compression,
-                IOstream::streamFormat format,
-                IOstream::versionNumber version,
-                const string& data
-            )
-            :
-                pathName_(pathName),
-                compression_(compression),
-                format_(format),
-                version_(version),
-                data_(data)
-            {}
-        };
-
-
     // Private data
 
-        pthread_t& thread_;
+        OFstreamWriter& writer_;
 
         const fileName pathName_;
 
         const IOstream::compressionType compression_;
 
 
-    // Private Member Functions
-
-        static void* writeFile(void *threadarg);
-
-
 public:
 
     // Constructors
 
-        //- Construct and set stream status. Thread is only initialised
-        //  at destruction.
+        //- Construct and set stream status
         threadedOFstream
         (
-            pthread_t& thread,
+            OFstreamWriter&,
             const fileName& pathname,
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
