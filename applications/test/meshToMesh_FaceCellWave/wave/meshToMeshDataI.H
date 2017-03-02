@@ -121,9 +121,6 @@ inline bool Foam::meshToMeshData::updateCell
         // Try match of neighbour
         if (td.tgtMesh_.pointInCell(cc, tgti, polyMesh::CELL_TETS))
         {
-            Pout<< "Found match:" << cc << " is in same tgt:"
-                << td.tgtMesh_.cellCentres()[tgti] << endl;
-
             tgtCelli_ = tgti;
             return true;
         }
@@ -137,9 +134,6 @@ inline bool Foam::meshToMeshData::updateCell
             // Try match of neighbour
             if (td.tgtMesh_.pointInCell(cc, tgti, polyMesh::CELL_TETS))
             {
-                Pout<< "Found match:" << cc << " is in nbr tgt:"
-                    << td.tgtMesh_.cellCentres()[tgti] << endl;
-
                 tgtCelli_ = tgti;
                 return true;
             }

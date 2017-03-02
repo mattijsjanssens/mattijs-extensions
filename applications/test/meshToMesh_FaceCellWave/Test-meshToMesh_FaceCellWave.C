@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
         )
     );
 
+DebugVar(meshSource.nCells());
 
     waveMethod calcMethod(meshSource, mesh);
 
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
     const pointField& srcCc = meshSource.cellCentres();
     const pointField& tgtCc = mesh.cellCentres();
 
+    label nUnmatched = 0;
     forAll(srcToTgtAddr, srcCelli)
     {
         const point& srcPt = srcCc[srcCelli];
@@ -102,17 +104,19 @@ int main(int argc, char *argv[])
 
         if (tgtCells.size())
         {
-            Pout<< "srcCelli:" << srcPt
-                << " is inside tgt cells:"
-                << pointField(tgtCc, tgtCells)
-                << endl;
+            //Pout<< "srcCelli:" << srcPt
+            //    << " is inside tgt cells:"
+            //    << pointField(tgtCc, tgtCells) << endl;
         }
         else
         {
-            Pout<< "srcCelli:" << srcPt << " does not overlap" << endl;
+            //Pout<< "srcCelli:" << srcPt << " does not overlap" << endl;
+            nUnmatched++;
         }
     }
+    DebugVar(nUnmatched);
 
+    nUnmatched = 0;
     forAll(tgtToTgtAddr, tgtCelli)
     {
         const point& tgtPt = tgtCc[tgtCelli];
@@ -121,16 +125,18 @@ int main(int argc, char *argv[])
 
         if (srcCells.size())
         {
-            Pout<< "tgtCelli:" << tgtPt
-                << " is inside tgt cells:"
-                << pointField(srcCc, srcCells)
-                << endl;
+            //Pout<< "tgtCelli:" << tgtPt
+            //    << " is inside tgt cells:"
+            //    << pointField(srcCc, srcCells) << endl;
         }
         else
         {
-            Pout<< "tgtCelli:" << tgtPt << " does not overlap" << endl;
+            //Pout<< "tgtCelli:" << tgtPt << " does not overlap" << endl;
+            nUnmatched++;
         }
     }
+    DebugVar(nUnmatched);
+
 
 
     Info<< "End\n" << endl;
