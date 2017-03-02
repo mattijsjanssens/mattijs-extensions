@@ -1,0 +1,4 @@
+waveMethod.C
+meshToMeshData.C
+
+LIB = $(FOAM_USER_LIBBIN)/libwaveMethod
