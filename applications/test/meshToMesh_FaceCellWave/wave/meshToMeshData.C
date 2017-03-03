@@ -23,48 +23,27 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "threadedOFstream.H"
-#include "OFstreamWriter.H"
+#include "meshToMeshData.H"
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Friend Operators  * * * * * * * * * * * * * //
 
-
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-Foam::threadedOFstream::threadedOFstream
+Foam::Ostream& Foam::operator<<
 (
-    OFstreamWriter& writer,
-    const fileName& pathName,
-    streamFormat format,
-    versionNumber version,
-    compressionType compression
+    Foam::Ostream& os,
+    const Foam::meshToMeshData& wDist
 )
-:
-    OStringStream(format, version),
-    writer_(writer),
-    pathName_(pathName),
-    compression_(compression)
-{}
-
-
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-Foam::threadedOFstream::~threadedOFstream()
 {
-    bool ok = writer_.write
-    (
-        pathName_,
-        str(),
-        format(),
-        version(),
-        compression()
-    );
+    return os << wDist.tgtCelli_;
+}
 
-    if (!ok)
-    {
-        FatalErrorInFunction
-            << "Did not write file " << pathName_ << exit(FatalError);
-    }
+
+Foam::Istream& Foam::operator>>
+(
+    Foam::Istream& is,
+    Foam::meshToMeshData& wDist
+)
+{
+    return is >> wDist.tgtCelli_;
 }
 
 

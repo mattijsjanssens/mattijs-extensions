@@ -22,63 +22,76 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::threadedOFstream
+    Foam::waveMethod
 
 Description
-    Threaded drop-in replacement for OFstream.
+    Direct (one-to-one cell correspondence) mesh-to-mesh interpolation class
 
 SourceFiles
-    threadedOFstream.C
+    waveMethod.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef threadedOFstream_H
-#define threadedOFstream_H
+#ifndef waveMethod_H
+#define waveMethod_H
 
-#include "OStringStream.H"
-//#include "autoPtr.H"
+#include "meshToMeshMethod.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class OFstreamWriter;
-
 /*---------------------------------------------------------------------------*\
-                      Class threadedOFstream Declaration
+                        Class waveMethod Declaration
 \*---------------------------------------------------------------------------*/
 
-class threadedOFstream
+class waveMethod
 :
-    public OStringStream
+    public meshToMeshMethod
 {
-    // Private data
+    // Private member functions
 
-        OFstreamWriter& writer_;
+        //- Calculate addressing and weights
+        void calculate
+        (
+            const polyMesh& src,
+            const polyMesh& tgt,
+            labelListList& srcToTgtAddr,
+            scalarListList& srcToTgtWght
+        ) const;
 
-        const fileName pathName_;
+        //- Disallow default bitwise copy construct
+        waveMethod(const waveMethod&);
 
-        const IOstream::compressionType compression_;
+        //- Disallow default bitwise assignment
+        void operator=(const waveMethod&);
 
 
 public:
 
-    // Constructors
+    //- Run-time type information
+    TypeName("wave");
 
-        //- Construct and set stream status
-        threadedOFstream
-        (
-            OFstreamWriter&,
-            const fileName& pathname,
-            streamFormat format=ASCII,
-            versionNumber version=currentVersion,
-            compressionType compression=UNCOMPRESSED
-        );
-
+    //- Construct from source and target meshes
+    waveMethod(const polyMesh& src, const polyMesh& tgt);
 
     //- Destructor
-    ~threadedOFstream();
+    virtual ~waveMethod();
+
+
+    // Member Functions
+
+        // Evaluate
+
+            //- Calculate addressing and weights
+            virtual void calculate
+            (
+                labelListList& srcToTgtAddr,
+                scalarListList& srcToTgtWght,
+                labelListList& tgtToTgtAddr,
+                scalarListList& tgtToTgtWght
+            );
 };
 
 

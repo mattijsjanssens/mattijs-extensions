@@ -44,8 +44,10 @@ SourceFiles
 namespace Foam
 {
 
+class OFstreamWriter;
+
 /*---------------------------------------------------------------------------*\
-                       Class masterCollatingOFstream Declaration
+                   Class masterCollatingOFstream Declaration
 \*---------------------------------------------------------------------------*/
 
 class masterCollatingOFstream
@@ -54,7 +56,7 @@ class masterCollatingOFstream
 {
     // Private data
 
-        pthread_t& thread_;
+        OFstreamWriter& writer_;
 
         const fileName pathName_;
 
@@ -68,7 +70,7 @@ public:
         //- Construct and set stream status
         masterCollatingOFstream
         (
-            pthread_t& thread,
+            OFstreamWriter&,
             const fileName& pathname,
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
