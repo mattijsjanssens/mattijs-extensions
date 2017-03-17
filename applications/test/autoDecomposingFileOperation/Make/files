@@ -1,0 +1,8 @@
+volFields.C
+localIOdictionary2.C
+Test-readField.C
+autoDecomposingFileOperation.C
+
+/* LIB = $(FOAM_USER_LIBBIN)/libautoDecomposingFileOperation */
+
+EXE = $(FOAM_USER_APPBIN)/Test-autoDecomposingFileOperation
