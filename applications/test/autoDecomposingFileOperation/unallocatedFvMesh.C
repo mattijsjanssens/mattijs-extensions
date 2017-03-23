@@ -21,74 +21,55 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Application
-    Test-readField
-
-Description
-    Read volScalarField
-
 \*---------------------------------------------------------------------------*/
 
-#include "argList.H"
-#include "volFields.H"
-#include "unallocatedFvBoundaryMesh.H"
 #include "unallocatedFvMesh.H"
-#include "unallocatedFvPatchField.H"
 
-using namespace Foam;
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+namespace Foam
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    #include "createMesh.H"
 
-    typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
-    uVolScalarField;
+defineTypeNameAndDebug(unallocatedFvMesh, 0);
 
-    IOobject io
-    (
-        "p",
-        runTime.timeName(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::AUTO_WRITE
-    );
-
-
-    // Read the undecomposed boundary
-
-
-    //typedef PtrList<labelList> unallocatedFvBoundaryMesh;
-    const unallocatedFvBoundaryMesh boundary;
-
-    unallocatedFvMesh uMesh
-    (
-        mesh,
-        mesh.thisDb(),
-        100,
-        boundary,
-        mesh.globalData()
-    );
-    uVolScalarField(io, uMesh);
-
-//    volScalarField p
-//    (
-//        IOobject
-//        (
-//            "p",
-//            runTime.timeName(),
-//            mesh,
-//            IOobject::MUST_READ,
-//            IOobject::AUTO_WRITE
-//        ),
-//        mesh
-//    );
-
-    return 0;
 }
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::unallocatedFvMesh::unallocatedFvMesh
+(
+    const fvMesh& procMesh,
+    const objectRegistry& db,
+    const label nCells,
+    const unallocatedFvBoundaryMesh& boundary,
+    const globalMeshData& globalData
+)
+:
+    volMesh(procMesh),
+    db_(db),
+    nCells_(nCells),
+    boundary_(boundary),
+    globalData_(globalData)
+{}
+
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::unallocatedFvMesh::~unallocatedFvMesh()
+{
+    if (debug)
+    {
+        Pout<< "~unallocatedFvMesh::unallocatedFvMesh()"
+            << endl;
+    }
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 
 // ************************************************************************* //

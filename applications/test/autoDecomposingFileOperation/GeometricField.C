@@ -79,7 +79,7 @@ void Foam::GeometricField<Type, PatchField, GeoMesh>::readFields()
             this->name(),
             this->time().timeName(),
             this->db(),
-            IOobject::NO_READ,
+            IOobject::MUST_READ,
             IOobject::NO_WRITE,
             false
         ),

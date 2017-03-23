@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,74 +21,35 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Application
-    Test-readField
-
-Description
-    Read volScalarField
-
 \*---------------------------------------------------------------------------*/
 
-#include "argList.H"
-#include "volFields.H"
-#include "unallocatedFvBoundaryMesh.H"
-#include "unallocatedFvMesh.H"
-#include "unallocatedFvPatchField.H"
+#include "GeometricSphericalTensorField.H"
 
-using namespace Foam;
+#define TEMPLATE template<template<class> class PatchField, class GeoMesh>
+#include "GeometricFieldFunctionsM.C"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+namespace Foam
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    #include "createMesh.H"
 
-    typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
-    uVolScalarField;
+// * * * * * * * * * * * * * * * global functions  * * * * * * * * * * * * * //
 
-    IOobject io
-    (
-        "p",
-        runTime.timeName(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::AUTO_WRITE
-    );
+UNARY_FUNCTION(scalar, sphericalTensor, tr, transform)
+UNARY_FUNCTION(sphericalTensor, sphericalTensor, sph, transform)
+UNARY_FUNCTION(scalar, sphericalTensor, det, pow3)
+UNARY_FUNCTION(sphericalTensor, sphericalTensor, inv, inv)
+
+BINARY_OPERATOR(sphericalTensor, scalar, sphericalTensor, /, '|', divide)
+BINARY_TYPE_OPERATOR(sphericalTensor, scalar, sphericalTensor, /, '|', divide)
 
 
-    // Read the undecomposed boundary
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End namespace Foam
 
-    //typedef PtrList<labelList> unallocatedFvBoundaryMesh;
-    const unallocatedFvBoundaryMesh boundary;
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    unallocatedFvMesh uMesh
-    (
-        mesh,
-        mesh.thisDb(),
-        100,
-        boundary,
-        mesh.globalData()
-    );
-    uVolScalarField(io, uMesh);
-
-//    volScalarField p
-//    (
-//        IOobject
-//        (
-//            "p",
-//            runTime.timeName(),
-//            mesh,
-//            IOobject::MUST_READ,
-//            IOobject::AUTO_WRITE
-//        ),
-//        mesh
-//    );
-
-    return 0;
-}
-
+#include "undefFieldFunctionsM.H"
 
 // ************************************************************************* //

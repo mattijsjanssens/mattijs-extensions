@@ -81,7 +81,7 @@ const Foam::fvMesh& Foam::fileOperations::autoDecomposingFileOperation::baseMesh
 {
     if (!baseMeshPtr_.valid())
     {
-        InfoInFunction<< "Create time\n" << endl;
+        Pout<< "Create time\n" << endl;
         baseRunTimePtr_.reset
         (
             new Time
@@ -95,7 +95,7 @@ const Foam::fvMesh& Foam::fileOperations::autoDecomposingFileOperation::baseMesh
             )
         );
 
-        InfoInFunction<< "Create mesh for time = "
+        Pout<< "Create mesh for time = "
             << runTime.timeName() << nl << endl;
         baseMeshPtr_.reset
         (
@@ -113,34 +113,6 @@ const Foam::fvMesh& Foam::fileOperations::autoDecomposingFileOperation::baseMesh
     }
     return baseMeshPtr_();
 }
-
-
-// const Foam::fvMesh&
-// Foam::fileOperations::autoDecomposingFileOperation::procMesh
-// (
-//     const Time& runTime
-// ) const
-// {
-//     if (!procMeshPtr_.valid())
-//     {
-//         InfoInFunction<< "Create mesh for time = "
-//             << runTime.timeName() << nl << endl;
-//         procMeshPtr_.reset
-//         (
-//             new fvMesh
-//             (
-//                 IOobject
-//                 (
-//                     fvMesh::defaultRegion,
-//                     runTime.timeName(),
-//                     runTime,
-//                     IOobject::MUST_READ
-//                 )
-//             )
-//         );
-//     }
-//     return procMeshPtr_();
-// }
 
 
 Foam::fileName Foam::fileOperations::autoDecomposingFileOperation::filePath
@@ -191,7 +163,7 @@ Foam::fileName Foam::fileOperations::autoDecomposingFileOperation::filePath
         objPath = uncollatedFileOperation::filePath(checkGlobal, io);
     }
 
-    //if (debug)
+    if (debug)
     {
         Pout<< "autoDecomposingFileOperation::filePath :"
             << " Returning from file searching:" << endl
@@ -210,11 +182,6 @@ Foam::fileOperations::autoDecomposingFileOperation::readStream
     const bool valid
 ) const
 {
-DebugVar(io.name());
-DebugVar(fName);
-
-
-
     return uncollatedFileOperation::readStream(io, fName, valid);
 }
 
@@ -251,9 +218,9 @@ DebugVar(io.name());
         const fvMesh& undecomposedMesh = baseMesh(io.time());
 
         // Force reading of the decomposition maps
-        if (decomposerPtr_.valid())
+        if (!decomposerPtr_.valid())
         {
-            InfoInFunction<< "Loading maps\n" << endl;
+            Pout<< "Loading maps\n" << endl;
             cellAddressingPtr_.reset
             (
                 new labelIOList
@@ -302,7 +269,7 @@ DebugVar(io.name());
                     )
                 )
             );
-            InfoInFunction<< "Constructing decomposer\n" << endl;
+            Pout<< "Constructing decomposer\n" << endl;
             decomposerPtr_.reset
             (
                 new fvFieldDecomposer
@@ -317,8 +284,26 @@ DebugVar(io.name());
         }
 
         // Read file
-        ok = io.readData(io.readStream(typeName));
-        io.close();
+
+        fileName objPath = io.filePath();
+
+        // Check if the file comes from the parent path
+        fileName parentObjectPath =
+            io.rootPath()/io.time().globalCaseName()
+           /io.instance()/io.db().dbDir()/io.local()/io.name();
+
+        Pout<< "objPath         :" << objPath << endl;
+        Pout<< "parentObjectPath:" << parentObjectPath << endl;
+
+        if (objPath == parentObjectPath)
+        {
+            Pout<< "Parent Reading from " << objPath << endl;
+        }
+        else
+        {
+            ok = io.readData(io.readStream(type));
+            io.close();
+        }
 
         // Restore flags
         io.globalObject() = oldGlobal;

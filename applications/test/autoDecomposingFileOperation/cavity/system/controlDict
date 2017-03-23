@@ -17,12 +17,12 @@ FoamFile
 
 DebugSwitches
 {
-    uncollated  1;
+//    uncollated  1;
 }
 
 application     icoFoam;
 
-fileHandler     autoDecomposing;
+//fileHandler     autoDecomposing;
 
 startFrom       startTime;
 

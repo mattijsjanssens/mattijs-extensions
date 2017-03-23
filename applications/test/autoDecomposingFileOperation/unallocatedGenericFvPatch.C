@@ -21,74 +21,17 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Application
-    Test-readField
-
-Description
-    Read volScalarField
-
 \*---------------------------------------------------------------------------*/
 
-#include "argList.H"
-#include "volFields.H"
-#include "unallocatedFvBoundaryMesh.H"
-#include "unallocatedFvMesh.H"
-#include "unallocatedFvPatchField.H"
-
-using namespace Foam;
+#include "unallocatedGenericFvPatch.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+namespace Foam
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    #include "createMesh.H"
-
-    typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
-    uVolScalarField;
-
-    IOobject io
-    (
-        "p",
-        runTime.timeName(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::AUTO_WRITE
-    );
-
-
-    // Read the undecomposed boundary
-
-
-    //typedef PtrList<labelList> unallocatedFvBoundaryMesh;
-    const unallocatedFvBoundaryMesh boundary;
-
-    unallocatedFvMesh uMesh
-    (
-        mesh,
-        mesh.thisDb(),
-        100,
-        boundary,
-        mesh.globalData()
-    );
-    uVolScalarField(io, uMesh);
-
-//    volScalarField p
-//    (
-//        IOobject
-//        (
-//            "p",
-//            runTime.timeName(),
-//            mesh,
-//            IOobject::MUST_READ,
-//            IOobject::AUTO_WRITE
-//        ),
-//        mesh
-//    );
-
-    return 0;
+    defineTypeNameAndDebug(unallocatedGenericFvPatch, 0);
+    addToRunTimeSelectionTable(fvPatch, unallocatedGenericFvPatch, polyPatch);
 }
-
 
 // ************************************************************************* //
