@@ -1,0 +1,10 @@
+EXE_INC = \
+    -DFULLDEBUG -g -O0 \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/parallel/decompose/decompose/lnInclude \
+    -I$(LIB_SRC)/parallel/reconstruct/reconstruct
+
+LIB_LIBS = \
+    -lfiniteVolume \
+    -ldecompose \
+    -lreconstruct

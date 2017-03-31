@@ -59,8 +59,6 @@ class autoDecomposingFileOperation
 
     mutable autoPtr<fvMesh> baseMeshPtr_;
 
-    //mutable autoPtr<fvMesh> procMeshPtr_;
-
     mutable autoPtr<labelIOList> cellAddressingPtr_;
 
     mutable autoPtr<labelIOList> faceAddressingPtr_;
@@ -69,11 +67,23 @@ class autoDecomposingFileOperation
 
     mutable autoPtr<fvFieldDecomposer> decomposerPtr_;
 
-    //- Return the base mesh
-    const fvMesh& baseMesh(const Time&) const;
+    // Private Member Functions
 
-    //- Return the current mesh
-    const fvMesh& procMesh(const Time&) const;
+        //- Return the base mesh (demand loaded)
+        const fvMesh& baseMesh(const Time&) const;
+
+        //- Return the decomposer (demand loaded)
+        const fvFieldDecomposer& decomposer(const IOobject&) const;
+
+        //- Read, decompose and write to stream
+        template<class GeoField>
+        bool decomposeAndWrite
+        (
+            const IOobject& procIO,
+            const IOobject& parentIO,
+            const word& type,
+            Ostream& os
+        ) const;
 
 
 public:
@@ -97,19 +107,12 @@ public:
         // (reg)IOobject functinality
 
             //- Search for an object. checkGlobal : also check undecomposed case
+            //  This differs from uncollated in searching for parent
+            //  also for files in time directories
             virtual fileName filePath
             (
                 const bool checkGlobal,
                 const IOobject&
-            ) const;
-
-            //- Reads header for regIOobject and returns an ISstream
-            //  to read the contents.
-            virtual autoPtr<ISstream> readStream
-            (
-                regIOobject&,
-                const fileName&,
-                const bool valid = true
             ) const;
 
             //- Top-level read
@@ -120,6 +123,20 @@ public:
                 const IOstream::streamFormat format,
                 const word& typeName
             ) const;
+
+            //- Writes a regIOobject (so header, contents and divider).
+            //  Returns success state. Default action is to write to
+            //  the objectPath using writeData. If !valid the
+            //  file does not need to be written (this is used e.g. to
+            //  suppress empty local lagrangian data)
+            virtual bool writeObject
+            (
+                const regIOobject&,
+                IOstream::streamFormat format=IOstream::ASCII,
+                IOstream::versionNumber version=IOstream::currentVersion,
+                IOstream::compressionType compression=IOstream::UNCOMPRESSED,
+                const bool valid = true
+            ) const;
 };
 
 
@@ -127,6 +144,12 @@ public:
 
 } // End namespace fileOperations
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "autoDecomposingFileOperationTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -72,20 +72,32 @@ int main(int argc, char *argv[])
         boundary,
         mesh.globalData()
     );
-    uVolScalarField(io, uMesh);
+//    uVolScalarField(io, uMesh);
 
-//    volScalarField p
-//    (
-//        IOobject
-//        (
-//            "p",
-//            runTime.timeName(),
-//            mesh,
-//            IOobject::MUST_READ,
-//            IOobject::AUTO_WRITE
-//        ),
-//        mesh
-//    );
+    volScalarField p
+    (
+        IOobject
+        (
+            "p",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh
+    );
+    volVectorField U
+    (
+        IOobject
+        (
+            "U",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh
+    );
 
     return 0;
 }

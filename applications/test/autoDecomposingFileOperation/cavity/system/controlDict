@@ -15,14 +15,22 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-DebugSwitches
-{
+libs    ("libautoDecomposingFileOperation.so");
+
+//OptimisationSwitches
+//{
+//    fileHandler autoDecomposing;
+//}
+
+
+//DebugSwitches
+//{
 //    uncollated  1;
-}
+//    autoDecomposing 1;
+//    dlLibraryTable  1;
+//}
 
 application     icoFoam;
-
-//fileHandler     autoDecomposing;
 
 startFrom       startTime;
 
