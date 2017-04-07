@@ -64,15 +64,16 @@ namespace fileOperations
 
         ~installFileOp()
         {
-            // Restore old fileHandler
-            autoPtr<fileOperation> handler
-            (
-                fileOperation::New
-                (
-                    oldHandler_,
-                    true
-                )
-            );
+            //// Restore old fileHandler
+            //autoPtr<fileOperation> handler
+            //(
+            //    fileOperation::New
+            //    (
+            //        oldHandler_,
+            //        true
+            //    )
+            //);
+            autoPtr<fileOperation> handler(nullptr);
             Foam::fileHandler(handler);
         }
     };
@@ -440,7 +441,46 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
         }
 
         // Get the fields locally
-XXXX
+        PstreamBuffers pBufs(Pstream::nonBlocking);
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
+        {
+            UOpstream os(Pstream::masterNo());
+            io.writeData(os);
+        }
+        pBufs.finishedSends();
+
+        PtrList<volScalarField> procFields(Pstream::nProcs());
+
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
+        {
+            const fvMesh& procMesh = procMeshes.meshes()[proci];
+
+            IOobject procIO(io, procMesh);
+
+            UIPstream is(Pstream::masterNo());
+            procFields.set
+            (
+                proci,
+                new volScalarField
+                (
+                    procIO,
+                    procMesh,
+                    dictionary(is)
+                )
+            );
+        }
+
+        tmp<volScalarField> tfld
+        (
+            fvReconstructor.reconstructFvVolumeField
+            (
+                baseIO,
+                procFields
+            )
+        );
+        tfld().writeObject(fmt, ver, cmp);
+    }
+//XXXX
 
 
 
