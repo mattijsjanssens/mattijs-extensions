@@ -1,3 +1,4 @@
 autoDecomposingFileOperation.C
+collatedFileOperation2.C
 
 LIB = $(FOAM_USER_LIBBIN)/libautoDecomposingFileOperation

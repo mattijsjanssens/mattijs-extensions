@@ -29,6 +29,7 @@ License
 #include "fvFieldDecomposer.H"
 #include "addToRunTimeSelectionTable.H"
 #include "processorMeshes.H"
+#include "fvFieldReconstructor.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -47,14 +48,11 @@ namespace fileOperations
 
     class installFileOp
     {
-        word oldHandler_;
-
     public:
 
         installFileOp()
         {
             // Install autoDecomposing as fileHandler
-            oldHandler_ = fileHandler().type();
             autoPtr<fileOperation> handler
             (
                 new autoDecomposingFileOperation(true)
@@ -64,15 +62,6 @@ namespace fileOperations
 
         ~installFileOp()
         {
-            //// Restore old fileHandler
-            //autoPtr<fileOperation> handler
-            //(
-            //    fileOperation::New
-            //    (
-            //        oldHandler_,
-            //        true
-            //    )
-            //);
             autoPtr<fileOperation> handler(nullptr);
             Foam::fileHandler(handler);
         }
@@ -405,19 +394,38 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
         )
     )
     {
+        // Collect fields on master
+        PstreamBuffers pBufs(Pstream::commsTypes::nonBlocking);
+        {
+            // Send my data to master (master sends as well)
+            Pout<< "Sending to master" << endl;
+            {
+                UOPstream os(Pstream::masterNo(), pBufs);
+                io.writeData(os);
+            }
+            Pout<< "Done Sending to master" << endl;
+            pBufs.finishedSends();
+            Pout<< "Done blocking" << endl;
+        }
+
         if (Pstream::master())
         {
+            // Load all databases and processor meshes
+
             bool oldParRun = UPstream::parRun();
             UPstream::parRun() = false;
 
             // Load undecomposed mesh
-            const fvMesh& base = baseMesh(io.time());
+            //const fvMesh& base = baseMesh(io.time());
 
             // Create the processor databases
             PtrList<Time> databases(Pstream::nProcs());
 
             forAll(databases, proci)
             {
+                Pout<< "Loading Time for:" << proci
+                    << endl;
+
                 databases.set
                 (
                     proci,
@@ -437,53 +445,72 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
             // Read all meshes and addressing to reconstructed mesh
             processorMeshes procMeshes(databases, io.db().name());
 
-            UPstream::parRun() = oldParRun;
-        }
+            Pout<< "Done processorMeshes:" << endl;
 
-        // Get the fields locally
-        PstreamBuffers pBufs(Pstream::nonBlocking);
-        for (label proci = 0; proci < Pstream::nProcs(); proci++)
-        {
-            UOpstream os(Pstream::masterNo());
-            io.writeData(os);
-        }
-        pBufs.finishedSends();
 
-        PtrList<volScalarField> procFields(Pstream::nProcs());
+            // Get the fields locally
+            PtrList<volScalarField> procFields(Pstream::nProcs());
+            {
+                for (label proci = 0; proci < Pstream::nProcs(); proci++)
+                {
+                    const fvMesh& procMesh = procMeshes.meshes()[proci];
 
-        for (label proci = 0; proci < Pstream::nProcs(); proci++)
-        {
-            const fvMesh& procMesh = procMeshes.meshes()[proci];
+                    IOobject procIO(io, procMesh);
 
-            IOobject procIO(io, procMesh);
+                    Pout<< "Receiving from:" << proci
+                        << " object:" << procIO.objectPath() << endl;
 
-            UIPstream is(Pstream::masterNo());
-            procFields.set
+                    UIPstream is(Pstream::masterNo(), pBufs);
+
+                    dictionary dict(is);
+                    Pout<< "Received from:" << proci
+                        << " dict:" << dict << endl;
+
+                    procFields.set
+                    (
+                        proci,
+                        new volScalarField
+                        (
+                            procIO,
+                            procMesh,
+                            dict
+                        )
+                    );
+                }
+            }
+
+            Pout<< "Done procFields:" << procFields << endl;
+
+            const fvMesh& base = baseMesh(io.time());
+            IOobject baseIO(io, base);
+
+            Pout<< "baseIO:" << baseIO.objectPath() << endl;
+
+            fvFieldReconstructor fvReconstructor
             (
-                proci,
-                new volScalarField
+                base,
+                procMeshes.meshes(),
+                procMeshes.faceProcAddressing(),
+                procMeshes.cellProcAddressing(),
+                procMeshes.boundaryProcAddressing()
+            );
+
+            tmp<volScalarField> tfld
+            (
+                fvReconstructor.reconstructFvVolumeField
                 (
-                    procIO,
-                    procMesh,
-                    dictionary(is)
+                    baseIO,
+                    procFields
                 )
             );
+
+            Pout<< "reconstructed:" << tfld().name()
+                << " contents:" << tfld() << endl;
+
+            ok = tfld().writeObject(fmt, ver, cmp, valid);
+
+            UPstream::parRun() = oldParRun;
         }
-
-        tmp<volScalarField> tfld
-        (
-            fvReconstructor.reconstructFvVolumeField
-            (
-                baseIO,
-                procFields
-            )
-        );
-        tfld().writeObject(fmt, ver, cmp);
-    }
-//XXXX
-
-
-
     }
     else
     {
