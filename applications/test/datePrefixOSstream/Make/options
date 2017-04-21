@@ -1,0 +1,3 @@
+EXE_INC = -IdatePrefixOSstream/lnInclude
+
+EXE_LIBS = -L$(FOAM_USER_LIBBIN) -lprefixStreams

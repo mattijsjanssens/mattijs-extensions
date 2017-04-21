@@ -1,0 +1,4 @@
+datePrefixOSstream.C
+prefixOSstream2.C
+
+LIB = $(FOAM_USER_LIBBIN)/libprefixStreams

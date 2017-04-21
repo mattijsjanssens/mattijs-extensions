@@ -1,0 +1,3 @@
+Test-datePrefixOSstream.C
+
+EXE = $(FOAM_USER_LIBBIN)/Test-datePrefixOSstream
