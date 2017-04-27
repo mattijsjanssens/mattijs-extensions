@@ -17,18 +17,23 @@ FoamFile
 
 libs    ("libautoDecomposingFileOperation.so");
 
-//OptimisationSwitches
-//{
-//    fileHandler autoDecomposing;
-//}
+OptimisationSwitches
+{
+    fileHandler autoDecomposing;
+}
 
 
-//DebugSwitches
-//{
-//    uncollated  1;
-//    autoDecomposing 1;
+DebugSwitches
+{
+    //collated2  1;
+    //OFstreamCollator 1;
+    //masterCollatingOFstream2 1;
+    //decomposedBlockData2 1;
+    //masterUncollated    1;
+    autoDecomposing 1;
 //    dlLibraryTable  1;
-//}
+    //OSspecific  1;
+}
 
 application     icoFoam;
 
@@ -36,14 +41,13 @@ startFrom       startTime;
 
 startTime       0;
 
-stopAt          endTime;
+stopAt          writeNow;  //endTime;
 
 endTime         0.5;
 
 deltaT          0.005;
 
 writeControl    timeStep;
-
 writeInterval   20;
 
 purgeWrite      0;

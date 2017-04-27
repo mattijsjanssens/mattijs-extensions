@@ -1,3 +1,10 @@
+cyclicAMIFvPatch.C
+cyclicAMIFvPatchFields.C
+cyclicAMIFvsPatchFields.C
+cyclicAMIGAMGInterface.C
+cyclicAMIGAMGInterfaceField.C
+cyclicAMILduInterface.C
+
 Test-coupledFvPatch.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-coupledFvPatch

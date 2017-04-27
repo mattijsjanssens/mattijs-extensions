@@ -228,7 +228,8 @@ Foam::fileOperations::autoDecomposingFileOperation::
 Foam::fileName Foam::fileOperations::autoDecomposingFileOperation::filePath
 (
     const bool checkGlobal,
-    const IOobject& io
+    const IOobject& io,
+    const word& typeName
 ) const
 {
     if (debug)
@@ -239,7 +240,12 @@ Foam::fileName Foam::fileOperations::autoDecomposingFileOperation::filePath
     }
 
     // Try uncollated searching
-    fileName objPath = uncollatedFileOperation::filePath(checkGlobal, io);
+    fileName objPath = uncollatedFileOperation::filePath
+    (
+        checkGlobal,
+        io,
+        typeName
+    );
 
     // If not found and parallel check parent
     if (objPath.empty() && checkGlobal && io.time().processorCase())
@@ -297,7 +303,7 @@ bool Foam::fileOperations::autoDecomposingFileOperation::read
 
 
         // Find file, check in parent directory
-        fileName objPath = filePath(true, io);
+        fileName objPath = filePath(true, io, type);
 
         // Check if the file comes from the parent path
         fileName parentObjectPath =
@@ -404,7 +410,9 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
                 io.writeData(os);
             }
             Pout<< "Done Sending to master" << endl;
-            pBufs.finishedSends();
+            labelList sizes;
+            pBufs.finishedSends(sizes);
+            DebugVar(sizes);
             Pout<< "Done blocking" << endl;
         }
 
@@ -481,7 +489,7 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
 
             Pout<< "Done procFields:" << procFields << endl;
 
-            const fvMesh& base = baseMesh(io.time());
+            fvMesh& base = const_cast<fvMesh&>(baseMesh(io.time()));
             IOobject baseIO(io, base);
 
             Pout<< "baseIO:" << baseIO.objectPath() << endl;

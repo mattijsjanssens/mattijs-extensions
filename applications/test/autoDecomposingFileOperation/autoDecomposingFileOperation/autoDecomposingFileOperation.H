@@ -112,7 +112,8 @@ public:
             virtual fileName filePath
             (
                 const bool checkGlobal,
-                const IOobject&
+                const IOobject&,
+                const word& typeName
             ) const;
 
             //- Top-level read
