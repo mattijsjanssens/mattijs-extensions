@@ -93,6 +93,7 @@ const Foam::fvMesh& Foam::fileOperations::autoDecomposingFileOperation::baseMesh
                 false                   // enableFunctionObjects
             )
         );
+        baseRunTimePtr_().setTime(runTime);
 
         Info<< "Create base mesh for time = "
             << runTime.timeName() << nl << endl;
@@ -404,17 +405,13 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
         PstreamBuffers pBufs(Pstream::commsTypes::nonBlocking);
         {
             // Send my data to master (master sends as well)
-            Pout<< "Sending to master" << endl;
             {
                 UOPstream os(Pstream::masterNo(), pBufs);
                 io.writeData(os);
             }
-            Pout<< "Done Sending to master" << endl;
-            labelList sizes;
-            pBufs.finishedSends(sizes);
-            DebugVar(sizes);
-            Pout<< "Done blocking" << endl;
+            pBufs.finishedSends();
         }
+
 
         if (Pstream::master())
         {
@@ -431,8 +428,7 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
 
             forAll(databases, proci)
             {
-                Pout<< "Loading Time for:" << proci
-                    << endl;
+                Pout<< "Loading Time for:" << proci << endl;
 
                 databases.set
                 (
@@ -448,13 +444,13 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
                         false                   // enableFunctionObjects
                     )
                 );
+                databases[proci].setTime(io.time());
             }
+            baseRunTimePtr_().setTime(io.time());
+
 
             // Read all meshes and addressing to reconstructed mesh
             processorMeshes procMeshes(databases, io.db().name());
-
-            Pout<< "Done processorMeshes:" << endl;
-
 
             // Get the fields locally
             PtrList<volScalarField> procFields(Pstream::nProcs());
@@ -465,14 +461,7 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
 
                     IOobject procIO(io, procMesh);
 
-                    Pout<< "Receiving from:" << proci
-                        << " object:" << procIO.objectPath() << endl;
-
-                    UIPstream is(Pstream::masterNo(), pBufs);
-
-                    dictionary dict(is);
-                    Pout<< "Received from:" << proci
-                        << " dict:" << dict << endl;
+                    UIPstream is(proci, pBufs);
 
                     procFields.set
                     (
@@ -481,18 +470,24 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
                         (
                             procIO,
                             procMesh,
-                            dict
+                            dictionary(is)
                         )
                     );
                 }
             }
 
-            Pout<< "Done procFields:" << procFields << endl;
 
             fvMesh& base = const_cast<fvMesh&>(baseMesh(io.time()));
-            IOobject baseIO(io, base);
-
-            Pout<< "baseIO:" << baseIO.objectPath() << endl;
+            IOobject baseIO
+            (
+                io.name(),
+                io.instance(),
+                io.local(),
+                base,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            );
 
             fvFieldReconstructor fvReconstructor
             (
@@ -512,9 +507,9 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
                 )
             );
 
-            Pout<< "reconstructed:" << tfld().name()
-                << " contents:" << tfld() << endl;
+            tfld.ref().instance() = io.instance();
 
+            // Use (non-parallel) writing of reconstructed mesh
             ok = tfld().writeObject(fmt, ver, cmp, valid);
 
             UPstream::parRun() = oldParRun;
@@ -522,6 +517,8 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
     }
     else
     {
+Pout<< "** non-par:" << io.objectPath() << endl;
+
         ok = uncollatedFileOperation::writeObject
         (
             io,
