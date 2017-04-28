@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -143,7 +143,7 @@ void Foam::amgclSolver::crs
             {
                 interfaces[patchi].initInternalFieldTransfer
                 (
-                    Pstream::nonBlocking,
+                    Pstream::commsTypes::nonBlocking,
                     globalCells
                 );
             }
@@ -162,7 +162,7 @@ void Foam::amgclSolver::crs
                 (
                     interfaces[patchi].internalFieldTransfer
                     (
-                        Pstream::nonBlocking,
+                        Pstream::commsTypes::nonBlocking,
                         globalCells
                     )
                 );
