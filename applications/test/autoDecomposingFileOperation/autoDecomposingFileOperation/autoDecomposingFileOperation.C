@@ -420,9 +420,6 @@ bool Foam::fileOperations::autoDecomposingFileOperation::writeObject
             bool oldParRun = UPstream::parRun();
             UPstream::parRun() = false;
 
-            // Load undecomposed mesh
-            //const fvMesh& base = baseMesh(io.time());
-
             // Create the processor databases
             PtrList<Time> databases(Pstream::nProcs());
 
