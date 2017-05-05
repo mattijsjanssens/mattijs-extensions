@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -31,6 +31,7 @@ Description
 
 #include "argList.H"
 //#include "Time.H"
+#include "stringListOps.H"
 
 using namespace Foam;
 
@@ -38,9 +39,6 @@ using namespace Foam;
 
 int main(int argc, char *argv[])
 {
-//    #include "setRootCase.H"
-//    #include "createTime.H"
-    
     fileNameList fNames
     (
         readDir
@@ -50,6 +48,7 @@ int main(int argc, char *argv[])
             false
         )
     );
+    fNames = UIndirectList<fileName>(fNames, findStrings(".*\\.so", fNames))();
 
     Info<< "fNames:" << fNames << endl;
 
