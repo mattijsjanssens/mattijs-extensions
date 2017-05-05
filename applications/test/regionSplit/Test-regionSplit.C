@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
         f[celli] = regions[celli];
     }
     fld.correctBoundaryConditions();
+    fld.write();
 
     Info<< "End\n" << endl;
 
