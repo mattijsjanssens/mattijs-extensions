@@ -1,3 +1,4 @@
+GAMGSolverSolve.C
 laplacianFoam.C
 
 EXE = $(FOAM_USER_APPBIN)/writeMatrixIterations

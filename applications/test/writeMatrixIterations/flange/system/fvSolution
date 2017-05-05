@@ -22,9 +22,10 @@ solvers
         //solver          PCG;
         //preconditioner  DIC;
 
-        solver          smoothSolver;
-        smoother        ADI;    //GaussSeidel;
-        nSweeps         -2;
+        //solver          smoothSolver;
+        solver          GAMG;
+        smoother        GaussSeidel;    //ADI;    //GaussSeidel;
+        //nSweeps         -2;
         maxIter         1;
 
 
