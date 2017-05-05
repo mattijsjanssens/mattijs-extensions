@@ -1,0 +1,4 @@
+Test-regionSplit.C
+regionSplit.C
+
+EXE = $(FOAM_USER_APPBIN)/regionSplit
