@@ -97,6 +97,16 @@ const Foam::fvPatchFieldMapper& Foam::volMesh::mapper() const
 }
 
 
+Foam::autoPtr<Foam::fvPatchFieldMapper> Foam::volMesh::NewMapper
+(
+    const fvMesh&,
+    const label patchi
+)
+{
+    return autoPtr<fvPatchFieldMapper>(new dummyFvPatchFieldMapper());
+}
+
+
 Foam::autoPtr<Foam::fvMesh> Foam::volMesh::New
 (
     const IOobject& io,

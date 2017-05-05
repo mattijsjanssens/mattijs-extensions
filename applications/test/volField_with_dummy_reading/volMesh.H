@@ -110,6 +110,13 @@ public:
             //- Return dummy mapper
             const fvPatchFieldMapper& mapper() const;
 
+            //- Return dummy mapper
+            static autoPtr<fvPatchFieldMapper> NewMapper
+            (
+                const fvMesh&,
+                const label patchi
+            );
+
 
         // New mesh read from Istream. Optionally no parallel comms.
         static autoPtr<fvMesh> New

@@ -175,7 +175,7 @@ DebugVar(masterProci);
                     Boundary& bf = resF.boundaryFieldRef();
 
 
-                GeoMesh vm(dummy);
+                //GeoMesh vm(dummy);
 
                 forAll(bf, patchi)
                 {
@@ -187,7 +187,7 @@ DebugVar(masterProci);
                             this->boundaryField()[patchi],
                             dummy.boundary()[patchi],
                             resF(),
-                            vm.mapper()
+                            GeoMesh::NewMapper(dummy, patchi)    //vm.mapper()
                         )
                     );
                 }

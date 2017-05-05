@@ -13,3 +13,5 @@
 
 - how to map surfaceFields?
 - how to map pointFields?
+- have cop operator do whole loop so we can implement more complex
+  operations.
