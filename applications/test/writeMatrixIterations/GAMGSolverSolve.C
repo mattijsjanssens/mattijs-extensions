@@ -36,11 +36,12 @@ namespace Foam
     void restrictAndWriteField
     (
         const word& name,
-        const fvMesh& mesh,
+        const fvMesh& fm,
+        const GAMGAgglomeration& agglomeration,
         const label fineLevelIndex,
+        const scalarField& levelFld
     )
     {
-        const fvMesh& fm = dynamic_cast<const fvMesh&>(matrix().mesh());
         volScalarField fld
         (
             IOobject
@@ -57,12 +58,27 @@ namespace Foam
             zeroGradientFvPatchScalarField::typeName
         );
 
-        scalarField& meshFld = fld.ref().field();
+        scalarField fineFld(levelFld);
+
+        for (label index = fineLevelIndex; index >= 0; index--)
         {
-            for (label index = fineLevelIndex; index >= 0; index--)
-            {
-            }
+            // Prolong to the finer mesh
+            Pout<< "Prolonging " << name <<  " from " << fineFld.size();
+
+            scalarField coarseFld(fineFld);
+            fineFld.setSize(agglomeration.restrictAddressing(index).size());
+            Pout<< " to " << fineFld.size() << endl;
+
+            agglomeration.prolongField
+            (
+                fineFld,
+                coarseFld,
+                index,
+                false
+            );
         }
+
+        fld.ref().field() = fineFld;
         fld.correctBoundaryConditions();
         fld.write();
     }
@@ -101,29 +117,17 @@ Foam::solverPerformance Foam::GAMGSolver::solve
     scalarField finestResidual(source - Apsi);
 
 
-{
     const fvMesh& fm = dynamic_cast<const fvMesh&>(matrix().mesh());
     Pout<< "fm.nCells:" << fm.nCells() << endl;
-
-    volScalarField fld
+    Pout<< "finestResidual:" << finestResidual.size() << endl;
+    restrictAndWriteField
     (
-        IOobject
-        (
-            "finestResidual",
-            fm.time().timeName(),
-            fm,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE,
-            false
-        ),
+        "finestResidual",
         fm,
-        dimensionedScalar("zero", dimless, 0.0),
-        zeroGradientFvPatchScalarField::typeName
+        agglomeration_,
+        -1,
+        finestResidual
     );
-    fld.ref().field() = finestResidual;
-    fld.correctBoundaryConditions();
-    fld.write();
-}
 
 
     // Calculate normalised residual for convergence test
@@ -231,12 +235,23 @@ void Foam::GAMGSolver::Vcycle
     const direction cmpt
 ) const
 {
+    const fvMesh& fm = dynamic_cast<const fvMesh&>(matrix().mesh());
+
     //debug = 2;
 
     const label coarsestLevel = matrixLevels_.size() - 1;
 
     // Restrict finest grid residual for the next level up.
     agglomeration_.restrictField(coarseSources[0], finestResidual, 0, true);
+
+    restrictAndWriteField
+    (
+        "coarseSources[0]",
+        fm,
+        agglomeration_,
+        0,
+        coarseSources[0]
+    );
 
     if (debug >= 2 && nPreSweeps_)
     {
@@ -316,6 +331,16 @@ void Foam::GAMGSolver::Vcycle
                 leveli + 1,
                 true
             );
+
+
+            restrictAndWriteField
+            (
+                "coarseSources[" + Foam::name(leveli+1) + "]",
+                fm,
+                agglomeration_,
+                leveli+1,
+                coarseSources[leveli+1]
+            );
         }
     }
 
@@ -332,6 +357,15 @@ void Foam::GAMGSolver::Vcycle
         (
             coarseCorrFields[coarsestLevel],
             coarseSources[coarsestLevel]
+        );
+
+        restrictAndWriteField
+        (
+            "coarseCorrection",
+            fm,
+            agglomeration_,
+            coarsestLevel,
+            coarseCorrFields[coarsestLevel]
         );
     }
 
@@ -377,6 +411,14 @@ void Foam::GAMGSolver::Vcycle
                 true
             );
 
+            restrictAndWriteField
+            (
+                "coarseCorrFields[" + Foam::name(leveli) + "]_from_prolong",
+                fm,
+                agglomeration_,
+                leveli,
+                coarseCorrFields[leveli]
+            );
 
             // Create A.psi for this coarse level as a sub-field of Apsi
             scalarField::subField ACf
@@ -444,6 +486,15 @@ void Foam::GAMGSolver::Vcycle
                 coarseCorrFields[leveli] += preSmoothedCoarseCorrField;
             }
 
+            restrictAndWriteField
+            (
+                "coarseCorrFields[" + Foam::name(leveli) + "]_after_scaling",
+                fm,
+                agglomeration_,
+                leveli,
+                coarseCorrFields[leveli]
+            );
+
             smoothers[leveli + 1].smooth
             (
                 coarseCorrFields[leveli],
@@ -454,6 +505,14 @@ void Foam::GAMGSolver::Vcycle
                     nPostSweeps_ + postSweepsLevelMultiplier_*leveli,
                     maxPostSweeps_
                 )
+            );
+            restrictAndWriteField
+            (
+                "coarseCorrFields[" + Foam::name(leveli) + "]_after_smoothing",
+                fm,
+                agglomeration_,
+                leveli,
+                coarseCorrFields[leveli]
             );
         }
     }
@@ -466,6 +525,17 @@ void Foam::GAMGSolver::Vcycle
         0,
         true
     );
+
+
+    restrictAndWriteField
+    (
+        "finestCorrection_from_prolong",
+        fm,
+        agglomeration_,
+        -1,
+        finestCorrection
+    );
+
 
     if (interpolateCorrection_)
     {
@@ -497,10 +567,28 @@ void Foam::GAMGSolver::Vcycle
         );
     }
 
+    restrictAndWriteField
+    (
+        "finestCorrection_after_scaling",
+        fm,
+        agglomeration_,
+        -1,
+        finestCorrection
+    );
+
     forAll(psi, i)
     {
         psi[i] += finestCorrection[i];
     }
+
+    restrictAndWriteField
+    (
+        "psi_after",
+        fm,
+        agglomeration_,
+        -1,
+        psi
+    );
 
     smoothers[0].smooth
     (
