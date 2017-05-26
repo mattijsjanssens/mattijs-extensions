@@ -30,6 +30,7 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
+#include "argList.H"
 //#include "Time.H"
 #include "stringListOps.H"
 
@@ -39,6 +40,9 @@ using namespace Foam;
 
 int main(int argc, char *argv[])
 {
+    argList::validArgs.append("libraries");
+    #include "setRootCase.H"
+
     fileNameList fNames
     (
         readDir
@@ -49,6 +53,10 @@ int main(int argc, char *argv[])
         )
     );
     fNames = UIndirectList<fileName>(fNames, findStrings(".*\\.so", fNames))();
+    //fNames.setSize(1, "libengine.so");
+
+    //DebugVar(args.arg(1));
+    //fileNameList fNames(IStringStream(args.arg(1))());
 
     Info<< "fNames:" << fNames << endl;
 
@@ -64,12 +72,12 @@ int main(int argc, char *argv[])
         }
         else
         {
-//             Info<< "Unloading " << fName << endl;
-//             bool ok = dlClose(handle);
-//             if (!ok)
-//             {
-//                 WarningInFunction << "Cannot dlClose " << fName << endl;
-//             }
+            Info<< "Unloading " << fName << endl;
+            bool ok = dlClose(handle);
+            if (!ok)
+            {
+               WarningInFunction << "Cannot dlClose " << fName << endl;
+            }
         }
     }
 
