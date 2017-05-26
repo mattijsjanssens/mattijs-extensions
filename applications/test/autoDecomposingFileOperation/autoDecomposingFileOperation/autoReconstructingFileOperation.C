@@ -135,7 +135,8 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
 {
     if (debug)
     {
-        Pout<< "autoReconstructingFileOperation::filePath :"
+        Pout<< indent
+            << "autoReconstructingFileOperation::filePath :"
             << " objectPath:" << io.objectPath()
             << " checkGlobal:" << checkGlobal << endl;
     }
@@ -144,7 +145,18 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
     fileName procPath;
     if (haveProcPath(io, procPath))
     {
-        objPath = io.objectPath();
+        objPath = procPath; //io.objectPath();
+
+        if (debug)
+        {
+            Pout<< indent
+                << "autoReconstructingFileOperation::filePath :"
+                << " Returning from processor searching:" << endl << indent
+                << "    objectPath:" << io.objectPath() << " type:" << typeName
+                << endl << indent
+                << "    filePath  :" << objPath << endl << endl;
+        }
+        return objPath;
     }
     else
     {
@@ -159,9 +171,11 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
 
     if (debug)
     {
-        Pout<< "autoReconstructingFileOperation::filePath :"
-            << " Returning from file searching:" << endl
-            << "    objectPath:" << io.objectPath() << endl
+        Pout<< indent
+            << "autoReconstructingFileOperation::filePath :"
+            << " Returning from file searching:" << endl << indent
+            << "    objectPath:" << io.objectPath() << " type:" << typeName
+            << endl << indent
             << "    filePath  :" << objPath << endl << endl;
     }
     return objPath;
@@ -193,9 +207,10 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::dirPath
 
     if (debug)
     {
-        Pout<< "autoReconstructingFileOperation::dirPath :"
-            << " Returning from directory searching:" << endl
-            << "    objectPath:" << io.objectPath() << endl
+        Pout<< indent
+            << "autoReconstructingFileOperation::dirPath :"
+            << " Returning from directory searching:" << endl << indent
+            << "    objectPath:" << io.objectPath() << endl << indent
             << "    filePath  :" << objPath << endl << endl;
     }
     return objPath;
@@ -223,6 +238,17 @@ DebugVar(path);
         {
             newInstance = instance;
             objects = Foam::readDir(path, fileName::FILE);
+
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoReconstructingFileOperation::readObjects :"
+                    << " Returning processor directory searching:"
+                    << endl << indent
+                    << "    path     :" << db.path() << endl << indent
+                    << "    objects  :" << objects << endl << endl;
+            }
+            return objects;
         }
         else
         {
@@ -248,9 +274,10 @@ DebugVar(path);
 
     if (debug)
     {
-        Pout<< "autoReconstructingFileOperation::readObjects :"
-            << " Returning from directory searching:" << endl
-            << "    path     :" << db.path() << endl
+        Pout<< indent
+            << "autoReconstructingFileOperation::readObjects :"
+            << " Returning from directory searching:" << endl << indent
+            << "    path     :" << db.path() << endl << indent
             << "    objects  :" << objects << endl << endl;
     }
     return objects;
@@ -320,13 +347,14 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
         }
     }
 
-    if (debug)
-    {
-        Pout<< "autoReconstructingFileOperation::findTimes :"
-            << " Returning from time searching:" << endl
-            << "    dir   :" << dir << endl
-            << "    times :" << times << endl << endl;
-    }
+//     if (debug)
+//     {
+//         Pout<< indent
+//             << "autoReconstructingFileOperation::findTimes :"
+//             << " Returning from time searching:" << endl << indent
+//             << "    dir   :" << dir << endl << indent
+//             << "    times :" << times << endl << endl;
+//     }
     return times;
 }
 
@@ -340,7 +368,8 @@ bool Foam::fileOperations::autoReconstructingFileOperation::readHeader
 {
     //if (debug)
     //{
-    //    Pout<< "autoReconstructingFileOperation::readHeader :"
+    //    Pout<< indent
+    //        << "autoReconstructingFileOperation::readHeader :"
     //        << " Reading:" << type << " from: " << fName << endl;
     //}
     if (typeName == volScalarField::typeName)
@@ -351,8 +380,9 @@ bool Foam::fileOperations::autoReconstructingFileOperation::readHeader
 
     if (debug)
     {
-        Pout<< "autoReconstructingFileOperation::readHeader :" << endl
-            << "    fName :" << fName << endl
+        Pout<< indent
+            << "autoReconstructingFileOperation::readHeader :" << endl << indent
+            << "    fName :" << fName << endl << indent
             << "    ok    :" << ok << endl << endl;
     }
     return ok;
@@ -382,8 +412,10 @@ bool Foam::fileOperations::autoReconstructingFileOperation::readHeader
 //
 //     if (debug)
 //     {
-//         Pout<< "autoReconstructingFileOperation::readStream :" << endl
-//             << "    fName :" << fName << endl
+//         Pout<< indent
+//             << "autoReconstructingFileOperation::readStream :"
+//             << endl << indent
+//             << "    fName :" << fName << endl << indent
 //             << "    isPtr :" << isPtr.valid() << endl << endl;
 //     }
 //     return isPtr;
@@ -400,22 +432,111 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
 {
     if (debug)
     {
-        Pout<< "autoReconstructingFileOperation::read :"
+        Pout<< indent
+            << "autoReconstructingFileOperation::read :"
             << " Reading:" << type << " from: " << io.objectPath() << endl;
     }
 
     fileName procPath;
-    if (haveProcPath(io, procPath))
+    if (haveProcPath(io, procPath) && type == volScalarField::typeName)
     {
         DebugVar(procPath);
+        // Read file from procPath and reconstruct instead of from objectPath
+
+        const label nProcs = 2;
+
+        // Create the processor databases
+        PtrList<Time> databases(nProcs);
+
+        forAll(databases, proci)
+        {
+            Pout<< indent << "** Loading Time for:" << proci << nl << endl;
+            Pout<< incrIndent;
+
+            databases.set
+            (
+                proci,
+                new Time
+                (
+                    io.time().controlDict(),
+                    io.time().rootPath(),
+                    io.time().globalCaseName()
+                   /fileName(word("processor") + name(proci)),
+                    io.time().system(),
+                    io.time().constant(),
+                    false                   // enableFunctionObjects
+                )
+            );
+            databases[proci].setTime(io.time());
+
+            Pout<< decrIndent;
+            Pout<< indent << "** DONE Loading Time for:" << proci << nl << endl;
+        }
+
+        Pout<< indent << "** Loading processors" << nl << endl;
+        Pout<< incrIndent;
+        // Read all meshes and addressing to reconstructed mesh
+        processorMeshes procMeshes(databases, polyMesh::defaultRegion);
+        Pout<< decrIndent;
+        Pout<< indent << "** DONE Loading processors" << nl << endl;
+
+DebugVar(io.objectPath());
+DebugVar(io.db().name());
+DebugVar(io.db().path());
+
+DebugVar(procMeshes.boundaryProcAddressing());
+DebugVar(procMeshes.cellProcAddressing());
+DebugVar(procMeshes.faceProcAddressing());
+
+        fvMesh& mesh = const_cast<fvMesh&>
+        (
+            dynamic_cast<const fvMesh&>(io.db())
+        );
+        Pout<< "mesh nCells:" << mesh.nCells() << endl;
+        Pout<< "mesh path:" << mesh.polyMesh::path() << endl;
+
+        // Construct reconstructor
+        fvFieldReconstructor fvReconstructor
+        (
+            const_cast<fvMesh&>(dynamic_cast<const fvMesh&>(io.db())),
+            procMeshes.meshes(),
+            procMeshes.faceProcAddressing(),
+            procMeshes.cellProcAddressing(),
+            procMeshes.boundaryProcAddressing()
+        );
+
+        // Read all fields
+        PtrList<volScalarField> procFields(nProcs);
+        {
+            for (label proci = 0; proci < nProcs; proci++)
+            {
+                const fvMesh& procMesh = procMeshes.meshes()[proci];
+
+                IOobject procIO(io, procMesh);
+
+Pout<< indent << "For proc:" << proci << " trying to read "
+    << procIO.objectPath() << endl;
+                Pout<< incrIndent;
+                procFields.set(proci, new volScalarField(procIO, procMesh));
+                Pout<< decrIndent;
+            }
+        }
+
+        volScalarField& ioFld = dynamic_cast<volScalarField&>(io);
+
+DebugVar(procFields);
+        tmp<volScalarField> tfld
+        (
+            fvReconstructor.reconstructFvVolumeField
+            (
+                io,
+                procFields
+            )
+        );
+        ioFld = tfld;
+        return true;
     }
-    return uncollatedFileOperation::read
-    (
-        io,
-        masterOnly,
-        format,
-        type
-    );
+    return uncollatedFileOperation::read(io, masterOnly, format, type);
 }
 
 
