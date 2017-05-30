@@ -1,0 +1,4 @@
+
+distributedSymGaussSeidelSmoother.C
+
+EXE = $(FOAM_APPBIN)/distributedSymGaussSeidelSmoother
