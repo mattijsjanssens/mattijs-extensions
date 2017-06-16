@@ -1,0 +1,4 @@
+
+Test-OStringStream_zstr.C
+
+EXE = $(FOAM_USER_APPBIN)/OStringStream_zstr
