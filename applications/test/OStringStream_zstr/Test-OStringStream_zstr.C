@@ -32,6 +32,8 @@ Description
 #include "argList.H"
 #include "Time.H"
 #include "zstr.hpp"
+#include "OFstream.H"
+#include "OStringStream2.H"
 
 using namespace Foam;
 
@@ -51,6 +53,17 @@ int main(int argc, char *argv[])
         os << "BLABLA" << std::endl;
         cout<< "os:" << bufPtr->str() << std::endl;
     }
+
+    //// Write buffer into OFstream
+    //{
+    //    OFstream os("file_working.gz", IOstream::streamFormat::BINARY);
+    //    os.stdStream() << bufPtr->str();
+    //}
+    {
+        OFstream os("file.gz", IOstream::streamFormat::BINARY);
+        os.writeQuoted(bufPtr->str(), false);
+    }
+
 
     // Retrieve data from buffer
     {
