@@ -37,6 +37,7 @@ SourceFiles
 
 #include "OSstream.H"
 #include <sstream>
+#include "zstr.hpp"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,7 +57,7 @@ public:
 
     // Public classes
 
-        //- Less function class that can be used for sorting
+        //- Wrapped up ostream + string buffer with compression
         class zstr_ostringstream
         :
             public zstr::ostream
@@ -91,8 +92,8 @@ public:
             (
                 (
                     cmp == compressionType::UNCOMPRESSED
-                  ? *(new std::ostringstream())
-                  : *(new zstr_ostringstream())
+                  ? *(reinterpret_cast<std::ostream*>(new std::ostringstream()))
+                  : *(reinterpret_cast<std::ostream*>(new zstr_ostringstream()))
                 ),
                 "OStringStream.sinkFile",
                 format,
@@ -160,13 +161,13 @@ public:
             }
 
 
-        // Edit
-
-            //- Rewind the OStringStream
-            void rewind()
-            {
-                stdStream().rdbuf()->pubseekpos(0);
-            }
+//        // Edit
+//
+//            //- Rewind the OStringStream
+//            void rewind()
+//            {
+//                stdStream().rdbuf()->pubseekpos(0);
+//            }
 
 
         // Print
