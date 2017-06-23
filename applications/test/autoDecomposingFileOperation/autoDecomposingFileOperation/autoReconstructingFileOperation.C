@@ -38,7 +38,7 @@ namespace Foam
 namespace fileOperations
 {
     defineTypeNameAndDebug(autoReconstructingFileOperation, 0);
-    addToRunTimeSelectionTable
+    addRemovableToRunTimeSelectionTable
     (
         fileOperation,
         autoReconstructingFileOperation,
@@ -143,7 +143,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
 
     fileName objPath;
     fileName procPath;
-    if (haveProcPath(io, procPath))
+    if (typeName == volScalarField::typeName && haveProcPath(io, procPath))
     {
         objPath = procPath; //io.objectPath();
 
@@ -438,8 +438,17 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     }
 
     fileName procPath;
-    if (haveProcPath(io, procPath) && type == volScalarField::typeName)
+    if (type == volScalarField::typeName && haveProcPath(io, procPath))
     {
+        Pout<< "Database   :" << io.db().name() << endl;
+        fvMesh& mesh = const_cast<fvMesh&>
+        (
+            dynamic_cast<const fvMesh&>(io.db())
+        );
+        Pout<< "mesh nCells:" << mesh.nCells() << endl;
+        Pout<< "mesh path  :" << mesh.polyMesh::path() << endl;
+
+
         DebugVar(procPath);
         // Read file from procPath and reconstruct instead of from objectPath
 
@@ -479,21 +488,22 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         processorMeshes procMeshes(databases, polyMesh::defaultRegion);
         Pout<< decrIndent;
         Pout<< indent << "** DONE Loading processors" << nl << endl;
+        Pout<< incrIndent;
+        forAll(procMeshes.meshes(), i)
+        {
+            Pout<< indent << " proc:" << i
+                << " mesh:" << procMeshes.meshes()[i].nCells()
+                << endl;
+        }
+        Pout<< decrIndent;
 
 DebugVar(io.objectPath());
 DebugVar(io.db().name());
 DebugVar(io.db().path());
 
-DebugVar(procMeshes.boundaryProcAddressing());
-DebugVar(procMeshes.cellProcAddressing());
-DebugVar(procMeshes.faceProcAddressing());
-
-        fvMesh& mesh = const_cast<fvMesh&>
-        (
-            dynamic_cast<const fvMesh&>(io.db())
-        );
-        Pout<< "mesh nCells:" << mesh.nCells() << endl;
-        Pout<< "mesh path:" << mesh.polyMesh::path() << endl;
+// DebugVar(procMeshes.boundaryProcAddressing());
+// DebugVar(procMeshes.cellProcAddressing());
+// DebugVar(procMeshes.faceProcAddressing());
 
         // Construct reconstructor
         fvFieldReconstructor fvReconstructor
@@ -522,9 +532,8 @@ Pout<< indent << "For proc:" << proci << " trying to read "
             }
         }
 
-        volScalarField& ioFld = dynamic_cast<volScalarField&>(io);
-
 DebugVar(procFields);
+
         tmp<volScalarField> tfld
         (
             fvReconstructor.reconstructFvVolumeField
@@ -533,6 +542,9 @@ DebugVar(procFields);
                 procFields
             )
         );
+DebugVar(tfld);
+DebugVar(io.type());
+        volScalarField& ioFld = dynamic_cast<volScalarField&>(io);
         ioFld = tfld;
         return true;
     }

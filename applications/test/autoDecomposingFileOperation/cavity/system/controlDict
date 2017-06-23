@@ -19,7 +19,8 @@ libs    ("libautoDecomposingFileOperation.so");
 
 OptimisationSwitches
 {
-    fileHandler autoDecomposing;
+    //fileHandler autoDecomposing;
+    fileHandler autoReconstructing;
 }
 
 
@@ -31,6 +32,7 @@ DebugSwitches
     //decomposedBlockData2 1;
     //masterUncollated    1;
     autoDecomposing 1;
+    autoReconstructing 1;
 //    dlLibraryTable  1;
     //OSspecific  1;
 }
@@ -41,7 +43,7 @@ startFrom       startTime;
 
 startTime       0;
 
-stopAt          writeNow;  //endTime;
+stopAt          endTime;
 
 endTime         0.5;
 
