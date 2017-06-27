@@ -210,7 +210,17 @@ int main(int argc, char *argv[])
 
     labelList oldToNew;
     pointField newPoints;
-    mergePoints(allPoints, SMALL, false, oldToNew, newPoints);
+    mergePoints
+    (
+        allPoints,
+        1e-9*mesh.bounds().mag(),
+        false,
+        oldToNew,
+        newPoints
+    );
+
+    Info<< "Merged from " << allPoints.size() << " down to " << newPoints.size()
+        << endl;
 
     cellShapeList cells(tets.size());
     {
