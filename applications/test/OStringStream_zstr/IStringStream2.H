@@ -22,22 +22,23 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::OStringStream2
+    Foam::IStringStream2
 
 Description
-    Output to memory buffer stream.
+    Input from memory buffer stream.
 
 SourceFiles
     StringStreamsPrint.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef OStringStream2_H
-#define OStringStream2_H
+#ifndef IStringStream2_H
+#define IStringStream2_H
 
-#include "OSstream.H"
+#include "ISstream.H"
 #include <sstream>
 #include "zstr.hpp"
+#include "IOstreams.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -45,12 +46,12 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class OStringStream2 Declaration
+                       Class IStringStream2 Declaration
 \*---------------------------------------------------------------------------*/
 
-class OStringStream2
+class IStringStream2
 :
-    public OSstream
+    public ISstream
 {
     // Private data
 
@@ -62,56 +63,71 @@ public:
 
     // Constructors
 
-        //- Construct and set stream status
-        OStringStream2
+        //- Construct from string
+        IStringStream2
         (
+            const string& str,
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
             compressionType cmp=UNCOMPRESSED
         )
         :
-            OSstream
+            ISstream
             (
                 (
                     cmp == compressionType::UNCOMPRESSED
-                  ? *reinterpret_cast<std::ostream*>(new std::ostream(&buf_))
-                  : *reinterpret_cast<std::ostream*>(new zstr::ostream(&buf_))
+                 ? *reinterpret_cast<std::istream*>
+                    (
+                        new std::istream(&buf_)
+                    )
+                 : *reinterpret_cast<std::istream*>
+                    (
+                        new zstr::istream(&buf_)
+                    )
                 ),
-                "OStringStream.sinkFile",
+                "IStringStream2.sourceFile",
                 format,
                 version,
                 cmp
-            )
+            ),
+            buf_(str)
         {}
 
-        //- Construct as copy
-        OStringStream2(const OStringStream2& oss)
+
+        //- Construct from char*
+        IStringStream2
+        (
+            const char* buffer,
+            streamFormat format=ASCII,
+            versionNumber version=currentVersion,
+            compressionType cmp=UNCOMPRESSED
+        )
         :
-            OSstream
+            ISstream
             (
                 (
-                    oss.compression() == compressionType::UNCOMPRESSED
-                  ? *reinterpret_cast<std::ostream*>(new std::ostream(&buf_))
-                  : *reinterpret_cast<std::ostream*>(new zstr::ostream(&buf_))
+                    cmp == compressionType::UNCOMPRESSED
+                  ? *reinterpret_cast<std::istream*>(new std::istream(&buf_))
+                  : *reinterpret_cast<std::istream*>(new zstr::istream(&buf_))
                 ),
-                oss.name(),
-                oss.format(),
-                oss.version()
+                "IStringStream2.sourceFile",
+                format,
+                version
             ),
-            buf_(oss.str())
-       {}
+            buf_(buffer)
+        {}
 
 
     //- Destructor
-    ~OStringStream2()
+    ~IStringStream2()
     {
         if (compression() == compressionType::UNCOMPRESSED)
         {
-            delete &dynamic_cast<std::ostream&>(stdStream());
+            delete &dynamic_cast<std::istream&>(stdStream());
         }
         else
         {
-            delete &dynamic_cast<zstr::ostream&>(stdStream());
+            delete &dynamic_cast<zstr::istream&>(stdStream());
         }
     }
 
@@ -127,19 +143,21 @@ public:
             }
 
 
-        // Edit
-
-            //- Rewind the OStringStream
-            void rewind()
-            {
-                stdStream().rdbuf()->pubseekpos(0);
-            }
-
-
         // Print
 
             //- Print description to Ostream
             void print(Ostream&) const;
+
+
+    // Member operators
+
+        //- Return a non-const reference to const Istream
+        //  Needed for read-constructors where the stream argument is temporary:
+        //  e.g. thing thisThing(IFstream("thingFileName")());
+        Istream& operator()() const
+        {
+            return const_cast<IStringStream2&>(*this);
+        }
 };
 
 

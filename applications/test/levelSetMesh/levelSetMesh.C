@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         levelC = ((cc-pl.refPoint()) & pl.normal());
         levelP = ((points-pl.refPoint()) & pl.normal());
     }
-
+    else
     {
         // Distance to surface
         triSurfaceMesh surf
@@ -148,6 +148,41 @@ int main(int argc, char *argv[])
             }
         }
     }
+
+
+    // Perturb levelC, levelP to be away from 0
+    forAll(levelC, i)
+    {
+        if (mag(levelC[i]) < ROOTSMALL)
+        {
+            if (levelC[i] >= 0)
+            {
+                levelC[i] = ROOTSMALL;
+            }
+            else
+            {
+                levelC[i] = -ROOTSMALL;
+            }
+        }
+    }
+    forAll(levelP, i)
+    {
+        if (mag(levelP[i]) < ROOTSMALL)
+        {
+            if (levelP[i] >= 0)
+            {
+                levelP[i] = ROOTSMALL;
+            }
+            else
+            {
+                levelP[i] = -ROOTSMALL;
+            }
+        }
+    }
+
+    DebugVar(levelC);
+    DebugVar(levelP);
+
 
 
     typedef DynamicList<FixedList<point, 4>> tetList;
