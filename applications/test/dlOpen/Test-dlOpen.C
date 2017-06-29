@@ -29,7 +29,8 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-#include "argList.H"
+#include "runTimeSelectionTables.H"
+#include "addToRunTimeSelectionTable.H"
 #include "argList.H"
 //#include "Time.H"
 #include "stringListOps.H"
