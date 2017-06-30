@@ -1,0 +1,57 @@
+cyclicACMI:
+
+- Gauss gradient:
+    area-weighted value sum.
+    => value only coupled bits
+
+- Gauss laplacian:
+    area-weighted snGrad sum.
+    => snGrad only coupled bits
+
+- patchNeighbourField:
+    ideally non-zero but e.g. mix of blockage.
+    since otherwise e.g. limiting fails
+
+
+cyclicACMI:
+-----------
+patchNeighbourField()
+updateInterfaceMatrix
+manipulateMatrix
+updateCoeffs
+
+    cyclicAMI:
+    ----------
+    patchNeighbourField()
+    updateInterfaceMatrix()
+
+        coupledFvPatchField:
+        --------------------
+        snGrad
+        evaluate                :
+        valueInternalCoeffs
+        valueBoundaryCoeffs
+        gradientInternalCoeffs
+        gradientBoundaryCoeffs
+        updateInterfaceMatrix
+
+
+            fvPatchField:
+            ------------
+            snGrad()
+            updateCoeffs();
+            patchInternalField()
+            patchNeighbourField()
+            evaluate
+            valueBoundaryCoeffs
+            gradientInternalCoeffs
+            manipulateMatrix
+
+
+
+All fvPatchField api:
+- value : coupled bits only
+- snGrad: coupled bits only
+- updateWeightedCoeffs?
+- patchInternalField: internal
+- patchNeighbourField: mix
