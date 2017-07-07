@@ -46,27 +46,27 @@ namespace fileOperations
     );
 
 
-//     class installFileOp
-//     {
-//     public:
-//
-//         installFileOp()
-//         {
-//             // Install autoReconstructing as fileHandler
-//             autoPtr<fileOperation> handler
-//             (
-//                 new autoReconstructingFileOperation(true)
-//             );
-//             Foam::fileHandler(handler);
-//         }
-//
-//         ~installFileOp()
-//         {
-//             autoPtr<fileOperation> handler(nullptr);
-//             Foam::fileHandler(handler);
-//         }
-//     };
-//     installFileOp installFileOp_;
+    class installFileOp
+    {
+    public:
+
+        installFileOp()
+        {}
+
+        ~installFileOp()
+        {
+            if
+            (
+                fileHandler().type()
+             == autoReconstructingFileOperation::typeName
+            )
+            {
+                autoPtr<fileOperation> handler(nullptr);
+                Foam::fileHandler(handler);
+            }
+        }
+    };
+    installFileOp installFileOp_;
 }
 }
 
@@ -533,19 +533,29 @@ Pout<< indent << "For proc:" << proci << " trying to read "
         }
 
 DebugVar(procFields);
+        IOobject reconstructIO(io);
+        reconstructIO.readOpt() = IOobject::NO_READ;
 
         tmp<volScalarField> tfld
         (
             fvReconstructor.reconstructFvVolumeField
             (
-                io,
+                reconstructIO,
                 procFields
             )
         );
-DebugVar(tfld);
+DebugVar(tfld());
 DebugVar(io.type());
-        volScalarField& ioFld = dynamic_cast<volScalarField&>(io);
-        ioFld = tfld;
+
+        OStringStream os;
+        os << tfld();
+
+        IStringStream is(os.str());
+        io.readData(is);
+
+io.writeData(Pout);
+
+
         return true;
     }
     return uncollatedFileOperation::read(io, masterOnly, format, type);
