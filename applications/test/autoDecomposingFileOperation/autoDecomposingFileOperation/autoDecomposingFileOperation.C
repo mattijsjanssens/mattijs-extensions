@@ -38,13 +38,12 @@ namespace Foam
 namespace fileOperations
 {
     defineTypeNameAndDebug(autoDecomposingFileOperation, 0);
-    addToRunTimeSelectionTable
+    addRemovableToRunTimeSelectionTable
     (
         fileOperation,
         autoDecomposingFileOperation,
         word
     );
-
 
     class installFileOp
     {
@@ -53,17 +52,20 @@ namespace fileOperations
         installFileOp()
         {
             // Install autoDecomposing as fileHandler
-            autoPtr<fileOperation> handler
-            (
-                new autoDecomposingFileOperation(true)
-            );
-            Foam::fileHandler(handler);
+            //autoPtr<fileOperation> handler
+            //(
+            //    new autoDecomposingFileOperation(true)
+            //);
+            //Foam::fileHandler(handler);
         }
 
         ~installFileOp()
         {
-            autoPtr<fileOperation> handler(nullptr);
-            Foam::fileHandler(handler);
+            if (fileHandler().type() == autoDecomposingFileOperation::typeName)
+            {
+                autoPtr<fileOperation> handler(nullptr);
+                Foam::fileHandler(handler);
+            }
         }
     };
     installFileOp installFileOp_;
@@ -221,7 +223,9 @@ autoDecomposingFileOperation
 
 Foam::fileOperations::autoDecomposingFileOperation::
 ~autoDecomposingFileOperation()
-{}
+{
+    Pout<< FUNCTION_NAME << " +++ +++" << endl;
+}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

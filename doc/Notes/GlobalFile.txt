@@ -1,0 +1,234 @@
+Global File
+-----------
+
+New parallel file format
+------------------------
+- data from all processors gets written to single file
+- in processors/ directory, e.g.:
+    processors/0.1/p
+- it is still decomposed data!
+- all processor bits are appended into single file
+- master writes the file, all the slaves send to master
+- selectable through 'fileHandler':
+    - uncollated (default): all processors write their own data
+    - masterUncollated    : same as uncollated but only master reads/writes
+                            (slaves can run without NFS access their processor directory)
+    - collated            : all slaves send to master; master writes collated file
+                            (with optional threading)
+
+
+fileHandler
+-----------
+- all (parallel) IO should go through fileHandler()
+- which is a single instance of one of the methods above
+- is used automatically for all regIOobjects using streaming
+  (almost all containers)
+- but all other calls (e.g. OFstream, exists) should be rewritten to
+  use the file handler, e.g. for OFstream, exists:
+
+        autoPtr<Ostream> osPtr(fileHandler().NewOFstream("myFile");
+        Ostream& os = osPtr();
+
+    respectively
+
+        bool haveFile = fileHandler().exists("myFile");
+- fileHandlers are used for
+    - OSspecific functionality (e.g. exists)
+    - regIOobject reading, writing
+    - file-change monitoring
+- default is the 'uncollated' version. A different one can be selected
+  using (in increasing order of priority)
+    - environment variable FOAM_FILEHANDLER
+    - 'fileHander' entry in etc/controlDict
+    - command line option -fileHandler XXX
+    - 'fileHander' entry in system/controlDict
+- parallel communication is done using non-blocking communication by
+  default. This means that the total buffer size needed is the overall
+  length of a file on all processors. In etc/controlDict there is a
+  parameter:
+
+    // In master-only reading/writing: when to switch from non-blocking
+    // to scheduled. This is the overall file size
+    maxBufferSize    1000000000
+
+
+collated fileHandler
+--------------------
+- uses the collated file format ('decomposedBlockData', always written
+in binary)
+- optionally uses threading. This is controlled through the etc/controlDict:
+
+    // Thread buff size (sum of all waiting writes). Set to 0 do disable
+    // threading.
+    maxThreadBufferSize 3000000000;
+
+
+Backwards compatibility
+-----------------------
+- uncollated mode should behave exactly as before
+- foamFormatConvert can be used to change the format
+- decomposePar, reconstructPar
+
+
+Implementation
+--------------
+- the case name still contains the processorDDD directory, e.g.
+processorDDD/cavity
+- it is only scanning/reading/writing that gets intercepted.
+
+
+Writing:
+- regIOobject::writeObject is the main writing routine. It normally opens
+a file stream (OFstream) and uses the writeData routine to stream
+the data into the file.
+- there are two changes to this process:
+    - the fileName used for writing is now obtained from the fileHandler.
+    The uncollated fileHandler returns the objectPath() as before, the
+    collating one returns the equivalent path in the processors/ directory.
+    - instead of an OFstream a masterCollatingOFstream is opened and returned.
+    This is an OStringStream and in its destruction will collect all the
+    processor contributions on the master and write the file.
+- special handling is for the lagrangian data which only gets read/written
+  if there are particles. Since we still need to have a call to the writing
+  on all processors a flag gets passed which tells the fileHandler whether
+  to actually write the file. In the collocated writer this writes a dummy
+  entry.
+- non-parallel running (e.g. decomposePar): the collating writer assumes
+the processors are handled in order and adds the section for the current
+processor to the collated file.
+
+
+Reading:
+- reading is done through regIOobject::readStream() which opens a file
+and returns a stream
+- reading is done in two steps:
+    - find the file ('filePath()'). This searching is done inside the
+    fileHandler so can be overridden when necessary.
+    - open and return a stream to the file. In case of the uncollated
+    fileHandler this uses IFstream, in case of the masterUncollated/collated
+    fileHandlers this:
+        - sends all the filenames to the master
+        - detects if it is a single (collated) file in the processors/
+        directory
+        - and opens the file(s) and sends the contents back to the slaves.
+        These then return the contents to the caller as an IStringStream.
+- non-parallel running (e.g. reconstructPar): reading collated files determines
+the processor number from the casename and uses this to index the collated
+file so e.g. 'paraFoam -case processor0' still works.
+
+
+Other:
+- special handling to get the number of processor directories.
+- special handling to set the time and get the time directories.
+- special handling to get the IOobjects for a time.
+
+
+Debugging
+---------
+- set the debug variables for the fileOperation types:
+    DebugSwitches
+    {
+        uncollated          1;
+        masterUncollated    1;
+        collated            1;
+    }
+- if a parallel run is hanging connect with e.g. gdb and see where it
+  is hanging. The fileHandler calls should always be made on all processors
+  at the same time (i.e. synchronous); if this is not possible the fileHandler
+  mechanism should not be used.
+
+- with collated: errors of the form:
+        unexpected class name IOobject expected faceSet
+  Try and disable threading (set maxThreadBufferSize 0) or use a different
+  writer. Especially topoSet does writing and reading of the same file
+  and with threading this might conflict.
+  Maybe run topoSet with a different fileHandler?
+
+
+Benchmarking
+------------
+- applications/test/CompactIOList
+- write binary faceCompactIOList, 10000000 quads (= 200Mbytes binary data)
+- 8 processors so in total 1.6Gb data to write
+- all slaves wait for master (scatter of os.good()) so are as slow
+  as the master.
+
+                            Master          Raw slave time
+                            cpu/elapsed     cpu/elapsed
+                            ------          --------------
+0) bb
+- uncollated            :   0.35/?
+- scheduled+threaded    :   13.9/?
+- frontthreaded+scheduled:  varying 0.9..1.54s
+
+1) All penfold:
+- uncollated            :   0.83/1.6
+- scheduled             :   4.1/8.7
+- non-blocking          :   4.6/9.9
+- non-blocking+threaded :   8.14/16.5
+
+2) 4*penfold, 4*dm (disk local to the master)
+- uncollated            :   0.63/0.7
+- scheduled             :   9.7/10.5
+- non-blocking          :   9.9/12.9
+- non-blocking+threaded :   13.11/13.1
+- frontthreaded+scheduled:  varying 0.9..1.5s, up to 4.5s for more writing
+
+
+3) 8*inkling (disk local to the master)
+- uncollated            :   0.25/0.3
+
+4) 6*inkling[1-8] (so 48 processes, 9.6Gb) (disk local to the master)
+- uncollated            :   0.32/0.3
+- scheduled             :   5.9/15.9
+- non-blocking          :   7.1/23.4
+- non-blocking+threaded :   out of memory
+
+4b) Now writing 10000000/6 so same overall size (1.6Gb)
+    6*inkling[1-8] (so 48 processes) (disk local to the master)
+- non-blocking+threaded     :  1.56(master), 0.15(processor1) 1.28(processor47)
+- frontthreaded+scheduled   :  0.1..0.2s
+
+
+Todo:
+- rewrite all OSspecific calls (that are parallel aware) to use the
+  fileHandler()
+- FIXED. do the remaining lagrangian.
+- mdFoam/nanoNozzle: mdFoam: pairPotentialList.C
+- FIXED. determine priority of -envvar, -argList, -system/controlDict
+- globalCellModeller, debugSwitches cannot use fileHandler
+- redistributePar
+- master*OFstream with uniform file
+- Lagrangian IOField reading:
+    - if both processors and processorDDD then
+      the processors without IOField will search for
+        processors/<field>
+      instead of processorDDD/<field>
+  Small problem since generally not running with both.
+- have syncPar flag on all low-level routines
+- indexing for single processor reading in decomposedBlockData::readBlock
+- FIXED.paraFoam exits with double free or corruption in _ZN4Foam9freeMutexEi+0x29
+- FIXED. better error message if dictionary or field not found.
+- FIXED. decomposePar -allRegions. uncollated/collated are fine with
+  processor0/0/bottomAir/p but not processors/0/bottomAir/p
+- FIXED. rename fileOperation::fileHandlerType to fileOperation::defaultFileHandler
+- FIXED. cache Times (done in masterUncollated, collated)
+- FIXED. fix static destruction error in readers loaded through libs().
+- avoid copying data in decomposedBlockData, OFstreamWriter
+- FIXED. foamFormatConvert do lagrangian
+    - collated -> uncollated ok
+    - uncollated -> collated : only if master proc has cloud
+- test app: applications/test/decomposedBlockData can extract the data
+  from collated files.
+- tutorialsTest:
+    reactingParcelFoam/counterFlowFlame2DLTS
+        uncollated: FIXED
+        collated:   FIXED
+    mdFoam/nanoNozzle
+        collated:
+    foamyHexMesh
+        uncollated: FIXED
+        collated:   FIXED
+    foamyQuadMesh
+        uncollated: FIXED
+        collated:   FIXED

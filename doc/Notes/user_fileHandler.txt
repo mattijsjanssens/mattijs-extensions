@@ -1,0 +1,27 @@
+Two choices:
+1. have statically constructed class which
+    - installs fileHander in constructor
+    - installs dummy/default fileHandler in desctructor
+So the moment you 'libs' the library containing the class
+it will use your fileHandler
+
+2.
+- add fileHandler (as removable!) to runtime selection table:
+     addRemovableToRunTimeSelectionTable
+     (
+         fileOperation,
+         autoDecomposingFileOperation,
+         word
+     );
+- have statically constructed class
+    - nothing in constructor
+    - installs dummy/default fileHandler in destructor
+- add to system/controlDict:
+    libs    ("libmyFileOperation.so");
+    OptimisationSwitches
+    {
+        fileHandler myFileOperation;
+    }
+
+The main thing is to have a static-destructor which destroys the fileHandler
+instance.
