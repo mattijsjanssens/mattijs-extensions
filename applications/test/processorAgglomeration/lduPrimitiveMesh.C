@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2013-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -994,11 +994,265 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 }
 
 
+// Foam::lduPrimitiveMesh::lduPrimitiveMesh
+// (
+//     const globalIndex& globalCells,
+//     const UPtrList<const lduMesh>& meshes,
+//     const UPtrList<const labelList>& data,
+//
+//     labelList& cellOffsets,
+//     labelList& faceOffsets,
+//     labelListList& faceMap,
+//     labelListList& boundaryMap,
+//     labelListListList& boundaryFaceMap
+// )
+// :
+//     lduAddressing(totalSize(meshes)),
+//     lowerAddr_(0),
+//     upperAddr_(0),
+//     interfaces_(0),
+//     patchSchedule_(0),
+//     comm_(meshes[0].comm())
+// {
+//     // Cells get added in order
+//
+//     // Faces get added in order
+//     //  - meshes (internal faces only)
+//     //  - merged cells
+//     // and sorted after that
+//
+//     cellOffsets.setSize(meshes.size()+1);
+//     cellOffsets[0] = 0;
+//     forAll(meshes, i)
+//     {
+//         label nCells = meshes[i].lduAddr().size();
+//         cellOffsets[i+1] = cellOffsets[i] + nCells;
+//     }
+//
+//
+//     labelList internalFaceOffsets(meshes.size()+1);
+//     internalFaceOffsets[0] = 0;
+//     forAll(meshes, i)
+//     {
+//         const lduMesh& procMesh = meshes[i];
+//
+//         internalFaceOffsets[i+1] =
+//             internalFaceOffsets[i]
+//           + procMesh.lduAddr().lowerAddr().size();
+//     }
+//
+//
+//     DynamicList<label> dynLowerAddr(internalFaceOffsets.last());
+//     DynamicList<label> dynUpperAddr(internalFaceOffsets.last());
+//
+//
+//     // Build table for cells we now have. Table goes from global cell number
+//     // to new local cell number.
+//
+//     label totalIfsSize = 0;
+//     forAll(meshes, i)
+//     {
+//         totalIfsSize += interfaceSize(meshes[i]);
+//     }
+//
+//     Map<label> tagToCell(totalIfsSize);
+//     forAll(meshes, i)
+//     {
+//         const lduInterfacePtrsList interfaces = meshes[i].interfaces();
+//         const labelList& cellData = data[i];
+//
+//         forAll(interfaces, patchi)
+//         {
+//             if (interfaces.set(patchi))
+//             {
+//                 const labelUList& fc = interfaces[patchi].faceCells();
+//                 forAll(fc, i)
+//                 {
+//                     label celli = fc[i];
+//                     label newCelli = cellOffsets[i]+celli;
+//                     tagToCell.insert(cellData[celli], newCelli);
+//                 }
+//             }
+//         }
+//     }
+//
+//
+//     label allFacei = 0;
+//     forAll(meshes, i)
+//     {
+//         const lduMesh& procMesh = meshes[i];
+//         const labelUList& l = procMesh.lduAddr().lowerAddr();
+//         const labelUList& u = procMesh.lduAddr().upperAddr();
+//
+//         // Add internal faces
+//
+//         forAll(l, facei)
+//         {
+//             dynLowerAddr.append(cellOffsets[i]+l[facei]);
+//             dynUpperAddr.append(cellOffsets[i]+u[facei]);
+//             allFacei++;
+//         }
+//
+//
+//         // Add any (connections originating from) processor patches. These
+//         // are ones where we now have the neighbour cells
+//         const lduInterfacePtrsList interfaces = procMesh.interfaces();
+//
+//         forAll(interfaces, patchi)
+//         {
+//             if (interfaces.set(patchi))
+//             {
+//                 const lduPrimitiveInterface& pi =
+//                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
+//
+//                 const labelList& fc = pi.faceCells();
+//                 const labelList& nbrGlobalCells = pi.nbrFaceGlobalCells();
+//                 forAll(nbrGlobalCells, i)
+//                 {
+//                     Map<label>::const_iterator iter =
+//                         tagToCell.find(nbrGlobalCells[i]);
+//
+//                     if (iter != tagToCell.end())
+//                     {
+//                         label cell0 = cellOffsets[i]+fc[i];
+//                         label cell1 = iter();
+//
+//                         if (cell0 < cell1)
+//                         {
+//                             dynLowerAddr.append(cell0);
+//                             dynUpperAddr.append(cell1);
+//                         }
+//                         else
+//                         {
+//                             dynLowerAddr.append(cell1);
+//                             dynUpperAddr.append(cell0);
+//                         }
+//                         allFacei++;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//
+//     lowerAddr_.transfer(dynLowerAddr.shrink());
+//     upperAddr_.transfer(dynUpperAddr.shrink());
+//
+//
+//     // Sort in upper-triangular oder
+//     {
+//         labelList oldToNew
+//         (
+//             upperTriOrder
+//             (
+//                 cellOffsets.last(), //nCells
+//                 lowerAddr_,
+//                 upperAddr_
+//             )
+//         );
+//
+//         inplaceReorder(oldToNew, lowerAddr_);
+//         inplaceReorder(oldToNew, upperAddr_);
+//     }
+//
+//
+//     // Create processor interfaces from remaining processor faces
+//     List<DynamicList<label>> procToLocalCells(Pstream::nProcs());
+//     List<DynamicList<label>> procToNbrCells(Pstream::nProcs());
+//
+//     forAll(meshes, i)
+//     {
+//         const lduMesh& procMesh = meshes[i];
+//         const lduInterfacePtrsList interfaces = procMesh.interfaces();
+//
+//         forAll(interfaces, patchi)
+//         {
+//             if (interfaces.set(patchi))
+//             {
+//                 const lduPrimitiveInterface& pi =
+//                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
+//
+//                 const labelList& fc = pi.faceCells();
+//                 const labelList& nbrGlobalCells = pi.nbrFaceGlobalCells();
+//                 forAll(nbrGlobalCells, i)
+//                 {
+//                     label nbri = nbrGlobalCells[i];
+//                     Map<label>::const_iterator iter = tagToCell.find(nbri);
+//
+//                     if (iter == tagToCell.end())
+//                     {
+//                         // We don't have the neighbouring cell so add to
+//                         // processor interface
+//                         label proci = globalCells.whichProcID(nbri);
+//                         procToLocalCells[proci].append(fc[i]);
+//                         procToNbrCells[proci].append(nbri);
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//
+//
+//     // Add interfaces
+//     label allInterfacei = 0;
+//     forAll(procToLocalCells, proci)
+//     {
+//         if (procToLocalCells[proci].size())
+//         {
+//             allInterfacei++;
+//         }
+//     }
+//
+//     primitiveInterfaces_.setSize(allInterfacei);
+//     interfaces_.setSize(allInterfacei);
+//     allInterfacei = 0;
+//
+//     forAll(procToLocalCells, proci)
+//     {
+//         if (procToLocalCells[proci].size())
+//         {
+//             primitiveInterfaces_.set
+//             (
+//                 allInterfacei,
+//                 new lduPrimitiveInterface
+//                 (
+//                     globalCells,
+//                     procToLocalCells[proci],
+//                     procToNbrCells[proci]
+//                 )
+//             );
+//
+//             interfaces_.set
+//             (
+//                 allInterfacei,
+//                 &primitiveInterfaces_[allInterfacei]
+//             );
+//
+//             if (debug)
+//             {
+//                 Pout<< "Created " << interfaces_[allInterfacei].type()
+//                     << " interface at " << allInterfacei
+//                     << " myCells:" << procToLocalCells[proci]
+//                     << " nbrCells:" << procToNbrCells[proci]
+//                     << endl;
+//             }
+//
+//             allInterfacei++;
+//         }
+//     }
+//
+//
+//     patchSchedule_ = nonBlockingSchedule<lduPrimitiveInterface>(interfaces_);
+//
+//     if (debug)
+//     {
+//         checkUpperTriangular(cellOffsets.last(), lowerAddr_, upperAddr_);
+//     }
+// }
+//XXXXXXXX
 Foam::lduPrimitiveMesh::lduPrimitiveMesh
 (
     const globalIndex& globalCells,
     const UPtrList<const lduMesh>& meshes,
-    const UPtrList<const labelList>& data,
 
     labelList& cellOffsets,
     labelList& faceOffsets,
@@ -1055,22 +1309,26 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
         totalIfsSize += interfaceSize(meshes[i]);
     }
 
+    // Build table from global cell to new local cell number
     Map<label> tagToCell(totalIfsSize);
     forAll(meshes, i)
     {
         const lduInterfacePtrsList interfaces = meshes[i].interfaces();
-        const labelList& cellData = data[i];
 
         forAll(interfaces, patchi)
         {
             if (interfaces.set(patchi))
             {
-                const labelUList& fc = interfaces[patchi].faceCells();
+                const lduPrimitiveInterface& pi =
+                    refCast<const lduPrimitiveInterface>(interfaces[patchi]);
+
+                const labelUList& fc = pi.faceCells();
+                const labelUList& fgc = pi.faceGlobalCells();
                 forAll(fc, i)
                 {
                     label celli = fc[i];
                     label newCelli = cellOffsets[i]+celli;
-                    tagToCell.insert(cellData[celli], newCelli);
+                    tagToCell.insert(fgc[i], newCelli);
                 }
             }
         }
@@ -1106,7 +1364,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
 
                 const labelList& fc = pi.faceCells();
-                const labelList& nbrGlobalCells = pi.nbrFaceCells();
+                const labelList& nbrGlobalCells = pi.nbrFaceGlobalCells();
                 forAll(nbrGlobalCells, i)
                 {
                     Map<label>::const_iterator iter =
@@ -1172,7 +1430,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
 
                 const labelList& fc = pi.faceCells();
-                const labelList& nbrGlobalCells = pi.nbrFaceCells();
+                const labelList& nbrGlobalCells = pi.nbrFaceGlobalCells();
                 forAll(nbrGlobalCells, i)
                 {
                     label nbri = nbrGlobalCells[i];
@@ -1215,6 +1473,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                 allInterfacei,
                 new lduPrimitiveInterface
                 (
+                    globalCells,
                     procToLocalCells[proci],
                     procToNbrCells[proci]
                 )
@@ -1247,7 +1506,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
         checkUpperTriangular(cellOffsets.last(), lowerAddr_, upperAddr_);
     }
 }
-
+//XXXXXXXX
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -1285,7 +1544,7 @@ void Foam::lduPrimitiveMesh::gather
 
             IPstream fromSlave
             (
-                Pstream::scheduled,
+                Pstream::commsTypes::scheduled,
                 procIDs[i],
                 0,          // bufSize
                 Pstream::msgType(),
@@ -1358,7 +1617,7 @@ void Foam::lduPrimitiveMesh::gather
 
         OPstream toMaster
         (
-            Pstream::scheduled,
+            Pstream::commsTypes::scheduled,
             procIDs[0],
             0,
             Pstream::msgType(),

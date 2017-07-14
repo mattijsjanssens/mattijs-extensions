@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -322,7 +322,7 @@ void swapCellData
         {
             ifs[patchi].initInternalFieldTransfer
             (
-                Pstream::nonBlocking,
+                Pstream::commsTypes::nonBlocking,
                 cellData
             );
         }
@@ -342,7 +342,7 @@ void swapCellData
                 patchi,
                 ifs[patchi].internalFieldTransfer
                 (
-                    Pstream::nonBlocking,
+                    Pstream::commsTypes::nonBlocking,
                     cellData
                 )
             );
@@ -373,7 +373,7 @@ void swapCellData
 //
 //            IPstream fromSlave
 //            (
-//                Pstream::scheduled,
+//                Pstream::commsTypes::scheduled,
 //                procIDs[i],
 //                0,          // bufSize
 //                Pstream::msgType(),
@@ -449,7 +449,7 @@ void swapCellData
 //
 //        OPstream toMaster
 //        (
-//            Pstream::scheduled,
+//            Pstream::commsTypes::scheduled,
 //            procIDs[0],
 //            0,
 //            Pstream::msgType(),
@@ -693,6 +693,7 @@ autoPtr<lduPrimitiveMesh> subset
         primitiveInterfaces.size()-1,
         new lduPrimitiveInterface
         (
+            globalNumbering,
             exposedCells,
             exposedGlobalNbrCells
             //UIndirectList<label>
@@ -750,6 +751,7 @@ int main(int argc, char *argv[])
 
     if (Pstream::master())
     {
+        // Move top half to proc1
         destination = 1;
         for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
         {
@@ -800,13 +802,14 @@ int main(int argc, char *argv[])
     // Determine global cell labels across interfaces
     globalIndex globalNumbering(lMesh.lduAddr().size());
     labelList globalCells(lMesh.lduAddr().size());
-    forAll(globalCells, celli)
-    {
-        globalCells[celli] = globalNumbering.toGlobal(celli);
-    }
-
     PtrList<labelField> interfaceNbrCells(ifs.size());
-    swapCellData(ifs, globalCells, interfaceNbrCells);
+    {
+        forAll(globalCells, celli)
+        {
+            globalCells[celli] = globalNumbering.toGlobal(celli);
+        }
+        swapCellData(ifs, globalCells, interfaceNbrCells);
+    }
 
 
     labelListList cellMaps(nProcs);
@@ -870,7 +873,7 @@ int main(int argc, char *argv[])
 
     PstreamBuffers pBufs
     (
-        Pstream::nonBlocking,
+        Pstream::commsTypes::nonBlocking,
         UPstream::msgType(),
         lMesh.comm()
     );
@@ -958,13 +961,6 @@ int main(int argc, char *argv[])
     {
         meshes.set(i+1, &otherMeshes[i]);
     }
-    UPtrList<const labelList> data(nProcs);
-    forAll(globalData, i)
-    {
-Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
-
-        data.set(i, &globalData[i]);
-    }
 
     labelList cellOffsets;
     labelList faceOffsets;
@@ -975,7 +971,6 @@ Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
     (
         globalNumbering,
         meshes,
-        data,
 
         cellOffsets,
         faceOffsets,
@@ -998,25 +993,25 @@ Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
     }
 
 
-    // Do proper patch mapping
-    // ~~~~~~~~~~~~~~~~~~~~~~~
-    {
-        lduInterfaceList ifs(lMesh.interfaces());
-        lduInterfaceList allIfs(patchMap.size());
-
-        forAll(ifs, patchi)
-        {
-            if (ifs.set(patchi) && isGlobalInterface[patchi])
-            {
-                label newPatchi = reversePatchMap[patchi];
-
-                const mapDistributeBase& mapper = patchMappers[newPatchi];
-
-                allIfs.set(newPatchi, ifs[patchi].clone(allMesh, mapper));
-            }
-        }
-        allMesh.addInterfaces(allIfs);
-    }
+//     // Do proper patch mapping
+//     // ~~~~~~~~~~~~~~~~~~~~~~~
+//     {
+//         lduInterfaceList ifs(lMesh.interfaces());
+//         lduInterfaceList allIfs(patchMap.size());
+//
+//         forAll(ifs, patchi)
+//         {
+//             if (ifs.set(patchi) && isGlobalInterface[patchi])
+//             {
+//                 label newPatchi = reversePatchMap[patchi];
+//
+//                 const mapDistributeBase& mapper = patchMappers[newPatchi];
+//
+//                 allIfs.set(newPatchi, ifs[patchi].clone(allMesh, mapper));
+//             }
+//         }
+//         allMesh.addInterfaces(allIfs);
+//     }
 
     Info<< "end" << endl;
 }

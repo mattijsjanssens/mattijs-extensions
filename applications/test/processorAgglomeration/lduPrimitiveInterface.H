@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -25,7 +25,8 @@ Class
     Foam::lduPrimitiveInterface
 
 Description
-    Concrete implementation of lduInterface. Used to store addressing.
+    Concrete implementation of lduInterface. Used to store one-to-one
+    connectivity.
 
 SourceFiles
     lduPrimitiveInterface.C
@@ -36,6 +37,7 @@ SourceFiles
 #define lduPrimitiveInterface_H
 
 #include "lduInterface.H"
+#include "globalIndex.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,7 +58,9 @@ class lduPrimitiveInterface
 
         labelList faceCells_;
 
-        labelList nbrFaceCells_;
+        labelList faceGlobalCells_;
+
+        labelList nbrFaceGlobalCells_;
 
 
 public:
@@ -68,17 +72,29 @@ public:
     // Constructors
 
         //- Construct from components
-        lduPrimitiveInterface(const labelList& fc, const labelList& nbrFc)
+        lduPrimitiveInterface
+        (
+            const globalIndex& globalIndex,
+            const labelList& fc,
+            const labelList& nbrFc
+        )
         :
             faceCells_(fc),
-            nbrFaceCells_(nbrFc)
-        {}
+            faceGlobalCells_(faceCells_.size()),
+            nbrFaceGlobalCells_(nbrFc)
+        {
+            forAll(faceCells_, i)
+            {
+                faceGlobalCells_[i] = globalIndex.toGlobal(faceCells_[i]);
+            }
+        }
 
         //- Construct from Istream
         lduPrimitiveInterface(Istream& is)
         :
             faceCells_(is),
-            nbrFaceCells_(is)
+            faceGlobalCells_(is),
+            nbrFaceGlobalCells_(is)
         {}
 
 
@@ -97,10 +113,15 @@ public:
                 return faceCells_;
             }
 
-            //- Return faceCell addressing
-            virtual const labelUList& nbrFaceCells() const
+            virtual const labelUList& faceGlobalCells() const
             {
-                return nbrFaceCells_;
+                return faceGlobalCells_;
+            }
+
+            //- Return faceCell addressing
+            virtual const labelUList& nbrFaceGlobalCells() const
+            {
+                return nbrFaceGlobalCells_;
             }
 
 
@@ -139,7 +160,10 @@ public:
 
             virtual Ostream& write(Ostream& os) const
             {
-                return os  << faceCells_ << token::SPACE << nbrFaceCells_;
+                return os
+                    << faceCells_ << token::SPACE
+                    << faceGlobalCells_ << token::SPACE
+                    << nbrFaceGlobalCells_;
             }
 };
 

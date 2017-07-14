@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -181,14 +181,13 @@ public:
             labelListListList& boundaryFaceMap
         );
 
-        //- Construct by combined multiple meshes. Each individual mesh contains
-        //  coupling information through a lduPrimitiveInterface holding
-        //  the neighbouring processor+cell (as a global cell index).
+        //- Construct by combining multiple meshes. Each individual mesh
+        //  contains coupling information through a lduPrimitiveInterface
+        //  holding the neighbouring processor+cell (as a global cell index).
         lduPrimitiveMesh
         (
             const globalIndex& globalCells,
             const UPtrList<const lduMesh>& meshes,
-            const UPtrList<const labelList>& data,
 
             labelList& cellOffsets,
             labelList& faceOffsets,
