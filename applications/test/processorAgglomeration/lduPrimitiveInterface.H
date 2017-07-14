@@ -71,22 +71,35 @@ public:
 
     // Constructors
 
+//         //- Construct from components
+//         lduPrimitiveInterface
+//         (
+//             const globalIndex& globalIndex,
+//             const labelList& fc,
+//             const labelList& nbrFc
+//         )
+//         :
+//             faceCells_(fc),
+//             faceGlobalCells_(faceCells_.size()),
+//             nbrFaceGlobalCells_(nbrFc)
+//         {
+//             forAll(faceCells_, i)
+//             {
+//                 faceGlobalCells_[i] = globalIndex.toGlobal(faceCells_[i]);
+//             }
+//         }
         //- Construct from components
         lduPrimitiveInterface
         (
-            const globalIndex& globalIndex,
-            const labelList& fc,
-            const labelList& nbrFc
+            const labelUList& faceCells,
+            const labelUList& faceGlobalCells,
+            const labelUList& nbrFaceGlobalCells
         )
         :
-            faceCells_(fc),
-            faceGlobalCells_(faceCells_.size()),
-            nbrFaceGlobalCells_(nbrFc)
+            faceCells_(faceCells),
+            faceGlobalCells_(faceGlobalCells),
+            nbrFaceGlobalCells_(nbrFaceGlobalCells)
         {
-            forAll(faceCells_, i)
-            {
-                faceGlobalCells_[i] = globalIndex.toGlobal(faceCells_[i]);
-            }
         }
 
         //- Construct from Istream
@@ -143,7 +156,9 @@ public:
                 const Pstream::commsTypes commsType,
                 const labelUList& iF
             ) const
-            {}
+            {
+                NotImplemented;
+            }
 
             //- Transfer and return internal field adjacent to the interface
             virtual tmp<labelField> internalFieldTransfer
@@ -152,7 +167,9 @@ public:
                 const labelUList& iF
             ) const
             {
-                return tmp<labelField>(new labelField(iF, faceCells_));
+                //return tmp<labelField>(new labelField(iF, faceCells_));
+                NotImplemented;
+                return tmp<labelField>(new labelField(0));
             }
 
 

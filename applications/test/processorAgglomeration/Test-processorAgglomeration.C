@@ -595,6 +595,7 @@ autoPtr<lduPrimitiveMesh> subset
     DynamicList<label> exposedFaces(lower.size());
     DynamicList<bool> exposedFaceFlips(lower.size());
     DynamicList<label> exposedCells(lower.size());
+    DynamicList<label> exposedGlobalCells(lower.size());
     DynamicList<label> exposedGlobalNbrCells(lower.size());
 
     label coarseFaceI = 0;
@@ -617,6 +618,10 @@ autoPtr<lduPrimitiveMesh> subset
                 exposedFaces.append(faceI);
                 exposedFaceFlips.append(false);
                 exposedCells.append(reverseCellMap[lower[faceI]]);
+                exposedGlobalCells.append
+                (
+                    globalNumbering.toGlobal(lower[faceI])
+                );
                 exposedGlobalNbrCells.append
                 (
                     globalNumbering.toGlobal(upper[faceI])
@@ -629,6 +634,10 @@ autoPtr<lduPrimitiveMesh> subset
             exposedFaces.append(faceI);
             exposedFaceFlips.append(true);
             exposedCells.append(reverseCellMap[upper[faceI]]);
+            exposedGlobalCells.append
+            (
+                globalNumbering.toGlobal(upper[faceI])
+            );
             exposedGlobalNbrCells.append
             (
                 globalNumbering.toGlobal(lower[faceI])
@@ -693,8 +702,8 @@ autoPtr<lduPrimitiveMesh> subset
         primitiveInterfaces.size()-1,
         new lduPrimitiveInterface
         (
-            globalNumbering,
             exposedCells,
+            exposedGlobalCells,
             exposedGlobalNbrCells
             //UIndirectList<label>
             //(
@@ -704,7 +713,9 @@ autoPtr<lduPrimitiveMesh> subset
         )
     );
     Pout<< "Added exposedFaces patch " << primitiveInterfaces.size()-1
-        << " with number of cells:" << exposedCells.size() << endl;
+        << " with number of cells:" << exposedCells.size()
+        << " localCells:" << exposedCells
+        << " remoteGlobalCells:" << exposedGlobalNbrCells << endl;
 
     lduInterfacePtrsList newIfs(primitiveInterfaces.size());
     forAll(primitiveInterfaces, i)
@@ -812,14 +823,10 @@ int main(int argc, char *argv[])
     }
 
 
+    // Construct local mesh that stays
     labelListList cellMaps(nProcs);
     labelListList faceMaps(nProcs);
     labelListList patchMaps(nProcs);
-
-    PtrList<labelList> globalData(nProcs);
-
-
-    // Construct local mesh that stays
     autoPtr<lduPrimitiveMesh> myMeshPtr
     (
         subset
@@ -839,20 +846,6 @@ int main(int argc, char *argv[])
         )
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
-
-    globalData.set
-    (
-        0,
-        new labelList
-        (
-            UIndirectList<label>
-            (
-                globalCells,
-                cellMaps[Pstream::myProcNo()]
-            )
-        )
-    );
-
 
     {
         string oldPrefix = Pout.prefix();
@@ -906,15 +899,20 @@ int main(int argc, char *argv[])
             );
 
             const lduPrimitiveMesh& subMesh = subMeshPtr();
-            //Pout<< "For destproc:" << destProcI
-            //    << " subMesh:" << subMesh.info() << endl;
-            //printSubMeshInfo(mesh, cMap, fMap, subMesh);
+            Pout<< "For destproc:" << destProcI
+                << " subMesh:" << subMesh.info() << endl;
+            {
+                string oldPrefix = Pout.prefix();
+                string extra("destProc " + Foam::name(destProcI) + ": ");
+                Pout.prefix() += extra;
+                printSubMeshInfo(mesh, cMap, fMap, subMesh);
+                Pout.prefix() = oldPrefix;
+                Pout<< endl;
+            }
 
             // Send subMesh
             UOPstream toDest(destProcI, pBufs);
             sendMesh(subMesh, toDest);
-            // Send the global cell numbers
-            toDest << UIndirectList<label>(globalCells, cMap);
         }
     }
 
@@ -933,12 +931,9 @@ int main(int argc, char *argv[])
 
             // Receive mesh and global cell labels
             otherMeshes.set(otherI++,  receiveMesh(lMesh.comm(), fromDest));
-            globalData.set(otherI, new labelList(fromDest));
-
-            const lduMesh& subMesh = otherMeshes[otherI-1];
-
 
             {
+                const lduMesh& subMesh = otherMeshes[otherI-1];
                 string oldPrefix = Pout.prefix();
                 string extra("from " + Foam::name(procI) + ": ");
                 Pout.prefix() += extra;
