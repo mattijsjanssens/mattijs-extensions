@@ -1,0 +1,14 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh -region myRegion
+
+#runApplication icoFoam_with_dynamicFvMesh -region myRegion
+
+runApplication decomposePar -region myRegion
+runParallel 2 icoFoam_with_dynamicFvMesh -region myRegion
+
+#------------------------------------------------------------------------------
