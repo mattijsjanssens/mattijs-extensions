@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -322,7 +322,7 @@ void swapCellData
         {
             ifs[patchi].initInternalFieldTransfer
             (
-                Pstream::nonBlocking,
+                Pstream::commsTypes::nonBlocking,
                 cellData
             );
         }
@@ -342,7 +342,7 @@ void swapCellData
                 patchi,
                 ifs[patchi].internalFieldTransfer
                 (
-                    Pstream::nonBlocking,
+                    Pstream::commsTypes::nonBlocking,
                     cellData
                 )
             );
@@ -373,7 +373,7 @@ void swapCellData
 //
 //            IPstream fromSlave
 //            (
-//                Pstream::scheduled,
+//                Pstream::commsTypes::scheduled,
 //                procIDs[i],
 //                0,          // bufSize
 //                Pstream::msgType(),
@@ -449,7 +449,7 @@ void swapCellData
 //
 //        OPstream toMaster
 //        (
-//            Pstream::scheduled,
+//            Pstream::commsTypes::scheduled,
 //            procIDs[0],
 //            0,
 //            Pstream::msgType(),
@@ -595,6 +595,7 @@ autoPtr<lduPrimitiveMesh> subset
     DynamicList<label> exposedFaces(lower.size());
     DynamicList<bool> exposedFaceFlips(lower.size());
     DynamicList<label> exposedCells(lower.size());
+    DynamicList<label> exposedGlobalCells(lower.size());
     DynamicList<label> exposedGlobalNbrCells(lower.size());
 
     label coarseFaceI = 0;
@@ -617,6 +618,10 @@ autoPtr<lduPrimitiveMesh> subset
                 exposedFaces.append(faceI);
                 exposedFaceFlips.append(false);
                 exposedCells.append(reverseCellMap[lower[faceI]]);
+                exposedGlobalCells.append
+                (
+                    globalNumbering.toGlobal(lower[faceI])
+                );
                 exposedGlobalNbrCells.append
                 (
                     globalNumbering.toGlobal(upper[faceI])
@@ -629,6 +634,10 @@ autoPtr<lduPrimitiveMesh> subset
             exposedFaces.append(faceI);
             exposedFaceFlips.append(true);
             exposedCells.append(reverseCellMap[upper[faceI]]);
+            exposedGlobalCells.append
+            (
+                globalNumbering.toGlobal(upper[faceI])
+            );
             exposedGlobalNbrCells.append
             (
                 globalNumbering.toGlobal(lower[faceI])
@@ -694,6 +703,7 @@ autoPtr<lduPrimitiveMesh> subset
         new lduPrimitiveInterface
         (
             exposedCells,
+            exposedGlobalCells,
             exposedGlobalNbrCells
             //UIndirectList<label>
             //(
@@ -703,7 +713,9 @@ autoPtr<lduPrimitiveMesh> subset
         )
     );
     Pout<< "Added exposedFaces patch " << primitiveInterfaces.size()-1
-        << " with number of cells:" << exposedCells.size() << endl;
+        << " with number of cells:" << exposedCells.size()
+        << " localCells:" << exposedCells
+        << " remoteGlobalCells:" << exposedGlobalNbrCells << endl;
 
     lduInterfacePtrsList newIfs(primitiveInterfaces.size());
     forAll(primitiveInterfaces, i)
@@ -750,6 +762,7 @@ int main(int argc, char *argv[])
 
     if (Pstream::master())
     {
+        // Move top half to proc1
         destination = 1;
         for (label cellI = 0; cellI < mesh.nCells()/2; cellI++)
         {
@@ -800,23 +813,20 @@ int main(int argc, char *argv[])
     // Determine global cell labels across interfaces
     globalIndex globalNumbering(lMesh.lduAddr().size());
     labelList globalCells(lMesh.lduAddr().size());
-    forAll(globalCells, celli)
-    {
-        globalCells[celli] = globalNumbering.toGlobal(celli);
-    }
-
     PtrList<labelField> interfaceNbrCells(ifs.size());
-    swapCellData(ifs, globalCells, interfaceNbrCells);
-
-
-    labelListList cellMaps(nProcs);
-    labelListList faceMaps(nProcs);
-    labelListList patchMaps(nProcs);
-
-    PtrList<labelList> globalData(nProcs);
+    {
+        forAll(globalCells, celli)
+        {
+            globalCells[celli] = globalNumbering.toGlobal(celli);
+        }
+        swapCellData(ifs, globalCells, interfaceNbrCells);
+    }
 
 
     // Construct local mesh that stays
+    labelListList cellMaps(nProcs);
+    labelListList faceMaps(nProcs);
+    labelListList patchMaps(nProcs);
     autoPtr<lduPrimitiveMesh> myMeshPtr
     (
         subset
@@ -837,20 +847,6 @@ int main(int argc, char *argv[])
     );
     const lduPrimitiveMesh& myMesh = myMeshPtr();
 
-    globalData.set
-    (
-        0,
-        new labelList
-        (
-            UIndirectList<label>
-            (
-                globalCells,
-                cellMaps[Pstream::myProcNo()]
-            )
-        )
-    );
-
-
     {
         string oldPrefix = Pout.prefix();
         Pout.prefix() += "myMesh: ";
@@ -870,7 +866,7 @@ int main(int argc, char *argv[])
 
     PstreamBuffers pBufs
     (
-        Pstream::nonBlocking,
+        Pstream::commsTypes::nonBlocking,
         UPstream::msgType(),
         lMesh.comm()
     );
@@ -903,15 +899,20 @@ int main(int argc, char *argv[])
             );
 
             const lduPrimitiveMesh& subMesh = subMeshPtr();
-            //Pout<< "For destproc:" << destProcI
-            //    << " subMesh:" << subMesh.info() << endl;
-            //printSubMeshInfo(mesh, cMap, fMap, subMesh);
+            Pout<< "For destproc:" << destProcI
+                << " subMesh:" << subMesh.info() << endl;
+            {
+                string oldPrefix = Pout.prefix();
+                string extra("destProc " + Foam::name(destProcI) + ": ");
+                Pout.prefix() += extra;
+                printSubMeshInfo(mesh, cMap, fMap, subMesh);
+                Pout.prefix() = oldPrefix;
+                Pout<< endl;
+            }
 
             // Send subMesh
             UOPstream toDest(destProcI, pBufs);
             sendMesh(subMesh, toDest);
-            // Send the global cell numbers
-            toDest << UIndirectList<label>(globalCells, cMap);
         }
     }
 
@@ -930,12 +931,9 @@ int main(int argc, char *argv[])
 
             // Receive mesh and global cell labels
             otherMeshes.set(otherI++,  receiveMesh(lMesh.comm(), fromDest));
-            globalData.set(otherI, new labelList(fromDest));
-
-            const lduMesh& subMesh = otherMeshes[otherI-1];
-
 
             {
+                const lduMesh& subMesh = otherMeshes[otherI-1];
                 string oldPrefix = Pout.prefix();
                 string extra("from " + Foam::name(procI) + ": ");
                 Pout.prefix() += extra;
@@ -958,13 +956,6 @@ int main(int argc, char *argv[])
     {
         meshes.set(i+1, &otherMeshes[i]);
     }
-    UPtrList<const labelList> data(nProcs);
-    forAll(globalData, i)
-    {
-Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
-
-        data.set(i, &globalData[i]);
-    }
 
     labelList cellOffsets;
     labelList faceOffsets;
@@ -975,7 +966,6 @@ Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
     (
         globalNumbering,
         meshes,
-        data,
 
         cellOffsets,
         faceOffsets,
@@ -998,25 +988,25 @@ Pout<< "i:" << i << " globalData:" << globalData[i] << endl;
     }
 
 
-    // Do proper patch mapping
-    // ~~~~~~~~~~~~~~~~~~~~~~~
-    {
-        lduInterfaceList ifs(lMesh.interfaces());
-        lduInterfaceList allIfs(patchMap.size());
-
-        forAll(ifs, patchi)
-        {
-            if (ifs.set(patchi) && isGlobalInterface[patchi])
-            {
-                label newPatchi = reversePatchMap[patchi];
-
-                const mapDistributeBase& mapper = patchMappers[newPatchi];
-
-                allIfs.set(newPatchi, ifs[patchi].clone(allMesh, mapper));
-            }
-        }
-        allMesh.addInterfaces(allIfs);
-    }
+//     // Do proper patch mapping
+//     // ~~~~~~~~~~~~~~~~~~~~~~~
+//     {
+//         lduInterfaceList ifs(lMesh.interfaces());
+//         lduInterfaceList allIfs(patchMap.size());
+//
+//         forAll(ifs, patchi)
+//         {
+//             if (ifs.set(patchi) && isGlobalInterface[patchi])
+//             {
+//                 label newPatchi = reversePatchMap[patchi];
+//
+//                 const mapDistributeBase& mapper = patchMappers[newPatchi];
+//
+//                 allIfs.set(newPatchi, ifs[patchi].clone(allMesh, mapper));
+//             }
+//         }
+//         allMesh.addInterfaces(allIfs);
+//     }
 
     Info<< "end" << endl;
 }

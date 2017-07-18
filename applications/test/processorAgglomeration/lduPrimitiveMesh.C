@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2013-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -998,7 +998,6 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 (
     const globalIndex& globalCells,
     const UPtrList<const lduMesh>& meshes,
-    const UPtrList<const labelList>& data,
 
     labelList& cellOffsets,
     labelList& faceOffsets,
@@ -1055,22 +1054,26 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
         totalIfsSize += interfaceSize(meshes[i]);
     }
 
+    // Build table from global cell to new local cell number
     Map<label> tagToCell(totalIfsSize);
     forAll(meshes, i)
     {
         const lduInterfacePtrsList interfaces = meshes[i].interfaces();
-        const labelList& cellData = data[i];
 
         forAll(interfaces, patchi)
         {
             if (interfaces.set(patchi))
             {
-                const labelUList& fc = interfaces[patchi].faceCells();
+                const lduPrimitiveInterface& pi =
+                    refCast<const lduPrimitiveInterface>(interfaces[patchi]);
+
+                const labelUList& fc = pi.faceCells();
+                const labelUList& fgc = pi.faceGlobalCells();
                 forAll(fc, i)
                 {
                     label celli = fc[i];
                     label newCelli = cellOffsets[i]+celli;
-                    tagToCell.insert(cellData[celli], newCelli);
+                    tagToCell.insert(fgc[i], newCelli);
                 }
             }
         }
@@ -1106,7 +1109,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
 
                 const labelList& fc = pi.faceCells();
-                const labelList& nbrGlobalCells = pi.nbrFaceCells();
+                const labelList& nbrGlobalCells = pi.nbrFaceGlobalCells();
                 forAll(nbrGlobalCells, i)
                 {
                     Map<label>::const_iterator iter =
@@ -1157,6 +1160,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 
     // Create processor interfaces from remaining processor faces
     List<DynamicList<label>> procToLocalCells(Pstream::nProcs());
+    List<DynamicList<label>> procToGlobalCells(Pstream::nProcs());
     List<DynamicList<label>> procToNbrCells(Pstream::nProcs());
 
     forAll(meshes, i)
@@ -1172,7 +1176,8 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                     refCast<const lduPrimitiveInterface>(interfaces[patchi]);
 
                 const labelList& fc = pi.faceCells();
-                const labelList& nbrGlobalCells = pi.nbrFaceCells();
+                const labelList& thisGlobalCells = pi.faceGlobalCells();
+                const labelList& nbrGlobalCells = pi.nbrFaceGlobalCells();
                 forAll(nbrGlobalCells, i)
                 {
                     label nbri = nbrGlobalCells[i];
@@ -1184,6 +1189,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                         // processor interface
                         label proci = globalCells.whichProcID(nbri);
                         procToLocalCells[proci].append(fc[i]);
+                        procToGlobalCells[proci].append(thisGlobalCells[i]);
                         procToNbrCells[proci].append(nbri);
                     }
                 }
@@ -1216,6 +1222,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
                 new lduPrimitiveInterface
                 (
                     procToLocalCells[proci],
+                    procToGlobalCells[proci],
                     procToNbrCells[proci]
                 )
             );
@@ -1285,7 +1292,7 @@ void Foam::lduPrimitiveMesh::gather
 
             IPstream fromSlave
             (
-                Pstream::scheduled,
+                Pstream::commsTypes::scheduled,
                 procIDs[i],
                 0,          // bufSize
                 Pstream::msgType(),
@@ -1358,7 +1365,7 @@ void Foam::lduPrimitiveMesh::gather
 
         OPstream toMaster
         (
-            Pstream::scheduled,
+            Pstream::commsTypes::scheduled,
             procIDs[0],
             0,
             Pstream::msgType(),
