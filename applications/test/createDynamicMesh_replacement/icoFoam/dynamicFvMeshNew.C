@@ -32,12 +32,15 @@ License
 Foam::autoPtr<Foam::dynamicFvMesh> Foam::dynamicFvMesh::New
 (
     const IOobject& io,
-    const dictionary& dict
+    const dictionary& dict,
+    const word& defaultMeshTypeName
 )
 {
-    const word dynamicFvMeshTypeName(dict.lookup("dynamicFvMesh"));
-
-    Info<< "Selecting dynamicFvMesh " << dynamicFvMeshTypeName << endl;
+    word dynamicFvMeshTypeName(defaultMeshTypeName);
+    if (dict.readIfPresent("dynamicFvMesh", dynamicFvMeshTypeName))
+    {
+        Info<< "Selecting dynamicFvMesh " << dynamicFvMeshTypeName << endl;
+    }
 
     const_cast<Time&>(io.time()).libs().open
     (

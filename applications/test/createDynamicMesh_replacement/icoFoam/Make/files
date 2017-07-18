@@ -2,4 +2,4 @@ dynamicFvMesh.C
 dynamicFvMeshNew.C
 icoFoam.C
 
-EXE = $(FOAM_APPBIN)/icoFoam
+EXE = $(FOAM_USER_APPBIN)/icoFoam_with_dynamicFvMesh

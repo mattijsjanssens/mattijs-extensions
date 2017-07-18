@@ -114,8 +114,13 @@ public:
         //- Select null constructed
         static autoPtr<dynamicFvMesh> New(const IOobject& io);
 
-        //- Select from dictionary
-        static autoPtr<dynamicFvMesh> New(const IOobject&, const dictionary&);
+        //- Select from dictionary with default mesh type
+        static autoPtr<dynamicFvMesh> New
+        (
+            const IOobject&,
+            const dictionary&,
+            const word& defaultMeshTypeName
+        );
 
 
     //- Destructor

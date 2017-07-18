@@ -14,7 +14,6 @@
             false
         )
     );
-    dict.add("dynamicFvMesh", staticFvMesh::typeName);
 
     autoPtr<dynamicFvMesh> meshPtr
     (
@@ -27,7 +26,8 @@
                 runTime,
                 IOobject::MUST_READ
             ),
-            dict
+            dict,
+            staticFvMesh::typeName
         )
     );
 
