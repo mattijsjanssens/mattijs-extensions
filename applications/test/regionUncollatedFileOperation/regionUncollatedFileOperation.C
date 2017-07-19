@@ -29,7 +29,7 @@ License
 #include "objectRegistry.H"
 #include "IOdictionary.H"
 #include "volFields.H"
-#include "fieldDictionary.H"
+//#include "fieldDictionary.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -272,10 +272,13 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
         );
     }
 
+    bool checkGlobal = (type == IOdictionary::typeName);
+
+
     // Try to locate the dictionary
     fileName objPath = uncollatedFileOperation::filePath
     (
-        true,       //?checkGlobal
+        checkGlobal,
         io,
         type
     );
@@ -299,28 +302,23 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
     {
         // Did not find file.  Try directory up. Use either parent of local
         // or parent of the database.
+
+        word regionName;
+        autoPtr<IOobject> parentIOPtr;
+
         if (!io.local().empty())
         {
             // Modifiy the local field
-            IOobject parentIO(io);
-            const word region(parentIO.local().name());
+            parentIOPtr.reset(new IOobject(io));
+            IOobject& parentIO = parentIOPtr();
+            regionName = parentIO.local().name();
             const_cast<fileName&>(parentIO.local()) = parentIO.local().path();
 
             if (debug)
             {
                 Pout<< "Trying parent-of-local:" << io.local()
-                    << " region:" << region
+                    << " region:" << regionName
                     << " objPath:" << parentIO.objectPath() << endl;
-            }
-
-            // Load parent dictionary
-            fieldDictionary parentDict(parentIO, type);
-            //if (parentDict.found(region))
-            {
-                OStringStream os;
-                os << parentDict.subDict(region);
-                IStringStream is(os.str());
-                ok = io.readData(is);
             }
         }
         else if
@@ -330,25 +328,39 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
         )
         {
             // Use the parent of the database
-            IOobject parentIO(io, io.db().parent());
-            const word region(io.db().name());
+            parentIOPtr.reset(new IOobject(io, io.db().parent()));
+            IOobject& parentIO = parentIOPtr();
+            regionName = io.db().name();
 
             if (debug)
             {
                 Pout<< "Trying parent-of-database objPath:"
-                    << " region:" << region
+                    << " region:" << regionName
                     << " objPath:" << parentIO.objectPath() << endl;
             }
+        }
 
+
+        //if (data.found(regionName))
+        if (!regionName.empty())
+        {
             // Load parent dictionary
-            fieldDictionary parentDict(parentIO, type);
-            //if (parentDict.found(region))
+            dictionary data;
+            if (checkGlobal)
             {
-                OStringStream os;
-                os << parentDict.subDict(region);
-                IStringStream is(os.str());
-                ok = io.readData(is);
+                IOdictionary parentDict(parentIOPtr(), type);
+                data.transfer(parentDict);
             }
+            else
+            {
+                localIOdictionary parentDict(parentIOPtr(), type);
+                data.transfer(parentDict);
+            }
+
+            OStringStream os;
+            os << data.subDict(regionName);
+            IStringStream is(os.str());
+            ok = io.readData(is);
         }
     }
 

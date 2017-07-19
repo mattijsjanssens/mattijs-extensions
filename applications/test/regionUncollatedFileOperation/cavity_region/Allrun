@@ -9,6 +9,6 @@ runApplication blockMesh -region myRegion
 #runApplication icoFoam_with_dynamicFvMesh -region myRegion
 
 runApplication decomposePar -region myRegion
-runParallel 2 icoFoam_with_dynamicFvMesh -region myRegion
+runParallel icoFoam_with_dynamicFvMesh -region myRegion
 
 #------------------------------------------------------------------------------

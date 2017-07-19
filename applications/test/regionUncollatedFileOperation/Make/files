@@ -1,3 +1,4 @@
+IOdictionary.C
 regionUncollatedFileOperation.C
 
 LIB = $(FOAM_USER_LIBBIN)/libregionUncollatedFileOperation
