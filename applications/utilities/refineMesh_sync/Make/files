@@ -1,0 +1,7 @@
+refinementIterator.C
+meshCutter.C
+directions.C
+cellCuts.C
+refineMesh.C
+
+EXE = $(FOAM_USER_APPBIN)/refineMesh_sync
