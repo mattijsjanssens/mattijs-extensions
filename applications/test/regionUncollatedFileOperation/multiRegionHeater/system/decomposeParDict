@@ -17,10 +17,14 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-".*"
+"(topAir|bottomWater|heater|leftSolid|rightSolid)"
 {
     numberOfSubdomains  4;
     method              scotch;
 }
+
+// For top-level operations (e.g. decomposePar)
+numberOfSubdomains  4;
+method              scotch;
 
 // ************************************************************************* //

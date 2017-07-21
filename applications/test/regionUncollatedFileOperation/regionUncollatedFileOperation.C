@@ -259,10 +259,10 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
      && !uniformDimensionedFields.match(type)
     )
     {
-        if (debug)
-        {
-            Pout<< "Normal uncollatedFileOperation::read" << endl;
-        }
+        //if (debug)
+        //{
+        //    Pout<< "Normal uncollatedFileOperation::read" << endl;
+        //}
         return uncollatedFileOperation::read
         (
             io,
@@ -286,10 +286,10 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
     bool ok = false;
     if (!objPath.empty())
     {
-        if (debug)
-        {
-            Pout<< "Reverting to uncollatedFileOperation::read" << endl;
-        }
+        //if (debug)
+        //{
+        //    Pout<< "Reverting to uncollatedFileOperation::read" << endl;
+        //}
         ok = uncollatedFileOperation::read
         (
             io,
@@ -314,12 +314,12 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
             regionName = parentIO.local().name();
             const_cast<fileName&>(parentIO.local()) = parentIO.local().path();
 
-            if (debug)
-            {
-                Pout<< "Trying parent-of-local:" << io.local()
-                    << " region:" << regionName
-                    << " objPath:" << parentIO.objectPath() << endl;
-            }
+            //if (debug)
+            //{
+            //    Pout<< "Trying parent-of-local:" << io.local()
+            //        << " region:" << regionName
+            //        << " objPath:" << parentIO.objectPath() << endl;
+            //}
         }
         else if
         (
@@ -329,21 +329,26 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
         {
             // Use the parent of the database
             parentIOPtr.reset(new IOobject(io, io.db().parent()));
-            IOobject& parentIO = parentIOPtr();
             regionName = io.db().name();
 
-            if (debug)
-            {
-                Pout<< "Trying parent-of-database objPath:"
-                    << " region:" << regionName
-                    << " objPath:" << parentIO.objectPath() << endl;
-            }
+            //if (debug)
+            //{
+            //    Pout<< "Trying parent-of-database objPath:"
+            //        << " region:" << regionName
+            //        << " objPath:" << parentIOPtr().objectPath() << endl;
+            //}
         }
 
 
         //if (data.found(regionName))
         if (!regionName.empty())
         {
+            if (debug)
+            {
+                Pout<< typeName << ": returning region " << regionName
+                    << " of " << parentIOPtr().objectPath() << endl;
+            }
+
             // Load parent dictionary
             dictionary data;
             if (checkGlobal)

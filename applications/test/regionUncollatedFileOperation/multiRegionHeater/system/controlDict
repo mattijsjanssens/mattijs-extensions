@@ -22,6 +22,11 @@ OptimisationSwitches
     fileHandler         regionUncollated;
 }
 
+DebugSwitches
+{
+    regionUncollated    1;
+}
+
 application     chtMultiRegionFoam;
 
 startFrom       startTime;  //latestTime;

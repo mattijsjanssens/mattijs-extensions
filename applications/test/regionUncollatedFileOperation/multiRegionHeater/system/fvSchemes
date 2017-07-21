@@ -56,7 +56,7 @@ FoamFile
     }
 }
 
-("heater|leftSolid|rightSolid)"
+"(heater|leftSolid|rightSolid)"
 {
     ddtSchemes
     {
@@ -89,5 +89,8 @@ FoamFile
         default         corrected;
     }
 }
+
+// For any top-level mesh utilities (e.g. splitMeshRegions)
+$topAir;
 
 // ************************************************************************* //
