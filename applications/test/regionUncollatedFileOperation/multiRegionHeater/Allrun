@@ -1,0 +1,30 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+runApplication topoSet
+runApplication splitMeshRegions -cellZones -overwrite -fileHandler uncollated
+
+#-- Run on single processor
+runApplication `getApplication`
+
+## Decompose
+#runApplication decomposePar -allRegions
+#
+## Run
+#runParallel `getApplication`
+#
+## Reconstruct
+#runApplication reconstructPar -allRegions
+
+
+echo
+echo "creating files for paraview post-processing"
+echo
+paraFoam -touchAll
+
+#------------------------------------------------------------------------------

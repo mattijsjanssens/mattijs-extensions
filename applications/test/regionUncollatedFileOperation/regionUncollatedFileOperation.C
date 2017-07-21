@@ -249,14 +249,14 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
             << " type:" << type << endl;
     }
 
+    static const regExp volFields("vol.*Field");
+    static const regExp uniformDimensionedFields("uniformDimensioned.*Field");
+
     if
     (
         type != IOdictionary::typeName
-     && type != volScalarField::typeName
-     && type != volVectorField::typeName
-     && type != volSphericalTensorField::typeName
-     && type != volSymmTensorField::typeName
-     && type != volTensorField::typeName
+     && !volFields.match(type)
+     && !uniformDimensionedFields.match(type)
     )
     {
         if (debug)

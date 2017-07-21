@@ -1,0 +1,286 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      T;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+topAir
+{
+    dimensions      [ 0 0 0 1 0 0 0 ];
+
+    internalField   uniform 300;
+
+    boundaryField
+    {
+        maxY
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        minX
+        {
+            type            fixedValue;
+            value           uniform 300;
+        }
+        maxX
+        {
+            type            inletOutlet;
+            value           uniform 300;
+            inletValue      uniform 300;
+        }
+        minZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        maxZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        topAir_to_rightSolid
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     fluidThermo;
+        }
+        topAir_to_heater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     fluidThermo;
+        }
+        topAir_to_leftSolid
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     fluidThermo;
+        }
+    }
+}
+
+bottomWater
+{
+    dimensions      [ 0 0 0 1 0 0 0 ];
+
+    internalField   uniform 300;
+
+    boundaryField
+    {
+        minX
+        {
+            type            fixedValue;
+            value           uniform 300;
+        }
+        maxX
+        {
+            type            inletOutlet;
+            value           uniform 300;
+            inletValue      uniform 300;
+        }
+        minY
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        minZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        maxZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        bottomWater_to_rightSolid
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     fluidThermo;
+        }
+        bottomWater_to_leftSolid
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     fluidThermo;
+        }
+        bottomWater_to_heater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     fluidThermo;
+        }
+    }
+}
+
+heater
+{
+    dimensions      [ 0 0 0 1 0 0 0 ];
+
+    internalField   uniform 300;
+
+    boundaryField
+    {
+        minY
+        {
+            type            fixedValue;
+            value           uniform 500;
+        }
+        minZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        maxZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        heater_to_topAir
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+        heater_to_rightSolid
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+        heater_to_leftSolid
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+            thicknessLayers ( 0.001 );
+            kappaLayers     ( 0.0005 );
+        }
+        heater_to_bottomWater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+    }
+}
+
+leftSolid
+{
+    dimensions      [ 0 0 0 1 0 0 0 ];
+
+    internalField   uniform 300;
+
+    boundaryField
+    {
+        minX
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        minZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        maxZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        leftSolid_to_bottomWater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+        leftSolid_to_heater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+            thicknessLayers ( 0.001 );
+            kappaLayers     ( 0.0005 );
+        }
+        leftSolid_to_topAir
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+    }
+}
+
+rightSolid
+{
+    dimensions      [ 0 0 0 1 0 0 0 ];
+
+    internalField   uniform 300;
+
+    boundaryField
+    {
+        maxX
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        minZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        maxZ
+        {
+            type            zeroGradient;
+            value           uniform 300;
+        }
+        rightSolid_to_bottomWater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+        rightSolid_to_topAir
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+        rightSolid_to_heater
+        {
+            type            compressible::turbulentTemperatureCoupledBaffleMixed;
+            value           uniform 300;
+            Tnbr            T;
+            kappaMethod     solidThermo;
+        }
+    }
+}
+
+
+// ************************************************************************* //
