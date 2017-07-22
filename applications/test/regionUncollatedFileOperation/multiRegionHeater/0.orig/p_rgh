@@ -22,45 +22,15 @@ topAir
 
     boundaryField
     {
-        maxY
+        ".*"
         {
             type            fixedFluxPressure;
-            value           uniform 100000;
-        }
-        minX
-        {
-            type            fixedFluxPressure;
-            value           uniform 100000;
+            value           $internalField;
         }
         maxX
         {
             type            fixedValue;
-            value           uniform 100000;
-        }
-        minZ
-        {
-            type            fixedFluxPressure;
-            value           uniform 100000;
-        }
-        maxZ
-        {
-            type            fixedFluxPressure;
-            value           uniform 100000;
-        }
-        topAir_to_rightSolid
-        {
-            type            fixedFluxPressure;
-            value           uniform 100000;
-        }
-        topAir_to_heater
-        {
-            type            fixedFluxPressure;
-            value           uniform 100000;
-        }
-        topAir_to_leftSolid
-        {
-            type            fixedFluxPressure;
-            value           uniform 100000;
+            value           $internalField;
         }
     }
 }
@@ -76,47 +46,22 @@ bottomWater
         minX
         {
             type            zeroGradient;
-            value           uniform 0;
+            value           $internalField;
         }
         maxX
         {
             type            fixedValue;
-            value           uniform 0;
+            value           $internalField;
         }
-        minY
+        ".*"
         {
             type            fixedFluxPressure;
-            value           uniform 0;
-        }
-        minZ
-        {
-            type            fixedFluxPressure;
-            value           uniform 0;
-        }
-        maxZ
-        {
-            type            fixedFluxPressure;
-            value           uniform 0;
-        }
-        bottomWater_to_rightSolid
-        {
-            type            fixedFluxPressure;
-            value           uniform 0;
-        }
-        bottomWater_to_leftSolid
-        {
-            type            fixedFluxPressure;
-            value           uniform 0;
-        }
-        bottomWater_to_heater
-        {
-            type            fixedFluxPressure;
-            value           uniform 0;
+            value           $internalField;
         }
     }
 }
 
-heater
+"(heater|leftSolid|rightSolid)"
 {
     dimensions      [1 -1 -2 0 0 0 0];
 
@@ -124,122 +69,10 @@ heater
 
     boundaryField
     {
-        minY
+        ".*"
         {
             type            calculated;
-            value           uniform 100000;
-        }
-        minZ
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        maxZ
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        heater_to_topAir
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        heater_to_rightSolid
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        heater_to_leftSolid
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        heater_to_bottomWater
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-    }
-}
-
-leftSolid
-{
-    dimensions      [1 -1 -2 0 0 0 0];
-
-    internalField   uniform 100000;
-
-    boundaryField
-    {
-        minX
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        minZ
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        maxZ
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        leftSolid_to_bottomWater
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        leftSolid_to_heater
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        leftSolid_to_topAir
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-    }
-}
-
-rightSolid
-{
-    dimensions      [1 -1 -2 0 0 0 0];
-
-    internalField   uniform 100000;
-
-    boundaryField
-    {
-        maxX
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        minZ
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        maxZ
-        {
-            type            calculated;
-            value           uniform 100000;
-        }
-        rightSolid_to_bottomWater
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        rightSolid_to_topAir
-        {
-            type            calculated;
-            value           uniform 0;
-        }
-        rightSolid_to_heater
-        {
-            type            calculated;
-            value           uniform 0;
+            value           $internalField;
         }
     }
 }

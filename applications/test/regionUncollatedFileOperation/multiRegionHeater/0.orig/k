@@ -22,46 +22,21 @@ topAir
 
     boundaryField
     {
-        maxY
+        wall
         {
             type            kqRWallFunction;
-            value           uniform 0.1;
+            value           $internalField;
         }
         minX
         {
             type            fixedValue;
-            value           uniform 0.1;
+            value           $internalField;
         }
         maxX
         {
             type            inletOutlet;
-            value           uniform 0.1;
-            inletValue      uniform 0.1;
-        }
-        minZ
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        maxZ
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        topAir_to_rightSolid
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        topAir_to_heater
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        topAir_to_leftSolid
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
+            value           $internalField;
+            inletValue      $internalField;
         }
     }
 }
@@ -85,35 +60,10 @@ bottomWater
             type            zeroGradient;
             value           uniform 0.1;
         }
-        minY
+        wall
         {
             type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        minZ
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        maxZ
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        bottomWater_to_rightSolid
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        bottomWater_to_leftSolid
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
-        }
-        bottomWater_to_heater
-        {
-            type            kqRWallFunction;
-            value           uniform 0.1;
+            value           $internalField;
         }
     }
 }

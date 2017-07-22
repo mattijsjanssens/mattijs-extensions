@@ -30,12 +30,12 @@ topAir
         minX
         {
             type            fixedValue;
-            value           uniform ( 0.1 0 0 );
+            value           $internalField;
         }
         maxX
         {
             type            inletOutlet;
-            value           uniform ( 0.1 0 0 );
+            value           $internalField;
             inletValue      uniform ( 0 0 0 );
         }
         minZ
@@ -48,17 +48,7 @@ topAir
             type            fixedValue;
             value           uniform ( 0 0 0 );
         }
-        topAir_to_rightSolid
-        {
-            type            fixedValue;
-            value           uniform ( 0 0 0 );
-        }
-        topAir_to_heater
-        {
-            type            fixedValue;
-            value           uniform ( 0 0 0 );
-        }
-        topAir_to_leftSolid
+        "topAir_to_.*"
         {
             type            fixedValue;
             value           uniform ( 0 0 0 );
@@ -77,7 +67,7 @@ bottomWater
         minX
         {
             type            fixedValue;
-            value           uniform ( 0.001 0 0 );
+            value           $internalField;
         }
         maxX
         {
@@ -100,17 +90,7 @@ bottomWater
             type            fixedValue;
             value           uniform ( 0 0 0 );
         }
-        bottomWater_to_rightSolid
-        {
-            type            fixedValue;
-            value           uniform ( 0 0 0 );
-        }
-        bottomWater_to_leftSolid
-        {
-            type            fixedValue;
-            value           uniform ( 0 0 0 );
-        }
-        bottomWater_to_heater
+        "bottomWater_to_.*"
         {
             type            fixedValue;
             value           uniform ( 0 0 0 );

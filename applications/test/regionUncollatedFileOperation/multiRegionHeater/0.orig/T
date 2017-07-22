@@ -25,47 +25,33 @@ topAir
         maxY
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         minX
         {
             type            fixedValue;
-            value           uniform 300;
+            value           $internalField;
         }
         maxX
         {
             type            inletOutlet;
-            value           uniform 300;
-            inletValue      uniform 300;
+            value           $internalField;
+            inletValue      $internalField;
         }
         minZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         maxZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
-        topAir_to_rightSolid
+        "topAir_to_.*"
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     fluidThermo;
-        }
-        topAir_to_heater
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     fluidThermo;
-        }
-        topAir_to_leftSolid
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     fluidThermo;
         }
@@ -83,47 +69,33 @@ bottomWater
         minX
         {
             type            fixedValue;
-            value           uniform 300;
+            value           $internalField;
         }
         maxX
         {
             type            inletOutlet;
-            value           uniform 300;
-            inletValue      uniform 300;
+            value           $internalField;
+            inletValue      $internalField;
         }
         minY
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         minZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         maxZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
-        bottomWater_to_rightSolid
+        "bottomWater_to_.*"
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     fluidThermo;
-        }
-        bottomWater_to_leftSolid
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     fluidThermo;
-        }
-        bottomWater_to_heater
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     fluidThermo;
         }
@@ -146,40 +118,17 @@ heater
         minZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         maxZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
-        heater_to_topAir
+        "heater_to_.*"
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     solidThermo;
-        }
-        heater_to_rightSolid
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     solidThermo;
-        }
-        heater_to_leftSolid
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     solidThermo;
-            thicknessLayers ( 0.001 );
-            kappaLayers     ( 0.0005 );
-        }
-        heater_to_bottomWater
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     solidThermo;
         }
@@ -197,29 +146,29 @@ leftSolid
         minX
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         minZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         maxZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         leftSolid_to_bottomWater
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     solidThermo;
         }
         leftSolid_to_heater
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     solidThermo;
             thicknessLayers ( 0.001 );
@@ -228,7 +177,7 @@ leftSolid
         leftSolid_to_topAir
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     solidThermo;
         }
@@ -246,36 +195,22 @@ rightSolid
         maxX
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         minZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
         maxZ
         {
             type            zeroGradient;
-            value           uniform 300;
+            value           $internalField;
         }
-        rightSolid_to_bottomWater
+        "rightSolid_to_.*"
         {
             type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     solidThermo;
-        }
-        rightSolid_to_topAir
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
-            Tnbr            T;
-            kappaMethod     solidThermo;
-        }
-        rightSolid_to_heater
-        {
-            type            compressible::turbulentTemperatureCoupledBaffleMixed;
-            value           uniform 300;
+            value           $internalField;
             Tnbr            T;
             kappaMethod     solidThermo;
         }
