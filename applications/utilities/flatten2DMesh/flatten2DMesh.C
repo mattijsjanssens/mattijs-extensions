@@ -44,6 +44,7 @@ Note
 #include "polyTopoChange.H"
 #include "PatchTools.H"
 #include "topoSet.H"
+#include "EdgeMap.H"
 
 using namespace Foam;
 
@@ -175,8 +176,7 @@ DebugVar(faceToCell);
 
     // Get the patch from the patches which are not included
 
-    // Faces neighbouring the non-included patches
-    labelList nbrPatchID(nBnd, -1);
+    EdgeMap<label> nbrPatchID(nBnd);
     {
         SubList<face> boundaryFaces(mesh.faces(), nBnd, mesh.nInternalFaces());
         primitivePatch boundaryPatch(boundaryFaces, mesh.points());
@@ -185,20 +185,48 @@ DebugVar(faceToCell);
 
         forAll(edgeFaces, edgei)
         {
+            const edge& e = boundaryPatch.edges()[edgei];
+            Pout<< "edge:" << edgei
+                << " verts:" << boundaryPatch.localPoints()[e[0]]
+                << boundaryPatch.localPoints()[e[1]] << endl;
+
+            const edge meshE
+            (
+                boundaryPatch.meshPoints()[e[0]],
+                boundaryPatch.meshPoints()[e[1]]
+            );
+
             const labelList& eFaces = edgeFaces[edgei];
             if (eFaces.size() >= 2)
             {
                 label patch0 = pbm.patchID()[eFaces[0]];
                 label patch1 = pbm.patchID()[eFaces[1]];
 
+                Pout<< "    patch0:" << patch0 << endl;
+                Pout<< "    patch1:" << patch1 << endl;
+                Pout<< "    eFaces:" << eFaces << endl;
+
                 if (patchSet.found(patch0) && !patchSet.found(patch1))
                 {
-                    nbrPatchID[eFaces[0]] = patch1;
+                    Pout<< "    marking face:"
+                        << boundaryPatch.faceCentres()[eFaces[0]]
+                        << " with patch " << patch1 << endl;
+                    nbrPatchID.insert(meshE, patch1);
                 }
                 else if (patchSet.found(patch1) && !patchSet.found(patch0))
                 {
-                    nbrPatchID[eFaces[1]] = patch0;
+                    Pout<< "    marking face:"
+                        << boundaryPatch.faceCentres()[eFaces[1]]
+                        << " with patch " << patch0 << endl;
+                    nbrPatchID.insert(meshE, patch0);
                 }
+            }
+            else
+            {
+                FatalErrorInFunction
+                    << "edge:" << boundaryPatch.edges()[edgei]
+                    << " eFaces:" << eFaces
+                    << exit(FatalError);
             }
         }
     }
@@ -225,10 +253,16 @@ DebugVar(nbrPatchID);
                 << endl;
         }
 
+        const edge meshE
+        (
+            allPatch.meshPoints()[e[0]],
+            allPatch.meshPoints()[e[1]]
+        );
+
+
         // We should have a nbrPatchID
         label allFacei = eFaces[0];
-        label meshFacei = patchFaces[allFacei];
-        label patchi = nbrPatchID[meshFacei - mesh.nInternalFaces()];
+        label patchi = nbrPatchID[meshE];
 
         Pout<< "Boundary edge:" << e
             << " verts:" << allPatch.points()[allPatch.meshPoints()[e[0]]]
