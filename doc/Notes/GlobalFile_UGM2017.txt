@@ -1,0 +1,53 @@
+UGM 2017 Pluggable I/O for OpenFOAM
+
+regIOobject:
+------------
+- virtual bool read
+- virtual bool readData
+- virtual bool write
+- virtual bool writeData
+- readData, writeData for serialisable objects
+
+
+plug-in:
+--------
+- etc/controlDict
+- -fileHandler
+- fileOperation class:
+    - virtual filePath
+    - virtual objectPath
+
+
+masterUncollated
+----------------
+- comparison in number of OS calls
+
+
+Collated
+--------
+- Show collated directory structure
+- Show collated file format
+- Show collated implementation?
+- no buffering in collated
+- assumes infinitely fast network, slow storage medium.
+- however modern SSD: 1Gb/s
+- OpenFOAM files not bandwidth/memory limited so master-only
+  no big problem.
+- timings?
+
+
+Design
+------
+- at file level, not regIOobject
+- no daisy-chaining. Hardcoded 'collated' format.
+- collated: see above about master-only
+- collated: needs thread-aware mpi. Slower?
+- lagrangian: only on some processors
++ user plug-ins
+
+
+Examples
+--------
+regionUncollated:
+- case structure
+- no file modification checking
