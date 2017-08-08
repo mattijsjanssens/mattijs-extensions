@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "volFields.H"
+#include "uVolFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -32,33 +32,43 @@ namespace Foam
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-defineTemplate2TypeNameAndDebug(volScalarField::Internal, 0);
-defineTemplate2TypeNameAndDebug(volVectorField::Internal, 0);
+defineTemplate2TypeNameAndDebug(uVolScalarField::Internal, 0);
+defineTemplate2TypeNameAndDebug(uVolVectorField::Internal, 0);
 defineTemplate2TypeNameAndDebug
 (
-    volSphericalTensorField::Internal,
+    uVolSphericalTensorField::Internal,
     0
 );
 defineTemplate2TypeNameAndDebug
 (
-    volSymmTensorField::Internal,
+    uVolSymmTensorField::Internal,
     0
 );
-defineTemplate2TypeNameAndDebug(volTensorField::Internal, 0);
+defineTemplate2TypeNameAndDebug(uVolTensorField::Internal, 0);
 
-defineTemplateTypeNameAndDebug(volScalarField, 0);
-defineTemplateTypeNameAndDebug(volVectorField, 0);
-defineTemplateTypeNameAndDebug(volSphericalTensorField, 0);
-defineTemplateTypeNameAndDebug(volSymmTensorField, 0);
-defineTemplateTypeNameAndDebug(volTensorField, 0);
+defineTemplateTypeNameAndDebugWithName(uVolScalarField, "volScalarField", 0);
+defineTemplateTypeNameAndDebugWithName(uVolVectorField, "volVectorField", 0);
+defineTemplateTypeNameAndDebugWithName
+(
+    uVolSphericalTensorField,
+    "volSphericalTensorField",
+    0
+);
+defineTemplateTypeNameAndDebugWithName
+(
+    uVolSymmTensorField,
+    "volSymmTensorField",
+    0
+);
+defineTemplateTypeNameAndDebugWithName(uVolTensorField, "volTensorField", 0);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // specialization for scalar fields
 template<>
-tmp<GeometricField<scalar, fvPatchField, volMesh>>
-GeometricField<scalar, fvPatchField, volMesh>::component
+tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
+GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
 (
     const direction
 ) const
@@ -69,10 +79,11 @@ GeometricField<scalar, fvPatchField, volMesh>::component
 
 // specialization for scalar fields
 template<>
-void GeometricField<scalar, fvPatchField, volMesh>::replace
+void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::replace
 (
     const direction,
-    const GeometricField<scalar, fvPatchField, volMesh>& gsf
+    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>&
+    gsf
 )
 {
     *this == gsf;

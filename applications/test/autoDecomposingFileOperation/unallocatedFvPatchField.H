@@ -204,7 +204,8 @@ public:
             const bool valueRequired=true
         );
 
-        //- Construct by mapping the given unallocatedFvPatchField onto a new patch
+        //- Construct by mapping the given unallocatedFvPatchField onto a new
+        //  patch
         unallocatedFvPatchField
         (
             const unallocatedFvPatchField<Type>&,
@@ -219,7 +220,10 @@ public:
         //- Construct and return a clone
         virtual tmp<unallocatedFvPatchField<Type>> clone() const
         {
-            return tmp<unallocatedFvPatchField<Type>>(new unallocatedFvPatchField<Type>(*this));
+            return tmp<unallocatedFvPatchField<Type>>
+            (
+                new unallocatedFvPatchField<Type>(*this)
+            );
         }
 
         //- Construct as copy setting internal field reference
@@ -235,7 +239,10 @@ public:
             const DimensionedField<Type, unallocatedFvMesh>& iF
         ) const
         {
-            return tmp<unallocatedFvPatchField<Type>>(new unallocatedFvPatchField<Type>(*this, iF));
+            return tmp<unallocatedFvPatchField<Type>>
+            (
+                new unallocatedFvPatchField<Type>(*this, iF)
+            );
         }
 
 
@@ -307,7 +314,8 @@ public:
 
 //        // Attributes
 //
-//            //- Return the type of the calculated for of unallocatedFvPatchField
+//            //- Return the type of the calculated for of
+//            //  unallocatedFvPatchField
 //            static const word& calculatedType();
 //
 //            //- Return true if this patch field fixes a value.
@@ -336,12 +344,12 @@ public:
 //
 //            //- Return local objectRegistry
 //            const objectRegistry& db() const;
-//
-//            //- Return patch
-//            const fvPatch& patch() const
-//            {
-//                return patch_;
-//            }
+
+            //- Return patch
+            const fvPatch& patch() const
+            {
+                return patch_;
+            }
 //
 //            //- Return dimensioned internal field reference
 //            const DimensionedField<Type, unallocatedFvMesh>&
@@ -356,17 +364,17 @@ public:
 //                return internalField_;
 //            }
 //
-//            //- Optional patch type
-//            const word& patchType() const
-//            {
-//                return patchType_;
-//            }
-//
-//            //- Optional patch type
-//            word& patchType()
-//            {
-//                return patchType_;
-//            }
+            //- Optional patch type
+            const word& patchType() const
+            {
+                return patchType_;
+            }
+
+            //- Optional patch type
+            word& patchType()
+            {
+                return patchType_;
+            }
 //
 //            //- Return true if the boundary condition has already been updated
 //            bool updated() const
@@ -526,10 +534,10 @@ public:
 //            );
 //
 //
-//        // I-O
-//
-//            //- Write
-//            virtual void write(Ostream&) const;
+        // I-O
+
+            //- Write
+            virtual void write(Ostream&) const;
 //
 //            //- Helper function to write the keyword and entry only if the
 //            //  values are not equal. The value is then output as value2
@@ -572,16 +580,20 @@ public:
 //        virtual void operator/=(const scalar);
 //
 //
-//        // Force an assignment irrespective of form of patch
-//
-//        virtual void operator==(const fvPatchField<Type>&);
-//        virtual void operator==(const Field<Type>&);
-//        virtual void operator==(const Type&);
-//
-//
-//    // Ostream operator
-//
-//        friend Ostream& operator<< <Type>(Ostream&, const unallocatedFvPatchField<Type>&);
+        // Force an assignment irrespective of form of patch
+
+        virtual void operator==(const unallocatedFvPatchField<Type>&);
+        virtual void operator==(const Field<Type>&);
+        virtual void operator==(const Type&);
+
+
+    // Ostream operator
+
+        friend Ostream& operator<< <Type>
+        (
+            Ostream&,
+            const unallocatedFvPatchField<Type>&
+        );
 };
 
 
@@ -593,8 +605,22 @@ public:
 
 #ifdef NoRepository
     #include "unallocatedFvPatchField.C"
-    #include "calculatedFvPatchField.H"
+    //#include "calculatedFvPatchField.H"
 #endif
+
+/*
+#define makeFvPatchField(fvPatchTypeField)                                     \
+                                                                               \
+defineNamedTemplateTypeNameAndDebug(fvPatchTypeField, 0);                      \
+template<>                                                                     \
+int fvPatchTypeField::disallowGenericFvPatchField                              \
+(                                                                              \
+    debug::debugSwitch("disallowGenericFvPatchField", 0)                       \
+);                                                                             \
+defineTemplateRunTimeSelectionTable(fvPatchTypeField, patch);                  \
+defineTemplateRunTimeSelectionTable(fvPatchTypeField, patchMapper);            \
+defineTemplateRunTimeSelectionTable(fvPatchTypeField, dictionary);
+*/
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

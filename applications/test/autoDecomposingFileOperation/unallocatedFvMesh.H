@@ -105,7 +105,7 @@ public:
 
     // Member Functions
 
-        //- Return number of points
+        //- Return number of cells
         static label size(const Mesh& mesh)
         {
             return mesh.nCells_;
@@ -128,6 +128,12 @@ public:
         {
             return db_;
         }
+
+
+    // Member Operators
+
+        bool operator!=(const unallocatedFvMesh&) const;
+        bool operator==(const unallocatedFvMesh&) const;
 };
 
 

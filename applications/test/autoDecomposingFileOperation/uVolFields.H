@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,25 +22,25 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 InClass
-    Foam::GeometricTensorField
+    Foam::uVolFields
 
 Description
-    Tensor specific part of the implementation of GeometricField.
 
 SourceFiles
-    GeometricTensorField.C
+    uVolFields.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef GeometricTensorField_H
-#define GeometricTensorField_H
+#ifndef uVolFields_H
+#define uVolFields_H
 
-#include "GeometricSphericalTensorField.H"
-#include "GeometricSymmTensorField.H"
-#include "DimensionedTensorField.H"
-
-#define TEMPLATE template<template<class> class PatchField, class GeoMesh>
-#include "GeometricFieldFunctionsM.H"
+#include "GeometricFields.H"
+#include "unallocatedFvMesh.H"
+#include "unallocatedFvPatchField.H"
+//#include "fvMesh.H"
+//#include "fvPatchField.H"
+#include "uVolFieldsFwd.H"
+//#include "calculatedFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,32 +49,20 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-UNARY_FUNCTION(tensor, tensor, T, transform)
-UNARY_FUNCTION(scalar, tensor, tr, transform)
-UNARY_FUNCTION(sphericalTensor, tensor, sph, transform)
-UNARY_FUNCTION(symmTensor, tensor, symm, transform)
-UNARY_FUNCTION(symmTensor, tensor, twoSymm, transform)
-UNARY_FUNCTION(tensor, tensor, skew, transform)
-UNARY_FUNCTION(tensor, tensor, dev, transform)
-UNARY_FUNCTION(tensor, tensor, dev2, transform)
-UNARY_FUNCTION(scalar, tensor, det, transform)
-UNARY_FUNCTION(tensor, tensor, cof, cof)
-UNARY_FUNCTION(tensor, tensor, inv, inv)
-UNARY_FUNCTION(vector, tensor, eigenValues, transform)
-UNARY_FUNCTION(tensor, tensor, eigenVectors, sign)
+template<>
+tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
+GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
+(
+    const direction
+) const;
 
-UNARY_FUNCTION(vector, symmTensor, eigenValues, transform)
-UNARY_FUNCTION(symmTensor, symmTensor, eigenVectors, sign)
-
-
-// * * * * * * * * * * * * * * * global operators  * * * * * * * * * * * * * //
-
-UNARY_OPERATOR(vector, tensor, *, hdual, transform)
-UNARY_OPERATOR(tensor, vector, *, hdual, transform)
-
-BINARY_OPERATOR(vector, vector, tensor, /, '|', divide)
-BINARY_TYPE_OPERATOR(vector, vector, tensor, /, '|', divide)
-
+template<>
+void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::
+replace
+(
+    const direction,
+    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>& sf
+);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -82,11 +70,7 @@ BINARY_TYPE_OPERATOR(vector, vector, tensor, /, '|', divide)
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "undefFieldFunctionsM.H"
-
-#ifdef NoRepository
-    #include "GeometricTensorField.C"
-#endif
+//#include "uVolFieldsI.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

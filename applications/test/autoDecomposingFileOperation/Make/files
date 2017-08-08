@@ -1,9 +1,11 @@
+unallocatedFvPatchFields.C
 unallocatedGenericFvPatch.C
 unallocatedFvMesh.C
-volFields.C
-localIOdictionary2.C
+/* volFields.C */
+uVolFields.C
+/* localIOdictionary2.C */
 Test-readField.C
-autoDecomposingFileOperation.C
+/* autoDecomposingFileOperation.C */
 
 /* LIB = $(FOAM_USER_LIBBIN)/libautoDecomposingFileOperation */
 

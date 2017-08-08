@@ -20,7 +20,7 @@ libs    ("libautoDecomposingFileOperation.so");
 OptimisationSwitches
 {
     //fileHandler autoDecomposing;
-    fileHandler autoReconstructing;
+    //fileHandler autoReconstructing;
 }
 
 
@@ -35,6 +35,9 @@ DebugSwitches
     autoReconstructing 1;
 //    dlLibraryTable  1;
     //OSspecific  1;
+
+    unallocatedFvPatchScalarField 1;
+
 }
 
 application     icoFoam;

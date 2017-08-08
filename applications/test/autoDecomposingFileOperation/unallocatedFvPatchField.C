@@ -201,7 +201,8 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //
 //
 //template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::check(const unallocatedFvPatchField<Type>& ptf) const
+//void Foam::unallocatedFvPatchField<Type>::
+//check(const unallocatedFvPatchField<Type>& ptf) const
 //{
 //    if (&patch_ != &(ptf.patch_))
 //    {
@@ -213,7 +214,8 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //
 //
 //template<class Type>
-//Foam::tmp<Foam::Field<Type>> Foam::unallocatedFvPatchField<Type>::snGrad() const
+//Foam::tmp<Foam::Field<Type>>
+//Foam::unallocatedFvPatchField<Type>::snGrad() const
 //{
 //    return patch_.deltaCoeffs()*(*this - patchInternalField());
 //}
@@ -228,7 +230,8 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //
 //
 //template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::patchInternalField(Field<Type>& pif) const
+//void Foam::unallocatedFvPatchField<Type>::
+//patchInternalField(Field<Type>& pif) const
 //{
 //    patch_.patchInternalField(internalField_, pif);
 //}
@@ -315,7 +318,8 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //
 //
 //template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::updateWeightedCoeffs(const scalarField& weights)
+//void Foam::unallocatedFvPatchField<Type>::
+//updateWeightedCoeffs(const scalarField& weights)
 //{
 //    // Default behaviour ignores the weights
 //    if (!updated_)
@@ -328,7 +332,8 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //
 //
 //template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::evaluate(const Pstream::commsTypes)
+//void Foam::unallocatedFvPatchField<Type>::
+//evaluate(const Pstream::commsTypes)
 //{
 //    if (!updated_)
 //    {
@@ -341,7 +346,8 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //
 //
 //template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::manipulateMatrix(fvMatrix<Type>& matrix)
+//void Foam::unallocatedFvPatchField<Type>::
+//manipulateMatrix(fvMatrix<Type>& matrix)
 //{
 //    manipulatedMatrix_ = true;
 //}
@@ -358,19 +364,19 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //}
 //
 //
-//template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::write(Ostream& os) const
-//{
-//    os.writeKeyword("type") << type() << token::END_STATEMENT << nl;
-//
-//    if (patchType_.size())
-//    {
-//        os.writeKeyword("patchType") << patchType_
-//            << token::END_STATEMENT << nl;
-//    }
-//}
-//
-//
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::write(Ostream& os) const
+{
+    os.writeKeyword("type") << type() << token::END_STATEMENT << nl;
+
+    if (patchType_.size())
+    {
+        os.writeKeyword("patchType") << patchType_
+            << token::END_STATEMENT << nl;
+    }
+}
+
+
 //template<class Type>
 //template<class EntryType>
 //void Foam::unallocatedFvPatchField<Type>::writeEntryIfDifferent
@@ -556,47 +562,54 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 //}
 //
 //
-//template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::operator==
-//(
-//    const unallocatedFvPatchField<Type>& ptf
-//)
-//{
-//    Field<Type>::operator=(ptf);
-//}
-//
-//
-//template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::operator==
-//(
-//    const Field<Type>& tf
-//)
-//{
-//    Field<Type>::operator=(tf);
-//}
-//
-//
-//template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::operator==
-//(
-//    const Type& t
-//)
-//{
-//    Field<Type>::operator=(t);
-//}
-//
-//
-//// * * * * * * * * * * * * * * * IOstream Operators  * * * * * * * * * * * * //
-//
-//template<class Type>
-//Foam::Ostream& Foam::operator<<(Ostream& os, const unallocatedFvPatchField<Type>& ptf)
-//{
-//    ptf.write(os);
-//
-//    os.check("Ostream& operator<<(Ostream&, const unallocatedFvPatchField<Type>&");
-//
-//    return os;
-//}
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::operator==
+(
+    const unallocatedFvPatchField<Type>& ptf
+)
+{
+    Field<Type>::operator=(ptf);
+}
+
+
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::operator==
+(
+    const Field<Type>& tf
+)
+{
+    Field<Type>::operator=(tf);
+}
+
+
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::operator==
+(
+    const Type& t
+)
+{
+    Field<Type>::operator=(t);
+}
+
+
+// * * * * * * * * * * * * * * * IOstream Operators  * * * * * * * * * * * * //
+
+template<class Type>
+Foam::Ostream& Foam::operator<<
+(
+    Ostream& os,
+    const unallocatedFvPatchField<Type>& ptf
+)
+{
+    ptf.write(os);
+
+    os.check
+    (
+        "Ostream& operator<<(Ostream&, const unallocatedFvPatchField<Type>&"
+    );
+
+    return os;
+}
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

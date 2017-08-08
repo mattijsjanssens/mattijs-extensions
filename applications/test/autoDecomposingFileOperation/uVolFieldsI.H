@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,33 +23,16 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "GeometricSphericalTensorField.H"
-
-#define TEMPLATE template<template<class> class PatchField, class GeoMesh>
-#include "GeometricFieldFunctionsM.C"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-namespace Foam
+template<class Type, template<class> class PatchField, class GeoMesh>
+inline
+const typename
+Foam::GeometricField<Type, PatchField, GeoMesh>::Internal&
+Foam::GeometricField<Type, PatchField, GeoMesh>::
+v() const
 {
+    static_assert(isVolMesh<GeoMesh>::value, "Only valid for volFields");
+    return *this;
+}
 
-// * * * * * * * * * * * * * * * global functions  * * * * * * * * * * * * * //
-
-UNARY_FUNCTION(scalar, sphericalTensor, tr, transform)
-UNARY_FUNCTION(sphericalTensor, sphericalTensor, sph, transform)
-UNARY_FUNCTION(scalar, sphericalTensor, det, pow3)
-UNARY_FUNCTION(sphericalTensor, sphericalTensor, inv, inv)
-
-BINARY_OPERATOR(sphericalTensor, scalar, sphericalTensor, /, '|', divide)
-BINARY_TYPE_OPERATOR(sphericalTensor, scalar, sphericalTensor, /, '|', divide)
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#include "undefFieldFunctionsM.H"
 
 // ************************************************************************* //

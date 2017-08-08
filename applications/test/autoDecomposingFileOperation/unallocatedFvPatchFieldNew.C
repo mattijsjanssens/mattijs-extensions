@@ -26,7 +26,8 @@ License
 // * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
 
 template<class Type>
-Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Type>::New
+Foam::tmp<Foam::unallocatedFvPatchField<Type>>
+Foam::unallocatedFvPatchField<Type>::New
 (
     const word& patchFieldType,
     const word& actualPatchType,
@@ -34,7 +35,7 @@ Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Typ
     const DimensionedField<Type, unallocatedFvMesh>& iF
 )
 {
-    if (debug)
+    //if (debug)
     {
         InfoInFunction
             << "patchFieldType = " << patchFieldType
@@ -88,7 +89,8 @@ Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Typ
 
 
 template<class Type>
-Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Type>::New
+Foam::tmp<Foam::unallocatedFvPatchField<Type>>
+Foam::unallocatedFvPatchField<Type>::New
 (
     const word& patchFieldType,
     const fvPatch& p,
@@ -100,7 +102,8 @@ Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Typ
 
 
 template<class Type>
-Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Type>::New
+Foam::tmp<Foam::unallocatedFvPatchField<Type>>
+Foam::unallocatedFvPatchField<Type>::New
 (
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
@@ -109,10 +112,14 @@ Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Typ
 {
     const word patchFieldType(dict.lookup("type"));
 
-    if (debug)
+    //if (debug)
     {
         InfoInFunction
             << "patchFieldType = " << patchFieldType
+            << endl;
+
+        InfoInFunction<< "dictionaryConstructorTablePtr_:"
+            << dictionaryConstructorTablePtr_->sortedToc()
             << endl;
     }
 
@@ -166,7 +173,8 @@ Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Typ
 
 
 template<class Type>
-Foam::tmp<Foam::unallocatedFvPatchField<Type>> Foam::unallocatedFvPatchField<Type>::New
+Foam::tmp<Foam::unallocatedFvPatchField<Type>>
+Foam::unallocatedFvPatchField<Type>::New
 (
     const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,

@@ -72,4 +72,19 @@ Foam::unallocatedFvMesh::~unallocatedFvMesh()
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 
+
+// * * * * * * * * * * * * * * * Member Operators  * * * * * * * * * * * * * //
+
+bool Foam::unallocatedFvMesh::operator!=(const unallocatedFvMesh& bm) const
+{
+    return &bm != this;
+}
+
+
+bool Foam::unallocatedFvMesh::operator==(const unallocatedFvMesh& bm) const
+{
+    return &bm == this;
+}
+
+
 // ************************************************************************* //

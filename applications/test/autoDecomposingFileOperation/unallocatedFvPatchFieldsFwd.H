@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,25 +21,12 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-InClass
-    Foam::GeometricSymmTensorField
-
-Description
-    SymmTensor specific part of the implementation of GeometricField.
-
-SourceFiles
-    GeometricSymmTensorField.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef GeometricSymmTensorField_H
-#define GeometricSymmTensorField_H
+#ifndef unallocatedFvPatchFieldsFwd_H
+#define unallocatedFvPatchFieldsFwd_H
 
-#include "GeometricField.H"
-#include "DimensionedSymmTensorField.H"
-
-#define TEMPLATE template<template<class> class PatchField, class GeoMesh>
-#include "GeometricFieldFunctionsM.H"
+#include "fieldTypes.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -48,39 +35,18 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-UNARY_FUNCTION(symmTensor, vector, sqr, sqr)
-UNARY_FUNCTION(symmTensor, symmTensor, innerSqr, sqr)
+template<class Type> class unallocatedFvPatchField;
 
-UNARY_FUNCTION(scalar, symmTensor, tr, transform)
-UNARY_FUNCTION(sphericalTensor, symmTensor, sph, transform)
-UNARY_FUNCTION(symmTensor, symmTensor, symm, transform)
-UNARY_FUNCTION(symmTensor, symmTensor, twoSymm, transform)
-UNARY_FUNCTION(symmTensor, symmTensor, dev, transform)
-UNARY_FUNCTION(symmTensor, symmTensor, dev2, transform)
-UNARY_FUNCTION(scalar, symmTensor, det, transform)
-UNARY_FUNCTION(symmTensor, symmTensor, cof, cof)
-UNARY_FUNCTION(symmTensor, symmTensor, inv, inv)
-
-
-// * * * * * * * * * * * * * * * global operators  * * * * * * * * * * * * * //
-
-UNARY_OPERATOR(vector, symmTensor, *, hdual, transform)
-
-BINARY_OPERATOR(tensor, symmTensor, symmTensor, &, '&', dot)
-BINARY_TYPE_OPERATOR(tensor, symmTensor, symmTensor, &, '&', dot)
-
+typedef unallocatedFvPatchField<scalar> unallocatedFvPatchScalarField;
+typedef unallocatedFvPatchField<vector> unallocatedFvPatchVectorField;
+typedef unallocatedFvPatchField<sphericalTensor>
+unallocatedFvPatchSphericalTensorField;
+typedef unallocatedFvPatchField<symmTensor> unallocatedFvPatchSymmTensorField;
+typedef unallocatedFvPatchField<tensor> unallocatedFvPatchTensorField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#include "undefFieldFunctionsM.H"
-
-#ifdef NoRepository
-    #include "GeometricSymmTensorField.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

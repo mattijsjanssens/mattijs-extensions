@@ -30,7 +30,7 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
-#include "volFields.H"
+#include "uVolFields.H"
 #include "unallocatedFvBoundaryMesh.H"
 #include "unallocatedFvMesh.H"
 #include "unallocatedFvPatchField.H"
@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-    typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
-    uVolScalarField;
+//    typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
+//    uVolScalarField;
 
     IOobject io
     (
@@ -59,10 +59,15 @@ int main(int argc, char *argv[])
 
 
     // Read the undecomposed boundary
+    const fvBoundaryMesh& fp = mesh.boundary();
+
+    unallocatedFvBoundaryMesh boundary;
+    boundary.setSize(3);
+    boundary.set(0, new unallocatedGenericFvPatch(fp[0].patch(), fp));
+    boundary.set(1, new unallocatedGenericFvPatch(fp[1].patch(), fp));
+    boundary.set(2, new unallocatedGenericFvPatch(fp[2].patch(), fp));
 
 
-    //typedef PtrList<labelList> unallocatedFvBoundaryMesh;
-    const unallocatedFvBoundaryMesh boundary;
 
     unallocatedFvMesh uMesh
     (
@@ -72,32 +77,32 @@ int main(int argc, char *argv[])
         boundary,
         mesh.globalData()
     );
-//    uVolScalarField(io, uMesh);
+    uVolScalarField(io, uMesh);
 
-    volScalarField p
-    (
-        IOobject
-        (
-            "p",
-            runTime.timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh
-    );
-    volVectorField U
-    (
-        IOobject
-        (
-            "U",
-            runTime.timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh
-    );
+//    volScalarField p
+//    (
+//        IOobject
+//        (
+//            "p",
+//            runTime.timeName(),
+//            mesh,
+//            IOobject::MUST_READ,
+//            IOobject::AUTO_WRITE
+//        ),
+//        mesh
+//    );
+//    volVectorField U
+//    (
+//        IOobject
+//        (
+//            "U",
+//            runTime.timeName(),
+//            mesh,
+//            IOobject::MUST_READ,
+//            IOobject::AUTO_WRITE
+//        ),
+//        mesh
+//    );
 
     return 0;
 }

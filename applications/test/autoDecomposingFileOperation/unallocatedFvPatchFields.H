@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,46 +21,13 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-InClass
-    Foam::volFields
-
-Description
-
-SourceFiles
-    volFields.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef volFieldsFwd_H
-#define volFieldsFwd_H
+#ifndef unallocatedFvPatchFields_H
+#define unallocatedFvPatchFields_H
 
-#include "fieldTypes.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-namespace Foam
-{
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-class volMesh;
-
-template<class Type>
-class fvPatchField;
-
-template<class Type, template<class> class PatchField, class GeoMesh>
-class GeometricField;
-
-typedef GeometricField<scalar, fvPatchField, volMesh> volScalarField;
-typedef GeometricField<vector, fvPatchField, volMesh> volVectorField;
-typedef GeometricField<sphericalTensor, fvPatchField, volMesh>
-    volSphericalTensorField;
-typedef GeometricField<symmTensor, fvPatchField, volMesh> volSymmTensorField;
-typedef GeometricField<tensor, fvPatchField, volMesh> volTensorField;
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
+#include "unallocatedFvPatchField.H"
+#include "unallocatedFvPatchFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

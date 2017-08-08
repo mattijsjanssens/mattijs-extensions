@@ -98,21 +98,6 @@ public:
         {
             return labelList(1, 0);
         }
-//
-//
-//PatchField<Type>::New
-//                     ~~~~~~~~~~~~~~~~~~~~~
-//                     (
-//                     ^
-//                         bmesh_[patchi],
-//bmesh_.findIndices
-//                                            ~~~~~~~^~~~~~~~~~~
-//bmesh_[patchi].type() == emptyPolyPatch::typeName)
-//PatchField<Type>::New
-//                     ~~~~~~~~~~~~~~~~~~~~~
-//                     (
-//                     ^
-//bmesh_[patchi].name()
 };
 
 
