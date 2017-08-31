@@ -36,7 +36,7 @@ SourceFiles
 #define threadedOFstream_H
 
 #include "OStringStream.H"
-//#include "autoPtr.H"
+#include "tmpNrc.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -61,6 +61,8 @@ class threadedOFstream
 
         const IOstream::compressionType compression_;
 
+        const bool append_;
+
 
 public:
 
@@ -73,7 +75,8 @@ public:
             const fileName& pathname,
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
-            compressionType compression=UNCOMPRESSED
+            compressionType compression=UNCOMPRESSED,
+            const bool append = false
         );
 
 

@@ -37,13 +37,15 @@ Foam::threadedOFstream::threadedOFstream
     const fileName& pathName,
     streamFormat format,
     versionNumber version,
-    compressionType compression
+    compressionType compression,
+    const bool append
 )
 :
     OStringStream(format, version),
     writer_(writer),
     pathName_(pathName),
-    compression_(compression)
+    compression_(compression),
+    append_(append)
 {}
 
 
@@ -57,7 +59,8 @@ Foam::threadedOFstream::~threadedOFstream()
         str(),
         format(),
         version(),
-        compression()
+        compression_,   // use supplied, not the one from OStringStream
+        append_
     );
 
     if (!ok)

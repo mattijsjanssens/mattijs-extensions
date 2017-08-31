@@ -1,6 +1,13 @@
+decomposedBlockData.C
+
 OFstreamWriter.C
 threadedOFstream.C
+
+masterOFstream.C
 masterCollatingOFstream.C
+
+threadedCollatedFileOperation.C
+
 Test-binaryBlocksIO.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-binaryBlocksIO
