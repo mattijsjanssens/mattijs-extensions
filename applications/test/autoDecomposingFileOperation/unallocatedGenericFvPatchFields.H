@@ -23,74 +23,29 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "uVolFields.H"
+#ifndef unallocatedGenericFvPatchFields_H
+#define unallocatedGenericFvPatchFields_H
+
+#include "unallocatedGenericFvPatchField.H"
+#include "fieldTypes.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-defineTemplate2TypeNameAndDebug(uVolScalarField::Internal, 0);
-// defineTemplate2TypeNameAndDebug(uVolVectorField::Internal, 0);
-// defineTemplate2TypeNameAndDebug
-// (
-//     uVolSphericalTensorField::Internal,
-//     0
-// );
-// defineTemplate2TypeNameAndDebug
-// (
-//     uVolSymmTensorField::Internal,
-//     0
-// );
-// defineTemplate2TypeNameAndDebug(uVolTensorField::Internal, 0);
-
-defineTemplateTypeNameAndDebugWithName(uVolScalarField, "volScalarField", 0);
-// defineTemplateTypeNameAndDebugWithName(uVolVectorField, "volVectorField", 0);
-// defineTemplateTypeNameAndDebugWithName
-// (
-//     uVolSphericalTensorField,
-//     "volSphericalTensorField",
-//     0
-// );
-// defineTemplateTypeNameAndDebugWithName
-// (
-//     uVolSymmTensorField,
-//     "volSymmTensorField",
-//     0
-// );
-// defineTemplateTypeNameAndDebugWithName(uVolTensorField, "volTensorField", 0);
-
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// specialization for scalar fields
-template<>
-tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
-GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
-(
-    const direction
-) const
-{
-    return *this;
-}
-
-
-// specialization for scalar fields
-template<>
-void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::replace
-(
-    const direction,
-    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>&
-    gsf
-)
-{
-    *this == gsf;
-}
+//makePatchTypeFieldTypedefs(generic);
+typedef unallocatedGenericFvPatchField<scalar>
+    genericUnallocatedFvPatchScalarField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
+
+// ************************************************************************* //
