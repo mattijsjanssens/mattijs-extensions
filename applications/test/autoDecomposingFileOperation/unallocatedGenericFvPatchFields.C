@@ -21,77 +21,43 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::unallocatedGenericFvPatch
-
-Description
-    Version of genericFvPatch without storage
-
-SourceFiles
-    unallocatedGenericFvPatch.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef unallocatedGenericFvPatch_H
-#define unallocatedGenericFvPatch_H
-
-#include "fvPatch.H"
-#include "genericPolyPatch.H"
+#include "unallocatedGenericFvPatchFields.H"
+#include "addToRunTimeSelectionTable.H"
+#include "unallocatedFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-/*---------------------------------------------------------------------------*\
-                  Class unallocatedGenericFvPatch Declaration
-\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-class unallocatedGenericFvPatch
-:
-    public fvPatch
-{
-//    const word name_;
-
-public:
-
-    //- Runtime type information
-    TypeName(genericPolyPatch::typeName_());
-
-
-    // Constructors
-
-        //- Construct from components
-        unallocatedGenericFvPatch
-        (
-            const polyPatch& patch,
-            const fvBoundaryMesh& bm
-        )
-        :
-            fvPatch(patch, bm)
-        {}
-
-
-//     //- Destructor
-//     virtual ~unallocatedGenericFvPatch();
-
-
-    // Member Functions
-
-//             //- Return name
-//             const word& name() const
-//             {
-//                 return name_;
-//             }
-};
+//makePatchFields(generic);
+defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchScalarField, 0);
+// addToRunTimeSelectionTable
+// (
+//     unallocatedFvPatchScalarField,
+//     genericUnallocatedFvPatchScalarField,
+//     patch
+// );
+// addToRunTimeSelectionTable
+// (
+//     unallocatedFvPatchScalarField,
+//     genericUnallocatedFvPatchScalarField,
+//     patchMapper
+// );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchScalarField,
+    genericUnallocatedFvPatchScalarField,
+    dictionary
+);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#endif
 
 // ************************************************************************* //

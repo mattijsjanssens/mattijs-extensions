@@ -45,9 +45,6 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-//    typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
-//    uVolScalarField;
-
     IOobject io
     (
         "p",
@@ -73,7 +70,7 @@ int main(int argc, char *argv[])
     (
         mesh,
         mesh.thisDb(),
-        100,
+        9,                      // nCells
         boundary,
         mesh.globalData()
     );

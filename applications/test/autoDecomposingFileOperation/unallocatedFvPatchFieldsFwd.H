@@ -38,11 +38,11 @@ namespace Foam
 template<class Type> class unallocatedFvPatchField;
 
 typedef unallocatedFvPatchField<scalar> unallocatedFvPatchScalarField;
-typedef unallocatedFvPatchField<vector> unallocatedFvPatchVectorField;
-typedef unallocatedFvPatchField<sphericalTensor>
-unallocatedFvPatchSphericalTensorField;
-typedef unallocatedFvPatchField<symmTensor> unallocatedFvPatchSymmTensorField;
-typedef unallocatedFvPatchField<tensor> unallocatedFvPatchTensorField;
+// typedef unallocatedFvPatchField<vector> unallocatedFvPatchVectorField;
+// typedef unallocatedFvPatchField<sphericalTensor>
+// unallocatedFvPatchSphericalTensorField;
+// typedef unallocatedFvPatchField<symmTensor> unallocatedFvPatchSymmTensorField;
+// typedef unallocatedFvPatchField<tensor> unallocatedFvPatchTensorField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

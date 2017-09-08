@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-libs    ("libautoDecomposingFileOperation.so");
+//libs    ("libautoDecomposingFileOperation.so");
 
 OptimisationSwitches
 {
