@@ -66,6 +66,7 @@ bool Foam::UOPstream::write
 
     if (commsType == commsTypes::blocking)
     {
+        PstreamGlobals::timer_.cpuTimeIncrement();
         //lockMutex(PstreamGlobals::mutex_);
         transferFailed = MPI_Bsend
         (
@@ -77,7 +78,7 @@ bool Foam::UOPstream::write
             PstreamGlobals::MPICommunicators_[communicator] //MPI_COMM_WORLD
         );
         //unlockMutex(PstreamGlobals::mutex_);
-
+        PstreamGlobals::waitTime_ += PstreamGlobals::timer_.cpuTimeIncrement();
         if (debug)
         {
             Pout<< "UOPstream::write : finished write to:" << toProcNo
@@ -88,6 +89,7 @@ bool Foam::UOPstream::write
     }
     else if (commsType == commsTypes::scheduled)
     {
+        PstreamGlobals::timer_.cpuTimeIncrement();
         //lockMutex(PstreamGlobals::mutex_);
         transferFailed = MPI_Send
         (
@@ -99,6 +101,7 @@ bool Foam::UOPstream::write
             PstreamGlobals::MPICommunicators_[communicator] //MPI_COMM_WORLD
         );
         //unlockMutex(PstreamGlobals::mutex_);
+        PstreamGlobals::waitTime_ += PstreamGlobals::timer_.cpuTimeIncrement();
 
         if (debug)
         {

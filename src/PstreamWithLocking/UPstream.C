@@ -180,6 +180,10 @@ void Foam::UPstream::exit(int errnum)
 
     freeMutex(PstreamGlobals::mutex_);
 
+Pout<< "** reduce time : " << PstreamGlobals::reduceTime_ << endl;
+Pout<< "** wait time   : " << PstreamGlobals::waitTime_ << endl;
+
+
     if (errnum == 0)
     {
         MPI_Finalize();
@@ -363,6 +367,7 @@ void Foam::UPstream::allToAll
     }
     else
     {
+        PstreamGlobals::timer_.cpuTimeIncrement();
         //lockMutex(PstreamGlobals::mutex_);
         if
         (
@@ -386,6 +391,8 @@ void Foam::UPstream::allToAll
                 << Foam::abort(FatalError);
         }
         //unlockMutex(PstreamGlobals::mutex_);
+        PstreamGlobals::reduceTime_ +=
+            PstreamGlobals::timer_.cpuTimeIncrement();
     }
 }
 
@@ -548,6 +555,7 @@ void Foam::UPstream::waitRequests(const label start)
             start
         );
 
+        PstreamGlobals::timer_.cpuTimeIncrement();
         //lockMutex(PstreamGlobals::mutex_);
         if
         (
@@ -563,6 +571,7 @@ void Foam::UPstream::waitRequests(const label start)
                 << "MPI_Waitall returned with error" << Foam::endl;
         }
         //unlockMutex(PstreamGlobals::mutex_);
+        PstreamGlobals::waitTime_ += PstreamGlobals::timer_.cpuTimeIncrement();
 
         resetRequests(start);
     }
@@ -592,6 +601,7 @@ void Foam::UPstream::waitRequest(const label i)
             << Foam::abort(FatalError);
     }
 
+    PstreamGlobals::timer_.cpuTimeIncrement();
     //lockMutex(PstreamGlobals::mutex_);
 
     if
@@ -608,6 +618,7 @@ void Foam::UPstream::waitRequest(const label i)
     }
 
     //unlockMutex(PstreamGlobals::mutex_);
+    PstreamGlobals::waitTime_ += PstreamGlobals::timer_.cpuTimeIncrement();
 
     if (debug)
     {

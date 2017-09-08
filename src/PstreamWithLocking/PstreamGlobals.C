@@ -130,6 +130,11 @@ void PstreamGlobals::checkThread(const label comm)
 }
 
 
+cpuTime PstreamGlobals::timer_;
+scalar PstreamGlobals::reduceTime_(0.0);
+scalar PstreamGlobals::waitTime_(0.0);
+
+
 // Thread lock
 //! \cond fileScope
 label PstreamGlobals::mutex_ = -1;

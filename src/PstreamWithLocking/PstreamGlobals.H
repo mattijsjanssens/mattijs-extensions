@@ -37,6 +37,7 @@ SourceFiles
 #define PstreamGlobals_H
 
 #include "DynamicList.H"
+#include "cpuTime.H"
 
 #include <mpi.h>
 
@@ -69,6 +70,11 @@ extern DynamicList<MPI_Group> MPIGroups_;
 void checkCommunicator(const label, const label procNo);
 
 void checkThread(const label);
+
+// Timing
+extern cpuTime timer_;
+extern scalar reduceTime_;
+extern scalar waitTime_;
 
 
 // Locking

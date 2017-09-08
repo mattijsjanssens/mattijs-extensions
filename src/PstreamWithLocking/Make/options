@@ -1,5 +1,8 @@
 sinclude $(GENERAL_RULES)/mplib$(WM_MPLIB)
 sinclude $(RULES)/mplib$(WM_MPLIB)
 
-EXE_INC  = -g -DFULLDEBUG -O0 $(PFLAGS) $(PINC)
+EXE_INC  = \
+        -Wno-old-style-cast \
+        $(PFLAGS) $(PINC)
+
 LIB_LIBS = $(PLIBS)

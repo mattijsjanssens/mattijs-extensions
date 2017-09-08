@@ -81,6 +81,10 @@ std::cout<< "My thread:" << tid << " mutex:" << PstreamGlobals::mutex_
         error::printStack(Pout);
     }
 
+    PstreamGlobals::timer_.cpuTimeIncrement();
+//     struct timespec t;
+//     clock_gettime(CLOCK_REALTIME, &t);
+
     if (UPstream::nProcs(communicator) <= UPstream::nProcsSimpleSum)
     {
         if (UPstream::master(communicator))
@@ -212,6 +216,8 @@ std::cout<< "My thread:" << tid << " mutex:" << PstreamGlobals::mutex_
         //unlockMutex(PstreamGlobals::mutex_);
         Value = sum;
     }
+
+    PstreamGlobals::reduceTime_ += PstreamGlobals::timer_.cpuTimeIncrement();
 }
 
 

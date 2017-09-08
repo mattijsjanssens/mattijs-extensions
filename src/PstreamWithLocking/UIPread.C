@@ -205,6 +205,7 @@ Foam::UIPstream::UIPstream(const int fromProcNo, PstreamBuffers& buffers)
         // and set it
         if (!wantedSize)
         {
+            PstreamGlobals::timer_.cpuTimeIncrement();
             //lockMutex(PstreamGlobals::mutex_);
             MPI_Probe
             (
@@ -215,6 +216,8 @@ Foam::UIPstream::UIPstream(const int fromProcNo, PstreamBuffers& buffers)
             );
             MPI_Get_count(&status, MPI_BYTE, &messageSize_);
             //unlockMutex(PstreamGlobals::mutex_);
+            PstreamGlobals::waitTime_ +=
+                PstreamGlobals::timer_.cpuTimeIncrement();
 
             externalBuf_.setCapacity(messageSize_);
             wantedSize = messageSize_;
@@ -285,6 +288,7 @@ Foam::label Foam::UIPstream::read
     {
         MPI_Status status;
 
+        PstreamGlobals::timer_.cpuTimeIncrement();
         //lockMutex(PstreamGlobals::mutex_);
         if
         (
@@ -306,6 +310,8 @@ Foam::label Foam::UIPstream::read
 
             return 0;
         }
+        PstreamGlobals::waitTime_ +=
+            PstreamGlobals::timer_.cpuTimeIncrement();
 
 
         // Check size of message read
