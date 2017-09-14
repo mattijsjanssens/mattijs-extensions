@@ -50,6 +50,7 @@ Description
 #include "FIFOStack.H"
 #include "threadedOFstream.H"
 #include "OFstreamWriter.H"
+#include "masterCollatingOFstream.H"
 
 using namespace Foam;
 
@@ -145,9 +146,15 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
 
 
-{
     OFstreamWriter writeServer(100);
+{
+    masterCollatingOFstream os(tmpNrc<OFstreamWriter>(writeServer), "bla.txt");
+    os << "This is me" << endl;
+}
+    Pout<< "End." << endl;
+return 0;
 
+{
     for (label i = 0; i < 100; i++)
     {
         DebugVar(i);

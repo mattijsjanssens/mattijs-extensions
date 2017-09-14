@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2012-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,73 +21,50 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::threadedOFstream
+InNamspace
+    Foam
 
 Description
-    Threaded drop-in replacement for OFstream.
+    Various functions to wrap MPI_Allreduce
 
 SourceFiles
-    threadedOFstream.C
+    allReduceTemplates.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef threadedOFstream_H
-#define threadedOFstream_H
+#ifndef allReduce_H
+#define allReduce_H
 
-#include "OStringStream.H"
-#include "tmpNrc.H"
+#include "UPstream.H"
+
+#include <mpi.h>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class OFstreamWriter;
-
-/*---------------------------------------------------------------------------*\
-                      Class threadedOFstream Declaration
-\*---------------------------------------------------------------------------*/
-
-class threadedOFstream
-:
-    public OStringStream
-{
-    // Private data
-
-        OFstreamWriter& writer_;
-
-        const fileName pathName_;
-
-        const IOstream::compressionType compression_;
-
-        const bool append_;
-
-
-public:
-
-    // Constructors
-
-        //- Construct and set stream status
-        threadedOFstream
-        (
-            OFstreamWriter&,
-            const fileName& pathname,
-            streamFormat format=ASCII,
-            versionNumber version=currentVersion,
-            compressionType compression=UNCOMPRESSED,
-            const bool append = false
-        );
-
-
-    //- Destructor
-    ~threadedOFstream();
-};
-
+template<class Type, class BinaryOp>
+void allReduce
+(
+    Type& Value,
+    int count,
+    MPI_Datatype MPIType,
+    MPI_Op op,
+    const BinaryOp& bop,
+    const int tag,
+    const label communicator
+);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "allReduceTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

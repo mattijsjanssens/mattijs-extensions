@@ -51,6 +51,7 @@ class unallocatedGenericFvPatch
 :
     public fvPatch
 {
+//    const word name_;
 
 public:
 
@@ -69,6 +70,19 @@ public:
         :
             fvPatch(patch, bm)
         {}
+
+
+//     //- Destructor
+//     virtual ~unallocatedGenericFvPatch();
+
+
+    // Member Functions
+
+//             //- Return name
+//             const word& name() const
+//             {
+//                 return name_;
+//             }
 };
 
 

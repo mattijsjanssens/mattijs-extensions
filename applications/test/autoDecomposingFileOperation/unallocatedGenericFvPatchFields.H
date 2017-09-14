@@ -21,69 +21,24 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::threadedOFstream
-
-Description
-    Threaded drop-in replacement for OFstream.
-
-SourceFiles
-    threadedOFstream.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef threadedOFstream_H
-#define threadedOFstream_H
+#ifndef unallocatedGenericFvPatchFields_H
+#define unallocatedGenericFvPatchFields_H
 
-#include "OStringStream.H"
-#include "tmpNrc.H"
+#include "unallocatedGenericFvPatchField.H"
+#include "fieldTypes.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class OFstreamWriter;
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-/*---------------------------------------------------------------------------*\
-                      Class threadedOFstream Declaration
-\*---------------------------------------------------------------------------*/
-
-class threadedOFstream
-:
-    public OStringStream
-{
-    // Private data
-
-        OFstreamWriter& writer_;
-
-        const fileName pathName_;
-
-        const IOstream::compressionType compression_;
-
-        const bool append_;
-
-
-public:
-
-    // Constructors
-
-        //- Construct and set stream status
-        threadedOFstream
-        (
-            OFstreamWriter&,
-            const fileName& pathname,
-            streamFormat format=ASCII,
-            versionNumber version=currentVersion,
-            compressionType compression=UNCOMPRESSED,
-            const bool append = false
-        );
-
-
-    //- Destructor
-    ~threadedOFstream();
-};
-
+//makePatchTypeFieldTypedefs(generic);
+typedef unallocatedGenericFvPatchField<scalar>
+    genericUnallocatedFvPatchScalarField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

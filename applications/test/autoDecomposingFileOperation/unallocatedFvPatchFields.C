@@ -36,37 +36,37 @@ defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchScalarField, 0);
 defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, patch);
 defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, dictionary);
 
-defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchVectorField, 0);
-defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, patch);
-defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, dictionary);
-
-defineNamedTemplateTypeNameAndDebug
-(
-    unallocatedFvPatchSphericalTensorField,
-    0
-);
-defineTemplateRunTimeSelectionTable
-(
-    unallocatedFvPatchSphericalTensorField,
-    patch
-);
-defineTemplateRunTimeSelectionTable
-(
-    unallocatedFvPatchSphericalTensorField,
-    dictionary
-);
-
-defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchSymmTensorField, 0);
-defineTemplateRunTimeSelectionTable(unallocatedFvPatchSymmTensorField, patch);
-defineTemplateRunTimeSelectionTable
-(
-    unallocatedFvPatchSymmTensorField,
-    dictionary
-);
-
-defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchTensorField, 0);
-defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, patch);
-defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, dictionary);
+// defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchVectorField, 0);
+// defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, patch);
+// defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, dictionary);
+// 
+// defineNamedTemplateTypeNameAndDebug
+// (
+//     unallocatedFvPatchSphericalTensorField,
+//     0
+// );
+// defineTemplateRunTimeSelectionTable
+// (
+//     unallocatedFvPatchSphericalTensorField,
+//     patch
+// );
+// defineTemplateRunTimeSelectionTable
+// (
+//     unallocatedFvPatchSphericalTensorField,
+//     dictionary
+// );
+// 
+// defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchSymmTensorField, 0);
+// defineTemplateRunTimeSelectionTable(unallocatedFvPatchSymmTensorField, patch);
+// defineTemplateRunTimeSelectionTable
+// (
+//     unallocatedFvPatchSymmTensorField,
+//     dictionary
+// );
+// 
+// defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchTensorField, 0);
+// defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, patch);
+// defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, dictionary);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

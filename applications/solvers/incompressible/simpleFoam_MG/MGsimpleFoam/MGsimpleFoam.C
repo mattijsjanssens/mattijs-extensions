@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -70,9 +70,6 @@ int main(int argc, char *argv[])
 
     const dictionary& MGdict(meshLevels[0].fvSolution::subDict("MG"));
     const label nLevels(readLabel(MGdict.lookup("nLevels")));
-
-DebugVar(nLevels);
-
     const label nFinestIter(readLabel(MGdict.lookup("nFinestIter")));
     const label nCoarsestIter(readLabel(MGdict.lookup("nCoarsestIter")));
     const label nIter(readLabel(MGdict.lookup("nIter")));
@@ -180,11 +177,6 @@ DebugVar(nLevels);
 
         // Solve the finest mesh
         eqnLevels[0].solve(nFinestIter);
-
-        forAll(timeLevels, level)
-        {
-            timeLevels[level].write();
-        }
 
         Info<< "ExecutionTime = " << timeLevels[0].elapsedCpuTime() << " s"
             << "  ClockTime = " << timeLevels[0].elapsedClockTime() << " s"

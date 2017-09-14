@@ -33,34 +33,34 @@ namespace Foam
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 defineTemplate2TypeNameAndDebug(uVolScalarField::Internal, 0);
-defineTemplate2TypeNameAndDebug(uVolVectorField::Internal, 0);
-defineTemplate2TypeNameAndDebug
-(
-    uVolSphericalTensorField::Internal,
-    0
-);
-defineTemplate2TypeNameAndDebug
-(
-    uVolSymmTensorField::Internal,
-    0
-);
-defineTemplate2TypeNameAndDebug(uVolTensorField::Internal, 0);
+// defineTemplate2TypeNameAndDebug(uVolVectorField::Internal, 0);
+// defineTemplate2TypeNameAndDebug
+// (
+//     uVolSphericalTensorField::Internal,
+//     0
+// );
+// defineTemplate2TypeNameAndDebug
+// (
+//     uVolSymmTensorField::Internal,
+//     0
+// );
+// defineTemplate2TypeNameAndDebug(uVolTensorField::Internal, 0);
 
 defineTemplateTypeNameAndDebugWithName(uVolScalarField, "volScalarField", 0);
-defineTemplateTypeNameAndDebugWithName(uVolVectorField, "volVectorField", 0);
-defineTemplateTypeNameAndDebugWithName
-(
-    uVolSphericalTensorField,
-    "volSphericalTensorField",
-    0
-);
-defineTemplateTypeNameAndDebugWithName
-(
-    uVolSymmTensorField,
-    "volSymmTensorField",
-    0
-);
-defineTemplateTypeNameAndDebugWithName(uVolTensorField, "volTensorField", 0);
+// defineTemplateTypeNameAndDebugWithName(uVolVectorField, "volVectorField", 0);
+// defineTemplateTypeNameAndDebugWithName
+// (
+//     uVolSphericalTensorField,
+//     "volSphericalTensorField",
+//     0
+// );
+// defineTemplateTypeNameAndDebugWithName
+// (
+//     uVolSymmTensorField,
+//     "volSymmTensorField",
+//     0
+// );
+// defineTemplateTypeNameAndDebugWithName(uVolTensorField, "volTensorField", 0);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -57,11 +57,12 @@ class OFstreamWriter
         {
         public:
 
-            fileName pathName_;
-            string data_;
-            IOstream::streamFormat format_;
-            IOstream::versionNumber version_;
-            IOstream::compressionType compression_;
+            const fileName pathName_;
+            const string data_;
+            const IOstream::streamFormat format_;
+            const IOstream::versionNumber version_;
+            const IOstream::compressionType compression_;
+            const bool append_;
 
             writeData
             (
@@ -69,14 +70,16 @@ class OFstreamWriter
                 const string& data,
                 IOstream::streamFormat format,
                 IOstream::versionNumber version,
-                IOstream::compressionType compression
+                IOstream::compressionType compression,
+                const bool append
             )
             :
                 pathName_(pathName),
                 data_(data),
                 format_(format),
                 version_(version),
-                compression_(compression)
+                compression_(compression),
+                append_(append)
             {}
         };
 
@@ -103,7 +106,8 @@ class OFstreamWriter
             const string& data,
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
-            IOstream::compressionType cmp
+            IOstream::compressionType cmp,
+            const bool append
         );
 
         //- Write all files in stack
@@ -113,7 +117,7 @@ class OFstreamWriter
 public:
 
     // Declare name of the class and its debug switch
-    TypeName("dictionary");
+    TypeName("OFstreamWriter");
 
 
     // Constructors
@@ -133,10 +137,11 @@ public:
         bool write
         (
             const fileName&,
-            const string&,
+            const string& data,
             IOstream::streamFormat,
             IOstream::versionNumber,
-            IOstream::compressionType
+            IOstream::compressionType,
+            const bool append
         );
 };
 

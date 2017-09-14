@@ -44,7 +44,8 @@ bool Foam::OFstreamWriter::writeFile
     const string& data,
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
-    IOstream::compressionType cmp
+    IOstream::compressionType cmp,
+    const bool append
 )
 {
     if (debug)
@@ -54,7 +55,7 @@ bool Foam::OFstreamWriter::writeFile
     }
 
     mkDir(fName.path());
-    OFstream os(fName, fmt, ver, cmp);
+    OFstream os(fName, fmt, ver, cmp, append);
 
     if (!os.good())
     {
@@ -94,7 +95,8 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
                 ptr->data_,
                 ptr->format_,
                 ptr->version_,
-                ptr->compression_
+                ptr->compression_,
+                ptr->append_
             );
             if (!ok)
             {
@@ -155,7 +157,8 @@ bool Foam::OFstreamWriter::write
     const string& data,
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
-    IOstream::compressionType cmp
+    IOstream::compressionType cmp,
+    const bool append
 )
 {
     if (maxBufferSize_ > 0)
@@ -163,7 +166,7 @@ bool Foam::OFstreamWriter::write
         while (true)
         {
             // Count files to be written
-            off_t totalSize = data.size();
+            off_t totalSize = 0;
             pthread_mutex_lock(&mutex_);
             forAllConstIter(FIFOStack<writeData*>, objects_, iter)
             {
@@ -171,7 +174,11 @@ bool Foam::OFstreamWriter::write
             }
             pthread_mutex_unlock(&mutex_);
 
-            if (totalSize < maxBufferSize_)
+            if
+            (
+                totalSize == 0
+             || (totalSize+off_t(data.size()) < maxBufferSize_)
+            )
             {
                 break;
             }
@@ -188,7 +195,7 @@ bool Foam::OFstreamWriter::write
         }
 
         pthread_mutex_lock(&mutex_);
-        objects_.push(new writeData(fName, data, fmt, ver, cmp));
+        objects_.push(new writeData(fName, data, fmt, ver, cmp, append));
         pthread_mutex_unlock(&mutex_);
 
         pthread_mutex_lock(&mutex_);
@@ -207,7 +214,7 @@ bool Foam::OFstreamWriter::write
     else
     {
         // Immediate writing
-        return writeFile(fName, data, fmt, ver, cmp);
+        return writeFile(fName, data, fmt, ver, cmp, append);
     }
 }
 

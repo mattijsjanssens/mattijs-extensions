@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,67 +21,65 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::threadedOFstream
+Namespace
+    Foam::PstreamGlobals
 
 Description
-    Threaded drop-in replacement for OFstream.
+    Global functions and variables for working with parallel streams,
+    but principally for mpi
 
 SourceFiles
-    threadedOFstream.C
+    PstreamGlobals.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef threadedOFstream_H
-#define threadedOFstream_H
+#ifndef PstreamGlobals_H
+#define PstreamGlobals_H
 
-#include "OStringStream.H"
-#include "tmpNrc.H"
+#include "DynamicList.H"
+#include "cpuTime.H"
+
+#include <mpi.h>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class OFstreamWriter;
-
 /*---------------------------------------------------------------------------*\
-                      Class threadedOFstream Declaration
+                           Class PstreamGlobals Declaration
 \*---------------------------------------------------------------------------*/
 
-class threadedOFstream
-:
-    public OStringStream
+namespace PstreamGlobals
 {
-    // Private data
 
-        OFstreamWriter& writer_;
+extern DynamicList<MPI_Request> outstandingRequests_;
 
-        const fileName pathName_;
+//extern int nRequests_;
+//extern DynamicList<label> freedRequests_;
 
-        const IOstream::compressionType compression_;
+extern int nTags_;
 
-        const bool append_;
-
-
-public:
-
-    // Constructors
-
-        //- Construct and set stream status
-        threadedOFstream
-        (
-            OFstreamWriter&,
-            const fileName& pathname,
-            streamFormat format=ASCII,
-            versionNumber version=currentVersion,
-            compressionType compression=UNCOMPRESSED,
-            const bool append = false
-        );
+extern DynamicList<int> freedTags_;
 
 
-    //- Destructor
-    ~threadedOFstream();
+// Current communicators. First element will be MPI_COMM_WORLD
+extern DynamicList<MPI_Comm> MPICommunicators_;
+extern DynamicList<MPI_Group> MPIGroups_;
+
+void checkCommunicator(const label, const label procNo);
+
+void checkThread(const label);
+
+// Timing
+extern cpuTime timer_;
+extern scalar reduceTime_;
+extern scalar waitTime_;
+
+
+// Locking
+extern label mutex_;
+
 };
 
 

@@ -232,3 +232,25 @@ Todo:
     foamyQuadMesh
         uncollated: FIXED
         collated:   FIXED
+
+
+TODO:
+- processors/
+- processors256/
+- future: processors0to9of256/
+- slaves still need access to etc/controlDict. Not really a problem since comes
+  together with all the shared libraries. So only if the shared libraries
+  are separate
+    Option1: mpirun --preload-files  (and maybe even --preload-binary!)
+    Option2: transfer as environment variable:
+            export FOAM_CONTROLDICT=`foamDictionary $FOAM_ETC/controlDict`
+            mpirun -np 2 -x FOAM_CONTROLDICT icoFoam -parallel
+            and add a bit of code to Foam::debug::controlDict():
+                string controlDictString(getEnv("FOAM_CONTROLDICT"));
+                if (!controlDictString.empty())
+                {
+                    IStringStream is(controlDictString);
+                    controlDictPtr_->merge(dictionary(is));
+                }
+- add 'threadSupport' flag to UPstream::setParRun and interrogate this in
+  collatedFileOperation.

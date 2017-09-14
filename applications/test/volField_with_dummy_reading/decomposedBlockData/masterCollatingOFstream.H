@@ -36,8 +36,7 @@ SourceFiles
 #define masterCollatingOFstream_H
 
 #include "OStringStream.H"
-#include "autoPtr.H"
-#include "UPstream.H"
+#include "tmpNrc.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,7 +55,7 @@ class masterCollatingOFstream
 {
     // Private data
 
-        OFstreamWriter& writer_;
+        const tmpNrc<OFstreamWriter> writer_;
 
         const fileName pathName_;
 
@@ -70,7 +69,7 @@ public:
         //- Construct and set stream status
         masterCollatingOFstream
         (
-            OFstreamWriter&,
+            const tmpNrc<OFstreamWriter>&,
             const fileName& pathname,
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
