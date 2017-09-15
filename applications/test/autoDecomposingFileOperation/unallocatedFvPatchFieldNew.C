@@ -35,6 +35,13 @@ Foam::unallocatedFvPatchField<Type>::New
     const DimensionedField<Type, unallocatedFvMesh>& iF
 )
 {
+    if (!patchConstructorTablePtr_)
+    {
+        FatalErrorInFunction << "No constructors-from-patch available"
+            << " when constructing from patch " << p.name()
+            << " from field type " << patchFieldType
+            << exit(FatalError);
+    }
     //if (debug)
     {
         InfoInFunction
@@ -114,6 +121,14 @@ Foam::unallocatedFvPatchField<Type>::New
 )
 {
     const word patchFieldType(dict.lookup("type"));
+
+    if (!dictionaryConstructorTablePtr_)
+    {
+        FatalErrorInFunction << "No constructors-from-dictionary available"
+            << " when constructing for patch " << p.name()
+            << " from dictionary " << dict
+            << exit(FatalError);
+    }
 
 //     //if (debug)
 //     {

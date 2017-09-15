@@ -91,7 +91,7 @@ public:
         //- Construct from polyMesh
         explicit unallocatedFvMesh
         (
-            const fvMesh& procMesh,
+            //const fvMesh& procMesh,
             const objectRegistry& db,
             const label nCells,
             const unallocatedFvBoundaryMesh& boundary,

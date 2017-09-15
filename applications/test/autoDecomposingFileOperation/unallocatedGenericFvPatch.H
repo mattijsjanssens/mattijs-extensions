@@ -51,9 +51,9 @@ class unallocatedGenericFvPatch
 :
     public fvPatch
 {
-    const label size_;
-
     const word name_;
+
+    const label size_;
 
 public:
 
@@ -68,18 +68,20 @@ public:
         unallocatedGenericFvPatch
         (
             const polyPatch& patch,
+            const word& name,
             const label size,
             const fvBoundaryMesh& bm
         )
         :
             fvPatch(patch, bm),
-            size_(size),
-            name_(patch.name())
+            name_(name),
+            size_(size)
         {}
 
 
-//     //- Destructor
-//     virtual ~unallocatedGenericFvPatch();
+     //- Destructor
+     virtual ~unallocatedGenericFvPatch()
+    {}
 
 
     // Member Functions
