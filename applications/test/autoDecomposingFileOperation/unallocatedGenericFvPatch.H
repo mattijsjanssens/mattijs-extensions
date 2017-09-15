@@ -51,12 +51,15 @@ class unallocatedGenericFvPatch
 :
     public fvPatch
 {
-//    const word name_;
+    const label size_;
+
+    const word name_;
 
 public:
 
     //- Runtime type information
-    TypeName(genericPolyPatch::typeName_());
+    //TypeName(genericPolyPatch::typeName_());
+    TypeName("unallocatedGeneric");
 
 
     // Constructors
@@ -65,10 +68,13 @@ public:
         unallocatedGenericFvPatch
         (
             const polyPatch& patch,
+            const label size,
             const fvBoundaryMesh& bm
         )
         :
-            fvPatch(patch, bm)
+            fvPatch(patch, bm),
+            size_(size),
+            name_(patch.name())
         {}
 
 
@@ -78,11 +84,17 @@ public:
 
     // Member Functions
 
-//             //- Return name
-//             const word& name() const
-//             {
-//                 return name_;
-//             }
+            //- Return size
+            label size() const
+            {
+                return size_;
+            }
+
+            //- Return name
+            const word& name() const
+            {
+                return name_;
+            }
 };
 
 

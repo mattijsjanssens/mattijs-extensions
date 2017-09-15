@@ -88,16 +88,10 @@ public:
     // Member functions
 
         //- Find patch index given a name
-        label findPatchID(const word& patchName) const
-        {
-            return 0;   //patchMap_[patchName];
-        }
+        label findPatchID(const word& patchName) const;
 
         //- Find patch indices given a name
-        labelList findIndices(const keyType&, const bool useGroups) const
-        {
-            return labelList(1, 0);
-        }
+        labelList findIndices(const keyType&, const bool useGroups) const;
 };
 
 

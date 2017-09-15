@@ -57,6 +57,9 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     actualTypeName_(dict.lookup("type")),
     dict_(dict)
 {
+
+DebugVar(dict);
+
     if (!dict.found("value"))
     {
         FatalIOErrorInFunction
@@ -424,6 +427,8 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     actualTypeName_(ptf.actualTypeName_),
     dict_(ptf.dict_)
 {
+DebugVar(p.name());
+
     forAllConstIter
     (
         HashPtrTable<scalarField>,

@@ -43,6 +43,9 @@ Foam::unallocatedFvPatchField<Type>::New
             << endl;
     }
 
+DebugVar(patchConstructorTablePtr_->sortedToc());
+
+
     typename patchConstructorTable::iterator cstrIter =
         patchConstructorTablePtr_->find(patchFieldType);
 
@@ -112,16 +115,16 @@ Foam::unallocatedFvPatchField<Type>::New
 {
     const word patchFieldType(dict.lookup("type"));
 
-    //if (debug)
-    {
-        InfoInFunction
-            << "patchFieldType = " << patchFieldType
-            << endl;
-
-        InfoInFunction<< "dictionaryConstructorTablePtr_:"
-            << dictionaryConstructorTablePtr_->sortedToc()
-            << endl;
-    }
+//     //if (debug)
+//     {
+//         InfoInFunction
+//             << "patchFieldType = " << patchFieldType
+//             << endl;
+//
+//         InfoInFunction<< "dictionaryConstructorTablePtr_:"
+//             << dictionaryConstructorTablePtr_->sortedToc()
+//             << endl;
+//     }
 
     typename dictionaryConstructorTable::iterator cstrIter
         = dictionaryConstructorTablePtr_->find(patchFieldType);
@@ -167,6 +170,9 @@ Foam::unallocatedFvPatchField<Type>::New
                 << exit(FatalIOError);
         }
     }
+
+    InfoInFunction << "Constructing patch field of type " << cstrIter.key()
+        << endl;
 
     return cstrIter()(p, iF, dict);
 }

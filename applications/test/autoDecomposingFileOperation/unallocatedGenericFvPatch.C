@@ -31,7 +31,7 @@ License
 namespace Foam
 {
     defineTypeNameAndDebug(unallocatedGenericFvPatch, 0);
-    addToRunTimeSelectionTable(fvPatch, unallocatedGenericFvPatch, polyPatch);
+    //addToRunTimeSelectionTable(fvPatch, unallocatedGenericFvPatch, polyPatch);
 }
 
 // ************************************************************************* //

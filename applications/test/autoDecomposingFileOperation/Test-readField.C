@@ -29,6 +29,7 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "GeometricField.H"
 #include "argList.H"
 #include "uVolFields.H"
 #include "unallocatedFvBoundaryMesh.H"
@@ -58,14 +59,16 @@ int main(int argc, char *argv[])
     // Read the undecomposed boundary
     const fvBoundaryMesh& fp = mesh.boundary();
 
+    // Construct an unallocated boundary. (the references to the
+    // original mesh are only used for naming)
     unallocatedFvBoundaryMesh boundary;
     boundary.setSize(3);
-    boundary.set(0, new unallocatedGenericFvPatch(fp[0].patch(), fp));
-    boundary.set(1, new unallocatedGenericFvPatch(fp[1].patch(), fp));
-    boundary.set(2, new unallocatedGenericFvPatch(fp[2].patch(), fp));
+    boundary.set(0, new unallocatedGenericFvPatch(fp[0].patch(), 3, fp));
+    boundary.set(1, new unallocatedGenericFvPatch(fp[1].patch(), 9, fp));
+    boundary.set(2, new unallocatedGenericFvPatch(fp[2].patch(), 18, fp));
 
 
-
+    // Construct the mesh
     unallocatedFvMesh uMesh
     (
         mesh,
@@ -74,7 +77,10 @@ int main(int argc, char *argv[])
         boundary,
         mesh.globalData()
     );
-    uVolScalarField(io, uMesh);
+
+
+    uVolScalarField p(io, uMesh);
+    DebugVar(p);
 
 //    volScalarField p
 //    (
