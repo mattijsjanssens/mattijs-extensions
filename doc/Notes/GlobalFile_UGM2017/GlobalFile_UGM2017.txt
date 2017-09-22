@@ -1,0 +1,153 @@
+UGM 2017 Pluggable I/O for OpenFOAM
+
+regIOobject:
+------------
+basic class for data that
+    - is registered
+    - can read/write itself from/to disk
+    - can read/write itself to any stream (serialisation)
+
+Examples:
+p, U, polyMesh/owner
+
+template<class T>
+class IOList
+:
+    public regIOobject,
+    public List<T>
+{
+
+    //- Construct from IOobject
+    IOList(const IOobject&);
+    ..
+    //- Write contents
+    bool writeData(Ostream&) const;
+};
+
+
+IOobject
+--------
+- basic description of object name and location
+- e.g.
+    instance : time directory
+    local    : subdirectory, e.g. polyMesh/
+    registry : database
+    readOpt  : MUST_READ etc
+- example:
+
+    Info<< "Reading field p\n" << endl;
+    volScalarField p
+    (
+        IOobject
+        (
+            "p",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh
+    );
+
+
+
+read from disk
+--------------
+- search file belonging to IOobject
+- open an IFstream
+- read header, switch format (binary, compressed)
+- call readData(..)
+
+
+write to disk
+-------------
+- obtain filename for IOobject
+- open an OFstream
+- write header
+- switch format (binary, compressed)
+- call writeData(..)
+
+
+plug-in:
+--------
+- relay above functionality to plug-in: fileHandler
+- decomposePar -fileHandler collated
+- etc/controlDict or system/controlDict
+- plug-in provides:
+    - virtual filePath(const IOobject&)
+    - virtual read(regIOobject&)
+    - virtual objectPath(const IOobject&);
+    - virtual write(const regIOobject&);
+
+
+plug-in:
+--------
+- uncollated: as before
+- masterUncollated: in parallel performs all file operations on master
+- collated: as above but also changes the output format to be a single
+file
+
+
+masterUncollated
+----------------
+- comparison in number of OS calls
+- master reads file and sends to slave, slave reads from processor stream:
+
+    if (Pstream::master())
+    {
+        IFstream is(..);
+        List<char> buf(..);
+        is.read(buf);
+
+        forAll(procs, i)
+        {
+            UOPstream os(procs[i]);
+            os.write(buf);
+        }
+    }
+    else
+    {
+        UIPstream is(Pstream::masterNo());
+        string buf(is);
+        io.readData(IStringStream(buf));
+    }
+
+***GRAPH**
+
+- mkdir/ifstream/ofstream/readdir
+- w/o timeStampMaster
+- 1,2,4 processors
+
+
+
+Collated
+--------
+- Show collated directory structure
+- Show collated file format
+- Show collated implementation?
+- no buffering in collated
+- assumes infinitely fast network, slow storage medium.
+- however modern SSD: 1Gb/s
+- OpenFOAM files not bandwidth/memory limited so master-only
+  no big problem.
+- timings?
+
+- mkdir/ifstream/ofstream/readdir
+- w/o timeStampMaster
+- 1,2,4 processors
+
+Design
+------
+- at file level, not regIOobject
+- no daisy-chaining. Hardcoded 'collated' format.
+- collated: see above about master-only
+- collated: needs thread-aware mpi. Slower?
+- lagrangian: only on some processors
++ user plug-ins
+
+
+Examples
+--------
+regionUncollated:
+- case structure
+- no file modification checking
