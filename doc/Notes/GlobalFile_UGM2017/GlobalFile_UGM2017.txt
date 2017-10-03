@@ -20,8 +20,11 @@ class IOList
     //- Construct from IOobject
     IOList(const IOobject&);
     ..
+    //- Read contents
+    virtual bool readData(Istream&) const;
+    ..
     //- Write contents
-    bool writeData(Ostream&) const;
+    virtual bool writeData(Ostream&) const;
 };
 
 
@@ -52,8 +55,8 @@ IOobject
 
 Istream/Ostream
 ---------------
-IFstream
-IPstream
+OFstream : stream data to a file
+IPstream : stream data received from another processor
 
 
 read from disk
@@ -95,6 +98,38 @@ file
 
 masterUncollated
 ----------------
++---------+         +---------+
+|         |         |         |
+|   App   |         |   App   |
+|         |         |         |
++---------+         +---------+
+     |                   |
+     v OFstream          v OStringStream
+     |                   |
++---------+         +---------+
+|         |         |         |
+|   File  |         |  Memory |
+|         |         |         |
++---------+         +---------+
+                         |
+                         v OPstream/IPstream
+                         |
+                    +---------+
+                    |         |
+                    |  Memory |
+                    |         |
+                    +---------+
+                         |
+                         v OFstream
+                         |
+                    +---------+
+                    |         |
+                    |   File  |
+                    |         |
+                    +---------+
+
+
+
 - comparison in number of OS calls
 - master reads file and sends to slave, slave reads from processor stream:
 
