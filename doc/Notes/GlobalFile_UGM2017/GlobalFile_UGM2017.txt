@@ -50,6 +50,11 @@ IOobject
     );
 
 
+Istream/Ostream
+---------------
+IFstream
+IPstream
+
 
 read from disk
 --------------
@@ -130,8 +135,50 @@ Collated
 - however modern SSD: 1Gb/s
 - OpenFOAM files not bandwidth/memory limited so master-only
   no big problem.
-- timings?
 
+Picture:
+
+Fully distributed data:
+
++--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
+|  |===|  |===|  |===|  |===|  |===|  |===|  |===|  |===|  |
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
++--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+
+  |      |      |      |      |      |      |      |      |
+  v      v      v      v      v      v      v      v      v
+ disk   disk   disk   disk   disk   disk   disk   disk   disk
+
+
+
+Fully non-distributed data:
+
++--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
+|  |===|  |===|  |===|  |===|  |===|  |===|  |===|  |===|  |
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
++--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+
+  |
+  v
+ disk
+
+
+Distributed data:
+
++--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
+|  |===|  |===|  |===|  |===|  |===|  |===|  |===|  |===|  |
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
+|  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |   |  |
++--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+   +--+
+  |                           |
+  v                           v
+ disk                        disk
+
+
+- timings?
 - mkdir/ifstream/ofstream/readdir
 - w/o timeStampMaster
 - 1,2,4 processors
