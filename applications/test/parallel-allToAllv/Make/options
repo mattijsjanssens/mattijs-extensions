@@ -1,0 +1,4 @@
+sinclude $(GENERAL_RULES)/mplib$(WM_MPLIB)
+sinclude $(RULES)/mplib$(WM_MPLIB)
+
+EXE_INC = -DFULLDEBUG -g -O0 $(PFLAGS) $(PINC) -I$(OBJECTS_DIR)
