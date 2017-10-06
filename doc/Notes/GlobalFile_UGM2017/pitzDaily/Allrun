@@ -1,0 +1,54 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+runApplication $(getApplication)
+
+
+function count() {
+tr ' ' '\n' <  $1 | grep -c \
+'mode\|ifstream\|ofstream\|readDir\|highResLastModified\|mkDir'
+}
+
+
+# 20 timesteps, write at end
+
+count log.simpleFoam_1proc_uncollated
+# 659
+
+# No TimeStampMaster:
+# -------------------
+count log.simpleFoam_2proc_uncollated_noTimeStampMaster
+# 827
+count log.simpleFoam_4proc_uncollated_noTimeStampMaster
+# 1649
+
+# TimeStampMaster:
+# ----------------
+count log.simpleFoam_2proc_uncollated_timeStampMaster
+# 659
+count log.simpleFoam_4proc_uncollated_timeStampMaster
+# 1123
+
+# Collated, no timeStampMaster
+# ----------------------------
+count log.simpleFoam_2proc_collated_noTimeStampMaster
+# 632
+count log.simpleFoam_4proc_collated_noTimeStampMaster
+# 872
+
+# Collated, timeStampMaster
+# -------------------------
+count log.simpleFoam_2proc_collated_timeStampMaster
+# 632
+count log.simpleFoam_4proc_collated_timeStampMaster
+# 873
+
+count log.simpleFoam_64proc_collated_timeStampMaster
+# 8073 (of which about 20 at writing)
+
+
+#------------------------------------------------------------------------------
