@@ -2,11 +2,11 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of OpenFOAM.
 
     OpenFOAM is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
@@ -24,11 +24,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "unallocatedFvBoundaryMesh.H"
+#include "stringListOps.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-const dataType Foam::unallocatedFvBoundaryMesh::staticData();
-
 
 // * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * * //
 
@@ -41,57 +39,120 @@ const dataType Foam::unallocatedFvBoundaryMesh::staticData();
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::unallocatedFvBoundaryMesh::unallocatedFvBoundaryMesh()
-:
-    baseClassName(),
-    data_()
-{}
-
-
-Foam::unallocatedFvBoundaryMesh::unallocatedFvBoundaryMesh(const dataType& data)
-:
-    baseClassName(),
-    data_(data)
-{}
-
-
-Foam::unallocatedFvBoundaryMesh::unallocatedFvBoundaryMesh(const unallocatedFvBoundaryMesh&)
-:
-    baseClassName(),
-    data_()
-{}
-
 
 // * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
-
-Foam::autoPtr<Foam::unallocatedFvBoundaryMesh>
-Foam::unallocatedFvBoundaryMesh::New()
-{
-    return autoPtr<unallocatedFvBoundaryMesh>(new unallocatedFvBoundaryMesh);
-}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::unallocatedFvBoundaryMesh::~unallocatedFvBoundaryMesh()
-{}
-
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+Foam::label Foam::unallocatedFvBoundaryMesh::findPatchID
+(
+    const word& patchName
+) const
+{
+    const PtrList<unallocatedGenericFvPatch>& patches = *this;
+
+    forAll(patches, patchi)
+    {
+        if (patches[patchi].name() == patchName)
+        {
+            return patchi;
+        }
+    }
+
+    // Not found, return -1
+    return -1;
+}
+
+
+Foam::labelList Foam::unallocatedFvBoundaryMesh::findIndices
+(
+    const keyType& key,
+    const bool usePatchGroups
+) const
+{
+    DynamicList<label> indices;
+
+    if (!key.empty())
+    {
+        const PtrList<unallocatedGenericFvPatch>& patches = *this;
+
+        wordList names(patches.size());
+        forAll(patches, patchi)
+        {
+            names[patchi] = patches[patchi].name();
+        }
+
+        if (key.isPattern())
+        {
+            indices = findStrings(key, names);
+
+            // if (usePatchGroups && groupPatchIDs().size())
+            // {
+            //     labelHashSet indexSet(indices);
+            //
+            //     const wordList allGroupNames = groupPatchIDs().toc();
+            //     labelList groupIDs = findStrings(key, allGroupNames);
+            //     forAll(groupIDs, i)
+            //     {
+            //         const word& grpName = allGroupNames[groupIDs[i]];
+            //         const labelList& patchIDs = groupPatchIDs()[grpName];
+            //         forAll(patchIDs, j)
+            //         {
+            //             if (indexSet.insert(patchIDs[j]))
+            //             {
+            //                 indices.append(patchIDs[j]);
+            //             }
+            //         }
+            //     }
+            // }
+        }
+        else
+        {
+            // Literal string. Special version of above to avoid
+            // unnecessary memory allocations
+
+            indices.setCapacity(1);
+            forAll(patches, i)
+            {
+                if (key == patches[i].name())
+                {
+                    indices.append(i);
+                    break;
+                }
+            }
+
+            //if (usePatchGroups && groupPatchIDs().size())
+            //{
+            //    const HashTable<labelList, word>::const_iterator iter =
+            //        groupPatchIDs().find(key);
+            //
+            //    if (iter != groupPatchIDs().end())
+            //    {
+            //        labelHashSet indexSet(indices);
+            //
+            //        const labelList& patchIDs = iter();
+            //        forAll(patchIDs, j)
+            //        {
+            //            if (indexSet.insert(patchIDs[j]))
+            //            {
+            //                indices.append(patchIDs[j]);
+            //            }
+            //        }
+            //    }
+            //}
+        }
+    }
+
+    return indices;
+}
 
 
 // * * * * * * * * * * * * * * Member Operators  * * * * * * * * * * * * * * //
 
-void Foam::unallocatedFvBoundaryMesh::operator=(const unallocatedFvBoundaryMesh& rhs)
-{
-    // Check for assignment to self
-    if (this == &rhs)
-    {
-        FatalErrorInFunction
-            << "Attempted assignment to self"
-            << abort(FatalError);
-    }
-}
 
 // * * * * * * * * * * * * * * Friend Functions  * * * * * * * * * * * * * * //
 

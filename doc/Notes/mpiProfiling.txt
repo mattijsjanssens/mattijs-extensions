@@ -1,0 +1,43 @@
+Profiling
+---------
+- we want to know difference between swaps, reduces and alltoall
+  (or is alltoall same as swaps?)
+- assume all reads/writes are swaps ...
+- we want to know at regular intervals/end for the three categories:
+    - average / min+proc / max+proc
+
+- libPstream : maintains timers. Can store these in putenv:
+
+    // Once: register buffer
+    string s("VAR=");
+    strncpy(buf, s.c_str(), 200-1);
+    putenv(buf);
+
+    // Every call: update string variable
+    for (label i=0; i < 1000000; i++)
+    {
+        string s("VAR=" + Foam::name(i));
+        strncpy(buf, s.c_str(), 200-1);
+    }
+
+- FO: does getEnv and parses output
+
+
+
+Using mpiP
+-----------
+- Big problem: stack trace is only for local library!!! So we do not
+  know where calls originate from.
+
+- Download mpiP and define installation path variable:
+
+    export MPIP_ARCH_PATH=~/pub/parallel/mpiP-3.4.1-install
+    cd ~/pub/parallel/mpiP-3.4.1
+    ./configure --without-f77 --prefix=$MPIP_ARCH_PATH --shared
+    make shared
+    make install
+
+- Add to Pstream compilation (LIB_LIBS in mpi/Make/options):
+    LIB_LIBS = -L${MPIP_ARCH_PATH} -lmpiP $(PLIBS)
+
+- Recompile Pstream (or ideally whole code with -g)

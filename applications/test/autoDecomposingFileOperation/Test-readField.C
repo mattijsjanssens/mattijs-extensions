@@ -29,11 +29,13 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "GeometricField.H"
 #include "argList.H"
 #include "uVolFields.H"
 #include "unallocatedFvBoundaryMesh.H"
 #include "unallocatedFvMesh.H"
-#include "unallocatedFvPatchField.H"
+//#include "unallocatedFvPatchField.H"
+#include "unallocatedGenericFvPatchField.H"
 
 using namespace Foam;
 
@@ -45,36 +47,123 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-    IOobject io
+    if (!Pstream::parRun())
+    {
+        FatalErrorInFunction << "Not running in parallel" << exit(FatalError);
+    }
+
+    // Parent database
+    Time baseRunTime
     (
-        "p",
-        runTime.timeName(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::AUTO_WRITE
+        runTime.controlDict(),
+        runTime.rootPath(),
+        runTime.globalCaseName(),
+        runTime.system(),
+        runTime.constant(),
+        false                   // enableFunctionObjects
     );
+    baseRunTime.setTime(runTime);
 
 
-    // Read the undecomposed boundary
+    // Extract parent mesh information
+    label baseNCells = -1;
+    labelList basePatchSizes;
+    wordList basePatchNames;
+    // TBD: basePatchGroups
+    {
+        // For now read in base mesh. TBD.
+
+        polyMesh baseMesh
+        (
+            IOobject
+            (
+                polyMesh::defaultRegion,
+                baseRunTime.timeName(),
+                baseRunTime,
+                IOobject::MUST_READ
+            )
+        );
+
+        baseNCells = baseMesh.nCells();
+
+        const polyBoundaryMesh& pbm = baseMesh.boundaryMesh();
+        basePatchNames = pbm.names();
+        basePatchSizes.setSize(pbm.size());
+        forAll(pbm, patchi)
+        {
+            basePatchSizes[patchi] = pbm[patchi].size();
+        }
+    }
+
     const fvBoundaryMesh& fp = mesh.boundary();
 
-    unallocatedFvBoundaryMesh boundary;
-    boundary.setSize(3);
-    boundary.set(0, new unallocatedGenericFvPatch(fp[0].patch(), fp));
-    boundary.set(1, new unallocatedGenericFvPatch(fp[1].patch(), fp));
-    boundary.set(2, new unallocatedGenericFvPatch(fp[2].patch(), fp));
+    // Construct an unallocated boundary. (note: the references to the
+    // mesh-boundary are not used; names and sizes are from the base mesh)
+    unallocatedFvBoundaryMesh baseBoundary;
+    baseBoundary.setSize(basePatchNames.size());
+    forAll(basePatchNames, patchi)
+    {
+        baseBoundary.set
+        (
+            patchi,
+            new unallocatedGenericFvPatch
+            (
+                fp[patchi].patch(),                 // unused reference
+                basePatchNames[patchi],
+                basePatchSizes[patchi],
+                fp                                  // unused reference
+            )
+        );
+    }
 
-
-
-    unallocatedFvMesh uMesh
+    // Construct the mesh
+    unallocatedFvMesh baseMesh
     (
-        mesh,
-        mesh.thisDb(),
-        9,                      // nCells
-        boundary,
-        mesh.globalData()
+        baseRunTime,            // database
+        baseNCells,             // nCells
+        baseBoundary,           // boundary
+        mesh.globalData()       // used for patchSchedule() only
     );
-    uVolScalarField(io, uMesh);
+
+
+    uVolScalarField p
+    (
+        IOobject
+        (
+            "p",
+            baseRunTime.timeName(),
+            baseMesh.thisDb(),
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        baseMesh
+    );
+    //uVolScalarField p
+    //(
+    //    IOobject
+    //    (
+    //        "p",
+    //        baseRunTime.timeName(),
+    //        baseMesh.thisDb(),
+    //        IOobject::NO_READ,
+    //        IOobject::AUTO_WRITE
+    //    ),
+    //    baseMesh,
+    //    dimensionedScalar("zero", dimless, Zero),
+    //    unallocatedGenericFvPatchField<scalar>::typeName
+    //);
+    DebugVar(p);
+    p.rename("my_p");
+    {
+        const bool master = Pstream::master();
+        const bool oldParRun = Pstream::parRun();
+        Pstream::parRun() = false;
+        if (master)
+        {
+            p.write();
+        }
+        Pstream::parRun() = oldParRun;
+    }
 
 //    volScalarField p
 //    (

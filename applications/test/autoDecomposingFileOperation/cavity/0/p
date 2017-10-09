@@ -24,14 +24,17 @@ boundaryField
     movingWall
     {
         type            zeroGradient;
+        value           uniform 0;
     }
     fixedWalls
     {
         type            zeroGradient;
+        value           uniform 0;
     }
     frontAndBack
     {
         type            empty;
+        value           uniform 0;
     }
 }
 

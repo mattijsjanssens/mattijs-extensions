@@ -24,14 +24,14 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "unallocatedGenericFvPatch.H"
-#include "addToRunTimeSelectionTable.H"
+//#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
     defineTypeNameAndDebug(unallocatedGenericFvPatch, 0);
-    addToRunTimeSelectionTable(fvPatch, unallocatedGenericFvPatch, polyPatch);
+    //addToRunTimeSelectionTable(fvPatch, unallocatedGenericFvPatch, polyPatch);
 }
 
 // ************************************************************************* //

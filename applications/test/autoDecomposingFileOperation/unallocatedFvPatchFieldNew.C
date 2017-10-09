@@ -35,6 +35,13 @@ Foam::unallocatedFvPatchField<Type>::New
     const DimensionedField<Type, unallocatedFvMesh>& iF
 )
 {
+    if (!patchConstructorTablePtr_)
+    {
+        FatalErrorInFunction << "No constructors-from-patch available"
+            << " when constructing from patch " << p.name()
+            << " from field type " << patchFieldType
+            << exit(FatalError);
+    }
     //if (debug)
     {
         InfoInFunction
@@ -42,6 +49,9 @@ Foam::unallocatedFvPatchField<Type>::New
             << " : " << p.type()
             << endl;
     }
+
+DebugVar(patchConstructorTablePtr_->sortedToc());
+
 
     typename patchConstructorTable::iterator cstrIter =
         patchConstructorTablePtr_->find(patchFieldType);
@@ -112,16 +122,24 @@ Foam::unallocatedFvPatchField<Type>::New
 {
     const word patchFieldType(dict.lookup("type"));
 
-    //if (debug)
+    if (!dictionaryConstructorTablePtr_)
     {
-        InfoInFunction
-            << "patchFieldType = " << patchFieldType
-            << endl;
-
-        InfoInFunction<< "dictionaryConstructorTablePtr_:"
-            << dictionaryConstructorTablePtr_->sortedToc()
-            << endl;
+        FatalErrorInFunction << "No constructors-from-dictionary available"
+            << " when constructing for patch " << p.name()
+            << " from dictionary " << dict
+            << exit(FatalError);
     }
+
+//     //if (debug)
+//     {
+//         InfoInFunction
+//             << "patchFieldType = " << patchFieldType
+//             << endl;
+//
+//         InfoInFunction<< "dictionaryConstructorTablePtr_:"
+//             << dictionaryConstructorTablePtr_->sortedToc()
+//             << endl;
+//     }
 
     typename dictionaryConstructorTable::iterator cstrIter
         = dictionaryConstructorTablePtr_->find(patchFieldType);
@@ -167,6 +185,9 @@ Foam::unallocatedFvPatchField<Type>::New
                 << exit(FatalIOError);
         }
     }
+
+    InfoInFunction << "Constructing patch field of type " << cstrIter.key()
+        << endl;
 
     return cstrIter()(p, iF, dict);
 }

@@ -42,14 +42,14 @@ defineTypeNameAndDebug(unallocatedFvMesh, 0);
 
 Foam::unallocatedFvMesh::unallocatedFvMesh
 (
-    const fvMesh& procMesh,
+    //const fvMesh& procMesh,
     const objectRegistry& db,
     const label nCells,
     const unallocatedFvBoundaryMesh& boundary,
     const globalMeshData& globalData
 )
 :
-    volMesh(procMesh),
+    volMesh(*this), //(procMesh),
     db_(db),
     nCells_(nCells),
     boundary_(boundary),
