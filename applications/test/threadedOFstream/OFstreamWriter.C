@@ -76,13 +76,11 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
     {
         writeData* ptr = nullptr;
 
-        //pthread_mutex_lock(&handler.mutex_);
         lockMutex(handler.mutex_);
         if (handler.objects_.size())
         {
             ptr = handler.objects_.pop();
         }
-        //pthread_mutex_unlock(&handler.mutex_);
         unlockMutex(handler.mutex_);
 
         if (!ptr)
@@ -117,10 +115,8 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
         Pout<< "OFstreamWriter : Exiting write thread " << endl;
     }
 
-    //pthread_mutex_lock(&handler.mutex_);
     lockMutex(handler.mutex_);
     handler.threadRunning_ = false;
-    //pthread_mutex_unlock(&handler.mutex_);
     unlockMutex(handler.mutex_);
 
     return nullptr;
@@ -132,7 +128,6 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
 Foam::OFstreamWriter::OFstreamWriter(const off_t maxBufferSize)
 :
     maxBufferSize_(maxBufferSize),
-    //mutex_(PTHREAD_MUTEX_INITIALIZER),
     mutex_
     (
         maxBufferSize_ > 0
@@ -159,7 +154,6 @@ Foam::OFstreamWriter::~OFstreamWriter()
         {
             Pout<< "OFstreamWriter : Waiting for write thread" << endl;
         }
-        //pthread_join(thread_, nullptr);
         joinThread(thread_);
     }
     if (thread_ != -1)
@@ -191,13 +185,12 @@ bool Foam::OFstreamWriter::write
         {
             // Count files to be written
             off_t totalSize = 0;
-            //pthread_mutex_lock(&mutex_);
+
             lockMutex(mutex_);
             forAllConstIter(FIFOStack<writeData*>, objects_, iter)
             {
                 totalSize += iter()->data_.size();
             }
-            //pthread_mutex_unlock(&mutex_);
             unlockMutex(mutex_);
 
             if
@@ -211,30 +204,25 @@ bool Foam::OFstreamWriter::write
 
             if (debug)
             {
+                lockMutex(mutex_);
                 Pout<< "OFstreamWriter : Waiting for buffer space."
                     << " Currently in use:" << totalSize
                     << " limit:" << maxBufferSize_
+                    << " files:" << objects_.size()
                     << endl;
+                unlockMutex(mutex_);
             }
 
             sleep(5);
         }
 
-        //pthread_mutex_lock(&mutex_);
         lockMutex(mutex_);
         objects_.push(new writeData(fName, data, fmt, ver, cmp, append));
-        //pthread_mutex_unlock(&mutex_);
         unlockMutex(mutex_);
 
-        //pthread_mutex_lock(&mutex_);
         lockMutex(mutex_);
         if (!threadRunning_)
         {
-            //if (pthread_create(&thread_, nullptr, writeAll, this))
-            //{
-            //    FatalErrorInFunction
-            //        << "Failed starting write thread " << exit(FatalError);
-            //}
             createThread(thread_, writeAll, this);
             if (debug)
             {
@@ -242,7 +230,6 @@ bool Foam::OFstreamWriter::write
             }
             threadRunning_ = true;
         }
-        //pthread_mutex_unlock(&mutex_);
         unlockMutex(mutex_);
 
         return true;
