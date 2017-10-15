@@ -1,0 +1,4 @@
+OFstreamCollator.C
+decomposedBlockData.C
+
+LIB = $(FOAM_USER_LIBBIN)/libmasterCollated
