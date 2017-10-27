@@ -123,6 +123,12 @@ public:
             return globalData_;
         }
 
+        //- Return the top-level database
+        const Time& time() const
+        {
+            return db_.time();
+        }
+
         //- Return database. For now is its polyMesh.
         const objectRegistry& thisDb() const
         {
