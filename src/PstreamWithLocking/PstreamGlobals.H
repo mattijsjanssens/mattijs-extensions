@@ -75,6 +75,9 @@ void checkThread(const label);
 extern cpuTime timer_;
 extern scalar reduceTime_;
 extern scalar waitTime_;
+extern scalar gatherTime_;
+extern scalar scatterTime_;
+extern scalar allToAllTime_;
 
 
 // Locking
