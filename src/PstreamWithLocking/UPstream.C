@@ -166,15 +166,15 @@ void Foam::UPstream::exit(int errnum)
         }
     }
 
-    freeMutex(PstreamGlobals::mutex_);
+    //freeMutex(PstreamGlobals::mutex_);
 
-Pout<< "** Timings" << nl
-    << "\treduce   : " << PstreamGlobals::reduceTime_ << nl
-    << "\twait     : " << PstreamGlobals::waitTime_ << nl
-    << "\tgather   : " << PstreamGlobals::gatherTime_ << nl
-    << "\tscatter  : " << PstreamGlobals::scatterTime_ << nl
-    << "\tallToAll : " << PstreamGlobals::allToAllTime_ << nl
-    << endl;
+std::cout<< "** Timings" << std::endl
+    << "\treduce   : " << PstreamGlobals::reduceTime_ << std::endl
+    << "\twait     : " << PstreamGlobals::waitTime_ << std::endl
+    << "\tgather   : " << PstreamGlobals::gatherTime_ << std::endl
+    << "\tscatter  : " << PstreamGlobals::scatterTime_ << std::endl
+    << "\tallToAll : " << PstreamGlobals::allToAllTime_ << std::endl
+    << std::endl;
 
 
     if (errnum == 0)
