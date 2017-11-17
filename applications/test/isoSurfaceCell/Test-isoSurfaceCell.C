@@ -32,6 +32,7 @@ Application
 #include "isoSurfaceCell.H"
 #include "OBJstream.H"
 #include "DynamicField.H"
+#include "vtkSurfaceWriter.H"
 
 using namespace Foam;
 
@@ -219,6 +220,99 @@ int main(int argc, char *argv[])
     Pout<< "iso:" << iso << endl;
 
     iso.write("iso.obj");
+
+    // Collect triangles per face and filter according to cells
+    const labelList& meshCells = iso.meshCells();
+
+
+    DynamicList<face> faces;
+    DynamicField<scalar> faceMeshCells;
+    {
+        label start = 0;
+        forAll(meshCells, trii)
+        {
+            if (meshCells[trii] != meshCells[start])
+            {
+                // All triangles of the current cell
+                SubList<labelledTri> cellTris(iso, trii-start, start);
+
+                PrimitivePatch<labelledTri, SubList, const pointField&> pp
+                (
+                    cellTris,
+                    iso.points()
+                );
+
+                {
+                    const labelListList& edgeLoops = pp.edgeLoops();
+                    const labelList& mp = pp.meshPoints();
+
+                    forAll(edgeLoops, loopi)
+                    {
+                        const labelList& loop = edgeLoops[loopi];
+
+                        if (loop.size() > 2)
+                        {
+                            face f(loop.size());
+                            forAll(f, i)
+                            {
+                                f[i] = mp[loop[i]];
+                            }
+                            faces.append(f);
+                            faceMeshCells.append(scalar(meshCells[start]));
+                        }
+                    }
+                }
+
+
+                start = trii;
+            }
+        }
+        // Do the last ones
+        if (meshCells.size())
+        {
+            // All triangles of the current cell
+            SubList<labelledTri> cellTris(iso, meshCells.size()-start, start);
+
+            PrimitivePatch<labelledTri, SubList, const pointField&> pp
+            (
+                cellTris,
+                iso.points()
+            );
+
+            {
+                const labelListList& edgeLoops = pp.edgeLoops();
+                const labelList& mp = pp.meshPoints();
+
+                forAll(edgeLoops, loopi)
+                {
+                    const labelList& loop = edgeLoops[loopi];
+
+                    if (loop.size() > 2)
+                    {
+                        face f(loop.size());
+                        forAll(f, i)
+                        {
+                            f[i] = mp[loop[i]];
+                        }
+                        faces.append(f);
+                        faceMeshCells.append(scalar(meshCells[start]));
+                    }
+                }
+            }
+        }
+    }
+
+    vtkSurfaceWriter vtk;
+    vtk.write
+    (
+        runTime.path(),
+        "mySurface",
+        iso.points(),
+        faces,
+        "meshCells",
+        faceMeshCells,
+        false
+    );
 
 //    OBJstream str("ccPoints.obj");
 //    forAll(iso.usesCellCentre(), pointi)
