@@ -41,6 +41,7 @@ SourceFiles
 
 #include "PtrList.H"
 #include "fvMesh.H"
+#include "unallocatedFvMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -60,7 +61,7 @@ class parFvFieldReconstructor
     // Private data
 
         //- Reconstructed mesh reference
-        fvMesh& baseMesh_;
+        unallocatedFvMesh& baseMesh_;
 
         //- Processor mesh reference
         const fvMesh& procMesh_;
@@ -94,7 +95,7 @@ public:
         //- Construct from components
         parFvFieldReconstructor
         (
-            fvMesh& baseMesh,
+            unallocatedFvMesh& baseMesh,
             const fvMesh& procMesh,
             const mapDistributePolyMesh& distMap,
             const bool isWriteProc
@@ -119,9 +120,9 @@ public:
             const GeometricField<Type, fvPatchField, volMesh>& fld
         ) const;
 
-        //- Helper: reconstruct and write mesh points
-        //  (note: should be moved to something like processorMeshes class)
-        void reconstructPoints();
+//         //- Helper: reconstruct and write mesh points
+//         //  (note: should be moved to something like processorMeshes class)
+//         void reconstructPoints();
 };
 
 

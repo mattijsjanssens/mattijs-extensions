@@ -113,19 +113,18 @@ void PstreamGlobals::checkThread(const label comm)
     if (comm == 1)
     {
         // Get current thread
-        pid_t tid = syscall(SYS_gettid);
-
-        if (OFstreamCollator::staticThread_ != tid)
-        {
-            Pout<< "** current:" << tid << endl;
-            Pout<< "** stored:" << OFstreamCollator::staticThread_ << endl;
-            Pout<< "** communicator:" << comm << endl;
-            //error::printStack(Pout);
-            //sleep(2000);
-            //FatalErrorInFunction << "current:" << tid
-            //    << " stored:" << commThread << " for communicator:" << comm
-            //    << exit(FatalError);
-        }
+//         pid_t tid = syscall(SYS_gettid);
+//         if (OFstreamCollator::staticThread_ != tid)
+//         {
+//             Pout<< "** current:" << tid << endl;
+//             Pout<< "** stored:" << OFstreamCollator::staticThread_ << endl;
+//             Pout<< "** communicator:" << comm << endl;
+//             //error::printStack(Pout);
+//             //sleep(2000);
+//             //FatalErrorInFunction << "current:" << tid
+//             //    << " stored:" << commThread << " for communicator:" << comm
+//             //    << exit(FatalError);
+//         }
     }
 }
 
@@ -133,6 +132,9 @@ void PstreamGlobals::checkThread(const label comm)
 cpuTime PstreamGlobals::timer_;
 scalar PstreamGlobals::reduceTime_(0.0);
 scalar PstreamGlobals::waitTime_(0.0);
+scalar PstreamGlobals::gatherTime_(0.0);
+scalar PstreamGlobals::scatterTime_(0.0);
+scalar PstreamGlobals::allToAllTime_(0.0);
 
 
 // Thread lock

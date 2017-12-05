@@ -92,22 +92,22 @@ Foam::parFvFieldReconstructor::parFvFieldReconstructor
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::parFvFieldReconstructor::reconstructPoints()
-{
-    // Reconstruct the points for moving mesh cases and write
-    // them out
-    distributedUnallocatedDirectFieldMapper mapper
-    (
-        labelUList::null(),
-        distMap_.pointMap()
-    );
-    pointField basePoints(procMesh_.points(), mapper);
-    baseMesh_.movePoints(basePoints);
-    if (Pstream::master())
-    {
-        baseMesh_.write();
-    }
-}
+// void Foam::parFvFieldReconstructor::reconstructPoints()
+// {
+//     // Reconstruct the points for moving mesh cases and write
+//     // them out
+//     distributedUnallocatedDirectFieldMapper mapper
+//     (
+//         labelUList::null(),
+//         distMap_.pointMap()
+//     );
+//     pointField basePoints(procMesh_.points(), mapper);
+//     baseMesh_.movePoints(basePoints);
+//     if (Pstream::master())
+//     {
+//         baseMesh_.write();
+//     }
+// }
 
 
 // ************************************************************************* //

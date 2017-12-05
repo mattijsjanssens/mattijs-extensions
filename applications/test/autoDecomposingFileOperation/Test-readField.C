@@ -36,6 +36,7 @@ Description
 #include "unallocatedFvMesh.H"
 //#include "unallocatedFvPatchField.H"
 #include "unallocatedGenericFvPatchField.H"
+#include "parFvFieldReconstructor.H"
 
 using namespace Foam;
 
@@ -152,6 +153,19 @@ int main(int argc, char *argv[])
     //    dimensionedScalar("zero", dimless, Zero),
     //    unallocatedGenericFvPatchField<scalar>::typeName
     //);
+
+    mapDistributePolyMesh distMap;
+
+    parFvFieldReconstructor
+    (
+        baseMesh,
+        mesh,
+        distMap,
+        false           // isWriteProc
+    );
+
+
+    // Write master field to parent
     DebugVar(p);
     p.rename("my_p");
     {
@@ -164,31 +178,6 @@ int main(int argc, char *argv[])
         }
         Pstream::parRun() = oldParRun;
     }
-
-//    volScalarField p
-//    (
-//        IOobject
-//        (
-//            "p",
-//            runTime.timeName(),
-//            mesh,
-//            IOobject::MUST_READ,
-//            IOobject::AUTO_WRITE
-//        ),
-//        mesh
-//    );
-//    volVectorField U
-//    (
-//        IOobject
-//        (
-//            "U",
-//            runTime.timeName(),
-//            mesh,
-//            IOobject::MUST_READ,
-//            IOobject::AUTO_WRITE
-//        ),
-//        mesh
-//    );
 
     return 0;
 }

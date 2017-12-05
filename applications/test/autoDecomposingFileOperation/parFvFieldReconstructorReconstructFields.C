@@ -37,6 +37,8 @@ License
 #include "distributedUnallocatedDirectFieldMapper.H"
 #include "distributedUnallocatedDirectFvPatchFieldMapper.H"
 
+#include "unallocatedFvBoundaryMesh.H"
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
