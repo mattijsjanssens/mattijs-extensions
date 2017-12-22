@@ -164,23 +164,33 @@ bool Foam::functionObjects::parProfiling::execute()
         PstreamGlobals::allToAllTime_ = oldAllToAlltime;
     }
 
-    const statData& reduceStats = times[0];
-    const statData& allToAllStats = times[1];
+    if (Pstream::master())
+    {
+        const statData& reduceStats = times[0];
+        const statData& allToAllStats = times[1];
 
-    Info<< "Reduce  :"
-        << " min = " << reduceStats[0].second()
-        << " on processor " << reduceStats[0].first()
-        << " max = " << reduceStats[1].second()
-        << " on processor " << reduceStats[1].first()
-        << " avg = " << reduceStats[2].second()/reduceStats[2].first()
-        << nl
-        << "AlltoAll :"
-        << " min = " << allToAllStats[0].second()
-        << " on processor " << allToAllStats[0].first()
-        << " max = " << allToAllStats[1].second()
-        << " on processor " << allToAllStats[1].first()
-        << " avg = " << allToAllStats[2].second()/allToAllStats[2].first()
-        << endl;
+        scalar reduceAvg = reduceStats[2].second()/Pstream::nProcs();
+        scalar reduceRelMin = (reduceStats[0].second()-reduceAvg)/reduceAvg;
+        scalar reduceRelMax = (reduceStats[1].second()-reduceAvg)/reduceAvg;
+
+        scalar allToAllAvg = allToAllStats[2].second()/Pstream::nProcs();
+        scalar allToAllRelMin =
+            (allToAllStats[0].second()-allToAllAvg)/allToAllAvg;
+        scalar allToAllRelMax =
+            (allToAllStats[1].second()-allToAllAvg)/allToAllAvg;
+
+        Info<< type() << ':' << nl
+            << "\treduce    : avg = " << reduceAvg << 's' << nl
+            << "\t            min = " << reduceRelMin*100
+            << "% (on processor " << reduceStats[0].first() << ")" << nl
+            << "\t            max = +" << reduceRelMax*100
+            << "% (on processor " << reduceStats[1].first() << ")" << nl
+            << "\tall-all   : avg = " << allToAllAvg << 's' << nl
+            << "\t            min = " << allToAllRelMin*100
+            << "% (on processor " << allToAllStats[0].first() << ")" << nl
+            << "\t            max = +" << allToAllRelMax*100
+            << "% (on processor " << allToAllStats[1].first() << ")" << endl;
+    }
 
     return true;
 }
