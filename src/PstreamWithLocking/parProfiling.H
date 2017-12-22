@@ -38,7 +38,8 @@ SourceFiles
 #define functionObjects_parProfiling_H
 
 #include "functionObject.H"
-//#include "Tuple2.H"
+#include "Tuple2.H"
+#include "FixedList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -47,6 +48,7 @@ namespace Foam
 
 // Forward declaration of classes
 class Time;
+typedef FixedList<Tuple2<label, scalar>, 3> statData;
 
 namespace functionObjects
 {

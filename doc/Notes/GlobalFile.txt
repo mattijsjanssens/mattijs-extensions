@@ -190,6 +190,15 @@ Benchmarking
 - frontthreaded+scheduled   :  0.1..0.2s
 
 
+
+Collated
+--------
+- in parallel: processorsDir determined by nProcs
+- decomposePar: processorsDir determined by nDomains to decompose into
+- reconstructPar: detect through fileHandler.nProcs()
+- foamToVTK -case processor0: detect through fileHandler.nProcs()?
+
+
 Todo:
 - rewrite all OSspecific calls (that are parallel aware) to use the
   fileHandler()
@@ -235,8 +244,7 @@ Todo:
 
 
 TODO:
-- processors/
-- processors256/
+- DONE. processors2/
 - future: processors0to9of256/
 - slaves still need access to etc/controlDict. Not really a problem since comes
   together with all the shared libraries. So only if the shared libraries
@@ -254,3 +262,35 @@ TODO:
                 }
 - add 'threadSupport' flag to UPstream::setParRun and interrogate this in
   collatedFileOperation.
+- Test:
+
+Unmixed use
+-----------
+Uncollated:
+    decomposePar    : ok but does not delete processors2
+    run             : ok
+    reconstructPar  : ok
+
+masterUncollated:
+    decomposePar    : ok
+    run             : ok
+    reconstructPar  : ok
+
+collated:
+    decomposePar    : ok
+    run             : ok
+    reconstructPar  : ok
+
+
+Mixed use
+---------
+decomposePar -fileHandler uncollated
+    run             : masterUncollated: ok
+    reconstructPar  : masterUncollated: ok
+
+    run             : collated: ok
+    reconstructPar  : collated: ok
+
+decomposePar -fileHandler collated
+    run             : uncollated: NO
+    reconstructPar  : uncollated: NO

@@ -43,6 +43,40 @@ namespace functionObjects
         parProfiling,
         dictionary
     );
+
+    //- Reduction class. If x and y are not equal assign value.
+    class statsEqOp
+    {
+        public:
+        void operator()
+        (
+            FixedList<statData, 2>& xStats,
+            const FixedList<statData, 2>& yStats
+        ) const
+        {
+            forAll(xStats, i)
+            {
+                statData& x = xStats[i];
+                const statData& y = yStats[i];
+
+                // 0 : min
+                // 1 : max
+                // 2 : sum
+                if (y[0].second() < x[0].second())
+                {
+                    x[0].second() = y[0].second();
+                    x[0].first()  = y[0].first();
+                }
+                if (y[1].second() > x[1].second())
+                {
+                    x[1].second() = y[1].second();
+                    x[1].first()  = y[1].first();
+                }
+                x[2].second() += y[2].second();
+                x[2].first()++;
+            }
+        }
+    };
 }
 }
 
@@ -70,24 +104,83 @@ Foam::functionObjects::parProfiling::~parProfiling()
 
 bool Foam::functionObjects::parProfiling::execute()
 {
-    scalarList times(Pstream::nProcs());
-    times[Pstream::myProcNo()] = PstreamGlobals::reduceTime_;
-    Pstream::gatherList(times);
+    typedef FixedList<Tuple2<label, scalar>, 3> statData;
+    FixedList<statData, 2> times;
 
-//     Info<< "Reduce : min/max/avg : " << reduceMin << '/' << reduceMax
-//         << '/' << reduceSum/Pstream::nProcs() << nl;
+    {
+        const scalar masterTime =
+            PstreamGlobals::reduceTime_
+          + PstreamGlobals::gatherTime_
+          + PstreamGlobals::scatterTime_;
 
-    DebugVar(times);
+        statData& reduceStats = times[0];
 
-//
-// std::cout<< "** Timings" << std::endl
-//     << "\treduce   : " << PstreamGlobals::reduceTime_ << std::endl
-//     << "\twait     : " << PstreamGlobals::waitTime_ << std::endl
-//     << "\tgather   : " << PstreamGlobals::gatherTime_ << std::endl
-//     << "\tscatter  : " << PstreamGlobals::scatterTime_ << std::endl
-//     << "\tallToAll : " << PstreamGlobals::allToAllTime_ << std::endl
-//     << std::endl;
+        Tuple2<label, scalar>& minTime = reduceStats[0];
+        minTime.first() = Pstream::myProcNo();
+        minTime.second() = masterTime;
 
+        Tuple2<label, scalar>& maxTime = reduceStats[1];
+        maxTime.first() = Pstream::myProcNo();
+        maxTime.second() = masterTime;
+
+        Tuple2<label, scalar>& sumTime = reduceStats[2];
+        sumTime.first() = 1;
+        sumTime.second() = masterTime;
+    }
+    {
+        const scalar allTime =
+            PstreamGlobals::waitTime_
+          + PstreamGlobals::allToAllTime_;
+
+        statData& allToAllStats = times[1];
+
+        Tuple2<label, scalar>& minTime = allToAllStats[0];
+        minTime.first() = Pstream::myProcNo();
+        minTime.second() = allTime;
+
+        Tuple2<label, scalar>& maxTime = allToAllStats[1];
+        maxTime.first() = Pstream::myProcNo();
+        maxTime.second() = allTime;
+
+        Tuple2<label, scalar>& sumTime = allToAllStats[2];
+        sumTime.first() = 1;
+        sumTime.second() = allTime;
+    }
+
+
+    {
+        const scalar oldReduceTime(PstreamGlobals::reduceTime_);
+        const scalar oldWaitTime(PstreamGlobals::waitTime_);
+        const scalar oldGatherTime(PstreamGlobals::gatherTime_);
+        const scalar oldScatterTime(PstreamGlobals::scatterTime_);
+        const scalar oldAllToAlltime(PstreamGlobals::allToAllTime_);
+
+        Pstream::combineGather(times, statsEqOp());
+
+        PstreamGlobals::reduceTime_ = oldReduceTime;
+        PstreamGlobals::waitTime_ = oldWaitTime;
+        PstreamGlobals::gatherTime_ = oldGatherTime;
+        PstreamGlobals::scatterTime_ = oldScatterTime;
+        PstreamGlobals::allToAllTime_ = oldAllToAlltime;
+    }
+
+    const statData& reduceStats = times[0];
+    const statData& allToAllStats = times[1];
+
+    Info<< "Reduce  :"
+        << " min = " << reduceStats[0].second()
+        << " on processor " << reduceStats[0].first()
+        << " max = " << reduceStats[1].second()
+        << " on processor " << reduceStats[1].first()
+        << " avg = " << reduceStats[2].second()/reduceStats[2].first()
+        << nl
+        << "AlltoAll :"
+        << " min = " << allToAllStats[0].second()
+        << " on processor " << allToAllStats[0].first()
+        << " max = " << allToAllStats[1].second()
+        << " on processor " << allToAllStats[1].first()
+        << " avg = " << allToAllStats[2].second()/allToAllStats[2].first()
+        << endl;
 
     return true;
 }
