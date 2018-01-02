@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -32,6 +32,7 @@ License
 #include "registerSwitch.H"
 #include "masterOFstream.H"
 #include "OFstream.H"
+#include "collatedFileOperation.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -57,6 +58,15 @@ namespace fileOperations
         float,
         mixedCollatedFileOperation::maxThreadFileBufferSize
     );
+
+    // Mark as needing threaded mpi
+    addNamedToRunTimeSelectionTable
+    (
+        fileOperationInitialise,
+        collatedFileOperationInitialise,
+        word,
+        mixedCollated
+    );
 }
 }
 
@@ -74,16 +84,14 @@ bool Foam::fileOperations::mixedCollatedFileOperation::appendObject
 {
     // Append to processors/ file
 
-    fileName prefix;
-    fileName postfix;
-    label nProcs;
-    label proci = splitProcessorPath(io.objectPath(), prefix, postfix, nProcs);
+    label proci = detectProcessorPath(io.objectPath());
 
     if (debug)
     {
         Pout<< "writeObject:" << " : For local object : "
             << io.name()
             << " appending processor " << proci
+            << " isMaster:" << isMaster(proci)
             << " data to " << pathName << endl;
     }
 
@@ -99,7 +107,7 @@ bool Foam::fileOperations::mixedCollatedFileOperation::appendObject
     string buf;
     {
         OStringStream os(fmt, ver);
-        if (proci == 0)
+        if (isMaster(proci))
         {
             if (!io.writeHeader(os))
             {
@@ -143,7 +151,7 @@ bool Foam::fileOperations::mixedCollatedFileOperation::appendObject
             << exit(FatalIOError);
     }
 
-    if (proci == 0)
+    if (isMaster(proci))
     {
         IOobject::writeBanner(os)
             << "FoamFile\n{\n"
@@ -169,25 +177,49 @@ bool Foam::fileOperations::mixedCollatedFileOperation::appendObject
 }
 
 
+Foam::labelPair Foam::fileOperations::mixedCollatedFileOperation::commsGroup
+(
+    const label proci
+)
+{
+    label n = 1;
+    label master = (proci / n) * n;
+    return labelPair(master, n);
+}
+
+
+bool Foam::fileOperations::mixedCollatedFileOperation::isMaster
+(
+    const label proci
+)
+{
+    return commsGroup(proci).first() == proci;
+}
+
+
 Foam::labelList Foam::fileOperations::mixedCollatedFileOperation::subRanks
 (
     const label n
 )
 {
-    label halfSize = Pstream::nProcs()/2;
+    labelPair group(commsGroup(Pstream::myProcNo()));
+    label masterProc = group.first();
+    label nProcs = group.second();
 
-    label masterProc = 0;
-    label nProcs = 0;
-    if (Pstream::myProcNo() < halfSize)
-    {
-        masterProc = 0;
-        nProcs = halfSize;
-    }
-    else
-    {
-        masterProc = halfSize;
-        nProcs = Pstream::nProcs()-halfSize;
-    }
+//    label halfSize = Pstream::nProcs()/2;
+//
+//    label masterProc = masterNo(Pstream::myProcNo());
+//    label nProcs = 0;
+//    if (Pstream::myProcNo() < halfSize)
+//    {
+//        //masterProc = 0;
+//        nProcs = halfSize;
+//    }
+//    else
+//    {
+//        //masterProc = halfSize;
+//        nProcs = Pstream::nProcs()-halfSize;
+//    }
 
     labelList subRanks(nProcs);
     forAll(subRanks, i)
@@ -205,16 +237,17 @@ Foam::fileOperations::mixedCollatedFileOperation::mixedCollatedFileOperation
     const bool verbose
 )
 :
-    masterUncollatedFileOperation(false),
-    comm_
+    masterUncollatedFileOperation
     (
         UPstream::allocateCommunicator
         (
             UPstream::worldComm,
             subRanks(Pstream::nProcs())
-        )
+        ),
+        false
     ),
-    writer_(maxThreadFileBufferSize)
+    writer_(maxThreadFileBufferSize),
+    nProcs_(-1)
 {
     const List<int>& procs(UPstream::procID(comm_));
 DebugVar(comm_);
@@ -338,6 +371,7 @@ bool Foam::fileOperations::mixedCollatedFileOperation::writeObject
 
     if (inst.isAbsolute() || !tm.processorCase())
     {
+DebugVar(io.path());
         mkDir(io.path());
         fileName pathName(io.objectPath());
 
@@ -379,16 +413,17 @@ bool Foam::fileOperations::mixedCollatedFileOperation::writeObject
     }
     else
     {
-        // Construct the equivalent processors/ directory
-        fileName path(processorsPath(io, inst, processorsDir()));
-
-DebugVar(path);
-
-        mkDir(path);
-        fileName pathName(path/io.name());
-
         if (io.global())
         {
+            //const word actualProcsDir(processorsDir(io));
+
+            // Construct the equivalent processors/ directory
+            fileName path(processorsPath(io, inst, processorsDir(io)));
+
+DebugVar(path);
+            mkDir(path);
+            fileName pathName(path/io.name());
+
             if (debug)
             {
                 Pout<< "writeObject:" << " : For global object : " << io.name()
@@ -429,6 +464,13 @@ DebugVar(path);
         {
             // Special path for e.g. decomposePar. Append to
             // processorsDDD/ file
+
+            // Re-construct the equivalent processors/ directory
+            fileName path(processorsPath(io, inst, processorsDir(io)));
+DebugVar(path);
+            mkDir(path);
+            fileName pathName(path/io.name());
+
             if (debug)
             {
                 Pout<< "writeObject:"
@@ -440,6 +482,13 @@ DebugVar(path);
         }
         else
         {
+            // Construct the equivalent processors/ directory
+            fileName path(processorsPath(io, inst, processorsDir(io)));
+
+DebugVar(path);
+            mkDir(path);
+            fileName pathName(path/io.name());
+
             if (debug)
             {
                 Pout<< "writeObject:"
@@ -455,7 +504,7 @@ DebugVar(path);
             {
                 return false;
             }
-            if (Pstream::master() && !io.writeHeader(os))
+            if (Pstream::master(comm_) && !io.writeHeader(os))
             {
                 return false;
             }
@@ -464,7 +513,7 @@ DebugVar(path);
             {
                 return false;
             }
-            if (Pstream::master())
+            if (Pstream::master(comm_))
             {
                 IOobject::writeEndDivider(os);
             }
@@ -475,15 +524,87 @@ DebugVar(path);
 }
 
 
-void Foam::fileOperations::mixedCollatedFileOperation::setNProcs(const label nProcs)
+Foam::word
+Foam::fileOperations::mixedCollatedFileOperation::processorsDir
+(
+    const IOobject& io
+) const
+{
+    if (Pstream::parRun())
+    {
+        return processorsDir_;
+    }
+    else
+    {
+        // Detect processor number from the filename
+        label proci = detectProcessorPath(io.objectPath());
+
+        labelPair group(commsGroup(proci));
+        label groupMaster = group.first();
+        label groupSize = group.second();
+
+        word processorsDir
+        (
+            processorsBaseDir
+          + Foam::name(groupMaster)
+          + "to"
+          + Foam::name(groupMaster+groupSize-1)
+          + "of"
+          + Foam::name(nProcs_)
+        );
+
+        return processorsDir;
+    }
+}
+
+
+Foam::word Foam::fileOperations::mixedCollatedFileOperation::processorsDir
+(
+    const fileName& fName
+) const
+{
+    if (Pstream::parRun())
+    {
+        return processorsDir_;
+    }
+    else
+    {
+        // Detect processor number from the filename
+        label proci = detectProcessorPath(fName);
+
+        labelPair group(commsGroup(proci));
+        label groupMaster = group.first();
+        label groupSize = group.second();
+
+        word processorsDir
+        (
+            processorsBaseDir
+          + Foam::name(groupMaster)
+          + "to"
+          + Foam::name(groupMaster+groupSize-1)
+          + "of"
+          + Foam::name(nProcs_)
+        );
+
+        return processorsDir;
+    }
+}
+
+
+void Foam::fileOperations::mixedCollatedFileOperation::setNProcs
+(
+    const label nProcs
+)
 {
     // Changed number of decompositions. Adapt the output directory
-    processorsDir_ = processorsBaseDir+Foam::name(nProcs);
+    nProcs_ = nProcs;
+
+    //processorsDir_ = processorsBaseDir+Foam::name(nProcs_);
 
     if (debug)
     {
         Pout<< "setNProcs:"
-            << " : Setting output directory to " << processorsDir_ << endl;
+            << " : Setting nProcs to " << nProcs_ << endl;
     }
 }
 
