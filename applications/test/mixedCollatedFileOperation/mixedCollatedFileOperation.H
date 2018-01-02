@@ -75,10 +75,10 @@ class mixedCollatedFileOperation
    // Private Member Functions
 
         //- Get the master processor number and size of the communicator group
-        static labelPair commsGroup(const label proci);
+        static labelPair commsGroup(const label nProcs, const label proci);
 
         //- Is proc a master
-        static bool isMaster(const label proci);
+        static bool isMaster(const label nProcs, const label proci);
 
         //- Get the list of processors part of this set
         static labelList subRanks(const label n);
