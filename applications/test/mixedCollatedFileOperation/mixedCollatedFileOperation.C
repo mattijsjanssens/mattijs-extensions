@@ -204,6 +204,23 @@ Foam::labelList Foam::fileOperations::mixedCollatedFileOperation::subRanks
     const label n
 )
 {
+//     const string myHostName(hostName());
+//
+//     stringList hosts(Pstream::nProcs());
+//     hosts[Pstream::myProcNo()] = myHostName;
+//     Pstream::gatherList(hosts);
+//     Pstream::scatterList(hosts);
+//
+//     // Collect procs with same hostname
+//     DynamicList<label> subRanks(64);
+//     forAll(hosts, proci)
+//     {
+//         if (hosts[proci] == myHostName)
+//         {
+//             subRanks.append(proci);
+//         }
+//     }
+
     labelPair group(commsGroup(n, Pstream::myProcNo()));
     label masterProc = group.first();
     label nProcs = group.second();
@@ -213,6 +230,8 @@ Foam::labelList Foam::fileOperations::mixedCollatedFileOperation::subRanks
     {
         subRanks[i] = masterProc++;
     }
+
+DebugVar(subRanks);
     return subRanks;
 }
 
@@ -242,11 +261,11 @@ Foam::fileOperations::mixedCollatedFileOperation::mixedCollatedFileOperation
     {
         processorsDir_ =
             processorsBaseDir
+          + Foam::name(Pstream::nProcs())
+          + "_"
           + Foam::name(procs[0])
-          + "to"
-          + Foam::name(procs.last())
-          + "of"
-          + Foam::name(Pstream::nProcs());
+          + "-"
+          + Foam::name(procs.last());
     }
     else
     {
@@ -307,7 +326,12 @@ Foam::fileOperations::mixedCollatedFileOperation::mixedCollatedFileOperation
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
 Foam::fileOperations::mixedCollatedFileOperation::~mixedCollatedFileOperation()
-{}
+{
+    if (comm_ != -1)
+    {
+        UPstream::freeCommunicator(comm_);
+    }
+}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -517,24 +541,7 @@ Foam::word Foam::fileOperations::mixedCollatedFileOperation::processorsDir
     }
     else
     {
-        // Detect processor number from the filename
-        label proci = detectProcessorPath(io.objectPath());
-
-        labelPair group(commsGroup(nProcs_, proci));
-        label groupMaster = group.first();
-        label groupSize = group.second();
-
-        word processorsDir
-        (
-            processorsBaseDir
-          + Foam::name(groupMaster)
-          + "to"
-          + Foam::name(groupMaster+groupSize-1)
-          + "of"
-          + Foam::name(nProcs_)
-        );
-
-        return processorsDir;
+        return processorsDir(io.objectPath());
     }
 }
 
@@ -561,11 +568,11 @@ Foam::word Foam::fileOperations::mixedCollatedFileOperation::processorsDir
         word processorsDir
         (
             processorsBaseDir
-          + Foam::name(groupMaster)
-          + "to"
-          + Foam::name(groupMaster+groupSize-1)
-          + "of"
           + Foam::name(nProcs_)
+          + "_"
+          + Foam::name(groupMaster)
+          + "-"
+          + Foam::name(groupMaster+groupSize-1)
         );
 
         return processorsDir;

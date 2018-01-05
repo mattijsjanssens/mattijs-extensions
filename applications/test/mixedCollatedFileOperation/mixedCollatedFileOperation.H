@@ -25,10 +25,23 @@ Class
     Foam::fileOperations::mixedCollatedFileOperation
 
 Description
-    Version of masterUnmixedCollatedFileOperation that collates regIOobjects
-    into a container in the processors/ subdirectory.
+    Version of collatedFileOperation with multiple writers
 
-    Uses threading if maxThreadFileBufferSize > 0.
+    - non-parallel writing (e.g. decomposePar):
+    Search for existing processorXXX and append to that
+    - non-parallel reading (e.g. reconstructPar or foamToVTK -case processor0):
+    Search for existing processorXXX and use that
+    - parallel writing: use write format
+    - parallel reading:
+    1) First use write format
+    2) Search for processorXXX and see which processor has what. Distribute
+       internally if needed
+
+    In general cluster nodes:
+    - have no local storage
+    - but might have separate paths to NFS directory
+    so as long as we multiple cores write (to different files!) we should
+    gain speed.
 
 See also
     masterUnmixedCollatedFileOperation
