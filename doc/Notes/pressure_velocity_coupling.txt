@@ -1,0 +1,15 @@
+ddtCorr(U, phi)
+
+= 1: phi-p coupling
+= 0: p-U coupling (supports p waves)
+
+Ideally we want phi-p coupling but then the U might
+just drift away from the flux. Either
+- (add a bit of) reconstruct U from phi (Hilary has done this)
+- or have the minimum amount of ddtCorr.
+
+Problem: we're deciding something based on (predicted) U
+and phi and for very small time steps these are apples and
+pears. So either
+- use velocity transported-to-face (so Co=0.5) to compare
+- or scale ddtCorr with time step
