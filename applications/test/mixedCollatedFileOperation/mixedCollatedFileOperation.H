@@ -54,8 +54,9 @@ SourceFiles
 #ifndef fileOperations_mixedCollatedFileOperation_H
 #define fileOperations_mixedCollatedFileOperation_H
 
-#include "masterUncollatedFileOperation.H"
-#include "OFstreamCollator.H"
+#include "collatedFileOperation.H"
+//#include "masterUncollatedFileOperation.H"
+//#include "OFstreamCollator.H"
 #include "labelPair.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -71,18 +72,18 @@ namespace fileOperations
 
 class mixedCollatedFileOperation
 :
-    public masterUncollatedFileOperation
+    public collatedFileOperation    //masterUncollatedFileOperation
 {
     // Private data
 
-        //- Threaded writer
-        mutable OFstreamCollator writer_;
+//        //- Threaded writer
+//        mutable OFstreamCollator writer_;
 
-        //- Number of processors (if not running parallel)
-        label nProcs_;
+//        //- Number of processors (if not running parallel)
+//        label nProcs_;
 
-        //- Actual name of processors dir
-        word processorsDir_;
+//        //- Actual name of processors dir
+//        word processorsDir_;
 
 
    // Private Member Functions
@@ -97,15 +98,15 @@ class mixedCollatedFileOperation
         static labelList subRanks(const label n);
 
 
-        //- Append to processors/ file
-        bool appendObject
-        (
-            const regIOobject& io,
-            const fileName& pathName,
-            IOstream::streamFormat fmt,
-            IOstream::versionNumber ver,
-            IOstream::compressionType cmp
-        ) const;
+//        //- Append to processors/ file
+//        bool appendObject
+//        (
+//            const regIOobject& io,
+//            const fileName& pathName,
+//            IOstream::streamFormat fmt,
+//            IOstream::versionNumber ver,
+//            IOstream::compressionType cmp
+//        ) const;
 
 
 public:
@@ -136,37 +137,37 @@ public:
 
         // (reg)IOobject functionality
 
-            //- Generate disk file name for object. Opposite of filePath.
-            virtual fileName objectPath
-            (
-                const IOobject& io,
-                const word& typeName
-            ) const;
+//            //- Generate disk file name for object. Opposite of filePath.
+//            virtual fileName objectPath
+//            (
+//                const IOobject& io,
+//                const word& typeName
+//            ) const;
 
-            //- Writes a regIOobject (so header, contents and divider).
-            //  Returns success state.
-            virtual bool writeObject
-            (
-                const regIOobject&,
-                IOstream::streamFormat format=IOstream::ASCII,
-                IOstream::versionNumber version=IOstream::currentVersion,
-                IOstream::compressionType compression=IOstream::UNCOMPRESSED,
-                const bool valid = true
-            ) const;
+//            //- Writes a regIOobject (so header, contents and divider).
+//            //  Returns success state.
+//            virtual bool writeObject
+//            (
+//                const regIOobject&,
+//                IOstream::streamFormat format=IOstream::ASCII,
+//                IOstream::versionNumber version=IOstream::currentVersion,
+//                IOstream::compressionType compression=IOstream::UNCOMPRESSED,
+//                const bool valid = true
+//            ) const;
 
         // Other
 
-            //- Actual name of processors dir. Argument used in non-parallel
-            //  mode to find out processor number
-            virtual word processorsDir(const IOobject&) const;
+//            //- Actual name of processors dir. Argument used in non-parallel
+//            //  mode to find out processor number
+//            virtual word processorsDir(const IOobject&) const;
 
-            //- Actual name of processors dir. Argument used in non-parallel
-            //  mode to find out processor number
-            virtual word processorsDir(const fileName&) const;
+//            //- Actual name of processors dir. Argument used in non-parallel
+//            //  mode to find out processor number
+//            virtual word processorsDir(const fileName&) const;
 
-            //- Set number of processor directories/results. Only used in
-            //  decomposePar
-            virtual void setNProcs(const label nProcs);
+//            //- Set number of processor directories/results. Only used in
+//            //  decomposePar
+//            virtual void setNProcs(const label nProcs);
 };
 
 
