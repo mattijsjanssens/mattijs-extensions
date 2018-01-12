@@ -31,6 +31,7 @@ Description
 
 #include "fvCFD.H"
 #include "pisoControl.H"
+#include "zfp.h"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -121,20 +122,44 @@ int main(int argc, char *argv[])
         {
             if (pDatai == 10)
             {
+                /* allocate meta data for the 2D array a[ny][nx] */
                 zfp_type type = zfp_type_double;
-                size_t typesize = zfp_type_size(type);
+                //size_t typesize = zfp_type_size(type);
+                //zfp_field* field = zfp_field_alloc();
+                //zfp_field_set_pointer(field, pData.begin());
+                //zfp_field_set_type(field, zfp_type_double);
+                //zfp_field_set_size_2d(field, 10, p.size());
+                zfp_field* field = zfp_field_2d
+                (
+                    pData.begin(),
+                    type,
+                    p.size(),       // fastest varying
+                    10
+                );
 
-                zfp_field* field = zfp_field_alloc();
-                fp_field_set_pointer(field, pData.begin());
-                zfp_field_set_type(field, zfp_type_double);
-                zfp_field_set_size_2d(field, 10, p.size());
-
+                /* allocate meta data for a compressed stream */
                 zfp_stream* zfp = zfp_stream_open(nullptr);
+                /* set compression mode and parameters  */
+                zfp_stream_set_accuracy(zfp, 1e-3);
+
+                /* allocate buffer for compressed data */
+                size_t bufsize = zfp_stream_maximum_size(zfp, field);
+                void* buffer = malloc(bufsize);
+
+                /* associate bit stream with allocated buffer */
                 bitstream* stream = stream_open(buffer, bufsize);
                 zfp_stream_set_bit_stream(zfp, stream);
-                zfp_stream_set_accuracy(zfp, tolerance);
-    bufsize = zfp_stream_maximum_size(zfp, field);
+                zfp_stream_rewind(zfp);
 
+                /* compress */
+                size_t zfpsize = zfp_compress(zfp, field);
+                fwrite(buffer, 1, zfpsize, stdout);
+
+                /* clean up */
+                zfp_field_free(field);
+                zfp_stream_close(zfp);
+                stream_close(stream);
+                free(buffer);
 
                 pDatai = 0;
             }
