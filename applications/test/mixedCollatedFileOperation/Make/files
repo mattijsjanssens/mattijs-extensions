@@ -1,3 +1,3 @@
-mixedCollatedFileOperation.C
+multiCollatedFileOperation.C
 
-LIB = $(FOAM_USER_LIBBIN)/libmixedCollated
+LIB = $(FOAM_USER_LIBBIN)/libmultiCollated

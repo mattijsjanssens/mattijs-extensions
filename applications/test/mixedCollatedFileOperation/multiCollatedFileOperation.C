@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "mixedCollatedFileOperation.H"
+#include "multiCollatedFileOperation.H"
 #include "addToRunTimeSelectionTable.H"
 #include "Pstream.H"
 // #include "Time.H"
@@ -40,11 +40,11 @@ namespace Foam
 {
 namespace fileOperations
 {
-    defineTypeNameAndDebug(mixedCollatedFileOperation, 0);
+    defineTypeNameAndDebug(multiCollatedFileOperation, 0);
     addToRunTimeSelectionTable
     (
         fileOperation,
-        mixedCollatedFileOperation,
+        multiCollatedFileOperation,
         word
     );
 
@@ -54,7 +54,7 @@ namespace fileOperations
         fileOperationInitialise,
         collatedFileOperationInitialise,
         word,
-        mixedCollated
+        multiCollated
     );
 }
 }
@@ -62,7 +62,7 @@ namespace fileOperations
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-// Foam::labelPair Foam::fileOperations::mixedCollatedFileOperation::commsGroup
+// Foam::labelPair Foam::fileOperations::multiCollatedFileOperation::commsGroup
 // (
 //     const label nProcs,
 //     const label proci
@@ -74,7 +74,7 @@ namespace fileOperations
 // }
 
 
-Foam::labelList Foam::fileOperations::mixedCollatedFileOperation::subRanks
+Foam::labelList Foam::fileOperations::multiCollatedFileOperation::subRanks
 (
     const label n
 )
@@ -101,7 +101,7 @@ Foam::labelList Foam::fileOperations::mixedCollatedFileOperation::subRanks
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fileOperations::mixedCollatedFileOperation::mixedCollatedFileOperation
+Foam::fileOperations::multiCollatedFileOperation::multiCollatedFileOperation
 (
     const bool verbose
 )
@@ -121,7 +121,7 @@ Foam::fileOperations::mixedCollatedFileOperation::mixedCollatedFileOperation
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::fileOperations::mixedCollatedFileOperation::~mixedCollatedFileOperation()
+Foam::fileOperations::multiCollatedFileOperation::~multiCollatedFileOperation()
 {
     if (comm_ != -1)
     {
