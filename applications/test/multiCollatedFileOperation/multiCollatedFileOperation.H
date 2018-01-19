@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fileOperations::mixedCollatedFileOperation
+    Foam::fileOperations::multiCollatedFileOperation
 
 Description
     Version of collatedFileOperation with multiple writers
@@ -44,15 +44,15 @@ Description
     gain speed.
 
 See also
-    masterUnmixedCollatedFileOperation
+    masterUnmultiCollatedFileOperation
 
 SourceFiles
-    mixedCollatedFileOperation.C
+    multiCollatedFileOperation.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fileOperations_mixedCollatedFileOperation_H
-#define fileOperations_mixedCollatedFileOperation_H
+#ifndef fileOperations_multiCollatedFileOperation_H
+#define fileOperations_multiCollatedFileOperation_H
 
 #include "collatedFileOperation.H"
 #include "labelPair.H"
@@ -65,10 +65,10 @@ namespace fileOperations
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class mixedCollatedFileOperation Declaration
+                    Class multiCollatedFileOperation Declaration
 \*---------------------------------------------------------------------------*/
 
-class mixedCollatedFileOperation
+class multiCollatedFileOperation
 :
     public collatedFileOperation    //masterUncollatedFileOperation
 {
@@ -84,17 +84,17 @@ class mixedCollatedFileOperation
 public:
 
         //- Runtime type information
-        TypeName("mixedCollated");
+        TypeName("multiCollated");
 
 
     // Constructors
 
         //- Construct null
-        mixedCollatedFileOperation(const bool verbose);
+        multiCollatedFileOperation(const bool verbose);
 
 
     //- Destructor
-    virtual ~mixedCollatedFileOperation();
+    virtual ~multiCollatedFileOperation();
 };
 
 
