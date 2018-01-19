@@ -38,14 +38,14 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void replace(dictionary& dict)
+void replaceToken(dictionary& dict, const token& oldTok, const token& newTok)
 {
     forAllIter(IDLList<entry>, dict, iter)
     {
         if (iter().isDict())
         {
             Pout<< incrIndent;
-            replace(iter().dict());
+            replaceToken(iter().dict(), oldTok, newTok);
             Pout<< decrIndent;
         }
         else
@@ -57,9 +57,9 @@ void replace(dictionary& dict)
                 Pout<< indent << str[i].info() << endl;
                 Pout<< endl;
 
-                if (str[i] == token(word("nonuniform")))
+                if (str[i] == oldTok)
                 {
-                    str[i] = word("unchecked");
+                    str[i] = newTok;
                 }
             }
         }
@@ -98,7 +98,12 @@ int main(int argc, char *argv[])
 
     DebugVar(fieldDict);
 
-    replace(fieldDict);
+    replaceToken
+    (
+        fieldDict,
+        token(word("nonuniform")),
+        token(word("unchecked"))
+    );
 
     DebugVar(fieldDict);
 
