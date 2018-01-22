@@ -21,6 +21,10 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Note
+    The const_cast used in this file is a temporary hack for to work around
+    bugs in OpenMPI for versions < 1.7.4
+
 \*---------------------------------------------------------------------------*/
 
 #include "UPstream.H"
@@ -167,15 +171,6 @@ void Foam::UPstream::exit(int errnum)
     }
 
     //freeMutex(PstreamGlobals::mutex_);
-
-std::cout<< "** Timings" << std::endl
-    << "\treduce   : " << PstreamGlobals::reduceTime_ << std::endl
-    << "\twait     : " << PstreamGlobals::waitTime_ << std::endl
-    << "\tgather   : " << PstreamGlobals::gatherTime_ << std::endl
-    << "\tscatter  : " << PstreamGlobals::scatterTime_ << std::endl
-    << "\tallToAll : " << PstreamGlobals::allToAllTime_ << std::endl
-    << std::endl;
-
 
     if (errnum == 0)
     {
@@ -441,13 +436,13 @@ void Foam::UPstream::allToAll
         (
             MPI_Alltoallv
             (
-                sendData,
-                sendSizes.begin(),
-                sendOffsets.begin(),
+                const_cast<char*>(sendData),
+                const_cast<int*>(sendSizes.begin()),
+                const_cast<int*>(sendOffsets.begin()),
                 MPI_BYTE,
                 recvData,
-                recvSizes.begin(),
-                recvOffsets.begin(),
+                const_cast<int*>(recvSizes.begin()),
+                const_cast<int*>(recvOffsets.begin()),
                 MPI_BYTE,
                 PstreamGlobals::MPICommunicators_[communicator]
             )
@@ -506,12 +501,12 @@ void Foam::UPstream::gather
         (
             MPI_Gatherv
             (
-                sendData,
+                const_cast<char*>(sendData),
                 sendSize,
                 MPI_BYTE,
                 recvData,
-                recvSizes.begin(),
-                recvOffsets.begin(),
+                const_cast<int*>(recvSizes.begin()),
+                const_cast<int*>(recvOffsets.begin()),
                 MPI_BYTE,
                 0,
                 MPI_Comm(PstreamGlobals::MPICommunicators_[communicator])
@@ -568,9 +563,9 @@ void Foam::UPstream::scatter
         (
             MPI_Scatterv
             (
-                sendData,
-                sendSizes.begin(),
-                sendOffsets.begin(),
+                const_cast<char*>(sendData),
+                const_cast<int*>(sendSizes.begin()),
+                const_cast<int*>(sendOffsets.begin()),
                 MPI_BYTE,
                 recvData,
                 recvSize,

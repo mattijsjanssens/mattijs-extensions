@@ -1,0 +1,7 @@
+fvMeshDistribute.C
+processorPolyPatch.C
+
+loadOrCreateMesh.C
+redistributePar.C
+
+EXE = $(FOAM_USER_APPBIN)/redistributePar_with_fvMeshDistribute_point_merging
