@@ -120,6 +120,9 @@ int main(int argc, char *argv[])
 
         if (runTime.outputTime())
         {
+
+DebugVar(pDatai);
+DebugVar(pData.byteSize());
             if (pDatai == 10)
             {
                 /* allocate meta data for the 2D array a[ny][nx] */
@@ -153,6 +156,7 @@ int main(int argc, char *argv[])
 
                 /* compress */
                 size_t zfpsize = zfp_compress(zfp, field);
+DebugVar(zfpsize);
                 fwrite(buffer, 1, zfpsize, stdout);
 
                 /* clean up */
@@ -173,6 +177,8 @@ int main(int argc, char *argv[])
                 }
                 SubList<scalar>(pData, p.size(), pDatai*p.size()) =
                     p.internalField();
+
+                pDatai++;
             }
         }
 
