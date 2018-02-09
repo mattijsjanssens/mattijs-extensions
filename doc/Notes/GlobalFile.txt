@@ -245,7 +245,7 @@ Todo:
 
 TODO:
 - DONE. processors2/
-- future: processors0to9of256/
+- DONE. future: processors0to9of256/
 - slaves still need access to etc/controlDict. Not really a problem since comes
   together with all the shared libraries. So only if the shared libraries
   are separate
@@ -260,7 +260,7 @@ TODO:
                     IStringStream is(controlDictString);
                     controlDictPtr_->merge(dictionary(is));
                 }
-- add 'threadSupport' flag to UPstream::setParRun and interrogate this in
+- DONE. add 'threadSupport' flag to UPstream::setParRun and interrogate this in
   collatedFileOperation.
 - Test:
 
@@ -294,3 +294,20 @@ decomposePar -fileHandler uncollated
 decomposePar -fileHandler collated
     run             : uncollated: NO
     reconstructPar  : uncollated: NO
+
+
+
+Not running:
+------------
+heatTransfer/chtMultiRegionFoam/reverseBurner
+OK. incompressible/pimpleFoam/RAS/propeller : stuck when writing Q
+
+
+Changes
+-------
+- start up without reading etc/controlDict (using environment variable)
+- MPI initialised without thread support if not needed (e.g. uncollated)
+- uniform files (e.g. 'time') read on master only
+- thread buffer size not limited to < 2G anymore
+- collated format writes to 'processorsNNN' instead of 'processors'
+- per-node IO file handler: 'mulitCollated'

@@ -1,3 +1,0 @@
-multiCollatedFileOperation.C
-
-LIB = $(FOAM_USER_LIBBIN)/libmultiCollated

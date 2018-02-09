@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -112,7 +112,7 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeField
         Type,
         fvPatchField,
         volMesh
-    >::GeometricBoundaryField& bfld = fld.boundaryField();
+    >::Boundary& bfld = fld.boundaryField();
 
     forAll(bfld, patchI)
     {
@@ -190,7 +190,7 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeField
         fld.name(),
         baseMesh_.time().timeName(),
         fld.local(),
-        baseMesh_,
+        baseMesh_.thisDb(),
         IOobject::NO_READ,
         IOobject::NO_WRITE
     );

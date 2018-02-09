@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -37,11 +37,24 @@ void Foam::parFvFieldReconstructor::createPatchFaceMaps()
     {
         if (!isA<processorFvPatch>(fvb[patchI]))
         {
+Pout<< "Patch:" << fvb[patchI].name() << " index:" << patchI << endl;
+
             // Create map for patch faces only
 
             // Mark all used elements (i.e. destination patch faces)
             boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
-            const polyPatch& basePatch = baseMesh_.boundaryMesh()[patchI];
+
+DebugVar(faceIsUsed.size());
+
+
+            const unallocatedGenericFvPatch& basePatch =
+                baseMesh_.boundary()[patchI];
+
+DebugVar(basePatch.size());
+DebugVar(basePatch.start());
+
+
+
             forAll(basePatch, i)
             {
                 faceIsUsed[basePatch.start()+i] = true;
@@ -75,7 +88,7 @@ void Foam::parFvFieldReconstructor::createPatchFaceMaps()
 
 Foam::parFvFieldReconstructor::parFvFieldReconstructor
 (
-    fvMesh& baseMesh,
+    unallocatedFvMesh& baseMesh,
     const fvMesh& procMesh,
     const mapDistributePolyMesh& distMap,
     const bool isWriteProc

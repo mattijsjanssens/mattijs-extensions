@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -55,6 +55,9 @@ class unallocatedGenericFvPatch
 
     const label size_;
 
+    const label start_;
+
+
 public:
 
     //- Runtime type information
@@ -70,12 +73,14 @@ public:
             const polyPatch& patch,
             const word& name,
             const label size,
+            const label start,
             const fvBoundaryMesh& bm
         )
         :
             fvPatch(patch, bm),
             name_(name),
-            size_(size)
+            size_(size),
+            start_(start)
         {}
 
 
@@ -90,6 +95,12 @@ public:
             label size() const
             {
                 return size_;
+            }
+
+            //- Return start (overrides underlying polyPatch::start)
+            label start() const
+            {
+                return start_;
             }
 
             //- Return name
