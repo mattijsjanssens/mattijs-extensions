@@ -54,6 +54,12 @@ addToRunTimeSelectionTable
     genericUnallocatedFvPatchScalarField,
     dictionary
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchScalarField,
+    genericUnallocatedFvPatchScalarField,
+    patchMapper
+);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

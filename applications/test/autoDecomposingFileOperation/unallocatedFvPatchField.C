@@ -138,7 +138,7 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
-    const unallocatedFvPatchField<Type>& ptf,
+    const fvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& mapper
@@ -149,13 +149,10 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
     internalField_(iF),
     updated_(false),
     manipulatedMatrix_(false),
-    patchType_(ptf.patchType_)
+    patchType_(ptf.type())
 {
-    // For unmapped faces set to internal field value (zero-gradient)
-    if (notNull(iF) && mapper.hasUnmapped())
-    {
-        unallocatedFvPatchField<Type>::operator=(this->patchInternalField());
-    }
+    // Map the value field. Note that we cannot access the patch addressing
+    // to do e.g. patchInternalField for initialisation of unmapped values
     this->map(ptf, mapper);
 }
 
@@ -396,16 +393,16 @@ void Foam::unallocatedFvPatchField<Type>::write(Ostream& os) const
 
 // * * * * * * * * * * * * * * * Member Operators  * * * * * * * * * * * * * //
 
-//template<class Type>
-//void Foam::unallocatedFvPatchField<Type>::operator=
-//(
-//    const UList<Type>& ul
-//)
-//{
-//    Field<Type>::operator=(ul);
-//}
-//
-//
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::operator=
+(
+    const UList<Type>& ul
+)
+{
+    Field<Type>::operator=(ul);
+}
+
+
 //template<class Type>
 //void Foam::unallocatedFvPatchField<Type>::operator=
 //(

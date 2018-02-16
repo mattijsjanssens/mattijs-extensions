@@ -134,18 +134,31 @@ public:
             (p, iF)
         );
 
+//         declareRunTimeSelectionTable
+//         (
+//             tmp,
+//             unallocatedFvPatchField,
+//             patchMapper,
+//             (
+//                 const unallocatedFvPatchField<Type>& ptf,
+//                 const fvPatch& p,
+//                 const DimensionedField<Type, unallocatedFvMesh>& iF,
+//                 const fvPatchFieldMapper& m
+//             ),
+//             (dynamic_cast<const unallocatedFvPatchFieldType&>(ptf), p, iF, m)
+//         );
         declareRunTimeSelectionTable
         (
             tmp,
             unallocatedFvPatchField,
             patchMapper,
             (
-                const unallocatedFvPatchField<Type>& ptf,
+                const fvPatchField<Type>& ptf,
                 const fvPatch& p,
                 const DimensionedField<Type, unallocatedFvMesh>& iF,
                 const fvPatchFieldMapper& m
             ),
-            (dynamic_cast<const unallocatedFvPatchFieldType&>(ptf), p, iF, m)
+            (ptf, p, iF, m)
         );
 
         declareRunTimeSelectionTable
@@ -204,11 +217,11 @@ public:
             const bool valueRequired=true
         );
 
-        //- Construct by mapping the given unallocatedFvPatchField onto a new
+        //- Construct by mapping the given fvPatchField onto a new
         //  patch
         unallocatedFvPatchField
         (
-            const unallocatedFvPatchField<Type>&,
+            const fvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&
@@ -274,7 +287,7 @@ public:
         //  a given unallocatedFvPatchField mapped onto a new patch
         static tmp<unallocatedFvPatchField<Type>> New
         (
-            const unallocatedFvPatchField<Type>&,
+            const fvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&
@@ -559,7 +572,7 @@ public:
 //
 //    // Member operators
 //
-//        virtual void operator=(const UList<Type>&);
+        virtual void operator=(const UList<Type>&);
 //
 //        virtual void operator=(const fvPatchField<Type>&);
 //        virtual void operator+=(const fvPatchField<Type>&);

@@ -37,12 +37,13 @@ License
 #include "distributedUnallocatedDirectFieldMapper.H"
 #include "distributedUnallocatedDirectFvPatchFieldMapper.H"
 
+#include "unallocatedFvMesh.H"
 #include "unallocatedFvBoundaryMesh.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
-Foam::tmp<Foam::DimensionedField<Type, Foam::volMesh> >
+Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedFvMesh> >
 Foam::parFvFieldReconstructor::reconstructFvVolumeInternalField
 (
     const DimensionedField<Type, volMesh>& fld
@@ -67,9 +68,9 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeInternalField
         IOobject::NO_WRITE
     );
 
-    return tmp<DimensionedField<Type, volMesh> >
+    return tmp<DimensionedField<Type, unallocatedFvMesh> >
     (
-        new DimensionedField<Type, volMesh>
+        new DimensionedField<Type, unallocatedFvMesh>
         (
             baseIO,
             baseMesh_,
@@ -82,7 +83,15 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeInternalField
 
 // Reconstruct a field onto the baseMesh
 template<class Type>
-Foam::tmp<Foam::GeometricField<Type, Foam::fvPatchField, Foam::volMesh> >
+Foam::tmp
+<
+    Foam::GeometricField
+    <
+        Type,
+        Foam::unallocatedFvPatchField,
+        Foam::unallocatedFvMesh
+    >
+>
 Foam::parFvFieldReconstructor::reconstructFvVolumeField
 (
     const GeometricField<Type, fvPatchField, volMesh>& fld
@@ -133,7 +142,7 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeField
     }
 
 
-    PtrList<fvPatchField<Type> > basePatchFields
+    PtrList<unallocatedFvPatchField<Type> > basePatchFields
     (
         baseMesh_.boundary().size()
     );
@@ -154,11 +163,11 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeField
             basePatchFields.set
             (
                 patchI,
-                fvPatchField<Type>::New
+                unallocatedFvPatchField<Type>::New
                 (
                     pfld,
                     basePatch,
-                    DimensionedField<Type, volMesh>::null(),
+                    DimensionedField<Type, unallocatedFvMesh>::null(),
                     dummyMapper
                 )
             );
@@ -174,11 +183,11 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeField
             basePatchFields.set
             (
                 patchI,
-                fvPatchField<Type>::New
+                unallocatedFvPatchField<Type>::New
                 (
                     emptyFvPatchField<Type>::typeName,
                     baseMesh_.boundary()[patchI],
-                    DimensionedField<Type, volMesh>::null()
+                    DimensionedField<Type, unallocatedFvMesh>::null()
                 )
             );
         }
@@ -195,9 +204,9 @@ Foam::parFvFieldReconstructor::reconstructFvVolumeField
         IOobject::NO_WRITE
     );
 
-    return tmp<GeometricField<Type, fvPatchField, volMesh> >
+    return tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh>>
     (
-        new GeometricField<Type, fvPatchField, volMesh>
+        new GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh>
         (
             baseIO,
             baseMesh_,

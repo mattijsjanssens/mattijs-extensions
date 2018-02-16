@@ -25,7 +25,6 @@ License
 
 #include "parFvFieldReconstructor.H"
 
-
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 void Foam::parFvFieldReconstructor::createPatchFaceMaps()
@@ -37,23 +36,13 @@ void Foam::parFvFieldReconstructor::createPatchFaceMaps()
     {
         if (!isA<processorFvPatch>(fvb[patchI]))
         {
-Pout<< "Patch:" << fvb[patchI].name() << " index:" << patchI << endl;
-
             // Create map for patch faces only
 
             // Mark all used elements (i.e. destination patch faces)
             boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
 
-DebugVar(faceIsUsed.size());
-
-
             const unallocatedGenericFvPatch& basePatch =
                 baseMesh_.boundary()[patchI];
-
-DebugVar(basePatch.size());
-DebugVar(basePatch.start());
-
-
 
             forAll(basePatch, i)
             {
@@ -101,26 +90,6 @@ Foam::parFvFieldReconstructor::parFvFieldReconstructor
 {
     createPatchFaceMaps();
 }
-
-
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-// void Foam::parFvFieldReconstructor::reconstructPoints()
-// {
-//     // Reconstruct the points for moving mesh cases and write
-//     // them out
-//     distributedUnallocatedDirectFieldMapper mapper
-//     (
-//         labelUList::null(),
-//         distMap_.pointMap()
-//     );
-//     pointField basePoints(procMesh_.points(), mapper);
-//     baseMesh_.movePoints(basePoints);
-//     if (Pstream::master())
-//     {
-//         baseMesh_.write();
-//     }
-// }
 
 
 // ************************************************************************* //

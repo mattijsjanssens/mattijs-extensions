@@ -25,60 +25,23 @@ License
 
 #include "unallocatedGenericFvPatchField.H"
 #include "fvPatchFieldMapper.H"
+#include "fvPatchField.H"
+#include "emptyFvPatchField.H"
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-template<class Type>
-Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
-(
-    const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF
-)
-:
-    unallocatedFvPatchField<Type>(p, iF)
-{
-    FatalErrorInFunction
-        << "Trying to construct an unallocatedGenericFvPatchField on patch "
-        << this->patch().name()
-        //<< " of field " << this->internalField().name()
-        << abort(FatalError);
-}
-
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 template<class Type>
-Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
+void Foam::unallocatedGenericFvPatchField<Type>::read
 (
-    const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
-    const dictionary& dict
+    const dictionary& dict,
+    HashPtrTable<scalarField>& scalarFields,
+    HashPtrTable<vectorField>& vectorFields,
+    HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+    HashPtrTable<symmTensorField>& symmTensorFields,
+    HashPtrTable<tensorField>& tensorFields
 )
-:
-    unallocatedFvPatchField<Type>(p, iF, dict),
-    actualTypeName_(dict.lookup("type")),
-    dict_(dict)
 {
-
-DebugVar(dict);
-
-    if (!dict.found("value"))
-    {
-        FatalIOErrorInFunction
-        (
-            dict
-        )   << "\n    Cannot find 'value' entry"
-            << " on patch " << this->patch().name()
-            //<< " of field " << this->internalField().name()
-            //<< " in file " << this->internalField().objectPath()
-            << nl
-            << "    which is required to set the"
-               " values of the generic patch field." << nl
-            << "    (Actual type " << actualTypeName_ << ")" << nl
-            << "\n    Please add the 'value' entry to the write function "
-               "of the user-defined boundary-condition\n"
-            << exit(FatalIOError);
-    }
-
-    forAllConstIter(dictionary, dict_, iter)
+    forAllConstIter(dictionary, dict, iter)
     {
         if (iter().keyword() != "type" && iter().keyword() != "value")
         {
@@ -109,7 +72,7 @@ DebugVar(dict);
                          && fieldToken.labelToken() == 0
                         )
                         {
-                            scalarFields_.insert
+                            scalarFields.insert
                             (
                                 iter().keyword(),
                                 new scalarField(0)
@@ -162,7 +125,7 @@ DebugVar(dict);
                                 << exit(FatalIOError);
                         }
 
-                        scalarFields_.insert(iter().keyword(), fPtr);
+                        scalarFields.insert(iter().keyword(), fPtr);
                     }
                     else if
                     (
@@ -196,7 +159,7 @@ DebugVar(dict);
                                 << exit(FatalIOError);
                         }
 
-                        vectorFields_.insert(iter().keyword(), fPtr);
+                        vectorFields.insert(iter().keyword(), fPtr);
                     }
                     else if
                     (
@@ -233,7 +196,7 @@ DebugVar(dict);
                                 << exit(FatalIOError);
                         }
 
-                        sphericalTensorFields_.insert(iter().keyword(), fPtr);
+                        sphericalTensorFields.insert(iter().keyword(), fPtr);
                     }
                     else if
                     (
@@ -270,7 +233,7 @@ DebugVar(dict);
                                 << exit(FatalIOError);
                         }
 
-                        symmTensorFields_.insert(iter().keyword(), fPtr);
+                        symmTensorFields.insert(iter().keyword(), fPtr);
                     }
                     else if
                     (
@@ -304,7 +267,7 @@ DebugVar(dict);
                                 << exit(FatalIOError);
                         }
 
-                        tensorFields_.insert(iter().keyword(), fPtr);
+                        tensorFields.insert(iter().keyword(), fPtr);
                     }
                     else
                     {
@@ -331,7 +294,7 @@ DebugVar(dict);
 
                     if (!fieldToken.isPunctuation())
                     {
-                        scalarFields_.insert
+                        scalarFields.insert
                         (
                             iter().keyword(),
                             new scalarField
@@ -352,7 +315,7 @@ DebugVar(dict);
                         {
                             vector vs(l[0], l[1], l[2]);
 
-                            vectorFields_.insert
+                            vectorFields.insert
                             (
                                 iter().keyword(),
                                 new vectorField(this->size(), vs)
@@ -372,7 +335,7 @@ DebugVar(dict);
                         {
                             symmTensor vs(l[0], l[1], l[2], l[3], l[4], l[5]);
 
-                            symmTensorFields_.insert
+                            symmTensorFields.insert
                             (
                                 iter().keyword(),
                                 new symmTensorField(this->size(), vs)
@@ -387,7 +350,7 @@ DebugVar(dict);
                                 l[6], l[7], l[8]
                             );
 
-                            tensorFields_.insert
+                            tensorFields.insert
                             (
                                 iter().keyword(),
                                 new tensorField(this->size(), vs)
@@ -414,25 +377,116 @@ DebugVar(dict);
 }
 
 
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
 template<class Type>
 Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
 (
-    const unallocatedGenericFvPatchField<Type>& ptf,
+    const fvPatch& p,
+    const DimensionedField<Type, unallocatedFvMesh>& iF
+)
+:
+    unallocatedFvPatchField<Type>(p, iF)
+{
+    FatalErrorInFunction
+        << "Trying to construct an unallocatedGenericFvPatchField on patch "
+        << this->patch().name()
+        //<< " of field " << this->internalField().name()
+        << abort(FatalError);
+}
+
+
+template<class Type>
+Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
+(
+    const fvPatch& p,
+    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const dictionary& dict
+)
+:
+    unallocatedFvPatchField<Type>(p, iF, dict),
+    actualTypeName_(dict.lookup("type")),
+    dict_(dict)
+{
+    if (!dict.found("value"))
+    {
+        FatalIOErrorInFunction
+        (
+            dict
+        )   << "\n    Cannot find 'value' entry"
+            << " on patch " << this->patch().name()
+            //<< " of field " << this->internalField().name()
+            //<< " in file " << this->internalField().objectPath()
+            << nl
+            << "    which is required to set the"
+               " values of the generic patch field." << nl
+            << "    (Actual type " << actualTypeName_ << ")" << nl
+            << "\n    Please add the 'value' entry to the write function "
+               "of the user-defined boundary-condition\n"
+            << exit(FatalIOError);
+    }
+
+    // Read contents into typed fields
+    read
+    (
+        dict_,
+        scalarFields_,
+        vectorFields_,
+        sphericalTensorFields_,
+        symmTensorFields_,
+        tensorFields_
+    );
+}
+
+
+template<class Type>
+Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
+(
+    const fvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& mapper
 )
 :
-    unallocatedFvPatchField<Type>(ptf, p, iF, mapper),
-    actualTypeName_(ptf.actualTypeName_),
-    dict_(ptf.dict_)
+    unallocatedFvPatchField<Type>(ptf, p, iF, mapper)
 {
+    // Write input field as a dictionary
+    OStringStream os;
+    os << token::BEGIN_BLOCK << nl;
+    ptf.write(os);
+    os << token::END_BLOCK << nl;
+    IStringStream is(os.str());
+    is >> dict_;
+DebugVar(dict_);
+
+
+    actualTypeName_ = word(dict_.lookup("type"));
+
+    // Read data fields from original patchField
+    HashPtrTable<scalarField> scalarFields;
+    HashPtrTable<vectorField> vectorFields;
+    HashPtrTable<sphericalTensorField> sphericalTensorFields;
+    HashPtrTable<symmTensorField> symmTensorFields;
+    HashPtrTable<tensorField> tensorFields;
+    read
+    (
+        dict_,
+        scalarFields,
+        vectorFields,
+        sphericalTensorFields,
+        symmTensorFields,
+        tensorFields
+    );
+
+
 DebugVar(p.name());
 
+
+    // Map using mapper
     forAllConstIter
     (
         HashPtrTable<scalarField>,
-        ptf.scalarFields_,
+        scalarFields,
         iter
     )
     {
@@ -446,7 +500,7 @@ DebugVar(p.name());
     forAllConstIter
     (
         HashPtrTable<vectorField>,
-        ptf.vectorFields_,
+        vectorFields,
         iter
     )
     {
@@ -460,7 +514,7 @@ DebugVar(p.name());
     forAllConstIter
     (
         HashPtrTable<sphericalTensorField>,
-        ptf.sphericalTensorFields_,
+        sphericalTensorFields,
         iter
     )
     {
@@ -474,7 +528,7 @@ DebugVar(p.name());
     forAllConstIter
     (
         HashPtrTable<symmTensorField>,
-        ptf.symmTensorFields_,
+        symmTensorFields,
         iter
     )
     {
@@ -488,7 +542,7 @@ DebugVar(p.name());
     forAllConstIter
     (
         HashPtrTable<tensorField>,
-        ptf.tensorFields_,
+        tensorFields,
         iter
     )
     {
@@ -819,7 +873,11 @@ void Foam::unallocatedGenericFvPatchField<Type>::write(Ostream& os) const
         }
     }
 
-    this->writeEntry("value", os);
+
+    if (actualTypeName_ != emptyFvPatchField<Type>::typeName)
+    {
+        this->writeEntry("value", os);
+    }
 }
 
 

@@ -71,6 +71,19 @@ class unallocatedGenericFvPatchField
         HashPtrTable<tensorField> tensorFields_;
 
 
+   // Private Member Functions
+
+        void read
+        (
+            const dictionary& dict,
+            HashPtrTable<scalarField>& scalarFields,
+            HashPtrTable<vectorField>& vectorFields,
+            HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+            HashPtrTable<symmTensorField>& symmTensorFields,
+            HashPtrTable<tensorField>& tensorFields
+        );
+
+
 public:
 
     //- Runtime type information
@@ -97,7 +110,7 @@ public:
         //- Construct by mapping given patchField<Type> onto a new patch
         unallocatedGenericFvPatchField
         (
-            const unallocatedGenericFvPatchField<Type>&,
+            const fvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&

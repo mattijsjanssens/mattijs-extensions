@@ -42,6 +42,7 @@ SourceFiles
 #include "PtrList.H"
 #include "fvMesh.H"
 #include "unallocatedFvMesh.H"
+#include "unallocatedFvPatchField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,10 +51,9 @@ namespace Foam
 
 class mapDistributePolyMesh;
 class mapDistributeBase;
-class IOobjectList;
 
 /*---------------------------------------------------------------------------*\
-                    Class parFvFieldReconstructor Declaration
+                   Class parFvFieldReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
 class parFvFieldReconstructor
@@ -106,7 +106,7 @@ public:
 
         //- Reconstruct volume internal field
         template<class Type>
-        tmp<DimensionedField<Type, volMesh> >
+        tmp<DimensionedField<Type, unallocatedFvMesh> >
         reconstructFvVolumeInternalField
         (
             const DimensionedField<Type, volMesh>&
@@ -114,15 +114,11 @@ public:
 
         //- Reconstruct volume field
         template<class Type>
-        tmp<GeometricField<Type, fvPatchField, volMesh> >
+        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh> >
         reconstructFvVolumeField
         (
             const GeometricField<Type, fvPatchField, volMesh>& fld
         ) const;
-
-//         //- Helper: reconstruct and write mesh points
-//         //  (note: should be moved to something like processorMeshes class)
-//         void reconstructPoints();
 };
 
 

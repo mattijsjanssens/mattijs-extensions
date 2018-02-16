@@ -35,6 +35,7 @@ namespace Foam
 defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchScalarField, 0);
 defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, patch);
 defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, dictionary);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, patchMapper);
 
 // defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchVectorField, 0);
 // defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, patch);
