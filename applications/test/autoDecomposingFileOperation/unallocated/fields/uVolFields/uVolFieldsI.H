@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,47 +23,16 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "unallocatedGenericFvPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "unallocatedFvPatchFields.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-namespace Foam
+template<class Type, template<class> class PatchField, class GeoMesh>
+inline
+const typename
+Foam::GeometricField<Type, PatchField, GeoMesh>::Internal&
+Foam::GeometricField<Type, PatchField, GeoMesh>::
+v() const
 {
+    static_assert(isVolMesh<GeoMesh>::value, "Only valid for volFields");
+    return *this;
+}
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-//makePatchFields(generic);
-defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchScalarField, 0);
-// addToRunTimeSelectionTable
-// (
-//     unallocatedFvPatchScalarField,
-//     genericUnallocatedFvPatchScalarField,
-//     patch
-// );
-// addToRunTimeSelectionTable
-// (
-//     unallocatedFvPatchScalarField,
-//     genericUnallocatedFvPatchScalarField,
-//     patchMapper
-// );
-addToRunTimeSelectionTable
-(
-    unallocatedFvPatchScalarField,
-    genericUnallocatedFvPatchScalarField,
-    dictionary
-);
-addToRunTimeSelectionTable
-(
-    unallocatedFvPatchScalarField,
-    genericUnallocatedFvPatchScalarField,
-    patchMapper
-);
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
 
 // ************************************************************************* //

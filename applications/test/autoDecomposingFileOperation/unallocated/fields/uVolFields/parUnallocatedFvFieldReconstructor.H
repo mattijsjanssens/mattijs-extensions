@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::parFvFieldReconstructor
+    Foam::parUnallocatedFvFieldReconstructor
 
 Description
     Finite volume reconstructor for volume and surface fields.
@@ -31,13 +31,13 @@ Description
     is non-zero cells on processor0 only.
 
 SourceFiles
-    parFvFieldReconstructor.C
-    parFvFieldReconstructorReconstructFields.C
+    parUnallocatedFvFieldReconstructor.C
+    parUnallocatedFvFieldReconstructorReconstructFields.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef parFvFieldReconstructor_H
-#define parFvFieldReconstructor_H
+#ifndef parUnallocatedFvFieldReconstructor_H
+#define parUnallocatedFvFieldReconstructor_H
 
 #include "PtrList.H"
 #include "fvMesh.H"
@@ -53,10 +53,10 @@ class mapDistributePolyMesh;
 class mapDistributeBase;
 
 /*---------------------------------------------------------------------------*\
-                   Class parFvFieldReconstructor Declaration
+                   Class parUnallocatedFvFieldReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
-class parFvFieldReconstructor
+class parUnallocatedFvFieldReconstructor
 {
     // Private data
 
@@ -82,10 +82,13 @@ class parFvFieldReconstructor
         void createPatchFaceMaps();
 
         //- Disallow default bitwise copy construct
-        parFvFieldReconstructor(const parFvFieldReconstructor&);
+        parUnallocatedFvFieldReconstructor
+        (
+            const parUnallocatedFvFieldReconstructor&
+        );
 
         //- Disallow default bitwise assignment
-        void operator=(const parFvFieldReconstructor&);
+        void operator=(const parUnallocatedFvFieldReconstructor&);
 
 
 public:
@@ -93,7 +96,7 @@ public:
     // Constructors
 
         //- Construct from components
-        parFvFieldReconstructor
+        parUnallocatedFvFieldReconstructor
         (
             unallocatedFvMesh& baseMesh,
             const fvMesh& procMesh,
@@ -129,7 +132,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#   include "parFvFieldReconstructorReconstructFields.C"
+#   include "parUnallocatedFvFieldReconstructorReconstructFields.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

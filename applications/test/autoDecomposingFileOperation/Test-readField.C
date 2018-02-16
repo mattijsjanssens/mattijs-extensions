@@ -36,102 +36,12 @@ Description
 #include "unallocatedFvMesh.H"
 //#include "unallocatedFvPatchField.H"
 #include "unallocatedGenericFvPatchField.H"
-#include "parFvFieldReconstructor.H"
-#include "polyBoundaryMeshEntries.H"
+#include "parUnallocatedFvFieldReconstructor.H"
+#include "unallocatedFvMeshTools.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-autoPtr<mapDistribute> calcReconstructMap
-(
-    const labelList& localToGlobal,
-    const bool localHasFlip
-)
-{
-    // localToGlobal: which elements we want from the master and in what order
-
-    label globalSize;
-    if (localHasFlip)
-    {
-        globalSize = gMax(mag(localToGlobal)-1)+1;
-    }
-    else
-    {
-        globalSize = gMax(localToGlobal)+1;
-    }
-
-    // On master: receive all the undecomposed elements
-    labelListList subMap(Pstream::nProcs());
-    subMap[Pstream::myProcNo()] = localToGlobal;
-    Pstream::gatherList(subMap);
-    if (!Pstream::master())
-    {
-        // No need to receive anything on slaves
-        subMap = labelList(0);
-    }
-
-    // Everywhere: send subset to master
-    labelListList constructMap(Pstream::nProcs());
-    constructMap[0] = identity(localToGlobal.size());
-
-    return autoPtr<mapDistribute>
-    (
-        new mapDistribute
-        (
-            globalSize,             // max index of receive data
-            constructMap.xfer(),    // what to send
-            subMap.xfer(),          // what to receive
-            false,                  // no sign flag in sending
-            localHasFlip            // have sign in receiving
-        )
-    );
-}
-
-
-autoPtr<mapDistributePolyMesh> readProcMap
-(
-    const IOobject& io,
-    const label nOldPoints,
-    const label nOldFaces,
-    const label nOldCells,
-    const labelList& oldPatchStarts,
-    const labelList& oldPatchNMeshPoints
-)
-{
-    // Read local cell allocation
-    labelIOList cellMap(IOobject(io, "cellProcAddressing"));
-    autoPtr<mapDistribute> cellMapPtr(calcReconstructMap(cellMap, false));
-
-    labelIOList faceMap(IOobject(io, "faceProcAddressing"));
-    autoPtr<mapDistribute> faceMapPtr(calcReconstructMap(faceMap, true));
-
-    labelIOList pointMap(IOobject(io, "pointProcAddressing"));
-    autoPtr<mapDistribute> pointMapPtr(calcReconstructMap(pointMap, false));
-
-    labelIOList boundaryMap(IOobject(io, "boundaryProcAddressing"));
-    autoPtr<mapDistribute> bMapPtr(calcReconstructMap(boundaryMap, false));
-DebugVar(bMapPtr());
-
-    return autoPtr<mapDistributePolyMesh>
-    (
-        new mapDistributePolyMesh
-        (
-            nOldPoints,
-            nOldFaces,
-            nOldCells,
-            xferCopy(oldPatchStarts),
-            xferCopy(oldPatchNMeshPoints),
-
-            // how to subset pieces of mesh to send across
-            pointMapPtr().xfer(),
-            faceMapPtr().xfer(),
-            cellMapPtr().xfer(),
-            bMapPtr().xfer()
-        )
-    );
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -158,104 +68,53 @@ int main(int argc, char *argv[])
 
 
     // Read procAddressing files. Deduct base mesh sizes.
-    autoPtr<mapDistributePolyMesh> distMap
+    const IOobject baseIO
     (
-        readProcMap
+        "dummy",
+        mesh.facesInstance(),   // same instance as local mesh
+        polyMesh::meshSubDir,
+        baseRunTime,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE,
+        false
+    );
+
+
+    autoPtr<mapDistributePolyMesh> distMapPtr
+    (
+        unallocatedFvMeshTools::readReconstructMap
         (
-            IOobject
-            (
-                "cellProcAddressing",
-                mesh.facesInstance(),
-                polyMesh::meshSubDir,
-                mesh,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            0,              //nOldPoints
-            0,              //nOldFaces
-            0,              //nOldCells
-            labelList(0),   //oldPatchStarts
-            labelList(0)    //oldPatchNMeshPoints
+            baseIO
         )
     );
+    const mapDistributePolyMesh& distMap = distMapPtr();
 
-
-    // Extract parent mesh information
-    labelList basePatchSizes;
-    labelList basePatchStarts;
-    wordList basePatchNames;
-    {
-        polyBoundaryMeshEntries patchEntries
-        (
-            IOobject
-            (
-                "boundary",
-                mesh.facesInstance(),
-                polyMesh::meshSubDir,
-                baseRunTime,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE,
-                false
-            )
-        );
-        basePatchNames.setSize(patchEntries.size());
-        basePatchSizes.setSize(patchEntries.size());
-        basePatchStarts.setSize(patchEntries.size());
-        forAll(patchEntries, patchi)
-        {
-            basePatchNames[patchi] = patchEntries[patchi].keyword();
-            const dictionary& d = patchEntries[patchi].dict();
-            basePatchSizes[patchi] = readLabel(d.lookup("nFaces"));
-            basePatchStarts[patchi] = readLabel(d.lookup("startFace"));
-        }
-    }
-
-
-    const fvBoundaryMesh& fp = mesh.boundary();
-
-    // Construct an unallocated boundary. (note: the references to the
-    // mesh-boundary are not used; names and sizes are from the base mesh)
-    unallocatedFvBoundaryMesh baseBoundary;
-    baseBoundary.setSize(basePatchNames.size());
-    forAll(basePatchNames, patchi)
-    {
-        baseBoundary.set
-        (
-            patchi,
-            new unallocatedGenericFvPatch
-            (
-                fp[patchi].patch(),                 // unused reference
-                basePatchNames[patchi],
-                basePatchSizes[patchi],
-                basePatchStarts[patchi],
-                fp                                  // unused reference
-            )
-        );
-    }
-
-    // Construct the (unallocated) mesh
-    unallocatedFvMesh baseMesh
+    autoPtr<unallocatedFvMesh> baseMeshPtr
     (
-        baseRunTime,                            // database
-        distMap().cellMap().constructSize(),    // nCells
-        baseBoundary,                           // boundary
-        mesh.globalData()                       // used for patchSchedule() only
+        unallocatedFvMeshTools::newMesh
+        (
+            baseIO,
+            mesh,
+            distMap.cellMap().constructSize()
+        )
     );
+    unallocatedFvMesh& baseMesh = baseMeshPtr();
 
-    // // Read field on baseMesh
-    // uVolScalarField baseFld
-    // (
-    //     IOobject
-    //     (
-    //         "p",
-    //         baseRunTime.timeName(),
-    //         baseMesh.thisDb(),
-    //         IOobject::MUST_READ,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     baseMesh
-    // );
+
+
+    // Read field on baseMesh
+    uVolScalarField baseFld
+    (
+        IOobject
+        (
+            "p",
+            baseMesh.time().timeName(),
+            baseMesh.thisDb(),
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        baseMesh
+    );
     //uVolScalarField p
     //(
     //    IOobject
@@ -271,11 +130,11 @@ int main(int argc, char *argv[])
     //    unallocatedGenericFvPatchField<scalar>::typeName
     //);
 
-    parFvFieldReconstructor reconstructor
+    parUnallocatedFvFieldReconstructor reconstructor
     (
         baseMesh,
         mesh,
-        distMap(),
+        distMap,
         false           // isWriteProc
     );
 
@@ -311,6 +170,8 @@ int main(int argc, char *argv[])
         Pstream::parRun() = false;
         if (Pstream::master())
         {
+            DebugVar(tfld());
+
             tfld().write();
         }
         Pstream::parRun() = oldParRun;

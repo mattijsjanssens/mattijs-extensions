@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,15 +23,14 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "unallocatedGenericFvPatch.H"
-//#include "addToRunTimeSelectionTable.H"
+#ifndef unallocatedFvPatchFields_H
+#define unallocatedFvPatchFields_H
+
+#include "unallocatedFvPatchField.H"
+#include "unallocatedFvPatchFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
-{
-    defineTypeNameAndDebug(unallocatedGenericFvPatch, 0);
-    //addToRunTimeSelectionTable(fvPatch, unallocatedGenericFvPatch, polyPatch);
-}
+#endif
 
 // ************************************************************************* //

@@ -23,11 +23,11 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "parFvFieldReconstructor.H"
+#include "parUnallocatedFvFieldReconstructor.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::parFvFieldReconstructor::createPatchFaceMaps()
+void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 {
     const fvBoundaryMesh& fvb = procMesh_.boundary();
 
@@ -75,7 +75,7 @@ void Foam::parFvFieldReconstructor::createPatchFaceMaps()
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::parFvFieldReconstructor::parFvFieldReconstructor
+Foam::parUnallocatedFvFieldReconstructor::parUnallocatedFvFieldReconstructor
 (
     unallocatedFvMesh& baseMesh,
     const fvMesh& procMesh,

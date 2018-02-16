@@ -23,11 +23,10 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "parFvFieldReconstructor.H"
+#include "parUnallocatedFvFieldReconstructor.H"
 #include "Time.H"
 #include "PtrList.H"
 #include "fvPatchFields.H"
-#include "emptyFvPatch.H"
 #include "emptyFvPatchField.H"
 #include "IOobjectList.H"
 #include "mapDistributePolyMesh.H"
@@ -44,7 +43,7 @@ License
 
 template<class Type>
 Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedFvMesh> >
-Foam::parFvFieldReconstructor::reconstructFvVolumeInternalField
+Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeInternalField
 (
     const DimensionedField<Type, volMesh>& fld
 ) const
@@ -92,7 +91,7 @@ Foam::tmp
         Foam::unallocatedFvMesh
     >
 >
-Foam::parFvFieldReconstructor::reconstructFvVolumeField
+Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
 (
     const GeometricField<Type, fvPatchField, volMesh>& fld
 ) const

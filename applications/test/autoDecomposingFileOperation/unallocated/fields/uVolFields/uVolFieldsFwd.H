@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,10 +21,18 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+InClass
+    Foam::uVolFields
+
+Description
+
+SourceFiles
+    uVolFields.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef unallocatedFvPatchFieldsFwd_H
-#define unallocatedFvPatchFieldsFwd_H
+#ifndef uVolFieldsFwd_H
+#define uVolFieldsFwd_H
 
 #include "fieldTypes.H"
 
@@ -35,14 +43,25 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-template<class Type> class unallocatedFvPatchField;
+class unallocatedFvMesh;
 
-typedef unallocatedFvPatchField<scalar> unallocatedFvPatchScalarField;
-// typedef unallocatedFvPatchField<vector> unallocatedFvPatchVectorField;
-// typedef unallocatedFvPatchField<sphericalTensor>
-// unallocatedFvPatchSphericalTensorField;
-// typedef unallocatedFvPatchField<symmTensor> unallocatedFvPatchSymmTensorField;
-// typedef unallocatedFvPatchField<tensor> unallocatedFvPatchTensorField;
+template<class Type>
+class unallocatedFvPatchField;
+
+template<class Type, template<class> class PatchField, class GeoMesh>
+class GeometricField;
+
+typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
+uVolScalarField;
+typedef GeometricField<vector, unallocatedFvPatchField, unallocatedFvMesh>
+uVolVectorField;
+typedef
+GeometricField<sphericalTensor, unallocatedFvPatchField, unallocatedFvMesh>
+uVolSphericalTensorField;
+typedef GeometricField<symmTensor, unallocatedFvPatchField, unallocatedFvMesh>
+uVolSymmTensorField;
+typedef GeometricField<tensor, unallocatedFvPatchField, unallocatedFvMesh>
+uVolTensorField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

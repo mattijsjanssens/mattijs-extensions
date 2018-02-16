@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,16 +23,33 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-template<class Type, template<class> class PatchField, class GeoMesh>
-inline
-const typename
-Foam::GeometricField<Type, PatchField, GeoMesh>::Internal&
-Foam::GeometricField<Type, PatchField, GeoMesh>::
-v() const
-{
-    static_assert(isVolMesh<GeoMesh>::value, "Only valid for volFields");
-    return *this;
-}
+#ifndef unallocatedFvPatchFieldsFwd_H
+#define unallocatedFvPatchFieldsFwd_H
 
+#include "fieldTypes.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+template<class Type> class unallocatedFvPatchField;
+
+typedef unallocatedFvPatchField<scalar> unallocatedFvPatchScalarField;
+typedef unallocatedFvPatchField<vector> unallocatedFvPatchVectorField;
+typedef unallocatedFvPatchField<sphericalTensor>
+unallocatedFvPatchSphericalTensorField;
+typedef unallocatedFvPatchField<symmTensor> unallocatedFvPatchSymmTensorField;
+typedef unallocatedFvPatchField<tensor> unallocatedFvPatchTensorField;
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
 
 // ************************************************************************* //

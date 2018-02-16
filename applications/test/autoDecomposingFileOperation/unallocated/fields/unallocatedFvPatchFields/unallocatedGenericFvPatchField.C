@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -26,7 +26,6 @@ License
 #include "unallocatedGenericFvPatchField.H"
 #include "fvPatchFieldMapper.H"
 #include "fvPatchField.H"
-#include "emptyFvPatchField.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -457,8 +456,6 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     os << token::END_BLOCK << nl;
     IStringStream is(os.str());
     is >> dict_;
-DebugVar(dict_);
-
 
     actualTypeName_ = word(dict_.lookup("type"));
 
@@ -478,8 +475,6 @@ DebugVar(dict_);
         tensorFields
     );
 
-
-DebugVar(p.name());
 
 
     // Map using mapper
@@ -659,167 +654,90 @@ void Foam::unallocatedGenericFvPatchField<Type>::rmap
     const labelList& addr
 )
 {
-//     unallocatedFvPatchField<Type>::rmap(ptf, addr);
-// 
-//     const unallocatedGenericFvPatchField<Type>& dptf =
-//         refCast<const unallocatedGenericFvPatchField<Type>>(ptf);
-// 
-//     forAllIter
-//     (
-//         HashPtrTable<scalarField>,
-//         scalarFields_,
-//         iter
-//     )
-//     {
-//         HashPtrTable<scalarField>::const_iterator dptfIter =
-//             dptf.scalarFields_.find(iter.key());
-// 
-//         if (dptfIter != dptf.scalarFields_.end())
-//         {
-//             iter()->rmap(*dptfIter(), addr);
-//         }
-//     }
-// 
-//     forAllIter
-//     (
-//         HashPtrTable<vectorField>,
-//         vectorFields_,
-//         iter
-//     )
-//     {
-//         HashPtrTable<vectorField>::const_iterator dptfIter =
-//             dptf.vectorFields_.find(iter.key());
-// 
-//         if (dptfIter != dptf.vectorFields_.end())
-//         {
-//             iter()->rmap(*dptfIter(), addr);
-//         }
-//     }
-// 
-//     forAllIter
-//     (
-//         HashPtrTable<sphericalTensorField>,
-//         sphericalTensorFields_,
-//         iter
-//     )
-//     {
-//         HashPtrTable<sphericalTensorField>::const_iterator dptfIter =
-//             dptf.sphericalTensorFields_.find(iter.key());
-// 
-//         if (dptfIter != dptf.sphericalTensorFields_.end())
-//         {
-//             iter()->rmap(*dptfIter(), addr);
-//         }
-//     }
-// 
-//     forAllIter
-//     (
-//         HashPtrTable<symmTensorField>,
-//         symmTensorFields_,
-//         iter
-//     )
-//     {
-//         HashPtrTable<symmTensorField>::const_iterator dptfIter =
-//             dptf.symmTensorFields_.find(iter.key());
-// 
-//         if (dptfIter != dptf.symmTensorFields_.end())
-//         {
-//             iter()->rmap(*dptfIter(), addr);
-//         }
-//     }
-// 
-//     forAllIter
-//     (
-//         HashPtrTable<tensorField>,
-//         tensorFields_,
-//         iter
-//     )
-//     {
-//         HashPtrTable<tensorField>::const_iterator dptfIter =
-//             dptf.tensorFields_.find(iter.key());
-// 
-//         if (dptfIter != dptf.tensorFields_.end())
-//         {
-//             iter()->rmap(*dptfIter(), addr);
-//         }
-//     }
-}
+    unallocatedFvPatchField<Type>::rmap(ptf, addr);
 
+    const unallocatedGenericFvPatchField<Type>& dptf =
+        refCast<const unallocatedGenericFvPatchField<Type>>(ptf);
 
-template<class Type>
-Foam::tmp<Foam::Field<Type>>
-Foam::unallocatedGenericFvPatchField<Type>::valueInternalCoeffs
-(
-    const tmp<scalarField>&
-) const
-{
-    FatalErrorInFunction
-        << "cannot be called for a unallocatedGenericFvPatchField"
-           " (actual type " << actualTypeName_ << ")"
-        << "\n    on patch " << this->patch().name()
-        //<< " of field " << this->internalField().name()
-        //<< " in file " << this->internalField().objectPath()
-        << "\n    You are probably trying to solve for a field with a "
-           "generic boundary condition."
-        << abort(FatalError);
+    forAllIter
+    (
+        HashPtrTable<scalarField>,
+        scalarFields_,
+        iter
+    )
+    {
+        HashPtrTable<scalarField>::const_iterator dptfIter =
+            dptf.scalarFields_.find(iter.key());
 
-    return *this;
-}
+        if (dptfIter != dptf.scalarFields_.end())
+        {
+            iter()->rmap(*dptfIter(), addr);
+        }
+    }
 
+    forAllIter
+    (
+        HashPtrTable<vectorField>,
+        vectorFields_,
+        iter
+    )
+    {
+        HashPtrTable<vectorField>::const_iterator dptfIter =
+            dptf.vectorFields_.find(iter.key());
 
-template<class Type>
-Foam::tmp<Foam::Field<Type>>
-Foam::unallocatedGenericFvPatchField<Type>::valueBoundaryCoeffs
-(
-    const tmp<scalarField>&
-) const
-{
-    FatalErrorInFunction
-        << "cannot be called for a unallocatedGenericFvPatchField"
-           " (actual type " << actualTypeName_ << ")"
-        << "\n    on patch " << this->patch().name()
-        //<< " of field " << this->internalField().name()
-        //<< " in file " << this->internalField().objectPath()
-        << "\n    You are probably trying to solve for a field with a "
-           "generic boundary condition."
-        << abort(FatalError);
+        if (dptfIter != dptf.vectorFields_.end())
+        {
+            iter()->rmap(*dptfIter(), addr);
+        }
+    }
 
-    return *this;
-}
+    forAllIter
+    (
+        HashPtrTable<sphericalTensorField>,
+        sphericalTensorFields_,
+        iter
+    )
+    {
+        HashPtrTable<sphericalTensorField>::const_iterator dptfIter =
+            dptf.sphericalTensorFields_.find(iter.key());
 
+        if (dptfIter != dptf.sphericalTensorFields_.end())
+        {
+            iter()->rmap(*dptfIter(), addr);
+        }
+    }
 
-template<class Type>
-Foam::tmp<Foam::Field<Type>>
-Foam::unallocatedGenericFvPatchField<Type>::gradientInternalCoeffs() const
-{
-    FatalErrorInFunction
-        << "cannot be called for a unallocatedGenericFvPatchField"
-           " (actual type " << actualTypeName_ << ")"
-        << "\n    on patch " << this->patch().name()
-        //<< " of field " << this->internalField().name()
-        //<< " in file " << this->internalField().objectPath()
-        << "\n    You are probably trying to solve for a field with a "
-           "generic boundary condition."
-        << abort(FatalError);
+    forAllIter
+    (
+        HashPtrTable<symmTensorField>,
+        symmTensorFields_,
+        iter
+    )
+    {
+        HashPtrTable<symmTensorField>::const_iterator dptfIter =
+            dptf.symmTensorFields_.find(iter.key());
 
-    return *this;
-}
+        if (dptfIter != dptf.symmTensorFields_.end())
+        {
+            iter()->rmap(*dptfIter(), addr);
+        }
+    }
 
-template<class Type>
-Foam::tmp<Foam::Field<Type>>
-Foam::unallocatedGenericFvPatchField<Type>::gradientBoundaryCoeffs() const
-{
-    FatalErrorInFunction
-        << "cannot be called for a unallocatedGenericFvPatchField"
-           " (actual type " << actualTypeName_ << ")"
-        << "\n    on patch " << this->patch().name()
-        //<< " of field " << this->internalField().name()
-        //<< " in file " << this->internalField().objectPath()
-        << "\n    You are probably trying to solve for a field with a "
-           "generic boundary condition."
-        << abort(FatalError);
+    forAllIter
+    (
+        HashPtrTable<tensorField>,
+        tensorFields_,
+        iter
+    )
+    {
+        HashPtrTable<tensorField>::const_iterator dptfIter =
+            dptf.tensorFields_.find(iter.key());
 
-    return *this;
+        if (dptfIter != dptf.tensorFields_.end())
+        {
+            iter()->rmap(*dptfIter(), addr);
+        }
+    }
 }
 
 
@@ -873,11 +791,7 @@ void Foam::unallocatedGenericFvPatchField<Type>::write(Ostream& os) const
         }
     }
 
-
-    if (actualTypeName_ != emptyFvPatchField<Type>::typeName)
-    {
-        this->writeEntry("value", os);
-    }
+    this->writeEntry("value", os);
 }
 
 

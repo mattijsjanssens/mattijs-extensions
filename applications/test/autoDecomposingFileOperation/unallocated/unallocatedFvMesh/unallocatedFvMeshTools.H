@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,24 +21,59 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::unallocatedFvMeshTools
+
+Description
+    A collection of tools for operating on an unallocatedFvMesh.
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef unallocatedGenericFvPatchFields_H
-#define unallocatedGenericFvPatchFields_H
+#ifndef unallocatedFvMeshTools_H
+#define unallocatedFvMeshTools_H
 
-#include "unallocatedGenericFvPatchField.H"
-#include "fieldTypes.H"
+#include "unallocatedFvMesh.H"
+#include "mapDistributePolyMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                   Class unallocatedFvMeshTools Declaration
+\*---------------------------------------------------------------------------*/
 
-//makePatchTypeFieldTypedefs(generic);
-typedef unallocatedGenericFvPatchField<scalar>
-    genericUnallocatedFvPatchScalarField;
+class unallocatedFvMeshTools
+{
+    //- Send local map to master and convert into mapDistribute
+    static autoPtr<mapDistribute> calcReconstructMap
+    (
+        const labelList& localToGlobal,
+        const bool localHasFlip
+    );
+
+
+public:
+
+    //- Read the *procAddressing files (from provided location) and
+    //  construct a single reconstruction map from it
+    static autoPtr<mapDistributePolyMesh> readReconstructMap
+    (
+        const IOobject& io
+    );
+
+    //- Read undecomposed boundary (from provided mesh location) and construct
+    //  placeholder mesh. Still contains references to other mesh providing
+    //  patch schedule etc. (hopefully unused)
+    static autoPtr<unallocatedFvMesh> newMesh
+    (
+        const IOobject& io,
+        const fvMesh& mesh,
+        const label nCells
+    );
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
