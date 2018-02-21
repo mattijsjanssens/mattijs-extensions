@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -26,6 +26,8 @@ Application
 
 Description
     - try and move some bits of lduMesh across and re-stitch
+      (so not like GAMG processor agglomeration which move WHOLE processors
+       across)
     - only coincident cyclics and processor interfaces are stitchable
     - all other interfaces get preserved
 

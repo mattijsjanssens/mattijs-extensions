@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -36,7 +36,8 @@ Description
 #include "unallocatedFvMesh.H"
 //#include "unallocatedFvPatchField.H"
 #include "unallocatedGenericFvPatchField.H"
-#include "parFvFieldReconstructor.H"
+#include "parUnallocatedFvFieldReconstructor.H"
+#include "unallocatedFvMeshTools.H"
 
 using namespace Foam;
 
@@ -66,73 +67,48 @@ int main(int argc, char *argv[])
     baseRunTime.setTime(runTime);
 
 
-    // Extract parent mesh information
-    label baseNCells = -1;
-    labelList basePatchSizes;
-    wordList basePatchNames;
-    // TBD: basePatchGroups
-    {
-        // For now read in base mesh. TBD.
-
-        polyMesh baseMesh
-        (
-            IOobject
-            (
-                polyMesh::defaultRegion,
-                baseRunTime.timeName(),
-                baseRunTime,
-                IOobject::MUST_READ
-            )
-        );
-
-        baseNCells = baseMesh.nCells();
-
-        const polyBoundaryMesh& pbm = baseMesh.boundaryMesh();
-        basePatchNames = pbm.names();
-        basePatchSizes.setSize(pbm.size());
-        forAll(pbm, patchi)
-        {
-            basePatchSizes[patchi] = pbm[patchi].size();
-        }
-    }
-
-    const fvBoundaryMesh& fp = mesh.boundary();
-
-    // Construct an unallocated boundary. (note: the references to the
-    // mesh-boundary are not used; names and sizes are from the base mesh)
-    unallocatedFvBoundaryMesh baseBoundary;
-    baseBoundary.setSize(basePatchNames.size());
-    forAll(basePatchNames, patchi)
-    {
-        baseBoundary.set
-        (
-            patchi,
-            new unallocatedGenericFvPatch
-            (
-                fp[patchi].patch(),                 // unused reference
-                basePatchNames[patchi],
-                basePatchSizes[patchi],
-                fp                                  // unused reference
-            )
-        );
-    }
-
-    // Construct the mesh
-    unallocatedFvMesh baseMesh
+    // Read procAddressing files. Deduct base mesh sizes.
+    const IOobject baseIO
     (
-        baseRunTime,            // database
-        baseNCells,             // nCells
-        baseBoundary,           // boundary
-        mesh.globalData()       // used for patchSchedule() only
+        "dummy",
+        mesh.facesInstance(),   // same instance as local mesh
+        polyMesh::meshSubDir,
+        baseRunTime,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE,
+        false
     );
 
 
-    uVolScalarField p
+    autoPtr<mapDistributePolyMesh> distMapPtr
+    (
+        unallocatedFvMeshTools::readReconstructMap
+        (
+            baseIO
+        )
+    );
+    const mapDistributePolyMesh& distMap = distMapPtr();
+
+    autoPtr<unallocatedFvMesh> baseMeshPtr
+    (
+        unallocatedFvMeshTools::newMesh
+        (
+            baseIO,
+            mesh,
+            distMap.cellMap().constructSize()
+        )
+    );
+    unallocatedFvMesh& baseMesh = baseMeshPtr();
+
+
+
+    // Read field on baseMesh
+    uVolScalarField baseFld
     (
         IOobject
         (
             "p",
-            baseRunTime.timeName(),
+            baseMesh.time().timeName(),
             baseMesh.thisDb(),
             IOobject::MUST_READ,
             IOobject::AUTO_WRITE
@@ -154,9 +130,7 @@ int main(int argc, char *argv[])
     //    unallocatedGenericFvPatchField<scalar>::typeName
     //);
 
-    mapDistributePolyMesh distMap;
-
-    parFvFieldReconstructor
+    parUnallocatedFvFieldReconstructor reconstructor
     (
         baseMesh,
         mesh,
@@ -164,17 +138,41 @@ int main(int argc, char *argv[])
         false           // isWriteProc
     );
 
+    // Load local field
+    volScalarField p
+    (
+        IOobject
+        (
+            "p",
+            mesh.time().timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        mesh
+    );
+
+    // Map local field onto baseMesh
+    tmp<uVolScalarField> tfld
+    (
+        reconstructor.reconstructFvVolumeField(p)
+    );
+
 
     // Write master field to parent
     DebugVar(p);
-    p.rename("my_p");
+    //DebugVar(tfld());
+
+    tfld.ref().rename("my_p");
     {
-        const bool master = Pstream::master();
         const bool oldParRun = Pstream::parRun();
         Pstream::parRun() = false;
-        if (master)
+        if (Pstream::master())
         {
-            p.write();
+            DebugVar(tfld());
+
+            tfld().write();
         }
         Pstream::parRun() = oldParRun;
     }
