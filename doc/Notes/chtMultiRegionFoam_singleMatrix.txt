@@ -39,3 +39,14 @@ momentum eqn etc. in solids. Or is p-U coupling valid in solids?
 splitMeshRegions
 ----------------
 - Generate subMeshes, subFields on the fly
+
+
+
+Items
+-----
+- work out assembly of lduMesh
+- work out assembly of lduMatrix:
+    - preserve (but rewrite) processor interfaces
+    - convert coupledTemp interfaces into internal faces
+- have fvMatrix::solveSegregated equivalent which
+  pulls bits out of the individual psis.
