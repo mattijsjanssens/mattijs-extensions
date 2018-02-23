@@ -262,6 +262,28 @@ TODO:
                 }
 - DONE. add 'threadSupport' flag to UPstream::setParRun and interrogate this in
   collatedFileOperation.
+
+- distributed running. Uses local root (as it should!) for controlDict:
+So:
+    - filePath returns on 0:
+    machineA/fileHandler/system/controlDict
+    - this differs from filePath on 2,3 (since it is on machineB):
+    machineB/fileHandler/system/controlDict
+    - so it goes into non-uniform reading and master tries to load all files
+Or:
+    - filePath on 0 (= local master) : machineA/fileHandler/system/controlDict
+    - filePath on 2 (= local master) : returns "" since is not there!
+More:
+    - have better way of inputting roots:
+        -ioRanks '((node1 /tmp/mattijs)(node2 /tmp/mattijs))'
+      becomes
+        - export FOAM_ROOT=/tmp/mattijs
+
+
+
+- masterUncollated: do uniform testing better i.e. collect all same files
+    in readAndSend instead of only having uniform/non-uniform.
+
 - Test:
 
 Unmixed use
