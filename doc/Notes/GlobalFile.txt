@@ -327,11 +327,18 @@ OK. incompressible/pimpleFoam/RAS/propeller : stuck when writing Q
 
 Changes
 -------
-- start up without reading etc/controlDict (using environment variable)
+- start up without reading etc/cellModes
+- optionally start up without reading etc/controlDict
+  (using environment variable)
 - MPI initialised without thread support if not needed (e.g. uncollated)
 - uniform files (e.g. 'time') read on master only
 - thread buffer size not limited to < 2G anymore
 - collated format writes to 'processorsNNN' instead of 'processors'
+- per-host (instead of per-process) specification of root using command-line
+  option
+- masterUncollated run with multiple IO processes: specify through
+    -ioRanks option
+
 - per-node IO file handler: 'multCollated'
 
 

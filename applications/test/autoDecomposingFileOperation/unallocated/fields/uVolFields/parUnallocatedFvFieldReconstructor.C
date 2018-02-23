@@ -79,14 +79,12 @@ Foam::parUnallocatedFvFieldReconstructor::parUnallocatedFvFieldReconstructor
 (
     unallocatedFvMesh& baseMesh,
     const fvMesh& procMesh,
-    const mapDistributePolyMesh& distMap,
-    const bool isWriteProc
+    const mapDistributePolyMesh& distMap
 )
 :
     baseMesh_(baseMesh),
     procMesh_(procMesh),
-    distMap_(distMap),
-    isWriteProc_(isWriteProc)
+    distMap_(distMap)
 {
     createPatchFaceMaps();
 }
