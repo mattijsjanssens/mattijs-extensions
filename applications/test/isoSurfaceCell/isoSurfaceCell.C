@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -929,33 +929,33 @@ Foam::triSurface Foam::isoSurfaceCell::stitchTriPoints
         newPoints
     );
 
-    // Check that enough merged.
-    if (debug)
-    {
-        Pout<< "isoSurfaceCell : merged from " << triPoints.size()
-            << " points down to " << newPoints.size() << endl;
-
-        pointField newNewPoints;
-        labelList oldToNew;
-        bool hasMerged = mergePoints
-        (
-            newPoints,
-            mergeDistance_,
-            true,
-            oldToNew,
-            newNewPoints
-        );
-
-        if (hasMerged)
-        {
-            FatalErrorInFunction
-                << "Merged points contain duplicates"
-                << " when merging with distance " << mergeDistance_ << endl
-                << "merged:" << newPoints.size() << " re-merged:"
-                << newNewPoints.size()
-                << abort(FatalError);
-        }
-    }
+//    // Check that enough merged.
+//    if (debug)
+//    {
+//        //Pout<< "isoSurfaceCell : merged from " << triPoints.size()
+//        //    << " points down to " << newPoints.size() << endl;
+//
+//        pointField newNewPoints;
+//        labelList oldToNew;
+//        bool hasMerged = mergePoints
+//        (
+//            newPoints,
+//            mergeDistance_,
+//            true,
+//            oldToNew,
+//            newNewPoints
+//        );
+//
+//        if (hasMerged)
+//        {
+//            FatalErrorInFunction
+//                << "Merged points contain duplicates"
+//                << " when merging with distance " << mergeDistance_ << endl
+//                << "merged:" << newPoints.size() << " re-merged:"
+//                << newNewPoints.size()
+//                << abort(FatalError);
+//        }
+//    }
 
 
     List<labelledTri> tris;
@@ -993,11 +993,11 @@ Foam::triSurface Foam::isoSurfaceCell::stitchTriPoints
     // not non-manifold edge connectivity.
     if (checkDuplicates)
     {
-        if (debug)
-        {
-            Pout<< "isoSurfaceCell : merged from " << nTris
-                << " down to " << tris.size() << " triangles." << endl;
-        }
+        //if (debug)
+        //{
+        //    Pout<< "isoSurfaceCell : merged from " << nTris
+        //        << " down to " << tris.size() << " triangles." << endl;
+        //}
 
         pointField centres(tris.size());
         forAll(tris, triI)
