@@ -139,8 +139,27 @@ DebugVar(faceToCell);
     const labelList own(PatchTools::edgeOwner(allPatch));
     const edgeList& edges = allPatch.edges();
     const labelListList& edgeFaces = allPatch.edgeFaces();
+    const labelListList& faceEdges = allPatch.faceEdges();
 
-    face f(2);
+
+    // Get the faces in order consistent with the orientation of the face
+    faceList directedFaces(edges.size());
+    {
+        forAll(faceEdges, facei)
+        {
+            const labelList& fEdges = faceEdges[facei];
+            const face& f = allPatch.localFaces()[facei];
+
+            forAll(f, fp)
+            {
+                face& directedFace = directedFaces[fEdges[fp]];
+                directedFace.setSize(2);
+                directedFace[0] = f[fp];
+                directedFace[1] = f[f.fcIndex(fp)];
+            }
+        }
+    }
+
 
     for (label edgei = 0; edgei < allPatch.nInternalEdges(); edgei++)
     {
@@ -152,16 +171,13 @@ DebugVar(faceToCell);
             nei = eFaces[1];
         }
 
-        const edge& e = edges[edgei];
-        f[0] = e[0];
-        f[1] = e[1];
-
-        Pout<< "Adding internal face " << f << " own:" << faceToCell[own[edgei]]
+        Pout<< "Adding internal face " << directedFaces[edgei]
+            << " own:" << faceToCell[own[edgei]]
             << " nei:" << faceToCell[nei] << endl;
 
         meshMod.addFace
         (
-            f,          //const face& f,
+            directedFaces[edgei],  //const face& f,
             faceToCell[own[edgei]], //const label own,
             faceToCell[nei],        //const label nei,
             -1,         //const label masterPointID,
@@ -270,11 +286,9 @@ DebugVar(nbrPatchID);
             << " own:" << faceToCell[allFacei]
             << " on patch:" << patchi << endl;
 
-        f[0] = e[0];
-        f[1] = e[1];
         meshMod.addFace
         (
-            f,          //const face& f,
+            directedFaces[edgei], //const face& f,
             faceToCell[allFacei], //const label own,
             -1,         //const label nei,
             -1,         //const label masterPointID,

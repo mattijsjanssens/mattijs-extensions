@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,41 +23,14 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "unallocatedGenericFvPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "unallocatedFvPatchFields.H"
+#ifndef unallocatedFvPatchFields_H
+#define unallocatedFvPatchFields_H
+
+#include "unallocatedFvPatchField.H"
+#include "unallocatedFvPatchFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
-{
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-//makePatchFields(generic);
-defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchScalarField, 0);
-// addToRunTimeSelectionTable
-// (
-//     unallocatedFvPatchScalarField,
-//     genericUnallocatedFvPatchScalarField,
-//     patch
-// );
-// addToRunTimeSelectionTable
-// (
-//     unallocatedFvPatchScalarField,
-//     genericUnallocatedFvPatchScalarField,
-//     patchMapper
-// );
-addToRunTimeSelectionTable
-(
-    unallocatedFvPatchScalarField,
-    genericUnallocatedFvPatchScalarField,
-    dictionary
-);
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
+#endif
 
 // ************************************************************************* //

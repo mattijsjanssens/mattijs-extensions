@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -35,38 +35,52 @@ namespace Foam
 defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchScalarField, 0);
 defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, patch);
 defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, dictionary);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchScalarField, patchMapper);
 
-// defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchVectorField, 0);
-// defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, patch);
-// defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, dictionary);
-// 
-// defineNamedTemplateTypeNameAndDebug
-// (
-//     unallocatedFvPatchSphericalTensorField,
-//     0
-// );
-// defineTemplateRunTimeSelectionTable
-// (
-//     unallocatedFvPatchSphericalTensorField,
-//     patch
-// );
-// defineTemplateRunTimeSelectionTable
-// (
-//     unallocatedFvPatchSphericalTensorField,
-//     dictionary
-// );
-// 
-// defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchSymmTensorField, 0);
-// defineTemplateRunTimeSelectionTable(unallocatedFvPatchSymmTensorField, patch);
-// defineTemplateRunTimeSelectionTable
-// (
-//     unallocatedFvPatchSymmTensorField,
-//     dictionary
-// );
-// 
-// defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchTensorField, 0);
-// defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, patch);
-// defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, dictionary);
+defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchVectorField, 0);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, patch);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, dictionary);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchVectorField, patchMapper);
+
+defineNamedTemplateTypeNameAndDebug
+(
+    unallocatedFvPatchSphericalTensorField,
+    0
+);
+defineTemplateRunTimeSelectionTable
+(
+    unallocatedFvPatchSphericalTensorField,
+    patch
+);
+defineTemplateRunTimeSelectionTable
+(
+    unallocatedFvPatchSphericalTensorField,
+    dictionary
+);
+defineTemplateRunTimeSelectionTable
+(
+    unallocatedFvPatchSphericalTensorField,
+    patchMapper
+);
+
+defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchSymmTensorField, 0);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchSymmTensorField, patch);
+defineTemplateRunTimeSelectionTable
+(
+    unallocatedFvPatchSymmTensorField,
+    dictionary
+);
+defineTemplateRunTimeSelectionTable
+(
+    unallocatedFvPatchSymmTensorField,
+    patchMapper
+);
+
+defineNamedTemplateTypeNameAndDebug(unallocatedFvPatchTensorField, 0);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, patch);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, dictionary);
+defineTemplateRunTimeSelectionTable(unallocatedFvPatchTensorField, patchMapper);
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

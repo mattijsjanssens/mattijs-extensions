@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2015-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2015-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::parFvFieldReconstructor
+    Foam::parUnallocatedFvFieldReconstructor
 
 Description
     Finite volume reconstructor for volume and surface fields.
@@ -31,17 +31,18 @@ Description
     is non-zero cells on processor0 only.
 
 SourceFiles
-    parFvFieldReconstructor.C
-    parFvFieldReconstructorReconstructFields.C
+    parUnallocatedFvFieldReconstructor.C
+    parUnallocatedFvFieldReconstructorReconstructFields.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef parFvFieldReconstructor_H
-#define parFvFieldReconstructor_H
+#ifndef parUnallocatedFvFieldReconstructor_H
+#define parUnallocatedFvFieldReconstructor_H
 
 #include "PtrList.H"
 #include "fvMesh.H"
 #include "unallocatedFvMesh.H"
+#include "unallocatedFvPatchField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,13 +51,12 @@ namespace Foam
 
 class mapDistributePolyMesh;
 class mapDistributeBase;
-class IOobjectList;
 
 /*---------------------------------------------------------------------------*\
-                    Class parFvFieldReconstructor Declaration
+                   Class parUnallocatedFvFieldReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
-class parFvFieldReconstructor
+class parUnallocatedFvFieldReconstructor
 {
     // Private data
 
@@ -82,10 +82,13 @@ class parFvFieldReconstructor
         void createPatchFaceMaps();
 
         //- Disallow default bitwise copy construct
-        parFvFieldReconstructor(const parFvFieldReconstructor&);
+        parUnallocatedFvFieldReconstructor
+        (
+            const parUnallocatedFvFieldReconstructor&
+        );
 
         //- Disallow default bitwise assignment
-        void operator=(const parFvFieldReconstructor&);
+        void operator=(const parUnallocatedFvFieldReconstructor&);
 
 
 public:
@@ -93,7 +96,7 @@ public:
     // Constructors
 
         //- Construct from components
-        parFvFieldReconstructor
+        parUnallocatedFvFieldReconstructor
         (
             unallocatedFvMesh& baseMesh,
             const fvMesh& procMesh,
@@ -106,7 +109,7 @@ public:
 
         //- Reconstruct volume internal field
         template<class Type>
-        tmp<DimensionedField<Type, volMesh> >
+        tmp<DimensionedField<Type, unallocatedFvMesh> >
         reconstructFvVolumeInternalField
         (
             const DimensionedField<Type, volMesh>&
@@ -114,15 +117,11 @@ public:
 
         //- Reconstruct volume field
         template<class Type>
-        tmp<GeometricField<Type, fvPatchField, volMesh> >
+        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh> >
         reconstructFvVolumeField
         (
             const GeometricField<Type, fvPatchField, volMesh>& fld
         ) const;
-
-//         //- Helper: reconstruct and write mesh points
-//         //  (note: should be moved to something like processorMeshes class)
-//         void reconstructPoints();
 };
 
 
@@ -133,7 +132,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#   include "parFvFieldReconstructorReconstructFields.C"
+#   include "parUnallocatedFvFieldReconstructorReconstructFields.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

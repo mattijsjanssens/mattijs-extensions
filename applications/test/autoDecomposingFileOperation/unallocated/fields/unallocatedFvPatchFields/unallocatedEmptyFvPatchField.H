@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::unallocatedGenericFvPatchField
+    Foam::unallocatedEmptyFvPatchField
 
 Description
     This boundary condition provides a generic version of the \c calculated
@@ -33,17 +33,15 @@ See also
     Foam::calculatedFvPatchField
 
 SourceFiles
-    unallocatedGenericFvPatchField.C
+    unallocatedEmptyFvPatchField.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef unallocatedGenericFvPatchField_H
-#define unallocatedGenericFvPatchField_H
+#ifndef unallocatedEmptyFvPatchField_H
+#define unallocatedEmptyFvPatchField_H
 
-//#include "calculatedFvPatchField.H"
-#include "HashPtrTable.H"
 #include "unallocatedFvPatchField.H"
-#include "unallocatedFvMesh.H"
+#include "emptyFvPatchField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -51,43 +49,33 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class genericFvPatch Declaration
+                Class unallocatedEmptyFvPatchField Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class Type>
-class unallocatedGenericFvPatchField
+class unallocatedEmptyFvPatchField
 :
     public unallocatedFvPatchField<Type>
 {
-    // Private data
-
-        word actualTypeName_;
-        dictionary dict_;
-
-        HashPtrTable<scalarField> scalarFields_;
-        HashPtrTable<vectorField> vectorFields_;
-        HashPtrTable<sphericalTensorField> sphericalTensorFields_;
-        HashPtrTable<symmTensorField> symmTensorFields_;
-        HashPtrTable<tensorField> tensorFields_;
 
 
 public:
 
     //- Runtime type information
-    TypeName("generic");
+    TypeName(emptyFvPatchField<Type>::typeName_());
 
 
     // Constructors
 
         //- Construct from patch and internal field
-        unallocatedGenericFvPatchField
+        unallocatedEmptyFvPatchField
         (
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        unallocatedGenericFvPatchField
+        unallocatedEmptyFvPatchField
         (
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
@@ -95,18 +83,18 @@ public:
         );
 
         //- Construct by mapping given patchField<Type> onto a new patch
-        unallocatedGenericFvPatchField
+        unallocatedEmptyFvPatchField
         (
-            const unallocatedGenericFvPatchField<Type>&,
+            const fvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&
         );
 
         //- Construct as copy
-        unallocatedGenericFvPatchField
+        unallocatedEmptyFvPatchField
         (
-            const unallocatedGenericFvPatchField<Type>&
+            const unallocatedEmptyFvPatchField<Type>&
         );
 
         //- Construct and return a clone
@@ -114,14 +102,14 @@ public:
         {
             return tmp<unallocatedFvPatchField<Type>>
             (
-                new unallocatedGenericFvPatchField<Type>(*this)
+                new unallocatedEmptyFvPatchField<Type>(*this)
             );
         }
 
         //- Construct as copy setting internal field reference
-        unallocatedGenericFvPatchField
+        unallocatedEmptyFvPatchField
         (
-            const unallocatedGenericFvPatchField<Type>&,
+            const unallocatedEmptyFvPatchField<Type>&,
             const DimensionedField<Type, unallocatedFvMesh>&
         );
 
@@ -133,56 +121,9 @@ public:
         {
             return tmp<unallocatedFvPatchField<Type>>
             (
-                new unallocatedGenericFvPatchField<Type>(*this, iF)
+                new unallocatedEmptyFvPatchField<Type>(*this, iF)
             );
         }
-
-
-    // Member functions
-
-        // Mapping functions
-
-            //- Map (and resize as needed) from self given a mapping object
-            virtual void autoMap
-            (
-                const fvPatchFieldMapper&
-            );
-
-            //- Reverse map the given fvPatchField onto this fvPatchField
-            virtual void rmap
-            (
-                const unallocatedFvPatchField<Type>&,
-                const labelList&
-            );
-
-
-        // Evaluation functions
-
-            //- Return the matrix diagonal coefficients corresponding to the
-            //  evaluation of the value of this patchField with given weights
-            virtual tmp<Field<Type>> valueInternalCoeffs
-            (
-                const tmp<scalarField>&
-            ) const;
-
-            //- Return the matrix source coefficients corresponding to the
-            //  evaluation of the value of this patchField with given weights
-            virtual tmp<Field<Type>> valueBoundaryCoeffs
-            (
-                const tmp<scalarField>&
-            ) const;
-
-            //- Return the matrix diagonal coefficients corresponding to the
-            //  evaluation of the gradient of this patchField
-            tmp<Field<Type>> gradientInternalCoeffs() const;
-
-            //- Return the matrix source coefficients corresponding to the
-            //  evaluation of the gradient of this patchField
-            tmp<Field<Type>> gradientBoundaryCoeffs() const;
-
-
-        //- Write
-        virtual void write(Ostream&) const;
 };
 
 
@@ -193,7 +134,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "unallocatedGenericFvPatchField.C"
+    #include "unallocatedEmptyFvPatchField.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

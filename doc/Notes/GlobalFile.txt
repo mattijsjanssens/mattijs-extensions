@@ -321,7 +321,7 @@ decomposePar -fileHandler collated
 
 Not running:
 ------------
-heatTransfer/chtMultiRegionFoam/reverseBurner
+OK. heatTransfer/chtMultiRegionFoam/reverseBurner
 OK. incompressible/pimpleFoam/RAS/propeller : stuck when writing Q
 
 
@@ -332,4 +332,15 @@ Changes
 - uniform files (e.g. 'time') read on master only
 - thread buffer size not limited to < 2G anymore
 - collated format writes to 'processorsNNN' instead of 'processors'
-- per-node IO file handler: 'mulitCollated'
+- per-node IO file handler: 'multCollated'
+
+
+- decompose:
+    decomposePar -fileHandler multiCollated -ioRanks '(0 2)'
+- copy cases to different roots:
+    rsync -a cavity penfold:/tmp/mattijs_on_penfold/
+    rsync -a cavity dm:/tmp/mattijs_on_dm
+- tell code where the roots are (on a per-machine basis)
+    export FOAM_ROOTS='("penfold" "/tmp/mattijs_on_penfold" "dm" "/tmp/mattijs_on_dm")'
+- run some on penfold, some on dm:
+    mpirun --output-filename icoFoam --hostfile hostfile icoFoam -case /tmp/mattijs_on_penfold/cavity -parallel -fileHandler multiCollated

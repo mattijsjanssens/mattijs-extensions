@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -42,16 +42,13 @@ Foam::unallocatedFvPatchField<Type>::New
             << " from field type " << patchFieldType
             << exit(FatalError);
     }
-    //if (debug)
+    if (debug)
     {
         InfoInFunction
             << "patchFieldType = " << patchFieldType
             << " : " << p.type()
             << endl;
     }
-
-DebugVar(patchConstructorTablePtr_->sortedToc());
-
 
     typename patchConstructorTable::iterator cstrIter =
         patchConstructorTablePtr_->find(patchFieldType);
@@ -130,17 +127,6 @@ Foam::unallocatedFvPatchField<Type>::New
             << exit(FatalError);
     }
 
-//     //if (debug)
-//     {
-//         InfoInFunction
-//             << "patchFieldType = " << patchFieldType
-//             << endl;
-//
-//         InfoInFunction<< "dictionaryConstructorTablePtr_:"
-//             << dictionaryConstructorTablePtr_->sortedToc()
-//             << endl;
-//     }
-
     typename dictionaryConstructorTable::iterator cstrIter
         = dictionaryConstructorTablePtr_->find(patchFieldType);
 
@@ -186,9 +172,6 @@ Foam::unallocatedFvPatchField<Type>::New
         }
     }
 
-    InfoInFunction << "Constructing patch field of type " << cstrIter.key()
-        << endl;
-
     return cstrIter()(p, iF, dict);
 }
 
@@ -197,7 +180,7 @@ template<class Type>
 Foam::tmp<Foam::unallocatedFvPatchField<Type>>
 Foam::unallocatedFvPatchField<Type>::New
 (
-    const unallocatedFvPatchField<Type>& ptf,
+    const fvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& pfMapper
@@ -208,16 +191,29 @@ Foam::unallocatedFvPatchField<Type>::New
         InfoInFunction << "Constructing unallocatedFvPatchField<Type>" << endl;
     }
 
+    if (!patchMapperConstructorTablePtr_)
+    {
+        FatalErrorInFunction << "No constructors-from-mapper available"
+            << " when constructing for patch " << p.name()
+            << " from fvPatchField " << ptf.type()
+            << exit(FatalError);
+    }
+
     typename patchMapperConstructorTable::iterator cstrIter =
         patchMapperConstructorTablePtr_->find(ptf.type());
 
     if (cstrIter == patchMapperConstructorTablePtr_->end())
     {
-        FatalErrorInFunction
-            << "Unknown patchField type " << ptf.type() << nl << nl
-            << "Valid patchField types are :" << endl
-            << patchMapperConstructorTablePtr_->sortedToc()
-            << exit(FatalError);
+        cstrIter = patchMapperConstructorTablePtr_->find("generic");
+
+        if (cstrIter == patchMapperConstructorTablePtr_->end())
+        {
+            FatalErrorInFunction
+                << "Unknown patchField type " << ptf.type() << nl << nl
+                << "Valid patchField types are :" << endl
+                << patchMapperConstructorTablePtr_->sortedToc()
+                << exit(FatalError);
+        }
     }
 
     return cstrIter()(ptf, p, iF, pfMapper);

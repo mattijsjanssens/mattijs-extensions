@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,76 +21,59 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+InClass
+    Foam::uVolFields
+
+Description
+
+SourceFiles
+    uVolFields.C
+
 \*---------------------------------------------------------------------------*/
 
-#include "uVolFields.H"
+#ifndef uVolFields_H
+#define uVolFields_H
+
+#include "GeometricFields.H"
+#include "unallocatedFvMesh.H"
+#include "unallocatedFvPatchField.H"
+//#include "fvMesh.H"
+//#include "fvPatchField.H"
+#include "uVolFieldsFwd.H"
+//#include "calculatedFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-defineTemplate2TypeNameAndDebug(uVolScalarField::Internal, 0);
-// defineTemplate2TypeNameAndDebug(uVolVectorField::Internal, 0);
-// defineTemplate2TypeNameAndDebug
-// (
-//     uVolSphericalTensorField::Internal,
-//     0
-// );
-// defineTemplate2TypeNameAndDebug
-// (
-//     uVolSymmTensorField::Internal,
-//     0
-// );
-// defineTemplate2TypeNameAndDebug(uVolTensorField::Internal, 0);
-
-defineTemplateTypeNameAndDebugWithName(uVolScalarField, "volScalarField", 0);
-// defineTemplateTypeNameAndDebugWithName(uVolVectorField, "volVectorField", 0);
-// defineTemplateTypeNameAndDebugWithName
-// (
-//     uVolSphericalTensorField,
-//     "volSphericalTensorField",
-//     0
-// );
-// defineTemplateTypeNameAndDebugWithName
-// (
-//     uVolSymmTensorField,
-//     "volSymmTensorField",
-//     0
-// );
-// defineTemplateTypeNameAndDebugWithName(uVolTensorField, "volTensorField", 0);
-
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// specialization for scalar fields
 template<>
 tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
 GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
 (
     const direction
-) const
-{
-    return *this;
-}
+) const;
 
-
-// specialization for scalar fields
 template<>
-void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::replace
+void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::
+replace
 (
     const direction,
-    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>&
-    gsf
-)
-{
-    *this == gsf;
-}
+    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>& sf
+);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//#include "uVolFieldsI.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
+
+// ************************************************************************* //

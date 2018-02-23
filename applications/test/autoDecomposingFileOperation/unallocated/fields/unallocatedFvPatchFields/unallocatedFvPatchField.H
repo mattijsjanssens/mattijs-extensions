@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -67,12 +67,6 @@ template<class Type>
 class unallocatedFvPatchField;
 
 template<class Type>
-class calculatedUnallocatedFvPatchField;
-
-template<class Type>
-class fvMatrix;
-
-template<class Type>
 Ostream& operator<<(Ostream&, const unallocatedFvPatchField<Type>&);
 
 
@@ -110,7 +104,6 @@ class unallocatedFvPatchField
 public:
 
     typedef fvPatch Patch;
-    typedef calculatedUnallocatedFvPatchField<Type> Calculated;
 
 
     //- Runtime type information
@@ -140,12 +133,12 @@ public:
             unallocatedFvPatchField,
             patchMapper,
             (
-                const unallocatedFvPatchField<Type>& ptf,
+                const fvPatchField<Type>& ptf,
                 const fvPatch& p,
                 const DimensionedField<Type, unallocatedFvMesh>& iF,
                 const fvPatchFieldMapper& m
             ),
-            (dynamic_cast<const unallocatedFvPatchFieldType&>(ptf), p, iF, m)
+            (ptf, p, iF, m)
         );
 
         declareRunTimeSelectionTable
@@ -204,11 +197,11 @@ public:
             const bool valueRequired=true
         );
 
-        //- Construct by mapping the given unallocatedFvPatchField onto a new
+        //- Construct by mapping the given fvPatchField onto a new
         //  patch
         unallocatedFvPatchField
         (
-            const unallocatedFvPatchField<Type>&,
+            const fvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&
@@ -274,7 +267,7 @@ public:
         //  a given unallocatedFvPatchField mapped onto a new patch
         static tmp<unallocatedFvPatchField<Type>> New
         (
-            const unallocatedFvPatchField<Type>&,
+            const fvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&
@@ -289,21 +282,6 @@ public:
             const dictionary&
         );
 
-        //- Return a pointer to a new calculatedFvPatchField created on
-        //  freestore without setting patchField values
-        static tmp<unallocatedFvPatchField<Type>> NewCalculatedType
-        (
-            const fvPatch&
-        );
-
-        //- Return a pointer to a new calculatedFvPatchField created on
-        //  freestore without setting patchField values
-        template<class Type2>
-        static tmp<unallocatedFvPatchField<Type>> NewCalculatedType
-        (
-            const unallocatedFvPatchField<Type2>&
-        );
-
 
     //- Destructor
     virtual ~unallocatedFvPatchField<Type>()
@@ -312,58 +290,14 @@ public:
 
     // Member functions
 
-//        // Attributes
-//
-//            //- Return the type of the calculated for of
-//            //  unallocatedFvPatchField
-//            static const word& calculatedType();
-//
-//            //- Return true if this patch field fixes a value.
-//            //  Needed to check if a level has to be specified while solving
-//            //  Poissons equations.
-//            virtual bool fixesValue() const
-//            {
-//                return false;
-//            }
-//
-//            //- Return true if the value of the patch field
-//            //  is altered by assignment (the default)
-//            virtual bool assignable() const
-//            {
-//                return true;
-//            }
-//
-//            //- Return true if this patch field is coupled
-//            virtual bool coupled() const
-//            {
-//                return false;
-//            }
-//
-//
-//        // Access
-//
-//            //- Return local objectRegistry
-//            const objectRegistry& db() const;
+       // Access
 
             //- Return patch
             const fvPatch& patch() const
             {
                 return patch_;
             }
-//
-//            //- Return dimensioned internal field reference
-//            const DimensionedField<Type, unallocatedFvMesh>&
-//            internalField() const
-//            {
-//                return internalField_;
-//            }
-//
-//            //- Return internal field reference
-//            const Field<Type>& primitiveField() const
-//            {
-//                return internalField_;
-//            }
-//
+
             //- Optional patch type
             const word& patchType() const
             {
@@ -375,211 +309,18 @@ public:
             {
                 return patchType_;
             }
-//
-//            //- Return true if the boundary condition has already been updated
-//            bool updated() const
-//            {
-//                return updated_;
-//            }
-//
-//            //- Return true if the matrix has already been manipulated
-//            bool manipulatedMatrix() const
-//            {
-//                return manipulatedMatrix_;
-//            }
-//
-//
-//        // Mapping functions
-//
-//            //- Map (and resize as needed) from self given a mapping object
-//            virtual void autoMap
-//            (
-//                const fvPatchFieldMapper&
-//            );
-//
-//            //- Reverse map the given fvPatchField onto this fvPatchField
-//            virtual void rmap
-//            (
-//                const fvPatchField<Type>&,
-//                const labelList&
-//            );
-//
-//
-//        // Evaluation functions
-//
-//            //- Return patch-normal gradient
-//            virtual tmp<Field<Type>> snGrad() const;
-//
-//            //- Return patch-normal gradient for coupled-patches
-//            //  using the deltaCoeffs provided
-//            virtual tmp<Field<Type>> snGrad
-//            (
-//                const scalarField& deltaCoeffs
-//            ) const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Update the coefficients associated with the patch field
-//            //  Sets Updated to true
-//            virtual void updateCoeffs();
-//
-//            //- Update the coefficients associated with the patch field
-//            //  with a weight field (0..1). This weight field is ususally
-//            //  provided as the amount of geometric overlap for 'duplicate'
-//            //  patches. Sets Updated to true
-//            virtual void updateWeightedCoeffs(const scalarField& weights);
-//
-//            //- Return internal field next to patch as patch field
-//            virtual tmp<Field<Type>> patchInternalField() const;
-//
-//            //- Return internal field next to patch as patch field
-//            virtual void patchInternalField(Field<Type>&) const;
-//
-//            //- Return patchField on the opposite patch of a coupled patch
-//            virtual tmp<Field<Type>> patchNeighbourField() const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Initialise the evaluation of the patch field
-//            virtual void initEvaluate
-//            (
-//                const Pstream::commsTypes commsType =
-//                    Pstream::commsTypes::blocking
-//            )
-//            {}
-//
-//            //- Evaluate the patch field, sets Updated to false
-//            virtual void evaluate
-//            (
-//                const Pstream::commsTypes commsType =
-//                    Pstream::commsTypes::blocking
-//            );
-//
-//
-//            //- Return the matrix diagonal coefficients corresponding to the
-//            //  evaluation of the value of this patchField with given weights
-//            virtual tmp<Field<Type>> valueInternalCoeffs
-//            (
-//                const tmp<Field<scalar>>&
-//            ) const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Return the matrix source coefficients corresponding to the
-//            //  evaluation of the value of this patchField with given weights
-//            virtual tmp<Field<Type>> valueBoundaryCoeffs
-//            (
-//                const tmp<Field<scalar>>&
-//            ) const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Return the matrix diagonal coefficients corresponding to the
-//            //  evaluation of the gradient of this patchField
-//            virtual tmp<Field<Type>> gradientInternalCoeffs() const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Return the matrix diagonal coefficients corresponding to the
-//            //  evaluation of the gradient of this coupled patchField
-//            //  using the deltaCoeffs provided
-//            virtual tmp<Field<Type>> gradientInternalCoeffs
-//            (
-//                const scalarField& deltaCoeffs
-//            ) const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Return the matrix source coefficients corresponding to the
-//            //  evaluation of the gradient of this patchField
-//            virtual tmp<Field<Type>> gradientBoundaryCoeffs() const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//            //- Return the matrix source coefficients corresponding to the
-//            //  evaluation of the gradient of this coupled patchField
-//            //  using the deltaCoeffs provided
-//            virtual tmp<Field<Type>> gradientBoundaryCoeffs
-//            (
-//                const scalarField& deltaCoeffs
-//            ) const
-//            {
-//                NotImplemented;
-//                return *this;
-//            }
-//
-//
-//            //- Manipulate matrix
-//            virtual void manipulateMatrix(fvMatrix<Type>& matrix);
-//
-//            //- Manipulate matrix with given weights
-//            virtual void manipulateMatrix
-//            (
-//                fvMatrix<Type>& matrix,
-//                const scalarField& weights
-//            );
-//
-//
+
+
         // I-O
 
             //- Write
             virtual void write(Ostream&) const;
-//
-//            //- Helper function to write the keyword and entry only if the
-//            //  values are not equal. The value is then output as value2
-//            template<class EntryType>
-//            void writeEntryIfDifferent
-//            (
-//                Ostream& os,
-//                const word& entryName,
-//                const EntryType& value1,
-//                const EntryType& value2
-//            ) const;
-//
-//
-//        // Check
-//
-//            //- Check fvPatchField<Type> against given fvPatchField<Type>
-//            void check(const fvPatchField<Type>&) const;
-//
-//
-//    // Member operators
-//
-//        virtual void operator=(const UList<Type>&);
-//
-//        virtual void operator=(const fvPatchField<Type>&);
-//        virtual void operator+=(const fvPatchField<Type>&);
-//        virtual void operator-=(const fvPatchField<Type>&);
-//        virtual void operator*=(const fvPatchField<scalar>&);
-//        virtual void operator/=(const fvPatchField<scalar>&);
-//
-//        virtual void operator+=(const Field<Type>&);
-//        virtual void operator-=(const Field<Type>&);
-//
-//        virtual void operator*=(const Field<scalar>&);
-//        virtual void operator/=(const Field<scalar>&);
-//
-//        virtual void operator=(const Type&);
-//        virtual void operator+=(const Type&);
-//        virtual void operator-=(const Type&);
-//        virtual void operator*=(const scalar);
-//        virtual void operator/=(const scalar);
-//
-//
+
+
+   // Member operators
+
+        virtual void operator=(const UList<Type>&);
+
         // Force an assignment irrespective of form of patch
 
         virtual void operator==(const unallocatedFvPatchField<Type>&);
@@ -605,7 +346,6 @@ public:
 
 #ifdef NoRepository
     #include "unallocatedFvPatchField.C"
-    //#include "calculatedFvPatchField.H"
 #endif
 
 /*

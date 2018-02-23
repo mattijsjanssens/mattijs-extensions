@@ -1,10 +1,3 @@
-unallocatedFvBoundaryMesh.C
-unallocatedFvPatchFields.C
-unallocatedGenericFvPatch.C
-unallocatedFvMesh.C
-uVolFields.C
-parFvFieldReconstructor.C
-unallocatedGenericFvPatchFields.C
 Test-readField.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-autoDecomposingFileOperation

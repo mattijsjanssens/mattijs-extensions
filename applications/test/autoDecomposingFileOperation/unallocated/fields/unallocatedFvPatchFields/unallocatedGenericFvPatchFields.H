@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,26 +21,13 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-InClass
-    Foam::uVolFields
-
-Description
-
-SourceFiles
-    uVolFields.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef uVolFields_H
-#define uVolFields_H
+#ifndef unallocatedGenericFvPatchFields_H
+#define unallocatedGenericFvPatchFields_H
 
-#include "GeometricFields.H"
-#include "unallocatedFvMesh.H"
-#include "unallocatedFvPatchField.H"
-//#include "fvMesh.H"
-//#include "fvPatchField.H"
-#include "uVolFieldsFwd.H"
-//#include "calculatedFvPatchFields.H"
+#include "unallocatedGenericFvPatchField.H"
+#include "fieldTypes.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,28 +36,20 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-template<>
-tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
-GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
-(
-    const direction
-) const;
-
-template<>
-void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::
-replace
-(
-    const direction,
-    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>& sf
-);
+typedef unallocatedGenericFvPatchField<scalar>
+    genericUnallocatedFvPatchScalarField;
+typedef unallocatedGenericFvPatchField<vector>
+    genericUnallocatedFvPatchVectorField;
+typedef unallocatedGenericFvPatchField<sphericalTensor>
+    genericUnallocatedFvPatchSphericalTensorField;
+typedef unallocatedGenericFvPatchField<symmTensor>
+    genericUnallocatedFvPatchSymmTensorField;
+typedef unallocatedGenericFvPatchField<tensor>
+    genericUnallocatedFvPatchTensorField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-//#include "uVolFieldsI.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
