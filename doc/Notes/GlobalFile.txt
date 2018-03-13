@@ -327,27 +327,100 @@ OK. incompressible/pimpleFoam/RAS/propeller : stuck when writing Q
 
 Changes
 -------
-- start up without reading etc/cellModes
-- optionally start up without reading etc/controlDict
-  (using environment variable)
+
+Existing functionality
+----------------------
 - MPI initialised without thread support if not needed (e.g. uncollated)
-- uniform files (e.g. 'time') read on master only
-- thread buffer size not limited to < 2G anymore
-- collated format writes to 'processorsNNN' instead of 'processors'
-- per-host (instead of per-process) specification of root using command-line
-  option
-- masterUncollated run with multiple IO processes: specify through
-    -ioRanks option
+- native c++11 threading; no problem with static destruction order.
+- etc/cellModels only read if needed. Before this was always read.
+- etc/controlDict can instead be read from the environment variable
+  FOAM_CONTROLDICT:
+        export FOAM_CONTROLDICT=`foamDictionary $FOAM_ETC/controlDict`
+        mpirun -np 2 -x FOAM_CONTROLDICT icoFoam -parallel
+  These two changes means that OpenFOAM can start without needing any
+  configuation files from the installation. Note that it still needs the
+  shared libraries.
+- uniform files (e.g. '0/uniform/time') are now read only once on master only
+  (with the masterUncollated or collated file handlers)
+- collated format writes to 'processorsNNN' instead of 'processors'. The file
+  format has stayed the same. It will still read from the old location.
+- thread buffer and file buffer size not limited to < 2G anymore so
+  collated files > 2G can be written.
 
-- per-node IO file handler: 'multCollated'
+
+Multiple IO ranks
+-----------------
+The masterUncollated and derived (collated) now can use multiple
+ranks for writing:
+
+    mpirun -np 6 simpleFoam -parallel -ioRanks '(0 3)'
+
+Above example specifies that rank 0 ('processor0') and 3 ('processor3')
+now do all the I/O. Rank 0 does 0,1,2 and rank 3 does 3,4,5. The set of
+IO ranks should always include 0 as first element and be sorted in increasing
+order.
+
+In case of collated it will use directory naming processorsNNN_XXX-YYY
+where NNN is the total number of processors and XXX and YYY are first
+and last processor in the rank. E.g. in above example the directories
+would be
+
+    processors6_0-2/
+    processors6_3-5/
+
+and each of the collated files in these contains data of the local ranks
+only. The same naming also applies when e.g. running decomposePar:
+
+    decomposePar -fileHandler collated -ioRanks '(0 3)'
 
 
-- decompose:
-    decomposePar -fileHandler multiCollated -ioRanks '(0 2)'
-- copy cases to different roots:
-    rsync -a cavity penfold:/tmp/mattijs_on_penfold/
-    rsync -a cavity dm:/tmp/mattijs_on_dm
-- tell code where the roots are (on a per-machine basis)
-    export FOAM_ROOTS='("penfold" "/tmp/mattijs_on_penfold" "dm" "/tmp/mattijs_on_dm")'
-- run some on penfold, some on dm:
-    mpirun --output-filename icoFoam --hostfile hostfile icoFoam -case /tmp/mattijs_on_penfold/cavity -parallel -fileHandler multiCollated
+
+Distributed data
+----------------
+The individual root directories can be placed on different hosts and
+not necessarily have to have the same path. In the current framework
+one has to specify a single root per slave process. This has been simplified
+with the option of specifying the root per host with the -hostRoots
+command line option:
+
+    mpirun -np 6 simpleFoam -parallel -ioRanks '(0 3)' -hostRoots \
+        '("machineA" "/tmp/" "machineB" "/tmp")'
+
+The hostRoots option is a list of machine name + root directory. The machine
+name can contain regular expressions.
+
+
+hostCollated
+------------
+A new file handler, hostCollated, automatically sets the 'ioRanks'
+according to the host name with the lowest rank on every machine being
+the io rank.
+
+e.g. simpleFoam on 6 processors with ranks 0-2 on machineA
+and ranks 3-5 on machineB (through a hostfile):
+
+    mpirun -np 6 --hostfile hostfile simpleFoam -parallel \
+        -fileHandler hostCollated
+
+This is equivalent to
+
+    mpirun -np 6 --hostfile hostfile simpleFoam -parallel \
+        -fileHandler collated -ioRanks '(0 3)'
+
+In above example it will write directories:
+
+    processors6_0-2/
+    processors6_3-5/
+
+A typical example would use distributed data. E.g. two nodes, machineA
+and machineB, each with three processes:
+
+    decomposePar -fileHandler collated -case cavity
+    # copy case (constant/*, system/*, processors6/) to master:
+    rsync -a cavity machineA:/tmp/
+    # create root on slave:
+    ssh machineB mkdir -p /tmp/cavity
+    # run
+    mpirun --hostfile hostfile icoFoam \
+        -case /tmp/cavity -parallel -fileHandler hostCollated \
+        -hostRoots '("machineA" "/tmp" "machineB" "/tmp")'
