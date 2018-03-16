@@ -32,15 +32,144 @@ Description
 #include "argList.H"
 #include "volFields.H"
 #include "fvMesh.H"
-#include "wallPointData.H"
-#include "FaceCellWave.H"
-#include "fvcGrad.H"
-#include "localMin.H"
-#include "localMax.H"
+#include "PatchEdgeFaceWave.H"
+#include "patchIntegrateInfo.H"
+#include "EdgeMap.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+template<class T, class PatchType>
+tmp<Field<T>> fecLinearInterpolate
+(
+    const polyMesh& mesh,
+    const PatchType& pp,
+    const labelUList& meshPoints,
+    const scalarField& faceCentres,
+    const scalarField& edgeCentres,
+    const Field<T>& faceFld
+)
+{
+    if (edgeCentres.size() != pp.nEdges() || faceFld.size() != pp.size())
+    {
+        FatalErrorInFunction << "Incorrect sizes" << exit(FatalError);
+    }
+
+    tmp<Field<T>> tsumFld(new Field<T>(pp.nEdges(), 0));
+    Field<T>& sumFld = tsumFld.ref();
+    scalarField sumWeights(pp.nEdges(), 0);
+
+    // Sum local face contributions
+    {
+        const labelListList& edgeFaces = pp.edgeFaces();
+        forAll(edgeFaces, edgei)
+        {
+            const labelList& eFaces = edgeFaces[edgei];
+
+            forAll(eFaces, eFacei)
+            {
+                label facei = eFaces[eFacei];
+
+                scalar d = mag(faceCentres[facei]-edgeCentres[edgei]);
+                scalar w = 1.0/max(SMALL, d);
+                sumFld[edgei] += w*faceFld[facei];
+                sumWeights[edgei] += w;
+            }
+        }
+    }
+
+
+    // Sum coupled contributions
+    {
+        const globalMeshData& gd = mesh.globalData();
+        const indirectPrimitivePatch& cpp = gd.coupledPatch();
+
+        // Build map from pp edges (in mesh indices) to edge indices
+        EdgeMap<label> edgeToIndex(2*pp.nEdges());
+        {
+            const edgeList& edges = pp.edges();
+            forAll(edges, edgei)
+            {
+                const edge& e = edges[edgei];
+                const edge meshE(meshPoints[e[0]], meshPoints[e[1]]);
+                edgeToIndex.insert(meshE, edgei);
+            }
+        }
+
+        // Fill coupled edge data
+        Field<T> cppSum(cpp.nEdges(), 0.0);
+        scalarField cppWeight(cpp.nEdges(), 0.0);
+        {
+            const edgeList& cppEdges = cpp.edges();
+            const labelList& mp = cpp.meshPoints();
+            forAll(cppEdges, cppEdgei)
+            {
+                const edge& e = cppEdges[cppEdgei];
+                const edge meshE(mp[e[0]], mp[e[1]]);
+                EdgeMap<label>::const_iterator iter = edgeToIndex.find(meshE);
+                if (iter != edgeToIndex.end())
+                {
+                    cppSum[cppEdgei] = sumFld[iter()];
+                    cppWeight[cppEdgei] = sumWeights[iter()];
+                }
+            }
+        }
+
+        // Add contributions
+        globalMeshData::syncData
+        (
+            cppSum,
+            gd.globalEdgeSlaves(),
+            gd.globalEdgeTransformedSlaves(),
+            gd.globalEdgeSlavesMap(),
+            gd.globalTransforms(),
+            plusEqOp<T>(),
+            mapDistribute::transform()
+        );
+        globalMeshData::syncData
+        (
+            cppWeight,
+            gd.globalEdgeSlaves(),
+            gd.globalEdgeTransformedSlaves(),
+            gd.globalEdgeSlavesMap(),
+            gd.globalTransforms(),
+            plusEqOp<scalar>(),
+            mapDistribute::transform()
+        );
+
+        // Extract
+        {
+            const edgeList& cppEdges = cpp.edges();
+            const labelList& mp = cpp.meshPoints();
+            forAll(cppEdges, cppEdgei)
+            {
+                const edge& e = cppEdges[cppEdgei];
+                const edge meshE(mp[e[0]], mp[e[1]]);
+                EdgeMap<label>::const_iterator iter = edgeToIndex.find(meshE);
+                if (iter != edgeToIndex.end())
+                {
+                    sumFld[iter()] = cppSum[cppEdgei];
+                    sumWeights[iter()] = cppWeight[cppEdgei];
+                }
+            }
+        }
+    }
+
+
+    // Normalise
+    forAll(sumWeights, edgei)
+    {
+        if (sumWeights[edgei] > VSMALL)
+        {
+            sumFld[edgei] /= sumWeights[edgei];
+        }
+    }
+
+    return tsumFld;
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -58,154 +187,214 @@ int main(int argc, char *argv[])
     label patchi = pbm.findPatchID(patchName);
 
     const fvPatch& fvp = mesh.boundary()[patchi];
-    const vectorField& Cf = fvp.Cf();
+    //const vectorField& Cf = fvp.Cf();
     const polyPatch& pp = fvp.patch();
-    const labelListList& edgeFaces = pp.edgeFaces();
-    const labelListList& faceEdges = pp.faceEdges();
+    //const labelListList& edgeFaces = pp.edgeFaces();
+    //const labelListList& faceEdges = pp.faceEdges();
 
-    // Addressing: owner = geometrically lower face, neighbour = geometrically
-    // higher face
-    labelList edgeOwner(pp.nEdges(), -1);
-    labelList edgeNeighbour(pp.nEdges(), -1);
-    labelList nInEdges(pp.size(), 0);
-    {
-        forAll(edgeFaces, edgei)
-        {
-            const edge& e = pp.edges()[edgei];
-            const point& p0 = pp.localPoints()[e[0]];
-            const point& p1 = pp.localPoints()[e[1]];
-            point edgeMid(0.5*(p0+p1));
-
-            const labelList& eFaces = edgeFaces[edgei];
-            forAll(eFaces, i)
-            {
-                label facei = eFaces[i];
-                const point& fc = Cf[facei];
-
-                if (fc.x() < edgeMid.x())
-                {
-                    edgeOwner[edgei] = facei;
-                }
-                else
-                {
-                    edgeNeighbour[edgei] = facei;
-
-                    if (eFaces.size() > 1)
-                    {
-                        nInEdges[facei]++;
-                    }
-                }
-            }
-        }
-    }
-
-DebugVar(edgeOwner);
-DebugVar(edgeNeighbour);
-DebugVar(nInEdges);
+//// Addressing: owner = geometrically lower face, neighbour = geometrically
+//// higher face
+//labelList edgeOwner(pp.nEdges(), -1);
+//labelList edgeNeighbour(pp.nEdges(), -1);
+//labelList nInEdges(pp.size(), 0);
+//{
+//    forAll(edgeFaces, edgei)
+//    {
+//        const edge& e = pp.edges()[edgei];
+//        const point& p0 = pp.localPoints()[e[0]];
+//        const point& p1 = pp.localPoints()[e[1]];
+//        point edgeMid(0.5*(p0+p1));
+//
+//        const labelList& eFaces = edgeFaces[edgei];
+//        forAll(eFaces, i)
+//        {
+//            label facei = eFaces[i];
+//            const point& fc = Cf[facei];
+//
+//            if (fc.x() < edgeMid.x())
+//            {
+//                edgeOwner[edgei] = facei;
+//            }
+//            else
+//            {
+//                edgeNeighbour[edgei] = facei;
+//
+//                if (eFaces.size() > 1)
+//                {
+//                    nInEdges[facei]++;
+//                }
+//            }
+//        }
+//    }
+//}
 
 
-
-
-    // Start seed: lowest edges
-
-    DynamicList<label> frontEdges;
-    DynamicList<Pair<scalar>> frontInfo;
+    // Get component to integrate along
+    const scalarField faceCentres(pp.faceCentres().component(0));
+    scalarField edgeCentres(pp.nEdges());
     {
         forAll(pp.edges(), edgei)
         {
             const edge& e = pp.edges()[edgei];
-            const point& p0 = pp.localPoints()[e[0]];
-            const point& p1 = pp.localPoints()[e[1]];
+            const point& p0 = mesh.points()[pp.meshPoints()[e[0]]];
+            const point& p1 = mesh.points()[pp.meshPoints()[e[1]]];
+            edgeCentres[edgei] = 0.5*(p0[0]+p1[0]);
+        }
+    }
 
-            if (p0.x() < 1e-5 && p1.x() < 1e-5)
+
+// // Test interpolation
+// {
+//     tmp<scalarField> tedgeFld
+//     (
+//         fecLinearInterpolate
+//         (
+//             pp,
+//             faceCentres,
+//             edgeCentres,
+//             faceCentres
+//         )
+//     );
+//
+//     forAll(pp.edges(), edgei)
+//     {
+//         //const edge& e = pp.edges()[edgei];
+//         //const point& p0 = mesh.points()[pp.meshPoints()[e[0]]];
+//         //const point& p1 = mesh.points()[pp.meshPoints()[e[1]]];
+//
+//         const labelList& eFaces = pp.edgeFaces()[edgei];
+//
+//         Pout<< "At edge:" << edgeCentres[edgei]
+//             << " have face values:"
+//             << UIndirectList<scalar>(faceCentres, eFaces)
+//             << " and edge value:" << tedgeFld()[edgei] << endl;
+//     }
+//     return 0;
+// }
+
+
+
+
+
+    List<patchIntegrateInfo> allEdgeInfo(pp.nEdges());
+    List<patchIntegrateInfo> allFaceInfo(pp.size());
+
+    DynamicList<label> changedEdges;
+    DynamicList<patchIntegrateInfo> changedInfo;
+    {
+        // Seed
+        forAll(pp.edges(), edgei)
+        {
+            if (edgeCentres[edgei] < 1e-5)
             {
+                const edge& e = pp.edges()[edgei];
                 Pout<< "Front edge:"
                     << pp.localPoints()[e[0]]
                     << pp.localPoints()[e[1]]
                     << endl;
 
-                frontEdges.append(edgei);
-                frontInfo.append(Pair<scalar>(mag(p0-p1), 0.0));
+                changedEdges.append(edgei);
+                changedInfo.append(patchIntegrateInfo(0.0));
             }
         }
     }
 
-    List<Pair<scalar>> allFaceInfo(pp.size(), Pair<scalar>(0.0, 0.0));
-    List<Pair<scalar>> allEdgeInfo(pp.nEdges(), Pair<scalar>(0.0, 0.0));
-    forAll(frontEdges, i)
+
+    scalarField leftFaceMask(pos(0.05-pp.faceCentres().component(0)));
+    DebugVar(leftFaceMask);
+
+    // scalarField leftEdgeMask(pp.nEdges());
+    // {
+    //     forAll(pp.edges(), edgei)
+    //     {
+    //         const edge& e = pp.edges()[edgei];
+    //         const point& p0 = mesh.points()[pp.meshPoints()[e[0]]];
+    //         const point& p1 = mesh.points()[pp.meshPoints()[e[1]]];
+    //         const point eMid(0.5*(p0+p1));
+    //         if (eMid[0] < 0.05)
+    //         {
+    //             leftEdgeMask[edgei] = 1.0;
+    //         }
+    //         else
+    //         {
+    //             leftEdgeMask[edgei] = 0.0;
+    //         }
+    //     }
+    // }
+    // DebugVar(leftEdgeMask);
+
+
+    const scalarField faceDensity(leftFaceMask*scalarField(pp.size(), 1.0));
+    const scalarField edgeDensity
+    (
+        fecLinearInterpolate
+        (
+            mesh,
+            pp,
+            pp.meshPoints(),
+            faceCentres,
+            edgeCentres,
+            faceDensity
+        )
+    );
+
+    patchIntegrateInfo::trackData td
+    (
+        faceCentres,
+        edgeCentres,
+        faceDensity,
+        edgeDensity
+    );
+
+
+    // Walk
+    PatchEdgeFaceWave
+    <
+        primitivePatch,
+        patchIntegrateInfo,
+        patchIntegrateInfo::trackData
+    > calc
+    (
+        mesh,
+        pp,
+        changedEdges,
+        changedInfo,
+        allEdgeInfo,
+        allFaceInfo,
+        returnReduce(pp.nEdges(), sumOp<label>()),
+        td
+    );
+
+
+DebugVar(allEdgeInfo);
+DebugVar(allFaceInfo);
+
+
+    // Extract as patchField
+    volScalarField vsf
+    (
+        IOobject
+        (
+            "patchDist",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("patchDist", dimLength, 0.0)
+    );
+    scalarField pf(vsf.boundaryField()[pp.index()].size());
+    forAll(pf, facei)
     {
-        allEdgeInfo[frontEdges[i]] = frontInfo[i];
+        pf[facei] = allFaceInfo[facei].value();
     }
+    vsf.boundaryFieldRef()[pp.index()] = pf;
 
-    while (true)
-    {
-        // New front
-        PackedBoolList isNewFrontEdge(pp.nEdges());
-        DynamicList<label> newFrontEdges;
+    Info<< "Writing patchDist volScalarField to " << runTime.value()
+        << endl;
 
-DebugVar(frontEdges.size());
-
-        // Check front, accumulate
-        forAll(frontEdges, fronti)
-        {
-            label edgei = frontEdges[fronti];
-            const edge& e = pp.edges()[edgei];
-
-            const labelList& eFaces = edgeFaces[edgei];
-
-            forAll(eFaces, eFacei)
-            {
-                label facei = eFaces[eFacei];
-                if (facei == edgeNeighbour[edgei] && nInEdges[facei] > 0)
-                {
-                    Pout<< "Updating face:" << Cf[facei]
-                        << " with info from edge:" << pp.localPoints()[e[0]]
-                        << pp.localPoints()[e[1]] << endl;
-
-                    // Accumulate
-                    allFaceInfo[facei].first() += allEdgeInfo[edgei].first();
-                    allFaceInfo[facei].second() += allEdgeInfo[edgei].second();
-                    nInEdges[facei]--;
-
-                    if (nInEdges[facei] == 0)
-                    {
-                        Pout<< "Done face:" << Cf[facei]
-                            << ", seeding outgoing edges" << endl;
-
-                        // Seed all outgoing edges, i.e. those edges of
-                        // which this face is owner
-                        const labelList& fEdges = faceEdges[facei];
-                        forAll(fEdges, fEdgei)
-                        {
-                            label myEdgei = fEdges[fEdgei];
-                            if (edgeOwner[myEdgei] == facei)
-                            {
-                                if (isNewFrontEdge.set(edgei))
-                                {
-                                    Pout<< "Updating front edge:"
-                                        << pp.localPoints()[e[0]]
-                                        << pp.localPoints()[e[1]]
-                                        << " with info from face:"
-                                        << Cf[facei] << endl;
-
-                                    newFrontEdges.append(myEdgei);
-                                    allEdgeInfo[myEdgei] = allFaceInfo[facei];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-        if (returnReduce(newFrontEdges.empty(), sumOp<label>()))
-        {
-            break;
-        }
-
-        frontEdges.transfer(newFrontEdges);
-    }
+    vsf.write();
 
     Info<< "End\n" << endl;
 

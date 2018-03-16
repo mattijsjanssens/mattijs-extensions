@@ -73,55 +73,38 @@ public:
     {
     public:
 
-        const polyMesh& mesh_;
-        scalarField& sumWeights_;
+        //- Integration distance
+        const scalarField& faceCentres_;
+        const scalarField& edgeCentres_;
+
+        //- Weight field for integration
+        const scalarField& fFld_;
+        const scalarField& eFld_;
 
         // Constructors
 
             trackData
             (
-                const polyMesh& mesh,
-                scalarField& sumWeights
+                const scalarField& faceCentres,
+                const scalarField& edgeCentres,
+                const scalarField& fFld,
+                const scalarField& eFld
             )
             :
-                mesh_(mesh),
-                sumWeights_(sumWeights)
+                faceCentres_(faceCentres),
+                edgeCentres_(edgeCentres),
+                fFld_(fFld),
+                eFld_(eFld)
             {}
     };
 
 
-
+private:
 
     // Private data
 
         //- Integrated value
         scalar value_;
-
-
-    // Private Member Functions
-
-        //- Evaluate distance to point. Update distSqr, origin from whomever
-        //  is nearer pt. Return true if w2 is closer to point,
-        //  false otherwise.
-        template<class TrackingData>
-        inline bool update
-        (
-            const point&,
-            const patchIntegrateInfo& w2,
-            const scalar tol,
-            TrackingData& td
-        );
-
-        //- Combine current with w2. Update distSqr, origin if w2 has smaller
-        //  quantities and returns true.
-        template<class TrackingData>
-        inline bool update
-        (
-            const patchIntegrateInfo& w2,
-            const scalar tol,
-            TrackingData& td
-        );
-
 
 public:
 
