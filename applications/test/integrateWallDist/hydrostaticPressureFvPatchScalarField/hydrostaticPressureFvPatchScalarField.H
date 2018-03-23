@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -40,14 +40,14 @@ Description
         p_{hyd} | Hyrostatic pressure [Pa]
         p_{ref} | Reference pressure [Pa]
         x_{ref} | Reference point in Cartesian co-ordinates
-        \rho    | Density (assumed uniform)
+        \rho    | Density
         g       | Acceleration due to gravity [m/s2]
     \endtable
 
 Usage
     \table
         Property     | Description             | Required    | Default value
-        rho          | uniform density [kg/m3] | yes         |
+        rho          | density [kg/m3]         | yes         |
         pRefValue    | reference pressure [Pa] | yes         |
         pRefPoint    | reference pressure location | yes     |
     \endtable
@@ -58,11 +58,18 @@ Usage
     {
         type            hydrostaticPressure;
         rho             rho;
-        pRefValue       1e5;
+        pRefValue       0;
         pRefPoint       (0 0 0);
-        value           uniform 0; // optional initial value
+        value           uniform 0;  // initial value needed since eval needs 'g'
     }
     \endverbatim
+
+Note
+    - the pRefPoint is used to find the nearest edge and it adjust
+    the pressures such that this edge's value is the reference pressure. There
+    is no interpolation if the pRefPoint is not exactly on an edge.
+    - it assumes that all of the patch can be reached from a single edge. This
+    might not be enough for complex meshes with split outlet patches.
 
 SourceFiles
     hydrostaticPressureFvPatchScalarField.C
@@ -104,6 +111,18 @@ class hydrostaticPressureFvPatchScalarField
             //- Map from patch edge to coupled edge
             Map<label> patchToCoupledEdge_;
 
+            //- gh on faces
+            autoPtr<scalarField> faceCentresPtr_;
+
+            //- gh on edges
+            autoPtr<scalarField> edgeCentresPtr_;
+
+            //- Starting edge(s)
+            labelList startEdges_;
+
+            //- Edge nearest pRefPoint
+            label pRefEdgei_;
+
 
     // Private Member Functions
 
@@ -114,6 +133,12 @@ class hydrostaticPressureFvPatchScalarField
             const scalarField& edgeCentres,
             const scalarField& faceFld
         ) const;
+
+        //- Update topology related properties
+        void calcTopology();
+
+        //- Update geometry related properties
+        void calcGeometry(const vector& g);
 
 
 public:

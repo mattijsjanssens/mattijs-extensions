@@ -22,20 +22,22 @@ boundaryField
 {
     atmosphere
     {
-        type            totalPressure;
-        p0              uniform 0;
+        //type            totalPressure;
+        //p0              uniform 0;
+
+        //type            prghPressure;   //uniformFixedValue;
+        //p               uniform 0;
+        type            slip;
     }
 
-/*
     outlet
     {
         type            hydrostaticPressure;
         rho             rho;
         pRefValue       0;
-        pRefPoint       (118 0 15.8);
+        pRefPoint       (118 0 8);
         value           uniform 0;
     }
-*/
 
     ".*"
     {

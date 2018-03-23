@@ -31,6 +31,30 @@ License
 #include "PatchEdgeFaceWave.H"
 #include "patchIntegrateInfo.H"
 #include "EdgeMap.H"
+#include "Tuple2.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+    template<class Data>
+    class dataMinEqOp
+    {
+        public:
+        void operator()
+        (
+            Tuple2<scalar, Data>& x,
+            const Tuple2<scalar, Data>& y
+        ) const
+        {
+            if (y.first() < x.first())
+            {
+                x = y;
+            }
+        }
+    };
+}
+
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -127,6 +151,111 @@ Foam::hydrostaticPressureFvPatchScalarField::linearInterpolate
 }
 
 
+void Foam::hydrostaticPressureFvPatchScalarField::calcTopology()
+{
+    const polyPatch& pp = patch().patch();
+    const edgeList& edges = pp.edges();
+    const labelList& mp = pp.meshPoints();
+
+    // Build map from pp edges (in mesh indices) to edge indices
+    EdgeMap<label> edgeToIndex(2*edges.size());
+    {
+        forAll(edges, edgei)
+        {
+            const edge& e = edges[edgei];
+            edgeToIndex.insert(edge(mp[e[0]], mp[e[1]]), edgei);
+        }
+    }
+
+    const polyMesh& mesh = pp.boundaryMesh().mesh();
+    const globalMeshData& gd = mesh.globalData();
+    const indirectPrimitivePatch& cpp = gd.coupledPatch();
+    const edgeList& cppEdges = cpp.edges();
+    const labelList& cppMp = cpp.meshPoints();
+
+    patchToCoupledEdge_.resize(edges.size());
+
+    forAll(cppEdges, cppEdgei)
+    {
+        const edge& e = cppEdges[cppEdgei];
+        const edge meshE(cppMp[e[0]], cppMp[e[1]]);
+        EdgeMap<label>::const_iterator iter = edgeToIndex.find(meshE);
+        if (iter != edgeToIndex.end())
+        {
+            patchToCoupledEdge_.insert(iter(), cppEdgei);
+        }
+    }
+}
+
+
+void Foam::hydrostaticPressureFvPatchScalarField::calcGeometry(const vector& g)
+{
+    const polyPatch& pp = patch().patch();
+    const pointField& points = pp.points();
+    const edgeList& edges = pp.edges();
+    const labelList& mp = pp.meshPoints();
+
+    faceCentresPtr_.reset(new scalarField(patch().Cf() & g));
+    edgeCentresPtr_.reset(new scalarField(pp.nEdges()));
+    scalarField& edgeCentres = edgeCentresPtr_();
+
+    {
+        Tuple2<scalar, labelPair> distAndEdge
+        (
+            Foam::sqr(GREAT),
+            labelPair(Pstream::myProcNo(), -1)
+        );
+        forAll(edges, edgei)
+        {
+            const edge& e = edges[edgei];
+            point eMid(0.5*(points[mp[e[0]]]+points[mp[e[1]]]));
+            edgeCentres[edgei] = (eMid & g);
+
+            scalar distSqr = magSqr(eMid-pRefPoint_);
+            if (distSqr < distAndEdge.first())
+            {
+                distAndEdge.first() = distSqr;
+                distAndEdge.second().second() = edgei;
+            }
+        }
+        combineReduce(distAndEdge, dataMinEqOp<labelPair>());
+
+        pRefEdgei_ = -1;
+        if
+        (
+            distAndEdge.second().first() == Pstream::myProcNo()
+         && distAndEdge.second().second() != -1
+        )
+        {
+            pRefEdgei_ = distAndEdge.second().second();
+        }
+    }
+
+    // Find the global minimum edge
+    {
+        Tuple2<scalar, labelPair> distAndEdge;
+        label startEdgei = findMin(edgeCentres);
+        if (startEdgei != -1)
+        {
+            distAndEdge.first() = edgeCentres[startEdgei];
+            distAndEdge.second() = labelPair(Pstream::myProcNo(), startEdgei);
+        }
+        else
+        {
+            distAndEdge.first() = GREAT;
+            distAndEdge.second() = labelPair(-1, -1);
+        }
+        combineReduce(distAndEdge, dataMinEqOp<labelPair>());
+
+        startEdges_.clear();
+        if (distAndEdge.second().first() == Pstream::myProcNo())
+        {
+            startEdges_.append(distAndEdge.second().second());
+        }
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::hydrostaticPressureFvPatchScalarField::
@@ -157,43 +286,7 @@ hydrostaticPressureFvPatchScalarField
     pRefPoint_(dict.lookup("pRefPoint"))
 {
     // Calculate the patch-specific information
-    {
-        const polyPatch& pp = patch().patch();
-        const edgeList& edges = pp.edges();
-        const labelList& mp = pp.meshPoints();
-
-        // Build map from pp edges (in mesh indices) to edge indices
-        EdgeMap<label> edgeToIndex(2*edges.size());
-        {
-            forAll(edges, edgei)
-            {
-                const edge& e = edges[edgei];
-                edgeToIndex.insert(edge(mp[e[0]], mp[e[1]]), edgei);
-            }
-        }
-
-        const polyMesh& mesh = pp.boundaryMesh().mesh();
-        const globalMeshData& gd = mesh.globalData();
-        const indirectPrimitivePatch& cpp = gd.coupledPatch();
-        const edgeList& cppEdges = cpp.edges();
-        const labelList& cppMp = cpp.meshPoints();
-
-        patchToCoupledEdge_.resize(edges.size());
-
-        forAll(cppEdges, cppEdgei)
-        {
-            const edge& e = cppEdges[cppEdgei];
-            const edge meshE(cppMp[e[0]], cppMp[e[1]]);
-            EdgeMap<label>::const_iterator iter = edgeToIndex.find(meshE);
-            if (iter != edgeToIndex.end())
-            {
-                patchToCoupledEdge_.insert(iter(), cppEdgei);
-            }
-        }
-
-DebugVar(patchToCoupledEdge_);
-    }
-
+    calcTopology();
 
     if (dict.found("value"))
     {
@@ -221,7 +314,9 @@ hydrostaticPressureFvPatchScalarField
     fixedValueFvPatchScalarField(ptf, p, iF, mapper),
     rhoName_(ptf.rhoName_),
     pRefValue_(ptf.pRefValue_),
-    pRefPoint_(ptf.pRefPoint_)
+    pRefPoint_(ptf.pRefPoint_),
+    faceCentresPtr_(nullptr),
+    edgeCentresPtr_(nullptr)
 {}
 
 
@@ -234,7 +329,12 @@ hydrostaticPressureFvPatchScalarField
     fixedValueFvPatchScalarField(ptf),
     rhoName_(ptf.rhoName_),
     pRefValue_(ptf.pRefValue_),
-    pRefPoint_(ptf.pRefPoint_)
+    pRefPoint_(ptf.pRefPoint_),
+    patchToCoupledEdge_(ptf.patchToCoupledEdge_),
+    faceCentresPtr_(ptf.faceCentresPtr_),
+    edgeCentresPtr_(ptf.edgeCentresPtr_),
+    startEdges_(ptf.startEdges_),
+    pRefEdgei_(ptf.pRefEdgei_)
 {}
 
 
@@ -248,7 +348,12 @@ hydrostaticPressureFvPatchScalarField
     fixedValueFvPatchScalarField(ptf, iF),
     rhoName_(ptf.rhoName_),
     pRefValue_(ptf.pRefValue_),
-    pRefPoint_(ptf.pRefPoint_)
+    pRefPoint_(ptf.pRefPoint_),
+    patchToCoupledEdge_(ptf.patchToCoupledEdge_),
+    faceCentresPtr_(ptf.faceCentresPtr_),
+    edgeCentresPtr_(ptf.edgeCentresPtr_),
+    startEdges_(ptf.startEdges_),
+    pRefEdgei_(ptf.pRefEdgei_)
 {}
 
 
@@ -264,79 +369,47 @@ void Foam::hydrostaticPressureFvPatchScalarField::updateCoeffs()
     const uniformDimensionedVectorField& g =
         db().lookupObject<uniformDimensionedVectorField>("g");
 
-    const polyPatch& pp = patch().patch();
-
-    // Get component to integrate along
-    const scalarField faceCentres(patch().Cf() & g.value());
-    scalarField edgeCentres(pp.nEdges());
+    if (!faceCentresPtr_.valid())
     {
-        forAll(pp.edges(), edgei)
-        {
-            const edge& e = pp.edges()[edgei];
-            const point& p0 = pp.points()[pp.meshPoints()[e[0]]];
-            const point& p1 = pp.points()[pp.meshPoints()[e[1]]];
-            edgeCentres[edgei] = ((0.5*(p0+p1)) & g.value());
-        }
+        // Can only calculate geometric info once have 'g'
+        calcGeometry(g.value());
     }
 
 
+    const polyPatch& pp = patch().patch();
+
      const fvPatchField<scalar>& faceRho =
          patch().lookupPatchField<volScalarField, scalar>(rhoName_);
-    //const scalarField faceRho(pp.size(), 1.0);
 
 
-    const uniformDimensionedScalarField& hRef =
-        db().lookupObject<uniformDimensionedScalarField>("hRef");
+    // Integrate gh*rho from minimum gh
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    dimensionedScalar ghRef
-    (
-        mag(g.value()) > small
-      ? g & (cmptMag(g.value())/mag(g.value()))*hRef
-      : dimensionedScalar("ghRef", g.dimensions()*dimLength, 0)
-    );
-
-
-
-    // Integrate gh*rho from gh0
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    scalar gh0;
-    scalarField pf(allFaceInfo.size());
+    scalarField pf(pp.size());
     {
         tmp<scalarField> edgeRho
         (
             linearInterpolate
             (
-                faceCentres,
-                edgeCentres,
+                faceCentresPtr_(),
+                edgeCentresPtr_(),
                 faceRho
             )
         );
 
 
-        List<patchIntegrateInfo> allEdgeInfo(pp.nEdges());
-        List<patchIntegrateInfo> allFaceInfo(pp.size());
-
-        // Seed edges
-        DynamicList<label> changedEdges;
-        DynamicList<patchIntegrateInfo> changedInfo;
-        {
-            // Find the starting edge
-            label startEdgei = findMin(edgeCentres);
-            gh0 = edgeCentres[startEdgei];
-            changedEdges.append(startEdgei);
-            changedInfo.append(patchIntegrateInfo(0.0));
-        }
-
         // Static information
         patchIntegrateInfo::trackData td
         (
-            faceCentres,
-            edgeCentres,
+            faceCentresPtr_(),
+            edgeCentresPtr_(),
             faceRho,
             edgeRho
         );
 
+
+        List<patchIntegrateInfo> allEdgeInfo(pp.nEdges());
+        List<patchIntegrateInfo> allFaceInfo(pp.size());
 
         // Walk
         PatchEdgeFaceWave
@@ -348,28 +421,68 @@ void Foam::hydrostaticPressureFvPatchScalarField::updateCoeffs()
         (
             pp.boundaryMesh().mesh(),
             pp,
-            changedEdges,
-            changedInfo,
+            startEdges_,                    // seed edges
+            List<patchIntegrateInfo>
+            (
+                startEdges_.size(),
+                patchIntegrateInfo(0.0)
+            ),                              // seed info
             allEdgeInfo,
             allFaceInfo,
             returnReduce(pp.nEdges(), sumOp<label>()),
             td
         );
 
-        scalarField pf(allFaceInfo.size());
         forAll(pf, facei)
         {
+            if (!allFaceInfo[facei].valid(td))
+            {
+                FatalErrorInFunction << "Face:" << patch().Cf()[facei]
+                    << " has not been visited."
+                    << " Is your patch a single continuous region?"
+                    << exit(FatalError);
+            }
             pf[facei] = allFaceInfo[facei].value();
         }
+
+        // Normalise the pressure at the pRefEdgei (!= -1 only on one processor)
+        scalar pRefEdgeValue = GREAT;
+        if (pRefEdgei_ != -1)
+        {
+            if (!allEdgeInfo[pRefEdgei_].valid(td))
+            {
+                const edge& e = pp.edges()[pRefEdgei_];
+                const point& p0 = pp.points()[pp.meshPoints()[e[0]]];
+                const point& p1 = pp.points()[pp.meshPoints()[e[1]]];
+                FatalErrorInFunction << "Edge:" << p0 << p1
+                    << " has not been visited."
+                    << " Is your patch a single continuous region?"
+                    << exit(FatalError);
+            }
+            pRefEdgeValue = allEdgeInfo[pRefEdgei_].value();
+        }
+        reduce(pRefEdgeValue, minOp<scalar>());
+
+        // Adjust level such that at pRefPoint we have pRefValue
+        pf += pRefValue_-pRefEdgeValue;
     }
 
-    Info<< type() << " : integrated rho*(gh-gh0) with gh0=" << gh0 << endl;
+//    // p mode:
+//    operator==(pf);
 
 
-    //operator==(pf);
+     // p_rgh mode
+     const uniformDimensionedScalarField& hRef =
+         db().lookupObject<uniformDimensionedScalarField>("hRef");
 
-    operator==(pf - faceRho*(faceCentres - gh0));   //ghRef.value()));
+     dimensionedScalar ghRef
+     (
+         mag(g.value()) > small
+       ? g & (cmptMag(g.value())/mag(g.value()))*hRef
+       : dimensionedScalar("ghRef", g.dimensions()*dimLength, 0)
+     );
 
+    operator==(pf - faceRho*((g.value() & patch().Cf()) - ghRef.value()));
     fixedValueFvPatchScalarField::updateCoeffs();
 }
 
