@@ -43,6 +43,10 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+
+
+
+
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
@@ -51,8 +55,54 @@ int main(int argc, char *argv[])
 
     if (!Pstream::parRun())
     {
-        FatalErrorInFunction << "Not running in parallel" << exit(FatalError);
+        //FatalErrorInFunction << "Not running in parallel" << exit(FatalError);
+
+        // Read the processor databases
+        label nProcs = fileHandler().nProcs(args.path(), word::null);
+        PtrList<Time> databases(nProcs);
+        forAll(databases, proci)
+        {
+            databases.set
+            (
+                proci,
+                new Time
+                (
+                    Time::controlDictName,
+                    args.rootPath(),
+                    args.caseName()/fileName(word("processor") + name(proci))
+                )
+            );
+        }
+
+        PtrList<labelIOList> cellMaps(nProcs);
+        PtrList<labelIOList> faceMaps(nProcs);
+        PtrList<labelIOList> pointMaps(nProcs);
+        PtrList<labelIOList> boundaryMaps(nProcs);
+
+        forAll(cellMaps, proci)
+        {
+            cellMaps.set
+            (
+                proci,
+                new labelIOList
+                (
+                    IOobject
+                    (
+                        "cellProcAddressing",
+                        mesh.facesInstance(),
+                        mesh.meshSubDir,
+                        databases[proci],
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    )
+                )
+            );
+        }
+
+        return 0;
     }
+
+
 
     // Parent database
     Time baseRunTime
@@ -130,13 +180,8 @@ int main(int argc, char *argv[])
     //    unallocatedGenericFvPatchField<scalar>::typeName
     //);
 
-    parUnallocatedFvFieldReconstructor reconstructor
-    (
-        baseMesh,
-        mesh,
-        distMap,
-        false           // isWriteProc
-    );
+    // Mapping engine from mesh to baseMesh
+    parUnallocatedFvFieldReconstructor reconstructor(baseMesh, mesh, distMap);
 
     // Load local field
     volScalarField p
