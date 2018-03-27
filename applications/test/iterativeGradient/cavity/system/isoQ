@@ -1,0 +1,22 @@
+type            surfaces;
+libs            ("libsampling.so");
+
+writeControl    writeTime;
+
+surfaceFormat   vtk;
+interpolationScheme cellPoint;
+
+fields       (p U);
+
+surfaces
+(
+    p100
+    {
+        type            isoSurfaceCell;
+        interpolate     true;
+        isoField        p;
+        isoValue        0;
+        regularise      off;
+        average         off;
+    }
+);

@@ -30,8 +30,10 @@ Application
 #include "Time.H"
 #include "fvCFD.H"
 #include "skewCorrectionVectors.H"
-#include "volFields.H"
-#include "surfaceFields.H"
+//#include "volFields.H"
+//#include "surfaceFields.H"
+#include "pisoControl.H"
+
 
 using namespace Foam;
 
@@ -56,20 +58,77 @@ int main(int argc, char *argv[])
         ),
         mesh
     );
+    vfld.dimensions().reset(dimLength);
+    vfld == mag(mesh.C());
 
-    const skewCorrectionVectors& skv = skewCorrectionVectors::New(mesh);
+
+{
+    volVectorField gradP
+    (
+        IOobject
+        (
+            "gradP",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        fvc::grad(vfld)
+    );
+}
 
 
-    surfaceScalarField sfld("sfld", linearInterpolate(vfld));
-    volVectorField gradP("gradP", fvc::grad(sfld));
-    surfaceVectorField sgradP(linearInterpolate(gradP));
 
-    for (label iter = 0; iter < 3; iter++)
-    {
-        sfld = linearInterpolate(vfld) + skv & sgradP;
-        gradP = fvc::grad(sfld);
-        sgradP = linearInterpolate(gradP);
-    }
+//DebugVar(vfld);
+//    const skewCorrectionVectors& skv = skewCorrectionVectors::New(mesh);
+//
+////DebugVar(skv());
+//
+//    surfaceScalarField sfld
+//    (
+//        IOobject
+//        (
+//            "sfld",
+//            runTime.timeName(),
+//            mesh,
+//            IOobject::NO_READ,
+//            IOobject::AUTO_WRITE
+//        ),
+//        linearInterpolate(vfld)
+//    );
+//    volVectorField gradP
+//    (
+//        IOobject
+//        (
+//            "gradP",
+//            runTime.timeName(),
+//            mesh,
+//            IOobject::NO_READ,
+//            IOobject::AUTO_WRITE
+//        ),
+//        fvc::grad(sfld)
+//    );
+//
+//    gradP.write();
+//
+//    pisoControl piso(mesh);
+//
+//    Info<< "\nStarting time loop\n" << endl;
+//
+//    while (runTime.loop())
+//    {
+//        Info<< "Time = " << runTime.timeName() << nl << endl;
+//        surfaceVectorField sgradP("sgradP", linearInterpolate(gradP));
+//DebugVar(linearInterpolate(vfld));
+//        surfaceScalarField corr("skewCorr", (skv()&sgradP));
+//        corr.dimensions().reset(vfld.dimensions());
+//        sfld = linearInterpolate(vfld)+corr;
+//DebugVar(sfld);
+//        gradP = fvc::grad(sfld);
+//
+//        runTime.write();
+//DebugVar(gradP);
+//    }
 
     return 0;
 }
