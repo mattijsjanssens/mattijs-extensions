@@ -11,6 +11,7 @@ fields/unallocatedFvPatchFields/unallocatedGenericFvPatchFields.C
 
 /* GeometricFields on unallocated mesh */
 fields/uVolFields/uVolFields.C
+fields/uVolFields/unallocatedFvFieldReconstructor.C
 fields/uVolFields/parUnallocatedFvFieldReconstructor.C
 
 LIB = $(FOAM_USER_LIBBIN)/libunallocated

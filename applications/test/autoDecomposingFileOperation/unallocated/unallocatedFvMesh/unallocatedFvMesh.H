@@ -94,6 +94,8 @@ public:
             //const fvMesh& procMesh,
             const objectRegistry& db,
             const label nCells,
+            //const label nFaces,
+            //const label nPoints,
             const unallocatedFvBoundaryMesh& boundary,
             const globalMeshData& globalData
         );
@@ -105,35 +107,47 @@ public:
 
     // Member Functions
 
-        //- Return number of cells
-        static label size(const Mesh& mesh)
-        {
-            return mesh.nCells_;
-        }
+        // volMesh functionality
 
-        //- Return reference to boundary mesh
-        const unallocatedFvBoundaryMesh& boundary() const
-        {
-            return boundary_;
-        }
+            //- Return number of cells
+            static label size(const Mesh& mesh)
+            {
+                return mesh.nCells_;
+            }
 
-        //- Return parallel info
-        const globalMeshData& globalData() const
-        {
-            return globalData_;
-        }
+            //- Return reference to boundary mesh
+            const unallocatedFvBoundaryMesh& boundary() const
+            {
+                return boundary_;
+            }
 
-        //- Return the top-level database
-        const Time& time() const
-        {
-            return db_.time();
-        }
+            //- Return parallel info
+            const globalMeshData& globalData() const
+            {
+                return globalData_;
+            }
 
-        //- Return database. For now is its polyMesh.
-        const objectRegistry& thisDb() const
-        {
-            return db_;
-        }
+            //- Return the top-level database
+            const Time& time() const
+            {
+                return db_.time();
+            }
+
+            //- Return database. For now is its polyMesh.
+            const objectRegistry& thisDb() const
+            {
+                return db_;
+            }
+
+
+        // Basic mesh info
+
+            label nCells() const
+            {
+                return nCells_;
+            }
+
+
 
 
     // Member Operators

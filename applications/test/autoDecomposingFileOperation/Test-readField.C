@@ -38,6 +38,7 @@ Description
 #include "unallocatedGenericFvPatchField.H"
 #include "parUnallocatedFvFieldReconstructor.H"
 #include "unallocatedFvMeshTools.H"
+#include "unallocatedFvFieldReconstructor.H"
 
 using namespace Foam;
 
@@ -74,14 +75,14 @@ int main(int argc, char *argv[])
             );
         }
 
-        PtrList<labelIOList> cellMaps(nProcs);
-        PtrList<labelIOList> faceMaps(nProcs);
-        PtrList<labelIOList> pointMaps(nProcs);
-        PtrList<labelIOList> boundaryMaps(nProcs);
+        PtrList<labelIOList> cellProcAddressing(nProcs);
+        PtrList<labelIOList> faceProcAddressing(nProcs);
+        //PtrList<labelIOList> pointMaps(nProcs);
+        //PtrList<labelIOList> boundaryMaps(nProcs);
 
-        forAll(cellMaps, proci)
+        forAll(cellProcAddressing, proci)
         {
-            cellMaps.set
+            cellProcAddressing.set
             (
                 proci,
                 new labelIOList
@@ -98,6 +99,65 @@ int main(int argc, char *argv[])
                 )
             );
         }
+DebugVar(cellProcAddressing);
+
+        forAll(faceProcAddressing, proci)
+        {
+            faceProcAddressing.set
+            (
+                proci,
+                new labelIOList
+                (
+                    IOobject
+                    (
+                        "faceProcAddressing",
+                        mesh.facesInstance(),
+                        mesh.meshSubDir,
+                        databases[proci],
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    )
+                )
+            );
+        }
+DebugVar(faceProcAddressing);
+
+        // Read the (unallocated) processor meshes
+        PtrList<unallocatedFvMesh> procMeshes(nProcs);
+
+        forAll(procMeshes, proci)
+        {
+            procMeshes.set
+            (
+                proci,
+                unallocatedFvMeshTools::newMesh
+                (
+                    cellProcAddressing[proci],  // IOobject
+                    mesh,   // supplies (unused!) references to fvPatches
+                    cellProcAddressing[proci].size()
+                )
+            );
+        }
+
+        // Get mesh as unallocated
+        autoPtr<unallocatedFvMesh> uMesh
+        (
+            unallocatedFvMeshTools::newMesh
+            (
+                mesh.time(),
+                mesh,   // supplies (unused!) references to fvPatches
+                mesh.nCells()
+            )
+        );
+
+        unallocatedFvFieldReconstructor reconstructor
+        (
+            uMesh(),
+            procMeshes,
+            faceProcAddressing,
+            cellProcAddressing,
+            PtrList<labelIOList>(0) //& boundaryProcAddressing
+        );
 
         return 0;
     }
