@@ -25,7 +25,7 @@ Class
     Foam::unallocatedFvMesh
 
 Description
-    Mesh representing a set of points created from polyMesh.
+    Type of fvMesh without geometry storage.
 
 \*---------------------------------------------------------------------------*/
 
@@ -36,13 +36,14 @@ Description
 //#include "MeshObject.H"
 //#include "polyMesh.H"
 #include "volMesh.H"
+#include "unallocatedFvBoundaryMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class unallocatedFvBoundaryMesh;
+//class unallocatedFvBoundaryMesh;
 class globalMeshData;
 
 /*---------------------------------------------------------------------------*\
@@ -62,7 +63,7 @@ class unallocatedFvMesh
         const label nCells_;
 
         //- Boundary mesh
-        const unallocatedFvBoundaryMesh& boundary_;
+        unallocatedFvBoundaryMesh boundary_;
 
         const globalMeshData& globalData_;
 
@@ -88,15 +89,26 @@ public:
 
     // Constructors
 
-        //- Construct from polyMesh
-        explicit unallocatedFvMesh
+//        //- Construct from boundary mesh and patch schedule
+//        unallocatedFvMesh
+//        (
+//            //const fvMesh& procMesh,
+//            const objectRegistry& db,
+//            const label nCells,
+//            //const label nFaces,
+//            //const label nPoints,
+//            const unallocatedFvBoundaryMesh& boundary,
+//            const globalMeshData& globalData
+//        );
+
+        //- Construct from parts
+        unallocatedFvMesh
         (
-            //const fvMesh& procMesh,
             const objectRegistry& db,
             const label nCells,
-            //const label nFaces,
-            //const label nPoints,
-            const unallocatedFvBoundaryMesh& boundary,
+            const wordList& patchNames,
+            const labelList& patchSizes,
+            const labelList& patchStarts,
             const globalMeshData& globalData
         );
 
@@ -124,6 +136,7 @@ public:
             //- Return parallel info
             const globalMeshData& globalData() const
             {
+                NotImplemented;
                 return globalData_;
             }
 
@@ -133,7 +146,7 @@ public:
                 return db_.time();
             }
 
-            //- Return database. For now is its polyMesh.
+            //- Return database
             const objectRegistry& thisDb() const
             {
                 return db_;

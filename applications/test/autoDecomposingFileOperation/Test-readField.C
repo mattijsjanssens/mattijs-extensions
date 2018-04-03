@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
-    #include "createMesh.H"
 
     if (!Pstream::parRun())
     {
@@ -90,8 +89,8 @@ int main(int argc, char *argv[])
                     IOobject
                     (
                         "cellProcAddressing",
-                        mesh.facesInstance(),
-                        mesh.meshSubDir,
+                        runTime.constant(), //mesh.facesInstance(),
+                        fvMesh::meshSubDir,
                         databases[proci],
                         IOobject::MUST_READ,
                         IOobject::NO_WRITE
@@ -99,7 +98,7 @@ int main(int argc, char *argv[])
                 )
             );
         }
-DebugVar(cellProcAddressing);
+//DebugVar(cellProcAddressing);
 
         forAll(faceProcAddressing, proci)
         {
@@ -111,8 +110,8 @@ DebugVar(cellProcAddressing);
                     IOobject
                     (
                         "faceProcAddressing",
-                        mesh.facesInstance(),
-                        mesh.meshSubDir,
+                        runTime.constant(), //mesh.facesInstance(),
+                        fvMesh::meshSubDir,
                         databases[proci],
                         IOobject::MUST_READ,
                         IOobject::NO_WRITE
@@ -120,33 +119,50 @@ DebugVar(cellProcAddressing);
                 )
             );
         }
-DebugVar(faceProcAddressing);
+//DebugVar(faceProcAddressing);
 
         // Read the (unallocated) processor meshes
         PtrList<unallocatedFvMesh> procMeshes(nProcs);
 
         forAll(procMeshes, proci)
         {
+            Pout<< "** reading procMesh:" << proci
+                << " with cellProcAddresing:"
+                << cellProcAddressing[proci].size() << endl;
+
             procMeshes.set
             (
                 proci,
                 unallocatedFvMeshTools::newMesh
                 (
                     cellProcAddressing[proci],  // IOobject
-                    mesh,   // supplies (unused!) references to fvPatches
                     cellProcAddressing[proci].size()
                 )
             );
+
+            Pout<< "** read procMesh:" << proci
+                << " with nCells:" << procMeshes[proci].nCells()
+                << endl;
         }
 
+        Pout<< "** Reading baseMesh" << endl;
+
         // Get mesh as unallocated
+
+//
+        IOobject meshIO
+        (
+            fvMesh::defaultRegion,      // name of mesh
+            runTime.constant(),
+            runTime,
+            IOobject::MUST_READ
+        );
+
         autoPtr<unallocatedFvMesh> uMesh
         (
             unallocatedFvMeshTools::newMesh
             (
-                mesh.time(),
-                mesh,   // supplies (unused!) references to fvPatches
-                mesh.nCells()
+                meshIO
             )
         );
 
@@ -159,8 +175,14 @@ DebugVar(faceProcAddressing);
             PtrList<labelIOList>(0) //& boundaryProcAddressing
         );
 
+        DebugVar(uMesh->nCells());
+        DebugVar(uMesh->boundary().size());
+
         return 0;
     }
+
+    #include "createMesh.H"
+
 
 
 
@@ -178,12 +200,21 @@ DebugVar(faceProcAddressing);
 
 
     // Read procAddressing files. Deduct base mesh sizes.
+
+    const IOobject meshIO
+    (
+        fvMesh::defaultRegion,      // name of mesh
+        runTime.constant(),
+        runTime,
+        IOobject::MUST_READ
+    );
+
     const IOobject baseIO
     (
         "dummy",
-        mesh.facesInstance(),   // same instance as local mesh
-        polyMesh::meshSubDir,
-        baseRunTime,
+        meshIO.instance(),   // same instance as local mesh
+        fvMesh::meshSubDir,
+        meshIO.db(),
         IOobject::MUST_READ,
         IOobject::NO_WRITE,
         false
@@ -203,8 +234,7 @@ DebugVar(faceProcAddressing);
     (
         unallocatedFvMeshTools::newMesh
         (
-            baseIO,
-            mesh,
+            meshIO,
             distMap.cellMap().constructSize()
         )
     );

@@ -114,10 +114,100 @@ Foam::unallocatedFvMeshTools::readReconstructMap(const IOobject& io)
 }
 
 
+//Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
+//(
+//    const IOobject& io,
+//    const fvMesh& mesh,
+//    const label nCells
+//)
+//{
+//    // Extract parent mesh information
+//    labelList basePatchSizes;
+//    labelList basePatchStarts;
+//    wordList basePatchNames;
+//    {
+//        IOobject meshIO
+//        (
+//            io.name(),              // name of mesh
+//            io.instance(),
+//            fvMesh::meshSubDir,     // location of mesh files
+//            io.db(),
+//            IOobject::MUST_READ
+//        );
+//        polyBoundaryMeshEntries patchEntries(IOobject(meshIO, "boundary"));
+//
+//        basePatchNames.setSize(patchEntries.size());
+//        basePatchSizes.setSize(patchEntries.size());
+//        basePatchStarts.setSize(patchEntries.size());
+//        forAll(patchEntries, patchi)
+//        {
+//            basePatchNames[patchi] = patchEntries[patchi].keyword();
+//            const dictionary& d = patchEntries[patchi].dict();
+//            basePatchSizes[patchi] = readLabel(d.lookup("nFaces"));
+//            basePatchStarts[patchi] = readLabel(d.lookup("startFace"));
+//        }
+//    }
+//
+//
+//    const fvBoundaryMesh& fp = mesh.boundary();
+//
+//    // Construct an unallocated boundary. (note: the references to the
+//    // mesh-boundary are not used; names and sizes are from the base mesh)
+//    unallocatedFvBoundaryMesh baseBoundary;
+//    baseBoundary.setSize(basePatchNames.size());
+//    forAll(basePatchNames, patchi)
+//    {
+//        if (patchi < fp.size())
+//        {
+//            baseBoundary.set
+//            (
+//                patchi,
+//                new unallocatedGenericFvPatch
+//                (
+//                    fp[patchi].patch(),                 // unused reference
+//                    basePatchNames[patchi],
+//                    basePatchSizes[patchi],
+//                    basePatchStarts[patchi],
+//                    fp                                  // unused reference
+//                )
+//            );
+//        }
+//        else
+//        {
+//            // Patch non-existing in the boundaryMesh
+//            // Make up something
+//            baseBoundary.set
+//            (
+//                patchi,
+//                new unallocatedGenericFvPatch
+//                (
+//                    fp.last().patch(),                 // unused reference
+//                    basePatchNames[patchi],
+//                    basePatchSizes[patchi],
+//                    basePatchStarts[patchi],
+//                    fp                                  // unused reference
+//                )
+//            );
+//        }
+//    }
+//
+//    // Construct the (unallocated) mesh
+//    return autoPtr<unallocatedFvMesh>
+//    (
+//        new unallocatedFvMesh
+//        (
+//            io.db(),                    // database
+//            nCells,                     // nCells
+//            baseBoundary,               // boundary
+//            mesh.globalData()           // used for patchSchedule() only
+//        )
+//    );
+//}
+
+
 Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
 (
     const IOobject& io,
-    const fvMesh& mesh,
     const label nCells
 )
 {
@@ -126,7 +216,16 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     labelList basePatchStarts;
     wordList basePatchNames;
     {
-        polyBoundaryMeshEntries patchEntries(IOobject(io, "boundary"));
+        IOobject meshIO
+        (
+            io.name(),              // name of mesh
+            io.instance(),
+            fvMesh::meshSubDir,     // location of mesh files
+            io.db(),
+            IOobject::MUST_READ
+        );
+
+        polyBoundaryMeshEntries patchEntries(IOobject(meshIO, "boundary"));
 
         basePatchNames.setSize(patchEntries.size());
         basePatchSizes.setSize(patchEntries.size());
@@ -140,27 +239,57 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
         }
     }
 
-
-    const fvBoundaryMesh& fp = mesh.boundary();
-
-    // Construct an unallocated boundary. (note: the references to the
-    // mesh-boundary are not used; names and sizes are from the base mesh)
-    unallocatedFvBoundaryMesh baseBoundary;
-    baseBoundary.setSize(basePatchNames.size());
-    forAll(basePatchNames, patchi)
-    {
-        baseBoundary.set
+    // Construct the (unallocated) mesh
+    return autoPtr<unallocatedFvMesh>
+    (
+        new unallocatedFvMesh
         (
-            patchi,
-            new unallocatedGenericFvPatch
-            (
-                fp[patchi].patch(),                 // unused reference
-                basePatchNames[patchi],
-                basePatchSizes[patchi],
-                basePatchStarts[patchi],
-                fp                                  // unused reference
-            )
+            io.db(),                    // database
+            nCells,                     // nCells
+            basePatchNames,
+            basePatchSizes,
+            basePatchStarts,
+            *reinterpret_cast<const globalMeshData*>(0)
+        )
+    );
+}
+
+
+Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
+(
+    const IOobject& io
+)
+{
+    // Extract mesh information
+    label nCells;
+    labelList basePatchSizes;
+    labelList basePatchStarts;
+    wordList basePatchNames;
+    {
+        IOobject meshIO
+        (
+            io.name(),              // name of mesh
+            io.instance(),
+            fvMesh::meshSubDir,     // location of mesh files
+            io.db(),
+            IOobject::MUST_READ
         );
+
+        labelIOList owner(IOobject(meshIO, "owner"));
+        nCells = (owner.size() == 0 ? 0 : max(owner)+1);
+
+        polyBoundaryMeshEntries patchEntries(IOobject(meshIO, "boundary"));
+
+        basePatchNames.setSize(patchEntries.size());
+        basePatchSizes.setSize(patchEntries.size());
+        basePatchStarts.setSize(patchEntries.size());
+        forAll(patchEntries, patchi)
+        {
+            basePatchNames[patchi] = patchEntries[patchi].keyword();
+            const dictionary& d = patchEntries[patchi].dict();
+            basePatchSizes[patchi] = readLabel(d.lookup("nFaces"));
+            basePatchStarts[patchi] = readLabel(d.lookup("startFace"));
+        }
     }
 
     // Construct the (unallocated) mesh
@@ -170,8 +299,10 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
         (
             io.db(),                    // database
             nCells,                     // nCells
-            baseBoundary,               // boundary
-            mesh.globalData()           // used for patchSchedule() only
+            basePatchNames,
+            basePatchSizes,
+            basePatchStarts,
+            *reinterpret_cast<const globalMeshData*>(0)
         )
     );
 }

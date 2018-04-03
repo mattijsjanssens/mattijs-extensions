@@ -26,11 +26,11 @@ OptimisationSwitches
 
 DebugSwitches
 {
-    collated  1;
+    //collated  1;
     //OFstreamCollator 1;
     //masterCollatingOFstream2 1;
     //decomposedBlockData2 1;
-    masterUncollated    1;
+    //masterUncollated    1;
     autoDecomposing 1;
     autoReconstructing 1;
 //    dlLibraryTable  1;

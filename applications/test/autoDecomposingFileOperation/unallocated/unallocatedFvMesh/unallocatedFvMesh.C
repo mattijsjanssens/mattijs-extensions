@@ -40,21 +40,56 @@ defineTypeNameAndDebug(unallocatedFvMesh, 0);
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
+//Foam::unallocatedFvMesh::unallocatedFvMesh
+//(
+//    //const fvMesh& procMesh,
+//    const objectRegistry& db,
+//    const label nCells,
+//    const unallocatedFvBoundaryMesh& boundary,
+//    const globalMeshData& globalData
+//)
+//:
+//    volMesh(*this), //(procMesh),
+//    db_(db),
+//    nCells_(nCells),
+//    boundary_(boundary),
+//    globalData_(globalData)
+//{}
+
+
 Foam::unallocatedFvMesh::unallocatedFvMesh
 (
-    //const fvMesh& procMesh,
     const objectRegistry& db,
     const label nCells,
-    const unallocatedFvBoundaryMesh& boundary,
+    const wordList& patchNames,
+    const labelList& patchSizes,
+    const labelList& patchStarts,
     const globalMeshData& globalData
 )
 :
     volMesh(*this), //(procMesh),
     db_(db),
     nCells_(nCells),
-    boundary_(boundary),
+    //boundary_(patchNames.size()),
     globalData_(globalData)
-{}
+{
+    boundary_.setSize(patchNames.size());
+    forAll(boundary_, patchi)
+    {
+        boundary_.set
+        (
+            patchi,
+            new unallocatedGenericFvPatch
+            (
+                *reinterpret_cast<const polyPatch*>(0), //unused reference
+                patchNames[patchi],
+                patchSizes[patchi],
+                patchStarts[patchi],
+                *reinterpret_cast<const fvBoundaryMesh*>(0) // unused reference
+            )
+        );
+    }
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
