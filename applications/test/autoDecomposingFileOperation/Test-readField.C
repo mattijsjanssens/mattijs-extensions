@@ -55,7 +55,10 @@ int main(int argc, char *argv[])
 
     if (!Pstream::parRun())
     {
-        //FatalErrorInFunction << "Not running in parallel" << exit(FatalError);
+        // We've got IOobject so:
+        //  - (undecomposed) objectRegistry (probably mesh)
+        //  - (undecomposed) Time
+        // Use this to load processor Times and meshes
 
         // Read the processor databases
         label nProcs = fileHandler().nProcs(args.path(), word::null);
@@ -181,7 +184,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    #include "createMesh.H"
+    //#include "createMesh.H"
 
 
 
@@ -220,6 +223,7 @@ int main(int argc, char *argv[])
         false
     );
 
+DebugVar(baseIO.objectPath());
 
     autoPtr<mapDistributePolyMesh> distMapPtr
     (
@@ -229,6 +233,9 @@ int main(int argc, char *argv[])
         )
     );
     const mapDistributePolyMesh& distMap = distMapPtr();
+
+DebugVar(distMap.cellMap());
+DebugVar(distMap.cellMap().constructSize());
 
     autoPtr<unallocatedFvMesh> baseMeshPtr
     (
@@ -240,7 +247,7 @@ int main(int argc, char *argv[])
     );
     unallocatedFvMesh& baseMesh = baseMeshPtr();
 
-
+DebugVar(baseMesh.nCells());
 
     // Read field on baseMesh
     uVolScalarField baseFld
@@ -274,7 +281,7 @@ int main(int argc, char *argv[])
     parUnallocatedFvFieldReconstructor reconstructor(baseMesh, mesh, distMap);
 
     // Load local field
-    volScalarField p
+    uVolScalarField p
     (
         IOobject
         (
