@@ -10,25 +10,49 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      snappyHexMeshDict;
+    location    "system";
+    object      fvSolution;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// Geometry. Definition of all surfaces. All surfaces are of class
-// searchableSurface.
-// Surfaces are used
-// - to specify refinement for any mesh cell intersecting it
-// - to specify refinement for any mesh cell inside/outside/near
-// - to 'snap' the mesh boundary to the surface
-geometry
+solvers
 {
-    motorBike
+    T
     {
-        fileName "motorBike.obj";
-        type triSurfaceMesh;
-        name banana;
+        solver          PCG_debug;
+        preconditioner  DIC_debug;
+        tolerance       1e-06;
+        relTol          0.05;
     }
-};
+
+//    pFinal
+//    {
+//        $p;
+//        relTol          0;
+//    }
+//
+//    U
+//    {
+//        solver          smoothSolver;
+//        smoother        symGaussSeidel;
+//        tolerance       1e-05;
+//        relTol          0;
+//    }
+}
+
+//PISO
+//{
+//    nCorrectors     2;
+//    nNonOrthogonalCorrectors 0;
+//    pRefCell        0;
+//    pRefValue       0;
+//}
+
+SIMPLE
+{
+    nNonOrthogonalCorrectors 0;
+}
+
 
 
 // ************************************************************************* //

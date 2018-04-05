@@ -10,25 +10,42 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      snappyHexMeshDict;
+    location    "system";
+    object      fvSchemes;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// Geometry. Definition of all surfaces. All surfaces are of class
-// searchableSurface.
-// Surfaces are used
-// - to specify refinement for any mesh cell intersecting it
-// - to specify refinement for any mesh cell inside/outside/near
-// - to 'snap' the mesh boundary to the surface
-geometry
+ddtSchemes
 {
-    motorBike
-    {
-        fileName "motorBike.obj";
-        type triSurfaceMesh;
-        name banana;
-    }
-};
+    default         steadyState;    //Euler;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+    grad(p)         Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+    div(phi,U)      Gauss linear;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
 
 
 // ************************************************************************* //

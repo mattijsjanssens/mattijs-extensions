@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -72,6 +72,9 @@ private:
 
     // Private member data
 
+        //- Supplied fileName override
+        fileName fName_;
+
         //- Optional min triangle quality. Triangles below this get
         //  ignored for normal calculation
         scalar minQuality_;
@@ -95,13 +98,6 @@ private:
         //    const fileName&,
         //    const word&
         //);
-
-        //- Check file existence
-        static const fileName& checkFile
-        (
-            const fileName& fName,
-            const fileName& objectName
-        );
 
         //- Return fileName to load IOobject from
         static fileName checkFile(const IOobject& io);

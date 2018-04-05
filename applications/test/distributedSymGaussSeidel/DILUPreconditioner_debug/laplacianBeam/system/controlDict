@@ -10,25 +10,42 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      snappyHexMeshDict;
+    location    "system";
+    object      controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// Geometry. Definition of all surfaces. All surfaces are of class
-// searchableSurface.
-// Surfaces are used
-// - to specify refinement for any mesh cell intersecting it
-// - to specify refinement for any mesh cell inside/outside/near
-// - to 'snap' the mesh boundary to the surface
-geometry
-{
-    motorBike
-    {
-        fileName "motorBike.obj";
-        type triSurfaceMesh;
-        name banana;
-    }
-};
+libs            ("libDILUPreconditioner_debug.so");
+
+application     laplacianFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          writeNow;   //endTime;
+
+endTime         0.5;
+
+deltaT          0.001;
+
+writeControl    timeStep;
+
+writeInterval   20;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
 
 
 // ************************************************************************* //

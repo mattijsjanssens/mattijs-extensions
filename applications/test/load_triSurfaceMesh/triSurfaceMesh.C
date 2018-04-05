@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -107,7 +107,6 @@ Foam::fileName Foam::triSurfaceMesh::checkFile(const IOobject& io)
             << "Cannot find triSurfaceMesh starting from "
             << io.objectPath() << exit(FatalError);
     }
-DebugVar(fName);
 
     return fName;
 }
@@ -122,6 +121,7 @@ Foam::fileName Foam::triSurfaceMesh::checkFile
     fileName fName;
     if (dict.readIfPresent("fileName", fName, false, false))
     {
+        fName.expand();
         if (!fName.isAbsolute())
         {
             fName = io.objectPath().path()/fName;
@@ -143,9 +143,6 @@ Foam::fileName Foam::triSurfaceMesh::checkFile
                 << io.objectPath() << exit(FatalError);
         }
     }
-
-DebugVar(fName);
-
 
     return fName;
 }
@@ -360,11 +357,21 @@ Foam::triSurfaceMesh::triSurfaceMesh
             false       // searchableSurface already registered under name
         )
     ),
-    triSurface(checkFile(static_cast<const searchableSurface&>(*this), dict)),
+    triSurface
+    (
+        checkFile
+        (
+            static_cast<const searchableSurface&>(*this),
+            dict
+        )
+    ),
     triSurfaceRegionSearch(static_cast<const triSurface&>(*this), dict),
     minQuality_(-1),
     surfaceClosed_(-1)
 {
+    // Reading from supplied fileName instead of objectPath/filePath
+    dict.readIfPresent("fileName", fName_, false, false);
+
     scalar scaleFactor = 0;
 
     // allow rescaling of the surface points
@@ -825,7 +832,24 @@ bool Foam::triSurfaceMesh::writeObject
     IOstream::compressionType cmp
 ) const
 {
-    fileName fullPath(searchableSurface::objectPath());
+    fileName fullPath;
+    if (fName_.size())
+    {
+        // Override file name
+
+        fullPath = fName_;
+
+        fullPath.expand();
+        if (!fullPath.isAbsolute())
+        {
+            // Add directory from regIOobject
+            fullPath = searchableSurface::objectPath().path()/fullPath;
+        }
+    }
+    else
+    {
+        fullPath = searchableSurface::objectPath();
+    }
 
     if (!mkDir(fullPath.path()))
     {

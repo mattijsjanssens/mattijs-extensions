@@ -1,0 +1,5 @@
+PCG.C
+DICPreconditioner.C
+DILUPreconditioner.C
+
+LIB = $(FOAM_USER_LIBBIN)/libDILUPreconditioner_debug
