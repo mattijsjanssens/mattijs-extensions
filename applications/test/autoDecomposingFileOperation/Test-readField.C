@@ -34,7 +34,6 @@ Description
 #include "argList.H"
 #include "uVolFields.H"
 #include "unallocatedFvMesh.H"
-//#include "unallocatedFvPatchField.H"
 #include "unallocatedGenericFvPatchField.H"
 #include "parUnallocatedFvFieldReconstructor.H"
 #include "unallocatedFvMeshTools.H"
@@ -57,7 +56,10 @@ int main(int argc, char *argv[])
         // Use this to load processor Times and meshes
 
         // Read the processor databases
+
+DebugVar(args.path());
         label nProcs = fileHandler().nProcs(args.path(), word::null);
+DebugVar(nProcs);
         PtrList<Time> databases(nProcs);
         forAll(databases, proci)
         {

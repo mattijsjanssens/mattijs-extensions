@@ -1,10 +1,8 @@
 EXE_INC = \
     -DFULLDEBUG -g -O0 \
+    -I../unallocated/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
-    -I$(LIB_SRC)/parallel/decompose/decompose/lnInclude \
-    -I$(LIB_SRC)/parallel/reconstruct/reconstruct
+    -I$(LIB_SRC)/parallel/reconstruct/reconstruct/lnInclude
 
 LIB_LIBS = \
-    -lfiniteVolume \
-    -ldecompose \
-    -lreconstruct
+    -L$(FOAM_USER_LIBBIN) -lunallocated

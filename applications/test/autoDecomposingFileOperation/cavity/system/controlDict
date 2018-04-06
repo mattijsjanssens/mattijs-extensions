@@ -15,12 +15,12 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//libs    ("libautoDecomposingFileOperation.so");
+libs    ("libautoDecomposingFileOperation.so");
 
 OptimisationSwitches
 {
     //fileHandler autoDecomposing;
-    //fileHandler autoReconstructing;
+    fileHandler autoReconstructing;
 }
 
 

@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -26,10 +26,17 @@ License
 #include "autoReconstructingFileOperation.H"
 #include "Time.H"
 #include "fvMesh.H"
-#include "fvFieldDecomposer.H"
+//#include "fvFieldDecomposer.H"
 #include "addToRunTimeSelectionTable.H"
-#include "processorMeshes.H"
-#include "fvFieldReconstructor.H"
+//#include "processorMeshes.H"
+//#include "fvFieldReconstructor.H"
+
+#include "uVolFields.H"
+#include "unallocatedFvMesh.H"
+#include "unallocatedGenericFvPatchField.H"
+#include "unallocatedFvMeshTools.H"
+#include "unallocatedFvFieldReconstructor.H"
+
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -441,6 +448,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     if (type == volScalarField::typeName && haveProcPath(io, procPath))
     {
         Pout<< "Database   :" << io.db().name() << endl;
+/*
         fvMesh& mesh = const_cast<fvMesh&>
         (
             dynamic_cast<const fvMesh&>(io.db())
@@ -546,6 +554,208 @@ DebugVar(procFields);
         );
 DebugVar(tfld());
 DebugVar(io.type());
+
+*/
+
+//XXXXXXXXXX
+        // Read the processor databases
+
+DebugVar(io.time().path());
+        label nProcs = fileHandler().nProcs(io.time().path(), word::null);
+DebugVar(nProcs);
+        PtrList<Time> databases(nProcs);
+        forAll(databases, proci)
+        {
+            databases.set
+            (
+                proci,
+                new Time
+                (
+                    Time::controlDictName,
+                    io.rootPath(),
+                    io.caseName()/fileName(word("processor") + name(proci))
+                )
+            );
+        }
+
+        PtrList<labelIOList> cellProcAddressing(nProcs);
+        PtrList<labelIOList> faceProcAddressing(nProcs);
+        PtrList<labelIOList> boundaryProcAddressing(nProcs);
+
+        forAll(cellProcAddressing, proci)
+        {
+            cellProcAddressing.set
+            (
+                proci,
+                new labelIOList
+                (
+                    IOobject
+                    (
+                        "cellProcAddressing",
+                        io.time().constant(), //mesh.facesInstance(),
+                        fvMesh::meshSubDir,
+                        databases[proci],
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    )
+                )
+            );
+        }
+        forAll(faceProcAddressing, proci)
+        {
+            faceProcAddressing.set
+            (
+                proci,
+                new labelIOList
+                (
+                    IOobject
+                    (
+                        "faceProcAddressing",
+                        io.time().constant(), //mesh.facesInstance(),
+                        fvMesh::meshSubDir,
+                        databases[proci],
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    )
+                )
+            );
+        }
+        forAll(boundaryProcAddressing, proci)
+        {
+            boundaryProcAddressing.set
+            (
+                proci,
+                new labelIOList
+                (
+                    IOobject
+                    (
+                        "boundaryProcAddressing",
+                        io.time().constant(), //mesh.facesInstance(),
+                        fvMesh::meshSubDir,
+                        databases[proci],
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    )
+                )
+            );
+        }
+
+        // Read the (unallocated) processor meshes
+        PtrList<unallocatedFvMesh> procMeshes(nProcs);
+
+        forAll(procMeshes, proci)
+        {
+            Pout<< "** reading procMesh:" << proci
+                << " with cellProcAddresing:"
+                << cellProcAddressing[proci].size() << endl;
+
+            procMeshes.set
+            (
+                proci,
+                unallocatedFvMeshTools::newMesh
+                (
+                    IOobject
+                    (
+                        fvMesh::defaultRegion,
+                        cellProcAddressing[proci].instance(),
+                        databases[proci],
+                        IOobject::MUST_READ
+                    ),
+                    cellProcAddressing[proci].size()
+                )
+            );
+            Pout<< procMeshes[proci].info() << endl;
+        }
+
+
+        // Get mesh as unallocated
+        Pout<< "** Reading baseMesh" << endl;
+        autoPtr<unallocatedFvMesh> uMesh
+        (
+            unallocatedFvMeshTools::newMesh
+            (
+                IOobject
+                (
+                    fvMesh::defaultRegion,      // name of mesh
+                    io.time().timeName(),         // start search
+                    io.time(),
+                    IOobject::MUST_READ
+                )
+            )
+        );
+
+        const unallocatedFvFieldReconstructor reconstructor
+        (
+            uMesh(),
+            procMeshes,
+            faceProcAddressing,
+            cellProcAddressing,
+            boundaryProcAddressing
+        );
+
+        // Read field on proc meshes
+        PtrList<uVolScalarField> procFields(nProcs);
+        forAll(procFields, proci)
+        {
+            const unallocatedFvMesh& procMesh = procMeshes[proci];
+
+            Pout<< "proc:" << proci << procMesh.info() << endl;
+
+            procFields.set
+            (
+                proci,
+                new uVolScalarField
+                (
+                    IOobject
+                    (
+                        io.name(),
+                        procMesh.time().timeName(),
+                        procMesh.thisDb(),
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE,
+                        false
+                    ),
+                    procMesh
+                )
+            );
+
+            DebugVar(procFields[proci]);
+        }
+
+
+        // Map local field onto baseMesh
+        //IOobject reconstructIO(io);
+        //reconstructIO.readOpt() = IOobject::NO_READ;
+        tmp<uVolScalarField> tfld
+        (
+            reconstructor.reconstructFvVolumeField
+            (
+                IOobject
+                (
+                    io.name(),
+                    uMesh().time().timeName(),
+                    uMesh().thisDb(),
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE,
+                    false
+                ),
+                //reconstructIO,
+                procFields
+            )
+        );
+        //DebugVar(tfld());
+        const uVolScalarField::Boundary& bfld = tfld().boundaryField();
+        forAll(bfld, patchi)
+        {
+            DebugVar(patchi);
+            DebugVar(bfld[patchi].size());
+            DebugVar(bfld[patchi].type());
+            DebugVar(bfld[patchi].patch().size());
+            DebugVar(bfld[patchi].patch().type());
+            DebugVar(bfld[patchi].patch().name());
+        }
+
+//XXXXXXXXXX
 
         OStringStream os;
         os << tfld();
