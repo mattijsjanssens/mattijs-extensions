@@ -29,12 +29,13 @@ License
 
 void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 {
-    const fvBoundaryMesh& fvb = procMesh_.boundary();
+    const unallocatedFvBoundaryMesh& fvb = procMesh_.boundary();
 
     patchFaceMaps_.setSize(fvb.size());
     forAll(fvb, patchI)
     {
-        if (!isA<processorFvPatch>(fvb[patchI]))
+        //if (!isA<processorFvPatch>(fvb[patchI]))
+        if (patchI < baseMesh_.boundary().size())
         {
             // Create map for patch faces only
 
@@ -78,7 +79,7 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 Foam::parUnallocatedFvFieldReconstructor::parUnallocatedFvFieldReconstructor
 (
     unallocatedFvMesh& baseMesh,
-    const fvMesh& procMesh,
+    const unallocatedFvMesh& procMesh,
     const mapDistributePolyMesh& distMap
 )
 :

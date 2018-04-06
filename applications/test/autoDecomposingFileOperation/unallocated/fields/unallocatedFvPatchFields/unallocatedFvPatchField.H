@@ -133,7 +133,7 @@ public:
             unallocatedFvPatchField,
             patchMapper,
             (
-                const fvPatchField<Type>& ptf,
+                const unallocatedFvPatchField<Type>& ptf,
                 const fvPatch& p,
                 const DimensionedField<Type, unallocatedFvMesh>& iF,
                 const fvPatchFieldMapper& m
@@ -201,7 +201,7 @@ public:
         //  patch
         unallocatedFvPatchField
         (
-            const fvPatchField<Type>&,
+            const unallocatedFvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&
@@ -267,7 +267,7 @@ public:
         //  a given unallocatedFvPatchField mapped onto a new patch
         static tmp<unallocatedFvPatchField<Type>> New
         (
-            const fvPatchField<Type>&,
+            const unallocatedFvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&

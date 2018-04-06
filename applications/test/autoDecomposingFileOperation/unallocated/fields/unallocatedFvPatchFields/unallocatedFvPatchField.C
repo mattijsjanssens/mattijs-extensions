@@ -123,11 +123,19 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
         }
         else
         {
-            FatalIOErrorInFunction
+        //    FatalIOErrorInFunction
+        //    (
+        //        dict
+        //    )   << "Essential entry 'value' missing"
+        //        << exit(FatalIOError);
+
+            IOWarningInFunction
             (
                 dict
-            )   << "Essential entry 'value' missing"
-                << exit(FatalIOError);
+            )   << "Essential entry 'value' missing."
+                << " Initialising to zero instead"
+                << endl;
+            Field<Type>::operator=(Zero);
         }
     }
 }
@@ -136,7 +144,7 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
-    const fvPatchField<Type>& ptf,
+    const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& mapper

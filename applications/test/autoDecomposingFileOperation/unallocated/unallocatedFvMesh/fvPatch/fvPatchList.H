@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,72 +21,28 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::unallocatedFvBoundaryMesh
+Typedef
+    Foam::fvPatchList
 
 Description
-
-SourceFiles
-    //unallocatedFvBoundaryMeshI.H
-    //unallocatedFvBoundaryMesh.C
-    //unallocatedFvBoundaryMeshIO.C
+    container classes for fvPatch
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef unallocatedFvBoundaryMesh_H
-#define unallocatedFvBoundaryMesh_H
+#ifndef fvPatchList_H
+#define fvPatchList_H
 
+#include "fvPatch.H"
 #include "PtrList.H"
-#include "unallocatedGenericFvPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-/*---------------------------------------------------------------------------*\
-                  Class unallocatedFvBoundaryMesh Declaration
-\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-class unallocatedFvBoundaryMesh
-:
-    public PtrList<unallocatedGenericFvPatch>
-{
-    // Private data
-
-
-    // Private Member Functions
-
-        //- Disallow default bitwise copy construct
-        unallocatedFvBoundaryMesh(const unallocatedFvBoundaryMesh&);
-
-        //- Disallow default bitwise assignment
-        void operator=(const unallocatedFvBoundaryMesh&);
-
-
-public:
-
-    // Constructors
-
-        //- Construct null
-        unallocatedFvBoundaryMesh()
-        :
-            PtrList<unallocatedGenericFvPatch>()
-        {}
-
-
-    // Member functions
-
-        //- Find patch index given a name
-        label findPatchID(const word& patchName) const;
-
-        //- Find patch indices given a name
-        labelList findIndices(const keyType&, const bool useGroups) const;
-
-        //- Return patch index for a given face label
-        label whichPatch(const label faceIndex) const;
-};
-
+typedef PtrList<fvPatch> fvPatchList;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

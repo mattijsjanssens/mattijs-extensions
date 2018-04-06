@@ -55,14 +55,14 @@ Foam::unallocatedEmptyFvPatchField<Type>::unallocatedEmptyFvPatchField
     const dictionary& dict
 )
 :
-    unallocatedFvPatchField<Type>(p, iF, dict)
+    unallocatedFvPatchField<Type>(p, iF, dict, false)
 {}
 
 
 template<class Type>
 Foam::unallocatedEmptyFvPatchField<Type>::unallocatedEmptyFvPatchField
 (
-    const fvPatchField<Type>& ptf,
+    const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& mapper

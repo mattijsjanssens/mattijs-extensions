@@ -39,8 +39,6 @@ SourceFiles
 #ifndef parUnallocatedFvFieldReconstructor_H
 #define parUnallocatedFvFieldReconstructor_H
 
-#include "PtrList.H"
-#include "fvMesh.H"
 #include "unallocatedFvMesh.H"
 #include "unallocatedFvPatchField.H"
 
@@ -64,7 +62,7 @@ class parUnallocatedFvFieldReconstructor
         unallocatedFvMesh& baseMesh_;
 
         //- Processor mesh reference
-        const fvMesh& procMesh_;
+        const unallocatedFvMesh& procMesh_;
 
         //- Distribution map reference
         const mapDistributePolyMesh& distMap_;
@@ -96,7 +94,7 @@ public:
         parUnallocatedFvFieldReconstructor
         (
             unallocatedFvMesh& baseMesh,
-            const fvMesh& procMesh,
+            const unallocatedFvMesh& procMesh,
             const mapDistributePolyMesh& distMap
         );
 
@@ -108,7 +106,7 @@ public:
         tmp<DimensionedField<Type, unallocatedFvMesh> >
         reconstructFvVolumeInternalField
         (
-            const DimensionedField<Type, volMesh>&
+            const DimensionedField<Type, unallocatedFvMesh>&
         ) const;
 
         //- Reconstruct volume field
@@ -116,7 +114,12 @@ public:
         tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh> >
         reconstructFvVolumeField
         (
-            const GeometricField<Type, fvPatchField, volMesh>& fld
+            const GeometricField
+            <
+                Type,
+                unallocatedFvPatchField,
+                unallocatedFvMesh
+            >& fld
         ) const;
 };
 

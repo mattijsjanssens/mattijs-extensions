@@ -26,26 +26,6 @@ License
 #include "unallocatedFvBoundaryMesh.H"
 #include "stringListOps.H"
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-// * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 Foam::label Foam::unallocatedFvBoundaryMesh::findPatchID
@@ -58,6 +38,28 @@ Foam::label Foam::unallocatedFvBoundaryMesh::findPatchID
     forAll(patches, patchi)
     {
         if (patches[patchi].name() == patchName)
+        {
+            return patchi;
+        }
+    }
+
+    // Not found, return -1
+    return -1;
+}
+
+
+Foam::label Foam::unallocatedFvBoundaryMesh::whichPatch
+(
+    const label faceIndex
+) const
+{
+    const PtrList<unallocatedGenericFvPatch>& patches = *this;
+
+    forAll(patches, patchi)
+    {
+        const unallocatedGenericFvPatch& pp = patches[patchi];
+
+        if (pp.start() <= faceIndex && (pp.start()+pp.size() > faceIndex))
         {
             return patchi;
         }
@@ -149,15 +151,6 @@ Foam::labelList Foam::unallocatedFvBoundaryMesh::findIndices
 
     return indices;
 }
-
-
-// * * * * * * * * * * * * * * Member Operators  * * * * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * * * Friend Functions  * * * * * * * * * * * * * * //
-
-
-// * * * * * * * * * * * * * * Friend Operators * * * * * * * * * * * * * * //
 
 
 // ************************************************************************* //

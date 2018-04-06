@@ -62,6 +62,7 @@ class unallocatedGenericFvPatchField
 
         word actualTypeName_;
         dictionary dict_;
+        bool hasValue_;
 
         HashPtrTable<scalarField> scalarFields_;
         HashPtrTable<vectorField> vectorFields_;
@@ -109,7 +110,7 @@ public:
         //- Construct by mapping given patchField<Type> onto a new patch
         unallocatedGenericFvPatchField
         (
-            const fvPatchField<Type>&,
+            const unallocatedFvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&

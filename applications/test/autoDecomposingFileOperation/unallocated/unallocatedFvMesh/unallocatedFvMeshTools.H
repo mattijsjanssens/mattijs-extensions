@@ -57,38 +57,25 @@ class unallocatedFvMeshTools
 public:
 
     //- Read the *procAddressing files (from provided location) and
-    //  construct a single reconstruction map from it
+    //  construct a single mesh reconstruction map from it
     static autoPtr<mapDistributePolyMesh> readReconstructMap
     (
         const IOobject& io
     );
 
-//    //- Read undecomposed boundary (from provided mesh location) and construct
-//    //  placeholder mesh. Still contains references to other mesh providing
-//    //  patch schedule etc. (hopefully unused)
-//    static autoPtr<unallocatedFvMesh> newMesh
-//    (
-//        const IOobject& io,
-//        const fvMesh& mesh,
-//        const label nCells
-//    );
-
-    //- Read boundary (from provided mesh location) and construct
-    //  placeholder mesh. Has illegal references to underlying globalMeshData
-    //  (hopefully unused)
+    //- Read boundary (searches for "faces" from provided instance) and
+    //  construct placeholder mesh. Has illegal references to underlying
+    //  globalMeshData (hopefully unused)
     static autoPtr<unallocatedFvMesh> newMesh
     (
         const IOobject& io,
         const label nCells
     );
 
-    //- Read owner&boundary (from provided mesh location) and construct
-    //  placeholder mesh. Has illegal references to underlying globalMeshData
-    //  (hopefully unused)
-    static autoPtr<unallocatedFvMesh> newMesh
-    (
-        const IOobject& io
-    );
+    //- Read owner&boundary (searches for "faces" from provided instance) and
+    //  construct placeholder mesh. Has illegal references to underlying
+    //  globalMeshData (hopefully unused)
+    static autoPtr<unallocatedFvMesh> newMesh(const IOobject& io);
 };
 
 

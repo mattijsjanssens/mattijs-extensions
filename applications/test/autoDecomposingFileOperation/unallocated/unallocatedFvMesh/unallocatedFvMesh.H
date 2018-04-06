@@ -35,8 +35,8 @@ Description
 //#include "GeoMesh.H"
 //#include "MeshObject.H"
 //#include "polyMesh.H"
-#include "volMesh.H"
 #include "unallocatedFvBoundaryMesh.H"
+#include "volMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,10 +56,18 @@ class unallocatedFvMesh
 {
     // Permanent data
 
+        const word name_;
+
         //- Database
         const objectRegistry& db_;
 
-        //- Size of internal
+        //- Number of internal faces
+        const label nInternalFaces_;
+
+        //- Number of faces
+        label nFaces_;
+
+        //- Number of cells
         const label nCells_;
 
         //- Boundary mesh
@@ -89,21 +97,11 @@ public:
 
     // Constructors
 
-//        //- Construct from boundary mesh and patch schedule
-//        unallocatedFvMesh
-//        (
-//            //const fvMesh& procMesh,
-//            const objectRegistry& db,
-//            const label nCells,
-//            //const label nFaces,
-//            //const label nPoints,
-//            const unallocatedFvBoundaryMesh& boundary,
-//            const globalMeshData& globalData
-//        );
-
-        //- Construct from parts
+        //- Construct from parts. nFaces, nInternalFaces derived from patch
+        //  info.
         unallocatedFvMesh
         (
+            const word& name,
             const objectRegistry& db,
             const label nCells,
             const wordList& patchNames,
@@ -155,12 +153,34 @@ public:
 
         // Basic mesh info
 
+            //- Override database name since this might be Time
+            const word& name() const
+            {
+                return name_;
+            }
+
             label nCells() const
             {
                 return nCells_;
             }
 
+            label nFaces() const
+            {
+                return nFaces_;
+            }
 
+            label nInternalFaces() const
+            {
+                return nInternalFaces_;
+            }
+
+
+        //- Return info proxy.
+        //  Used to print mesh information to a stream
+        InfoProxy<unallocatedFvMesh> info() const
+        {
+            return *this;
+        }
 
 
     // Member Operators
@@ -168,6 +188,10 @@ public:
         bool operator!=(const unallocatedFvMesh&) const;
         bool operator==(const unallocatedFvMesh&) const;
 };
+
+
+template<>
+Ostream& operator<<(Ostream&, const InfoProxy<unallocatedFvMesh>&);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

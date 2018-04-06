@@ -92,21 +92,27 @@ public:
     // Member Functions
 
             //- Return size
-            label size() const
+            virtual label size() const
             {
                 return size_;
             }
 
             //- Return start (overrides underlying polyPatch::start)
-            label start() const
+            virtual label start() const
             {
                 return start_;
             }
 
             //- Return name
-            const word& name() const
+            virtual const word& name() const
             {
                 return name_;
+            }
+
+            //- Return label of face in patch from global face label
+            inline label whichFace(const label l) const
+            {
+                return l - start_;
             }
 };
 

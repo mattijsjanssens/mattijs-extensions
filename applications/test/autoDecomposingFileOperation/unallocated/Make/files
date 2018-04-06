@@ -4,6 +4,9 @@ unallocatedFvMesh/unallocatedFvBoundaryMesh.C
 unallocatedFvMesh/unallocatedGenericFvPatch.C
 unallocatedFvMesh/unallocatedFvMeshTools.C
 
+unallocatedFvMesh/fvPatch/fvPatch.C
+unallocatedFvMesh/fvPatch/fvPatchNew.C
+
 /* PatchFields on unallocated mesh */
 fields/unallocatedFvPatchFields/unallocatedEmptyFvPatchFields.C
 fields/unallocatedFvPatchFields/unallocatedFvPatchFields.C

@@ -180,7 +180,7 @@ template<class Type>
 Foam::tmp<Foam::unallocatedFvPatchField<Type>>
 Foam::unallocatedFvPatchField<Type>::New
 (
-    const fvPatchField<Type>& ptf,
+    const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& pfMapper

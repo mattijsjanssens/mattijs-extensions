@@ -24,7 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "unallocatedFvMesh.H"
-
+#include "IOmanip.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -59,6 +59,7 @@ defineTypeNameAndDebug(unallocatedFvMesh, 0);
 
 Foam::unallocatedFvMesh::unallocatedFvMesh
 (
+    const word& name,
     const objectRegistry& db,
     const label nCells,
     const wordList& patchNames,
@@ -68,7 +69,9 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
 )
 :
     volMesh(*this), //(procMesh),
+    name_(name),
     db_(db),
+    nInternalFaces_(patchStarts.size() ? min(patchStarts) : 0),
     nCells_(nCells),
     //boundary_(patchNames.size()),
     globalData_(globalData)
@@ -88,6 +91,12 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
                 *reinterpret_cast<const fvBoundaryMesh*>(0) // unused reference
             )
         );
+    }
+
+    nFaces_ = 0;
+    forAll(patchStarts, patchi)
+    {
+        nFaces_ = max(nFaces_, patchStarts[patchi]+patchSizes[patchi]);
     }
 }
 
@@ -120,6 +129,49 @@ bool Foam::unallocatedFvMesh::operator==(const unallocatedFvMesh& bm) const
 {
     return &bm == this;
 }
+
+
+// * * * * * * * * * * * * * Ostream operator  * * * * * * * * * * * * * * * //
+
+template<>
+Foam::Ostream& Foam::operator<<
+(
+    Ostream& os,
+    const InfoProxy<unallocatedFvMesh>& proxy
+)
+{
+    const unallocatedFvMesh& mesh = proxy.t_;
+
+    const unallocatedFvBoundaryMesh& patches = mesh.boundary();
+
+    os  << "Mesh " << mesh.name() << " stats" << nl
+        << "    faces:            " << mesh.nFaces() << nl
+        << "    internal faces:   " << mesh.nInternalFaces() << nl
+        << "    cells:            " << mesh.nCells() << nl
+        << "    boundary patches: " << patches.size() << nl
+        << nl;
+
+    os.setf(ios_base::left);
+
+    os  << "    "
+        << setw(20) << "Patch"
+        << setw(9) << "Faces"
+        << setw(9) << "Type"
+        << nl;
+    forAll(patches, patchi)
+    {
+        const unallocatedGenericFvPatch& pp = patches[patchi];
+        os  << "    "
+            << setw(20) << pp.name()
+            << setw(9) << pp.size()
+            << setw(9) << pp.type()
+            << nl;
+    }
+
+    return os;
+}
+
+
 
 
 // ************************************************************************* //

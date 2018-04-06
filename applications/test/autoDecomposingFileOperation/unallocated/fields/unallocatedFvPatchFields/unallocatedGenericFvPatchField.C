@@ -385,7 +385,8 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     const DimensionedField<Type, unallocatedFvMesh>& iF
 )
 :
-    unallocatedFvPatchField<Type>(p, iF)
+    unallocatedFvPatchField<Type>(p, iF),
+    hasValue_(false)
 {
     FatalErrorInFunction
         << "Trying to construct an unallocatedGenericFvPatchField on patch "
@@ -403,27 +404,42 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     const dictionary& dict
 )
 :
-    unallocatedFvPatchField<Type>(p, iF, dict),
+    unallocatedFvPatchField<Type>(p, iF, dict, true),
     actualTypeName_(dict.lookup("type")),
-    dict_(dict)
+    dict_(dict),
+    hasValue_(dict.found("value"))
 {
-    if (!dict.found("value"))
-    {
-        FatalIOErrorInFunction
-        (
-            dict
-        )   << "\n    Cannot find 'value' entry"
-            << " on patch " << this->patch().name()
-            //<< " of field " << this->internalField().name()
-            //<< " in file " << this->internalField().objectPath()
-            << nl
-            << "    which is required to set the"
-               " values of the generic patch field." << nl
-            << "    (Actual type " << actualTypeName_ << ")" << nl
-            << "\n    Please add the 'value' entry to the write function "
-               "of the user-defined boundary-condition\n"
-            << exit(FatalIOError);
-    }
+    // if (!dict.found("value"))
+    // {
+    //     FatalIOErrorInFunction
+    //     (
+    //         dict
+    //     )   << "\n    Cannot find 'value' entry"
+    //         << " on patch " << this->patch().name()
+    //         //<< " of field " << this->internalField().name()
+    //         //<< " in file " << this->internalField().objectPath()
+    //         << nl
+    //         << "    which is required to set the"
+    //            " values of the generic patch field." << nl
+    //         << "    (Actual type " << actualTypeName_ << ")" << nl
+    //         << "\n    Please add the 'value' entry to the write function "
+    //            "of the user-defined boundary-condition\n"
+    //         << exit(FatalIOError);
+    // }
+    // if (!hasValue_)
+    // {
+    //     IOWarningInFunction
+    //     (
+    //         dict
+    //     )   << "\n    Cannot find 'value' entry"
+    //         << " on patch " << this->patch().name()
+    //         << " of field " << iF.name()
+    //         << " in file " << iF.objectPath()
+    //         << nl
+    //         << endl;
+    //     // Set to any value to avoid any memory errors - will not be printed
+    //     Field<Type>::operator=(Zero);
+    // }
 
     // Read contents into typed fields
     read
@@ -441,7 +457,7 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
 template<class Type>
 Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
 (
-    const fvPatchField<Type>& ptf,
+    const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,
     const DimensionedField<Type, unallocatedFvMesh>& iF,
     const fvPatchFieldMapper& mapper
@@ -458,6 +474,7 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     is >> dict_;
 
     actualTypeName_ = word(dict_.lookup("type"));
+    hasValue_ = dict_.found("value");
 
     // Read data fields from original patchField
     HashPtrTable<scalarField> scalarFields;
@@ -559,6 +576,7 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     unallocatedFvPatchField<Type>(ptf),
     actualTypeName_(ptf.actualTypeName_),
     dict_(ptf.dict_),
+    hasValue_(ptf.hasValue_),
     scalarFields_(ptf.scalarFields_),
     vectorFields_(ptf.vectorFields_),
     sphericalTensorFields_(ptf.sphericalTensorFields_),
@@ -577,6 +595,7 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     unallocatedFvPatchField<Type>(ptf, iF),
     actualTypeName_(ptf.actualTypeName_),
     dict_(ptf.dict_),
+    hasValue_(ptf.hasValue_),
     scalarFields_(ptf.scalarFields_),
     vectorFields_(ptf.vectorFields_),
     sphericalTensorFields_(ptf.sphericalTensorFields_),
@@ -791,7 +810,10 @@ void Foam::unallocatedGenericFvPatchField<Type>::write(Ostream& os) const
         }
     }
 
-    this->writeEntry("value", os);
+    if (hasValue_)
+    {
+        this->writeEntry("value", os);
+    }
 }
 
 

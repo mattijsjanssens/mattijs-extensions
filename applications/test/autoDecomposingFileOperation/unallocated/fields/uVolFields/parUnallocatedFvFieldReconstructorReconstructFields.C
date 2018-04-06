@@ -41,43 +41,43 @@ License
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-template<class Type>
-Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedFvMesh> >
-Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeInternalField
-(
-    const DimensionedField<Type, volMesh>& fld
-) const
-{
-    distributedUnallocatedDirectFieldMapper mapper
-    (
-        labelUList::null(),
-        distMap_.cellMap()
-    );
-
-    Field<Type> internalField(fld, mapper);
-
-    // Construct a volField
-    IOobject baseIO
-    (
-        fld.name(),
-        baseMesh_.time().timeName(),
-        fld.local(),
-        baseMesh_,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE
-    );
-
-    return tmp<DimensionedField<Type, unallocatedFvMesh> >
-    (
-        new DimensionedField<Type, unallocatedFvMesh>
-        (
-            baseIO,
-            baseMesh_,
-            fld.dimensions(),
-            internalField
-        )
-    );
-}
+// template<class Type>
+// Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedFvMesh> >
+// Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeInternalField
+// (
+//     const DimensionedField<Type, volMesh>& fld
+// ) const
+// {
+//     distributedUnallocatedDirectFieldMapper mapper
+//     (
+//         labelUList::null(),
+//         distMap_.cellMap()
+//     );
+//
+//     Field<Type> internalField(fld, mapper);
+//
+//     // Construct a volField
+//     IOobject baseIO
+//     (
+//         fld.name(),
+//         baseMesh_.time().timeName(),
+//         fld.local(),
+//         baseMesh_,
+//         IOobject::NO_READ,
+//         IOobject::NO_WRITE
+//     );
+//
+//     return tmp<DimensionedField<Type, unallocatedFvMesh> >
+//     (
+//         new DimensionedField<Type, unallocatedFvMesh>
+//         (
+//             baseIO,
+//             baseMesh_,
+//             fld.dimensions(),
+//             internalField
+//         )
+//     );
+// }
 
 
 // Reconstruct a field onto the baseMesh
@@ -93,7 +93,7 @@ Foam::tmp
 >
 Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
 (
-    const GeometricField<Type, fvPatchField, volMesh>& fld
+    const GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh>& fld
 ) const
 {
     // Create the internalField by remote mapping
@@ -113,13 +113,16 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // Note: patchFields still on mesh, not baseMesh
 
-    PtrList<fvPatchField<Type> > patchFields(fld.mesh().boundary().size());
+    PtrList<unallocatedFvPatchField<Type> > patchFields
+    (
+        fld.mesh().boundary().size()
+    );
 
     const typename GeometricField
     <
         Type,
-        fvPatchField,
-        volMesh
+        unallocatedFvPatchField,
+        unallocatedFvMesh
     >::Boundary& bfld = fld.boundaryField();
 
     forAll(bfld, patchI)
@@ -154,7 +157,7 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
         {
             const fvPatch& basePatch = baseMesh_.boundary()[patchI];
 
-            const fvPatchField<Type>& pfld = patchFields[patchI];
+            const unallocatedFvPatchField<Type>& pfld = patchFields[patchI];
 
             labelList dummyMap(identity(pfld.size()));
             directFvPatchFieldMapper dummyMapper(dummyMap);

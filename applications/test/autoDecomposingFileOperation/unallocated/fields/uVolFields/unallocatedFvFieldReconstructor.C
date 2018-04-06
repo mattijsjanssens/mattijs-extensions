@@ -47,25 +47,25 @@ Foam::unallocatedFvFieldReconstructor::unallocatedFvFieldReconstructor
     forAll(procMeshes_, proci)
     {
         const unallocatedFvMesh& procMesh = procMeshes_[proci];
-//        if
-//        (
-//            faceProcAddressing[proci].size() != procMesh.nFaces()
-//         || cellProcAddressing[proci].size() != procMesh.nCells()
-//         || boundaryProcAddressing[proci].size() != procMesh.boundary().size()
-//        )
-//        {
-//            FatalErrorInFunction
-//                << "Size of maps does not correspond to size of mesh"
-//                << " for processor " << proci << endl
-//                << "faceProcAddressing : " << faceProcAddressing[proci].size()
-//                << " nFaces : " << procMesh.nFaces() << endl
-//                << "cellProcAddressing : " << cellProcAddressing[proci].size()
-//                << " nCell : " << procMesh.nCells() << endl
-//                << "boundaryProcAddressing : "
-//                << boundaryProcAddressing[proci].size()
-//                << " nFaces : " << procMesh.boundary().size()
-//                << exit(FatalError);
-//        }
+        if
+        (
+            faceProcAddressing[proci].size() != procMesh.nFaces()
+         || cellProcAddressing[proci].size() != procMesh.nCells()
+         || boundaryProcAddressing[proci].size() != procMesh.boundary().size()
+        )
+        {
+            FatalErrorInFunction
+                << "Size of maps does not correspond to size of mesh"
+                << " for processor " << proci << endl
+                << "faceProcAddressing : " << faceProcAddressing[proci].size()
+                << " nFaces : " << procMesh.nFaces() << endl
+                << "cellProcAddressing : " << cellProcAddressing[proci].size()
+                << " nCell : " << procMesh.nCells() << endl
+                << "boundaryProcAddressing : "
+                << boundaryProcAddressing[proci].size()
+                << " nFaces : " << procMesh.boundary().size()
+                << exit(FatalError);
+        }
     }
 }
 

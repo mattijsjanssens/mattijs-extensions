@@ -216,10 +216,17 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     labelList basePatchStarts;
     wordList basePatchNames;
     {
+        fileName meshDir
+        (
+            io.name() == fvMesh::defaultRegion
+          ? fileName(fvMesh::meshSubDir)
+          : fileName(io.name())/fvMesh::meshSubDir
+        );
+
         IOobject meshIO
         (
             io.name(),              // name of mesh
-            io.instance(),
+            io.time().findInstance(meshDir, "faces"), //io.instance(),
             fvMesh::meshSubDir,     // location of mesh files
             io.db(),
             IOobject::MUST_READ
@@ -244,6 +251,7 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     (
         new unallocatedFvMesh
         (
+            io.name(),
             io.db(),                    // database
             nCells,                     // nCells
             basePatchNames,
@@ -266,10 +274,17 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     labelList basePatchStarts;
     wordList basePatchNames;
     {
+        fileName meshDir
+        (
+            io.name() == fvMesh::defaultRegion
+          ? fileName(fvMesh::meshSubDir)
+          : fileName(io.name())/fvMesh::meshSubDir
+        );
+
         IOobject meshIO
         (
             io.name(),              // name of mesh
-            io.instance(),
+            io.time().findInstance(meshDir, "faces"), //io.instance(),
             fvMesh::meshSubDir,     // location of mesh files
             io.db(),
             IOobject::MUST_READ
@@ -297,6 +312,7 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     (
         new unallocatedFvMesh
         (
+            io.name(),
             io.db(),                    // database
             nCells,                     // nCells
             basePatchNames,

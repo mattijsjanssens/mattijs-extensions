@@ -57,8 +57,6 @@ class unallocatedEmptyFvPatchField
 :
     public unallocatedFvPatchField<Type>
 {
-
-
 public:
 
     //- Runtime type information
@@ -85,7 +83,7 @@ public:
         //- Construct by mapping given patchField<Type> onto a new patch
         unallocatedEmptyFvPatchField
         (
-            const fvPatchField<Type>&,
+            const unallocatedFvPatchField<Type>&,
             const fvPatch&,
             const DimensionedField<Type, unallocatedFvMesh>&,
             const fvPatchFieldMapper&

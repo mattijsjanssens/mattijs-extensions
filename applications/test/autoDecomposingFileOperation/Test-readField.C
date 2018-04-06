@@ -29,10 +29,10 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "unallocatedFvBoundaryMesh.H"
 #include "GeometricField.H"
 #include "argList.H"
 #include "uVolFields.H"
-#include "unallocatedFvBoundaryMesh.H"
 #include "unallocatedFvMesh.H"
 //#include "unallocatedFvPatchField.H"
 #include "unallocatedGenericFvPatchField.H"
@@ -43,10 +43,6 @@ Description
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-
-
-
 
 int main(int argc, char *argv[])
 {
@@ -79,8 +75,7 @@ int main(int argc, char *argv[])
 
         PtrList<labelIOList> cellProcAddressing(nProcs);
         PtrList<labelIOList> faceProcAddressing(nProcs);
-        //PtrList<labelIOList> pointMaps(nProcs);
-        //PtrList<labelIOList> boundaryMaps(nProcs);
+        PtrList<labelIOList> boundaryProcAddressing(nProcs);
 
         forAll(cellProcAddressing, proci)
         {
@@ -101,8 +96,6 @@ int main(int argc, char *argv[])
                 )
             );
         }
-//DebugVar(cellProcAddressing);
-
         forAll(faceProcAddressing, proci)
         {
             faceProcAddressing.set
@@ -122,7 +115,25 @@ int main(int argc, char *argv[])
                 )
             );
         }
-//DebugVar(faceProcAddressing);
+        forAll(boundaryProcAddressing, proci)
+        {
+            boundaryProcAddressing.set
+            (
+                proci,
+                new labelIOList
+                (
+                    IOobject
+                    (
+                        "boundaryProcAddressing",
+                        runTime.constant(), //mesh.facesInstance(),
+                        fvMesh::meshSubDir,
+                        databases[proci],
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    )
+                )
+            );
+        }
 
         // Read the (unallocated) processor meshes
         PtrList<unallocatedFvMesh> procMeshes(nProcs);
@@ -138,185 +149,215 @@ int main(int argc, char *argv[])
                 proci,
                 unallocatedFvMeshTools::newMesh
                 (
-                    cellProcAddressing[proci],  // IOobject
+                    IOobject
+                    (
+                        fvMesh::defaultRegion,
+                        cellProcAddressing[proci].instance(),
+                        databases[proci],
+                        IOobject::MUST_READ
+                    ),
                     cellProcAddressing[proci].size()
                 )
             );
-
-            Pout<< "** read procMesh:" << proci
-                << " with nCells:" << procMeshes[proci].nCells()
-                << endl;
+            Pout<< procMeshes[proci].info() << endl;
         }
 
-        Pout<< "** Reading baseMesh" << endl;
 
         // Get mesh as unallocated
-
-//
-        IOobject meshIO
-        (
-            fvMesh::defaultRegion,      // name of mesh
-            runTime.constant(),
-            runTime,
-            IOobject::MUST_READ
-        );
-
+        Pout<< "** Reading baseMesh" << endl;
         autoPtr<unallocatedFvMesh> uMesh
         (
             unallocatedFvMeshTools::newMesh
             (
-                meshIO
+                IOobject
+                (
+                    fvMesh::defaultRegion,      // name of mesh
+                    runTime.timeName(),         // start search
+                    runTime,
+                    IOobject::MUST_READ
+                )
             )
         );
 
-        unallocatedFvFieldReconstructor reconstructor
+        const unallocatedFvFieldReconstructor reconstructor
         (
             uMesh(),
             procMeshes,
             faceProcAddressing,
             cellProcAddressing,
-            PtrList<labelIOList>(0) //& boundaryProcAddressing
+            boundaryProcAddressing
         );
 
-        DebugVar(uMesh->nCells());
-        DebugVar(uMesh->boundary().size());
-
-        return 0;
-    }
-
-    //#include "createMesh.H"
-
-
-
-
-    // Parent database
-    Time baseRunTime
-    (
-        runTime.controlDict(),
-        runTime.rootPath(),
-        runTime.globalCaseName(),
-        runTime.system(),
-        runTime.constant(),
-        false                   // enableFunctionObjects
-    );
-    baseRunTime.setTime(runTime);
-
-
-    // Read procAddressing files. Deduct base mesh sizes.
-
-    const IOobject meshIO
-    (
-        fvMesh::defaultRegion,      // name of mesh
-        runTime.constant(),
-        runTime,
-        IOobject::MUST_READ
-    );
-
-    const IOobject baseIO
-    (
-        "dummy",
-        meshIO.instance(),   // same instance as local mesh
-        fvMesh::meshSubDir,
-        meshIO.db(),
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE,
-        false
-    );
-
-DebugVar(baseIO.objectPath());
-
-    autoPtr<mapDistributePolyMesh> distMapPtr
-    (
-        unallocatedFvMeshTools::readReconstructMap
-        (
-            baseIO
-        )
-    );
-    const mapDistributePolyMesh& distMap = distMapPtr();
-
-DebugVar(distMap.cellMap());
-DebugVar(distMap.cellMap().constructSize());
-
-    autoPtr<unallocatedFvMesh> baseMeshPtr
-    (
-        unallocatedFvMeshTools::newMesh
-        (
-            meshIO,
-            distMap.cellMap().constructSize()
-        )
-    );
-    unallocatedFvMesh& baseMesh = baseMeshPtr();
-
-DebugVar(baseMesh.nCells());
-
-    // Read field on baseMesh
-    uVolScalarField baseFld
-    (
-        IOobject
-        (
-            "p",
-            baseMesh.time().timeName(),
-            baseMesh.thisDb(),
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        baseMesh
-    );
-    //uVolScalarField p
-    //(
-    //    IOobject
-    //    (
-    //        "p",
-    //        baseRunTime.timeName(),
-    //        baseMesh.thisDb(),
-    //        IOobject::NO_READ,
-    //        IOobject::AUTO_WRITE
-    //    ),
-    //    baseMesh,
-    //    dimensionedScalar("zero", dimless, Zero),
-    //    unallocatedGenericFvPatchField<scalar>::typeName
-    //);
-
-    // Mapping engine from mesh to baseMesh
-    parUnallocatedFvFieldReconstructor reconstructor(baseMesh, mesh, distMap);
-
-    // Load local field
-    uVolScalarField p
-    (
-        IOobject
-        (
-            "p",
-            mesh.time().timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE,
-            false
-        ),
-        mesh
-    );
-
-    // Map local field onto baseMesh
-    tmp<uVolScalarField> tfld
-    (
-        reconstructor.reconstructFvVolumeField(p)
-    );
-
-
-    // Write master field to parent
-    DebugVar(p);
-    //DebugVar(tfld());
-
-    tfld.ref().rename("my_p");
-    {
-        const bool oldParRun = Pstream::parRun();
-        Pstream::parRun() = false;
-        if (Pstream::master())
+        // Read field on proc meshes
+        PtrList<uVolScalarField> procFields(nProcs);
+        forAll(procFields, proci)
         {
-            DebugVar(tfld());
+            const unallocatedFvMesh& procMesh = procMeshes[proci];
+            procFields.set
+            (
+                proci,
+                new uVolScalarField
+                (
+                    IOobject
+                    (
+                        "p",
+                        procMesh.time().timeName(),
+                        procMesh.thisDb(),
+                        IOobject::MUST_READ,
+                        IOobject::AUTO_WRITE
+                    ),
+                    procMesh
+                )
+            );
 
-            tfld().write();
+            DebugVar(procFields[proci]);
         }
-        Pstream::parRun() = oldParRun;
+
+
+        // Map local field onto baseMesh
+        const unallocatedFvMesh& baseMesh = uMesh();
+
+        tmp<uVolScalarField> tfld
+        (
+            reconstructor.reconstructFvVolumeField
+            (
+                IOobject
+                (
+                    "p",
+                    baseMesh.time().timeName(),
+                    baseMesh.thisDb(),
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE
+                ),
+                procFields
+            )
+        );
+
+        DebugVar(tfld());
+    }
+    else
+    {
+        // Parent database
+        Time baseRunTime
+        (
+            runTime.controlDict(),
+            runTime.rootPath(),
+            runTime.globalCaseName(),
+            runTime.system(),
+            runTime.constant(),
+            false                   // enableFunctionObjects
+        );
+        baseRunTime.setTime(runTime);
+
+
+        // Read procAddressing files. Deduct base mesh sizes.
+        autoPtr<mapDistributePolyMesh> distMapPtr
+        (
+            unallocatedFvMeshTools::readReconstructMap
+            (
+                IOobject
+                (
+                    "dummy",
+                    runTime.findInstance(fvMesh::meshSubDir, "faces"),
+                    fvMesh::meshSubDir,
+                    runTime,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false
+                )
+            )
+        );
+        const mapDistributePolyMesh& distMap = distMapPtr();
+
+        autoPtr<unallocatedFvMesh> baseMeshPtr
+        (
+            unallocatedFvMeshTools::newMesh
+            (
+                IOobject
+                (
+                    fvMesh::defaultRegion,      // name of mesh
+                    baseRunTime.timeName(),
+                    baseRunTime,
+                    IOobject::MUST_READ
+                ),
+                distMap.cellMap().constructSize()
+            )
+        );
+        unallocatedFvMesh& baseMesh = baseMeshPtr();
+
+        #include "createUnallocatedMesh.H"
+
+        // // Read field on mesh
+        // uVolScalarField baseFld
+        // (
+        //     IOobject
+        //     (
+        //         "p",
+        //         baseMesh.time().timeName(),
+        //         baseMesh.thisDb(),
+        //         IOobject::MUST_READ,
+        //         IOobject::AUTO_WRITE
+        //     ),
+        //     baseMesh
+        // );
+        //uVolScalarField p
+        //(
+        //    IOobject
+        //    (
+        //        "p",
+        //        baseRunTime.timeName(),
+        //        baseMesh.thisDb(),
+        //        IOobject::NO_READ,
+        //        IOobject::AUTO_WRITE
+        //    ),
+        //    baseMesh,
+        //    dimensionedScalar("zero", dimless, Zero),
+        //    unallocatedGenericFvPatchField<scalar>::typeName
+        //);
+
+        // Mapping engine from mesh to baseMesh
+        parUnallocatedFvFieldReconstructor reconstructor
+        (
+            baseMesh,
+            mesh,
+            distMap
+        );
+
+        // Load local field
+        uVolScalarField p
+        (
+            IOobject
+            (
+                "p",
+                mesh.time().timeName(),
+                mesh.thisDb(),
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh
+        );
+DebugVar(p);
+
+
+        // Map local field onto baseMesh
+        tmp<uVolScalarField> tfld
+        (
+            reconstructor.reconstructFvVolumeField(p)
+        );
+
+         // Write master field to parent
+         tfld.ref().rename("my_p");
+         {
+             const bool oldParRun = Pstream::parRun();
+             Pstream::parRun() = false;
+             if (Pstream::master())
+             {
+                 DebugVar(tfld());
+                 tfld().write();
+             }
+             Pstream::parRun() = oldParRun;
+         }
     }
 
     return 0;
