@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -32,7 +32,7 @@ Description
 #define fileOperations_autoReconstructingFileOperation_H
 
 #include "uncollatedFileOperation.H"
-#include "labelIOList.H"
+#include "HashPtrTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -41,7 +41,6 @@ namespace Foam
 
 // Forward declaration of classes
 class fvMesh;
-class fvFieldDecomposer;
 
 namespace fileOperations
 {
@@ -54,10 +53,26 @@ class autoReconstructingFileOperation
 :
     public uncollatedFileOperation
 {
+    // Private Member Data
+
+        //- Caching of objects per time. Updated by readObjects
+        mutable HashPtrTable<fileNameList, fileName> procObjects_;
+
+
     // Private Member Functions
 
         //- Check for equivalent object inside processor0/
         bool haveProcPath(const IOobject& io, fileName&) const;
+
+        //- Reconstruct volume field and stream
+        template<class Type>
+        Ostream& writeReconstructedFvVolumeField
+        (
+            const fvMesh& mesh,
+            const IOobject& io,
+            Ostream& os
+        ) const;
+
 
 public:
 
@@ -109,24 +124,6 @@ public:
                 word& newInstance
             ) const;
 
-            //- Read object header from supplied file
-            virtual bool readHeader
-            (
-                IOobject&,
-                const fileName&,
-                const word& typeName
-            ) const;
-
-//             //- Reads header for regIOobject and returns an ISstream
-//             //  to read the contents.
-//             virtual autoPtr<ISstream> readStream
-//             (
-//                 regIOobject&,
-//                 const fileName&,
-//                 const word& typeName,
-//                 const bool valid = true
-//             ) const;
-
             //- Top-level read
             virtual bool read
             (
@@ -145,9 +142,9 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//#ifdef NoRepository
-//    #include "autoReconstructingFileOperationTemplates.C"
-//#endif
+#ifdef NoRepository
+    #include "autoReconstructingFileOperationTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

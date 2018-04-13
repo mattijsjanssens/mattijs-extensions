@@ -4,9 +4,6 @@ unallocatedFvMesh/unallocatedFvBoundaryMesh.C
 unallocatedFvMesh/unallocatedGenericFvPatch.C
 unallocatedFvMesh/unallocatedFvMeshTools.C
 
-unallocatedFvMesh/fvPatch/fvPatch.C
-unallocatedFvMesh/fvPatch/fvPatchNew.C
-
 /* PatchFields on unallocated mesh */
 fields/unallocatedFvPatchFields/unallocatedEmptyFvPatchFields.C
 fields/unallocatedFvPatchFields/unallocatedFvPatchFields.C
@@ -16,5 +13,6 @@ fields/unallocatedFvPatchFields/unallocatedGenericFvPatchFields.C
 fields/uVolFields/uVolFields.C
 fields/uVolFields/unallocatedFvFieldReconstructor.C
 fields/uVolFields/parUnallocatedFvFieldReconstructor.C
+fields/uVolFields/uFieldReconstructor.C
 
 LIB = $(FOAM_USER_LIBBIN)/libunallocated

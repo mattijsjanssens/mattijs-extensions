@@ -26,17 +26,8 @@ License
 #include "autoReconstructingFileOperation.H"
 #include "Time.H"
 #include "fvMesh.H"
-//#include "fvFieldDecomposer.H"
 #include "addToRunTimeSelectionTable.H"
-//#include "processorMeshes.H"
-//#include "fvFieldReconstructor.H"
-
-#include "uVolFields.H"
-#include "unallocatedFvMesh.H"
-#include "unallocatedGenericFvPatchField.H"
-#include "unallocatedFvMeshTools.H"
-#include "unallocatedFvFieldReconstructor.H"
-
+#include "uFieldReconstructor.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -121,6 +112,29 @@ autoReconstructingFileOperation
     {
         Info<< "I/O    : " << typeName << endl;
     }
+    if (regIOobject::fileModificationChecking == regIOobject::timeStampMaster)
+    {
+        if (verbose)
+        {
+            WarningInFunction
+                << "Resetting fileModificationChecking to timeStamp" << endl;
+        }
+        regIOobject::fileModificationChecking = regIOobject::timeStamp;
+    }
+    else if
+    (
+        regIOobject::fileModificationChecking
+     == regIOobject::inotifyMaster
+    )
+    {
+        if (verbose)
+        {
+            WarningInFunction
+                << "Resetting fileModificationChecking to inotify"
+                << endl;
+        }
+        regIOobject::fileModificationChecking = regIOobject::inotify;
+    }
 }
 
 
@@ -145,14 +159,30 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
         Pout<< indent
             << "autoReconstructingFileOperation::filePath :"
             << " objectPath:" << io.objectPath()
+            << " typeName:" << typeName
             << " checkGlobal:" << checkGlobal << endl;
     }
 
+    // Problem: IOobjectList does a readDir followed
+    // by a typeHeaderOk checking with 'labelIOList' as typeName. So
+    // here we cannot use the wanted type (eg. volScalarField). Instead
+    // we store the objects inside readObjects and check if it is
+    // one of them.
+
     fileName objPath;
     fileName procPath;
-    if (typeName == volScalarField::typeName && haveProcPath(io, procPath))
+
+    HashPtrTable<fileNameList, fileName>::const_iterator tmFnd =
+        procObjects_.find(io.time().timeName());
+
+    if
+    (
+        tmFnd != procObjects_.end()
+     && findIndex(*tmFnd(), io.name()) != -1
+     && haveProcPath(io, procPath)
+    )
     {
-        objPath = procPath; //io.objectPath();
+        objPath = procPath;
 
         if (debug)
         {
@@ -239,8 +269,6 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
     {
         fileName path(db.path("processor0"/instance, db.dbDir()/local));
 
-DebugVar(path);
-
         if (Foam::isDir(path))
         {
             newInstance = instance;
@@ -255,6 +283,9 @@ DebugVar(path);
                     << "    path     :" << db.path() << endl << indent
                     << "    objects  :" << objects << endl << endl;
             }
+
+            procObjects_.insert(instance, new fileNameList(objects));
+
             return objects;
         }
         else
@@ -354,46 +385,47 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
         }
     }
 
-//     if (debug)
-//     {
-//         Pout<< indent
-//             << "autoReconstructingFileOperation::findTimes :"
-//             << " Returning from time searching:" << endl << indent
-//             << "    dir   :" << dir << endl << indent
-//             << "    times :" << times << endl << endl;
-//     }
+    if (debug)
+    {
+        Pout<< indent
+            << "autoReconstructingFileOperation::findTimes :"
+            << " Returning from time searching:" << endl << indent
+            << "    dir   :" << dir << endl << indent
+            << "    times :" << times << endl << endl;
+    }
     return times;
 }
 
 
-bool Foam::fileOperations::autoReconstructingFileOperation::readHeader
-(
-    IOobject& io,
-    const fileName& fName,
-    const word& typeName
-) const
-{
-    //if (debug)
-    //{
-    //    Pout<< indent
-    //        << "autoReconstructingFileOperation::readHeader :"
-    //        << " Reading:" << type << " from: " << fName << endl;
-    //}
-    if (typeName == volScalarField::typeName)
-    {
-    }
-
-    bool ok = uncollatedFileOperation::readHeader(io, fName, typeName);
-
-    if (debug)
-    {
-        Pout<< indent
-            << "autoReconstructingFileOperation::readHeader :" << endl << indent
-            << "    fName :" << fName << endl << indent
-            << "    ok    :" << ok << endl << endl;
-    }
-    return ok;
-}
+// bool Foam::fileOperations::autoReconstructingFileOperation::readHeader
+// (
+//     IOobject& io,
+//     const fileName& fName,
+//     const word& typeName
+// ) const
+// {
+//     //if (debug)
+//     //{
+//     //    Pout<< indent
+//     //        << "autoReconstructingFileOperation::readHeader :"
+//     //        << " Reading:" << type << " from: " << fName << endl;
+//     //}
+//     if (typeName == volScalarField::typeName)
+//     {
+//     }
+//
+//     bool ok = uncollatedFileOperation::readHeader(io, fName, typeName);
+//
+//     if (debug)
+//     {
+//         Pout<< indent
+//             << "autoReconstructingFileOperation::readHeader :" << endl
+//             << indent
+//             << "    fName :" << fName << endl << indent
+//             << "    ok    :" << ok << endl << endl;
+//     }
+//     return ok;
+// }
 
 
 
@@ -445,327 +477,43 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     }
 
     fileName procPath;
-    if (type == volScalarField::typeName && haveProcPath(io, procPath))
+    if
+    (
+        (
+            type == volScalarField::typeName
+         || type == volVectorField::typeName
+         || type == volSphericalTensorField::typeName
+         || type == volSymmTensorField::typeName
+         || type == volTensorField::typeName
+        )
+     && haveProcPath(io, procPath)
+    )
     {
-        Pout<< "Database   :" << io.db().name() << endl;
-/*
-        fvMesh& mesh = const_cast<fvMesh&>
-        (
-            dynamic_cast<const fvMesh&>(io.db())
-        );
-        Pout<< "mesh nCells:" << mesh.nCells() << endl;
-        Pout<< "mesh path  :" << mesh.polyMesh::path() << endl;
-
-
-        DebugVar(procPath);
-        // Read file from procPath and reconstruct instead of from objectPath
-
-        const label nProcs = 2;
-
-        // Create the processor databases
-        PtrList<Time> databases(nProcs);
-
-        forAll(databases, proci)
-        {
-            Pout<< indent << "** Loading Time for:" << proci << nl << endl;
-            Pout<< incrIndent;
-
-            databases.set
-            (
-                proci,
-                new Time
-                (
-                    io.time().controlDict(),
-                    io.time().rootPath(),
-                    io.time().globalCaseName()
-                   /fileName(word("processor") + name(proci)),
-                    io.time().system(),
-                    io.time().constant(),
-                    false                   // enableFunctionObjects
-                )
-            );
-            databases[proci].setTime(io.time());
-
-            Pout<< decrIndent;
-            Pout<< indent << "** DONE Loading Time for:" << proci << nl << endl;
-        }
-
-        Pout<< indent << "** Loading processors" << nl << endl;
-        Pout<< incrIndent;
-        // Read all meshes and addressing to reconstructed mesh
-        processorMeshes procMeshes(databases, polyMesh::defaultRegion);
-        Pout<< decrIndent;
-        Pout<< indent << "** DONE Loading processors" << nl << endl;
-        Pout<< incrIndent;
-        forAll(procMeshes.meshes(), i)
-        {
-            Pout<< indent << " proc:" << i
-                << " mesh:" << procMeshes.meshes()[i].nCells()
-                << endl;
-        }
-        Pout<< decrIndent;
-
-DebugVar(io.objectPath());
-DebugVar(io.db().name());
-DebugVar(io.db().path());
-
-// DebugVar(procMeshes.boundaryProcAddressing());
-// DebugVar(procMeshes.cellProcAddressing());
-// DebugVar(procMeshes.faceProcAddressing());
-
-        // Construct reconstructor
-        fvFieldReconstructor fvReconstructor
-        (
-            const_cast<fvMesh&>(dynamic_cast<const fvMesh&>(io.db())),
-            procMeshes.meshes(),
-            procMeshes.faceProcAddressing(),
-            procMeshes.cellProcAddressing(),
-            procMeshes.boundaryProcAddressing()
-        );
-
-        // Read all fields
-        PtrList<volScalarField> procFields(nProcs);
-        {
-            for (label proci = 0; proci < nProcs; proci++)
-            {
-                const fvMesh& procMesh = procMeshes.meshes()[proci];
-
-                IOobject procIO(io, procMesh);
-
-Pout<< indent << "For proc:" << proci << " trying to read "
-    << procIO.objectPath() << endl;
-                Pout<< incrIndent;
-                procFields.set(proci, new volScalarField(procIO, procMesh));
-                Pout<< decrIndent;
-            }
-        }
-
-DebugVar(procFields);
-        IOobject reconstructIO(io);
-        reconstructIO.readOpt() = IOobject::NO_READ;
-
-        tmp<volScalarField> tfld
-        (
-            fvReconstructor.reconstructFvVolumeField
-            (
-                reconstructIO,
-                procFields
-            )
-        );
-DebugVar(tfld());
-DebugVar(io.type());
-
-*/
-
-//XXXXXXXXXX
-        // Read the processor databases
-
-DebugVar(io.time().path());
-        label nProcs = fileHandler().nProcs(io.time().path(), word::null);
-DebugVar(nProcs);
-        PtrList<Time> databases(nProcs);
-        forAll(databases, proci)
-        {
-            databases.set
-            (
-                proci,
-                new Time
-                (
-                    Time::controlDictName,
-                    io.rootPath(),
-                    io.caseName()/fileName(word("processor") + name(proci))
-                )
-            );
-        }
-
-        PtrList<labelIOList> cellProcAddressing(nProcs);
-        PtrList<labelIOList> faceProcAddressing(nProcs);
-        PtrList<labelIOList> boundaryProcAddressing(nProcs);
-
-        forAll(cellProcAddressing, proci)
-        {
-            cellProcAddressing.set
-            (
-                proci,
-                new labelIOList
-                (
-                    IOobject
-                    (
-                        "cellProcAddressing",
-                        io.time().constant(), //mesh.facesInstance(),
-                        fvMesh::meshSubDir,
-                        databases[proci],
-                        IOobject::MUST_READ,
-                        IOobject::NO_WRITE
-                    )
-                )
-            );
-        }
-        forAll(faceProcAddressing, proci)
-        {
-            faceProcAddressing.set
-            (
-                proci,
-                new labelIOList
-                (
-                    IOobject
-                    (
-                        "faceProcAddressing",
-                        io.time().constant(), //mesh.facesInstance(),
-                        fvMesh::meshSubDir,
-                        databases[proci],
-                        IOobject::MUST_READ,
-                        IOobject::NO_WRITE
-                    )
-                )
-            );
-        }
-        forAll(boundaryProcAddressing, proci)
-        {
-            boundaryProcAddressing.set
-            (
-                proci,
-                new labelIOList
-                (
-                    IOobject
-                    (
-                        "boundaryProcAddressing",
-                        io.time().constant(), //mesh.facesInstance(),
-                        fvMesh::meshSubDir,
-                        databases[proci],
-                        IOobject::MUST_READ,
-                        IOobject::NO_WRITE
-                    )
-                )
-            );
-        }
-
-        // Read the (unallocated) processor meshes
-        PtrList<unallocatedFvMesh> procMeshes(nProcs);
-
-        forAll(procMeshes, proci)
-        {
-            Pout<< "** reading procMesh:" << proci
-                << " with cellProcAddresing:"
-                << cellProcAddressing[proci].size() << endl;
-
-            procMeshes.set
-            (
-                proci,
-                unallocatedFvMeshTools::newMesh
-                (
-                    IOobject
-                    (
-                        fvMesh::defaultRegion,
-                        cellProcAddressing[proci].instance(),
-                        databases[proci],
-                        IOobject::MUST_READ
-                    ),
-                    cellProcAddressing[proci].size()
-                )
-            );
-            Pout<< procMeshes[proci].info() << endl;
-        }
-
-
-        // Get mesh as unallocated
-        Pout<< "** Reading baseMesh" << endl;
-        autoPtr<unallocatedFvMesh> uMesh
-        (
-            unallocatedFvMeshTools::newMesh
-            (
-                IOobject
-                (
-                    fvMesh::defaultRegion,      // name of mesh
-                    io.time().timeName(),         // start search
-                    io.time(),
-                    IOobject::MUST_READ
-                )
-            )
-        );
-
-        const unallocatedFvFieldReconstructor reconstructor
-        (
-            uMesh(),
-            procMeshes,
-            faceProcAddressing,
-            cellProcAddressing,
-            boundaryProcAddressing
-        );
-
-        // Read field on proc meshes
-        PtrList<uVolScalarField> procFields(nProcs);
-        forAll(procFields, proci)
-        {
-            const unallocatedFvMesh& procMesh = procMeshes[proci];
-
-            Pout<< "proc:" << proci << procMesh.info() << endl;
-
-            procFields.set
-            (
-                proci,
-                new uVolScalarField
-                (
-                    IOobject
-                    (
-                        io.name(),
-                        procMesh.time().timeName(),
-                        procMesh.thisDb(),
-                        IOobject::MUST_READ,
-                        IOobject::NO_WRITE,
-                        false
-                    ),
-                    procMesh
-                )
-            );
-
-            DebugVar(procFields[proci]);
-        }
-
-
-        // Map local field onto baseMesh
-        //IOobject reconstructIO(io);
-        //reconstructIO.readOpt() = IOobject::NO_READ;
-        tmp<uVolScalarField> tfld
-        (
-            reconstructor.reconstructFvVolumeField
-            (
-                IOobject
-                (
-                    io.name(),
-                    uMesh().time().timeName(),
-                    uMesh().thisDb(),
-                    IOobject::NO_READ,
-                    IOobject::AUTO_WRITE,
-                    false
-                ),
-                //reconstructIO,
-                procFields
-            )
-        );
-        //DebugVar(tfld());
-        const uVolScalarField::Boundary& bfld = tfld().boundaryField();
-        forAll(bfld, patchi)
-        {
-            DebugVar(patchi);
-            DebugVar(bfld[patchi].size());
-            DebugVar(bfld[patchi].type());
-            DebugVar(bfld[patchi].patch().size());
-            DebugVar(bfld[patchi].patch().type());
-            DebugVar(bfld[patchi].patch().name());
-        }
-
-//XXXXXXXXXX
+        const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
         OStringStream os;
-        os << tfld();
-
+        if (type == volScalarField::typeName)
+        {
+            writeReconstructedFvVolumeField<scalar>(mesh, io, os);
+        }
+        else if (type == volVectorField::typeName)
+        {
+            writeReconstructedFvVolumeField<vector>(mesh, io, os);
+        }
+        else if (type == volSphericalTensorField::typeName)
+        {
+            writeReconstructedFvVolumeField<sphericalTensor>(mesh, io, os);
+        }
+        else if (type == volSymmTensorField::typeName)
+        {
+            writeReconstructedFvVolumeField<symmTensor>(mesh, io, os);
+        }
+        else
+        {
+            writeReconstructedFvVolumeField<tensor>(mesh, io, os);
+        }
         IStringStream is(os.str());
         io.readData(is);
-
-io.writeData(Pout);
-
-
         return true;
     }
     return uncollatedFileOperation::read(io, masterOnly, format, type);

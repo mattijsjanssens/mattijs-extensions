@@ -144,16 +144,18 @@ Foam::Ostream& Foam::operator<<
 
     const unallocatedFvBoundaryMesh& patches = mesh.boundary();
 
-    os  << "Mesh " << mesh.name() << " stats" << nl
-        << "    faces:            " << mesh.nFaces() << nl
-        << "    internal faces:   " << mesh.nInternalFaces() << nl
-        << "    cells:            " << mesh.nCells() << nl
-        << "    boundary patches: " << patches.size() << nl
+    os.setf(ios_base::left);
+
+    os  << indent << setw(20) << "name" << mesh.name() << nl
+        << indent << setw(20) << "faces" << mesh.nFaces() << nl
+        << indent << setw(20) << "internal faces" << mesh.nInternalFaces() << nl
+        << indent << setw(20) << "cells" << mesh.nCells() << nl
+        << indent << setw(20) << "boundary patches" << patches.size() << nl
         << nl;
 
     os.setf(ios_base::left);
 
-    os  << "    "
+    os  << indent
         << setw(20) << "Patch"
         << setw(9) << "Faces"
         << setw(9) << "Type"
@@ -161,7 +163,7 @@ Foam::Ostream& Foam::operator<<
     forAll(patches, patchi)
     {
         const unallocatedGenericFvPatch& pp = patches[patchi];
-        os  << "    "
+        os  << indent
             << setw(20) << pp.name()
             << setw(9) << pp.size()
             << setw(9) << pp.type()

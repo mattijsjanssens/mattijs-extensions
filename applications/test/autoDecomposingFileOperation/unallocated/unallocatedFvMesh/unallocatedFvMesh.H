@@ -32,9 +32,6 @@ Description
 #ifndef unallocatedFvMesh_H
 #define unallocatedFvMesh_H
 
-//#include "GeoMesh.H"
-//#include "MeshObject.H"
-//#include "polyMesh.H"
 #include "unallocatedFvBoundaryMesh.H"
 #include "volMesh.H"
 
@@ -43,7 +40,6 @@ Description
 namespace Foam
 {
 
-//class unallocatedFvBoundaryMesh;
 class globalMeshData;
 
 /*---------------------------------------------------------------------------*\
