@@ -203,7 +203,7 @@ Foam::uFieldReconstructor::uFieldReconstructor(const polyMesh& mesh)
             << " from:" << mesh.time().path() << endl;
     }
     readProcDatabases(mesh.thisDb(), nProcs);
-    readProcMeshes(mesh.time(), mesh.time().constant());
+    readProcMeshes(mesh.time(), mesh.facesInstance());
 }
 
 
