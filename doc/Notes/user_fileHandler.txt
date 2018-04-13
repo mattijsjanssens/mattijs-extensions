@@ -25,3 +25,15 @@ it will use your fileHandler
 
 The main thing is to have a static-destructor which destroys the fileHandler
 instance.
+
+2) If you're holding references (e.g. unallocatedFvMesh holds reference
+to Time) you cannot do this since your file handler only gets deleted
+at static destruction time. Solution: make MeshObject!
+
+3) tell paraFoam to use special reader:
+    FOAM_LIBS='("libautoDecomposingFileOperation.so")' \
+    FOAM_FILEHANDLER=autoReconstructing \
+    paraFoam
+
+(paraFoam has been modified to load FOAM_LIBS. We could do the same for
+all OpenFOAM apps but generally here we use 'libs' inside system/controlDict)
