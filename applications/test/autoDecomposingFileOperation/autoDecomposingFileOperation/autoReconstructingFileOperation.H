@@ -94,6 +94,9 @@ public:
 
         // (reg)IOobject functinality
 
+            //- Overlaps other bounding box?
+            using fileOperation::filePath;
+
             //- Search for an object. checkGlobal : also check undecomposed case
             //  This differs from uncollated in searching for parent
             //  also for files in time directories
