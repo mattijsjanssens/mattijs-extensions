@@ -103,6 +103,7 @@ public:
             const wordList& patchNames,
             const labelList& patchSizes,
             const labelList& patchStarts,
+            const List<wordList>& patchGroups,
             const globalMeshData& globalData
         );
 

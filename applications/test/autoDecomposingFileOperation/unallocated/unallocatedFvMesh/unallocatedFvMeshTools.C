@@ -215,6 +215,7 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     labelList basePatchSizes;
     labelList basePatchStarts;
     wordList basePatchNames;
+    List<wordList> basePatchGroups;
     {
         fileName meshDir
         (
@@ -237,12 +238,14 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
         basePatchNames.setSize(patchEntries.size());
         basePatchSizes.setSize(patchEntries.size());
         basePatchStarts.setSize(patchEntries.size());
+        basePatchGroups.setSize(patchEntries.size());
         forAll(patchEntries, patchi)
         {
             basePatchNames[patchi] = patchEntries[patchi].keyword();
             const dictionary& d = patchEntries[patchi].dict();
             basePatchSizes[patchi] = readLabel(d.lookup("nFaces"));
             basePatchStarts[patchi] = readLabel(d.lookup("startFace"));
+            d.readIfPresent("inGroups", basePatchGroups[patchi]);
         }
     }
 
@@ -257,6 +260,7 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
             basePatchNames,
             basePatchSizes,
             basePatchStarts,
+            basePatchGroups,
             *reinterpret_cast<const globalMeshData*>(0)
         )
     );
@@ -273,6 +277,7 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
     labelList basePatchSizes;
     labelList basePatchStarts;
     wordList basePatchNames;
+    List<wordList> basePatchGroups;
     {
         fileName meshDir
         (
@@ -298,12 +303,14 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
         basePatchNames.setSize(patchEntries.size());
         basePatchSizes.setSize(patchEntries.size());
         basePatchStarts.setSize(patchEntries.size());
+        basePatchGroups.setSize(patchEntries.size());
         forAll(patchEntries, patchi)
         {
             basePatchNames[patchi] = patchEntries[patchi].keyword();
             const dictionary& d = patchEntries[patchi].dict();
             basePatchSizes[patchi] = readLabel(d.lookup("nFaces"));
             basePatchStarts[patchi] = readLabel(d.lookup("startFace"));
+            d.readIfPresent("inGroups", basePatchGroups[patchi]);
         }
     }
 
@@ -318,6 +325,7 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
             basePatchNames,
             basePatchSizes,
             basePatchStarts,
+            basePatchGroups,
             *reinterpret_cast<const globalMeshData*>(0)
         )
     );

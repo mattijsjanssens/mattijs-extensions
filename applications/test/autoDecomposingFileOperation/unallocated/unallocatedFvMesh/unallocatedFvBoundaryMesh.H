@@ -37,6 +37,7 @@ SourceFiles
 #define unallocatedFvBoundaryMesh_H
 
 #include "PtrList.H"
+#include "HashSet.H"
 #include "unallocatedGenericFvPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -53,6 +54,8 @@ class unallocatedFvBoundaryMesh
     public PtrList<unallocatedGenericFvPatch>
 {
     // Private data
+
+        mutable autoPtr<HashTable<labelList, word>> groupPatchIDsPtr_;
 
 
     // Private Member Functions
@@ -85,6 +88,9 @@ public:
 
         //- Return patch index for a given face label
         label whichPatch(const label faceIndex) const;
+
+        //- Per patch group the patch indices
+        const HashTable<labelList, word>& groupPatchIDs() const;
 };
 
 

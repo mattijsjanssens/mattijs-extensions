@@ -92,25 +92,25 @@ Foam::labelList Foam::unallocatedFvBoundaryMesh::findIndices
         {
             indices = findStrings(key, names);
 
-            // if (usePatchGroups && groupPatchIDs().size())
-            // {
-            //     labelHashSet indexSet(indices);
-            //
-            //     const wordList allGroupNames = groupPatchIDs().toc();
-            //     labelList groupIDs = findStrings(key, allGroupNames);
-            //     forAll(groupIDs, i)
-            //     {
-            //         const word& grpName = allGroupNames[groupIDs[i]];
-            //         const labelList& patchIDs = groupPatchIDs()[grpName];
-            //         forAll(patchIDs, j)
-            //         {
-            //             if (indexSet.insert(patchIDs[j]))
-            //             {
-            //                 indices.append(patchIDs[j]);
-            //             }
-            //         }
-            //     }
-            // }
+            if (usePatchGroups && groupPatchIDs().size())
+            {
+                labelHashSet indexSet(indices);
+
+                const wordList allGroupNames = groupPatchIDs().toc();
+                labelList groupIDs = findStrings(key, allGroupNames);
+                forAll(groupIDs, i)
+                {
+                    const word& grpName = allGroupNames[groupIDs[i]];
+                    const labelList& patchIDs = groupPatchIDs()[grpName];
+                    forAll(patchIDs, j)
+                    {
+                        if (indexSet.insert(patchIDs[j]))
+                        {
+                            indices.append(patchIDs[j]);
+                        }
+                    }
+                }
+            }
         }
         else
         {
@@ -127,29 +127,81 @@ Foam::labelList Foam::unallocatedFvBoundaryMesh::findIndices
                 }
             }
 
-            //if (usePatchGroups && groupPatchIDs().size())
-            //{
-            //    const HashTable<labelList, word>::const_iterator iter =
-            //        groupPatchIDs().find(key);
-            //
-            //    if (iter != groupPatchIDs().end())
-            //    {
-            //        labelHashSet indexSet(indices);
-            //
-            //        const labelList& patchIDs = iter();
-            //        forAll(patchIDs, j)
-            //        {
-            //            if (indexSet.insert(patchIDs[j]))
-            //            {
-            //                indices.append(patchIDs[j]);
-            //            }
-            //        }
-            //    }
-            //}
+            if (usePatchGroups && groupPatchIDs().size())
+            {
+                const HashTable<labelList, word>::const_iterator iter =
+                    groupPatchIDs().find(key);
+
+                if (iter != groupPatchIDs().end())
+                {
+                    labelHashSet indexSet(indices);
+
+                    const labelList& patchIDs = iter();
+                    forAll(patchIDs, j)
+                    {
+                        if (indexSet.insert(patchIDs[j]))
+                        {
+                            indices.append(patchIDs[j]);
+                        }
+                    }
+                }
+            }
         }
     }
 
     return indices;
+}
+
+
+const Foam::HashTable<Foam::labelList, Foam::word>&
+Foam::unallocatedFvBoundaryMesh::groupPatchIDs() const
+{
+    if (!groupPatchIDsPtr_.valid())
+    {
+        groupPatchIDsPtr_.reset(new HashTable<labelList, word>(10));
+        HashTable<labelList, word>& groupPatchIDs = groupPatchIDsPtr_();
+
+        const unallocatedFvBoundaryMesh& bm = *this;
+
+        forAll(bm, patchi)
+        {
+            const wordList& groups = bm[patchi].inGroups();
+
+            forAll(groups, i)
+            {
+                const word& name = groups[i];
+
+                HashTable<labelList, word>::iterator iter = groupPatchIDs.find
+                (
+                    name
+                );
+
+                if (iter != groupPatchIDs.end())
+                {
+                    iter().append(patchi);
+                }
+                else
+                {
+                    groupPatchIDs.insert(name, labelList(1, patchi));
+                }
+            }
+        }
+
+        // Remove patch names from patchGroups
+        forAll(bm, patchi)
+        {
+            if (groupPatchIDs.erase(bm[patchi].name()))
+            {
+                WarningInFunction
+                    << "Removing patchGroup '" << bm[patchi].name()
+                    << "' which clashes with patch " << patchi
+                    << " of the same name."
+                    << endl;
+            }
+        }
+    }
+
+    return groupPatchIDsPtr_();
 }
 
 
