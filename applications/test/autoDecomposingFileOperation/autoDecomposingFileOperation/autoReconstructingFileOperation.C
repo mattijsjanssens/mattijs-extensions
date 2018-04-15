@@ -494,7 +494,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     {
         const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
-        OStringStream os;
+        OStringStream os(IOstream::BINARY);
         if (type == volScalarField::typeName)
         {
             writeReconstructedFvVolumeField<scalar>(mesh, io, os);
@@ -515,7 +515,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         {
             writeReconstructedFvVolumeField<tensor>(mesh, io, os);
         }
-        IStringStream is(os.str());
+        IStringStream is(os.str(), IOstream::BINARY);
         io.readData(is);
         return true;
     }

@@ -197,6 +197,79 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
+void Foam::unallocatedFvPatchField<Type>::autoMap
+(
+    const fvPatchFieldMapper& mapper
+)
+{
+    Field<Type>& f = *this;
+
+    if (!this->size() && !mapper.distributed())
+    {
+        f.setSize(mapper.size());
+        //if (f.size())
+        //{
+        //    f = this->patchInternalField();
+        //}
+    }
+    else
+    {
+        // Map all faces provided with mapping data
+        Field<Type>::autoMap(mapper);
+
+        //// For unmapped faces set to internal field value (zero-gradient)
+        //if (mapper.hasUnmapped())
+        //{
+        //    Field<Type> pif(this->patchInternalField());
+        //
+        //    if
+        //    (
+        //        mapper.direct()
+        //     && notNull(mapper.directAddressing())
+        //     && mapper.directAddressing().size()
+        //    )
+        //    {
+        //        const labelList& mapAddressing = mapper.directAddressing();
+        //
+        //        forAll(mapAddressing, i)
+        //        {
+        //            if (mapAddressing[i] < 0)
+        //            {
+        //                f[i] = pif[i];
+        //            }
+        //        }
+        //    }
+        //    else if (!mapper.direct() && mapper.addressing().size())
+        //    {
+        //        const labelListList& mapAddressing = mapper.addressing();
+        //
+        //        forAll(mapAddressing, i)
+        //        {
+        //            const labelList& localAddrs = mapAddressing[i];
+        //
+        //            if (!localAddrs.size())
+        //            {
+        //                f[i] = pif[i];
+        //            }
+        //        }
+        //    }
+        //}
+    }
+}
+
+
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::rmap
+(
+    const unallocatedFvPatchField<Type>& ptf,
+    const labelList& addr
+)
+{
+    Field<Type>::rmap(ptf, addr);
+}
+
+
+template<class Type>
 void Foam::unallocatedFvPatchField<Type>::write(Ostream& os) const
 {
     os.writeKeyword("type") << type() << token::END_STATEMENT << nl;
