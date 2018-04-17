@@ -71,10 +71,20 @@ void Foam::unallocatedGenericFvPatchField<Type>::read
                          && fieldToken.labelToken() == 0
                         )
                         {
-                            scalarFields.insert
+                            // This is the hard one. What type is a
+                            // 'nonuniform 0'?
+                            fieldTable
+                            (
+                                scalarFields,
+                                vectorFields,
+                                sphericalTensorFields,
+                                symmTensorFields,
+                                tensorFields,
+                                pTraits<Type>::zero
+                            ).insert
                             (
                                 iter().keyword(),
-                                new scalarField(0)
+                                new Field<Type>(0)
                             );
                         }
                         else

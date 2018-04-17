@@ -169,6 +169,83 @@ public:
             );
 
 
+
+        // Helper: select storage
+
+            static HashPtrTable<Field<scalar>>& fieldTable
+            (
+                HashPtrTable<scalarField>& scalarFields,
+                HashPtrTable<vectorField>& vectorFields,
+                HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+                HashPtrTable<symmTensorField>& symmTensorFields,
+                HashPtrTable<tensorField>& tensorFields,
+                const scalar&
+            )
+            {
+                return scalarFields;
+            }
+            static HashPtrTable<Field<vector>>& fieldTable
+            (
+                HashPtrTable<scalarField>& scalarFields,
+                HashPtrTable<vectorField>& vectorFields,
+                HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+                HashPtrTable<symmTensorField>& symmTensorFields,
+                HashPtrTable<tensorField>& tensorFields,
+                const vector&
+            )
+            {
+                return vectorFields;
+            }
+            static HashPtrTable<Field<sphericalTensor>>& fieldTable
+            (
+                HashPtrTable<scalarField>& scalarFields,
+                HashPtrTable<vectorField>& vectorFields,
+                HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+                HashPtrTable<symmTensorField>& symmTensorFields,
+                HashPtrTable<tensorField>& tensorFields,
+                const sphericalTensor&
+            )
+            {
+                return sphericalTensorFields;
+            }
+            static HashPtrTable<Field<symmTensor>>& fieldTable
+            (
+                HashPtrTable<scalarField>& scalarFields,
+                HashPtrTable<vectorField>& vectorFields,
+                HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+                HashPtrTable<symmTensorField>& symmTensorFields,
+                HashPtrTable<tensorField>& tensorFields,
+                const symmTensor&
+            )
+            {
+                return symmTensorFields;
+            }
+            static HashPtrTable<Field<tensor>>& fieldTable
+            (
+                HashPtrTable<scalarField>& scalarFields,
+                HashPtrTable<vectorField>& vectorFields,
+                HashPtrTable<sphericalTensorField>& sphericalTensorFields,
+                HashPtrTable<symmTensorField>& symmTensorFields,
+                HashPtrTable<tensorField>& tensorFields,
+                const tensor&
+            )
+            {
+                return tensorFields;
+            }
+            template<class FldType>
+            HashPtrTable<Field<FldType>>& fieldTable()
+            {
+                return fieldTable
+                (
+                    scalarFields_,
+                    vectorFields_,
+                    sphericalTensorFields_,
+                    symmTensorFields_,
+                    tensorFields_,
+                    pTraits<FldType>::zero
+                );
+            }
+
         //- Write
         virtual void write(Ostream&) const;
 };
