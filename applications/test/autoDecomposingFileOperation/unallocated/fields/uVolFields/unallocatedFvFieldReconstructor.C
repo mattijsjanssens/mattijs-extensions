@@ -70,4 +70,23 @@ Foam::unallocatedFvFieldReconstructor::unallocatedFvFieldReconstructor
 }
 
 
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::label Foam::unallocatedFvFieldReconstructor::findEntry
+(
+    const List<Pair<word>>& lst,
+    const word& key
+) const
+{
+    forAll(lst, i)
+    {
+        if (lst[i].first() == key)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
 // ************************************************************************* //

@@ -74,6 +74,8 @@ writeReconstructedFvVolumeField
         );
     }
 
+    // Fix filtering of empty nonuniform entries
+    reconstructor.reconstructor().fixGenericNonuniform(procFields);
 
     // Map local field onto baseMesh
     const unallocatedFvMesh& baseMesh = reconstructor.baseMesh();

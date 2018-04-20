@@ -74,6 +74,14 @@ class unallocatedFvFieldReconstructor
 
     // Private Member Functions
 
+        //- Find entry with same key
+        label findEntry
+        (
+            const List<Pair<word>>& lst,
+            const word& key
+        ) const;
+
+
 //        //- Construct per-patch addressing
 //        void createPatchFaceMaps();
 //
@@ -102,6 +110,21 @@ public:
         );
 
     // Member Functions
+
+        //- Fix generic non-uniform reading
+        template<class Type>
+        void fixGenericNonuniform
+        (
+            PtrList
+            <
+                GeometricField
+                <
+                    Type,
+                    unallocatedFvPatchField,
+                    unallocatedFvMesh
+                >
+            >& procFields
+        ) const;
 
         //- Reconstruct volume internal field
         template<class Type>

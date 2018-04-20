@@ -197,6 +197,27 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
+void Foam::unallocatedFvPatchField<Type>::autoMap
+(
+    const fvPatchFieldMapper& m
+)
+{
+    Field<Type>::autoMap(m);
+}
+
+
+template<class Type>
+void Foam::unallocatedFvPatchField<Type>::rmap
+(
+    const unallocatedFvPatchField<Type>& ptf,
+    const labelList& addr
+)
+{
+    Field<Type>::rmap(ptf, addr);
+}
+
+
+template<class Type>
 void Foam::unallocatedFvPatchField<Type>::write(Ostream& os) const
 {
     os.writeKeyword("type") << type() << token::END_STATEMENT << nl;

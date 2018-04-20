@@ -34,6 +34,7 @@ namespace Foam
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
+// Scalar
 defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchScalarField, 0);
 addToRunTimeSelectionTable
 (
@@ -48,6 +49,7 @@ addToRunTimeSelectionTable
     patchMapper
 );
 
+// Vector
 defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchVectorField, 0);
 addToRunTimeSelectionTable
 (
@@ -62,6 +64,7 @@ addToRunTimeSelectionTable
     patchMapper
 );
 
+// SphericalTensor
 defineNamedTemplateTypeNameAndDebug
 (
     genericUnallocatedFvPatchSphericalTensorField,
@@ -80,6 +83,26 @@ addToRunTimeSelectionTable
     patchMapper
 );
 
+//SymmTensor
+defineNamedTemplateTypeNameAndDebug
+(
+    genericUnallocatedFvPatchSymmTensorField,
+    0
+);
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchSymmTensorField,
+    genericUnallocatedFvPatchSymmTensorField,
+    dictionary
+);
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchSymmTensorField,
+    genericUnallocatedFvPatchSymmTensorField,
+    patchMapper
+);
+
+// Tensor
 defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchTensorField, 0);
 addToRunTimeSelectionTable
 (

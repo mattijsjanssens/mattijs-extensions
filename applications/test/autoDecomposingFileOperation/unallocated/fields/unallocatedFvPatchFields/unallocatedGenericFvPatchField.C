@@ -71,11 +71,7 @@ void Foam::unallocatedGenericFvPatchField<Type>::read
                          && fieldToken.labelToken() == 0
                         )
                         {
-                            scalarFields.insert
-                            (
-                                iter().keyword(),
-                                new scalarField(0)
-                            );
+                            // Ignore nonuniform 0 entry
                         }
                         else
                         {
@@ -678,84 +674,209 @@ void Foam::unallocatedGenericFvPatchField<Type>::rmap
     const unallocatedGenericFvPatchField<Type>& dptf =
         refCast<const unallocatedGenericFvPatchField<Type>>(ptf);
 
-    forAllIter
+
+    // We're looping over the remote field entries so we can add any missing
+    // 'nonuniform 0' entries
+
+    forAllConstIter
     (
         HashPtrTable<scalarField>,
-        scalarFields_,
-        iter
+        dptf.scalarFields_,
+        dptfIter
     )
     {
-        HashPtrTable<scalarField>::const_iterator dptfIter =
-            dptf.scalarFields_.find(iter.key());
+        HashPtrTable<scalarField>::iterator iter =
+            scalarFields_.find(dptfIter.key());
 
-        if (dptfIter != dptf.scalarFields_.end())
+        if (iter != scalarFields_.end())
         {
             iter()->rmap(*dptfIter(), addr);
         }
+        else
+        {
+            scalarField* ptr = new scalarField(this->size());
+            scalarFields_.insert(dptfIter.key(), ptr);
+            ptr->rmap(*dptfIter(), addr);
+        }
     }
 
-    forAllIter
+    forAllConstIter
     (
         HashPtrTable<vectorField>,
-        vectorFields_,
-        iter
+        dptf.vectorFields_,
+        dptfIter
     )
     {
-        HashPtrTable<vectorField>::const_iterator dptfIter =
-            dptf.vectorFields_.find(iter.key());
+        HashPtrTable<vectorField>::const_iterator iter =
+            vectorFields_.find(dptfIter.key());
 
-        if (dptfIter != dptf.vectorFields_.end())
+        if (iter != vectorFields_.end())
         {
             iter()->rmap(*dptfIter(), addr);
         }
+        else
+        {
+            vectorField* ptr = new vectorField(this->size());
+            vectorFields_.insert(dptfIter.key(), ptr);
+            ptr->rmap(*dptfIter(), addr);
+        }
     }
 
-    forAllIter
+    forAllConstIter
     (
         HashPtrTable<sphericalTensorField>,
-        sphericalTensorFields_,
-        iter
+        dptf.sphericalTensorFields_,
+        dptfIter
     )
     {
-        HashPtrTable<sphericalTensorField>::const_iterator dptfIter =
-            dptf.sphericalTensorFields_.find(iter.key());
+        HashPtrTable<sphericalTensorField>::const_iterator iter =
+            sphericalTensorFields_.find(dptfIter.key());
 
-        if (dptfIter != dptf.sphericalTensorFields_.end())
+        if (iter != sphericalTensorFields_.end())
         {
             iter()->rmap(*dptfIter(), addr);
         }
+        else
+        {
+            sphericalTensorField* ptr = new sphericalTensorField(this->size());
+            sphericalTensorFields_.insert(dptfIter.key(), ptr);
+            ptr->rmap(*dptfIter(), addr);
+        }
     }
 
-    forAllIter
+    forAllConstIter
     (
         HashPtrTable<symmTensorField>,
-        symmTensorFields_,
-        iter
+        dptf.symmTensorFields_,
+        dptfIter
     )
     {
-        HashPtrTable<symmTensorField>::const_iterator dptfIter =
-            dptf.symmTensorFields_.find(iter.key());
+        HashPtrTable<symmTensorField>::const_iterator iter =
+            symmTensorFields_.find(dptfIter.key());
 
-        if (dptfIter != dptf.symmTensorFields_.end())
+        if (iter != symmTensorFields_.end())
         {
             iter()->rmap(*dptfIter(), addr);
+        }
+        else
+        {
+            symmTensorField* ptr = new symmTensorField(this->size());
+            symmTensorFields_.insert(dptfIter.key(), ptr);
+            ptr->rmap(*dptfIter(), addr);
         }
     }
 
-    forAllIter
+    forAllConstIter
     (
         HashPtrTable<tensorField>,
-        tensorFields_,
-        iter
+        dptf.tensorFields_,
+        dptfIter
     )
     {
-        HashPtrTable<tensorField>::const_iterator dptfIter =
-            dptf.tensorFields_.find(iter.key());
+        HashPtrTable<tensorField>::const_iterator iter =
+            tensorFields_.find(dptfIter.key());
 
-        if (dptfIter != dptf.tensorFields_.end())
+        if (iter != tensorFields_.end())
         {
             iter()->rmap(*dptfIter(), addr);
         }
+        else
+        {
+            tensorField* ptr = new tensorField(this->size());
+            tensorFields_.insert(dptfIter.key(), ptr);
+            ptr->rmap(*dptfIter(), addr);
+        }
+    }
+}
+
+
+template<class Type>
+Foam::List<Foam::Pair<Foam::word>>
+Foam::unallocatedGenericFvPatchField<Type>::entryTypes() const
+{
+    label n =
+        scalarFields_.size()
+      + vectorFields_.size()
+      + sphericalTensorFields_.size()
+      + symmTensorFields_.size()
+      + tensorFields_.size();
+
+    List<Pair<word>> entries(n);
+    n = 0;
+    {
+        const word& typeName = token::Compound<List<scalar>>::typeName;
+        const wordList names(scalarFields_.sortedToc());
+        forAll(names, i)
+        {
+            entries[n++] = Pair<word>(names[i], typeName);
+        }
+    }
+    {
+        const word& typeName = token::Compound<List<vector>>::typeName;
+        const wordList names(vectorFields_.sortedToc());
+        forAll(names, i)
+        {
+            entries[n++] = Pair<word>(names[i], typeName);
+        }
+    }
+    {
+        const word& typeName = token::Compound<List<sphericalTensor>>::typeName;
+        const wordList names(sphericalTensorFields_.sortedToc());
+        forAll(names, i)
+        {
+            entries[n++] = Pair<word>(names[i], typeName);
+        }
+    }
+    {
+        const word& typeName = token::Compound<List<symmTensor>>::typeName;
+        const wordList names(symmTensorFields_.sortedToc());
+        forAll(names, i)
+        {
+            entries[n++] = Pair<word>(names[i], typeName);
+        }
+    }
+    {
+        const word& typeName = token::Compound<List<tensor>>::typeName;
+        const wordList names(tensorFields_.sortedToc());
+        forAll(names, i)
+        {
+            entries[n++] = Pair<word>(names[i], typeName);
+        }
+    }
+    return entries;
+}
+
+
+template<class Type>
+void Foam::unallocatedGenericFvPatchField<Type>::addEntry
+(
+    const word& key,
+    const word& type
+)
+{
+    if (type == token::Compound<List<scalar>>::typeName)
+    {
+        scalarFields_.insert(key, new scalarField(0));
+    }
+    else if (type == token::Compound<List<vector>>::typeName)
+    {
+        vectorFields_.insert(key, new vectorField(0));
+    }
+    else if (type == token::Compound<List<sphericalTensor>>::typeName)
+    {
+        sphericalTensorFields_.insert(key, new sphericalTensorField(0));
+    }
+    else if (type == token::Compound<List<symmTensor>>::typeName)
+    {
+        symmTensorFields_.insert(key, new symmTensorField(0));
+    }
+    else if (type == token::Compound<List<tensor>>::typeName)
+    {
+        tensorFields_.insert(key, new tensorField(0));
+    }
+    else
+    {
+        FatalErrorInFunction << "problem" << exit(FatalError);
     }
 }
 

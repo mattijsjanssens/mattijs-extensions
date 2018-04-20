@@ -25,8 +25,138 @@ License
 
 #include "unallocatedFvFieldReconstructor.H"
 #include "fvFieldReconstructor.H"
+#include "unallocatedGenericFvPatchField.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+template<class Type>
+void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
+(
+    PtrList
+    <
+        GeometricField
+        <
+            Type,
+            unallocatedFvPatchField,
+            unallocatedFvMesh
+        >
+    >& procFields
+) const
+{
+    typedef GeometricField
+    <
+        Type,
+        unallocatedFvPatchField,
+        unallocatedFvMesh
+    > GeoField;
+
+    label maxNPatches = 0;
+    forAll(procFields, proci)
+    {
+        const typename GeoField::Boundary& bfld =
+            procFields[proci].boundaryField();
+        maxNPatches = max(maxNPatches, bfld.size());
+    }
+
+    // Extract field types of all genericFvPatchFields
+
+    // PatchField type to list of entry+type
+    HashTable<List<Pair<word>>> patchFieldToTypes(2*maxNPatches);
+
+    forAll(procFields, proci)
+    {
+        const typename GeoField::Boundary& bfld =
+            procFields[proci].boundaryField();
+        forAll(bfld, patchi)
+        {
+            if (isA<unallocatedGenericFvPatchField<Type>>(bfld[patchi]))
+            {
+                const unallocatedGenericFvPatchField<Type>& pfld =
+                    refCast<const unallocatedGenericFvPatchField<Type>>
+                    (
+                        bfld[patchi]
+                    );
+
+                const List<Pair<word>> entryTypes(pfld.entryTypes());
+
+                HashTable<List<Pair<word>>>::iterator fndType =
+                    patchFieldToTypes.find(pfld.actualTypeName());
+
+                if (fndType == patchFieldToTypes.end())
+                {
+                    patchFieldToTypes.insert(pfld.actualTypeName(), entryTypes);
+                }
+                else
+                {
+                    // Merge
+                    forAll(entryTypes, i)
+                    {
+                        const word& entry = entryTypes[i].first();
+
+                        label index = findEntry(fndType(), entry);
+                        if (index != -1)
+                        {
+                            if
+                            (
+                                entryTypes[i].second()
+                             != fndType()[index].second()
+                            )
+                            {
+                                FatalErrorInFunction << "Inconsistent types"
+                                    << " for patchField "
+                                    << pfld.actualTypeName()
+                                    << " on processor " << proci
+                                    << exit(FatalError);
+                            }
+                        }
+                        else
+                        {
+                            fndType().append(entryTypes[i]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    //DebugVar(patchFieldToTypes);
+
+
+    // Add these to fields with unknown types
+    forAll(procFields, proci)
+    {
+        typename GeoField::Boundary& bfld =
+            procFields[proci].boundaryFieldRef();
+        forAll(bfld, patchi)
+        {
+            if (isA<unallocatedGenericFvPatchField<Type>>(bfld[patchi]))
+            {
+                unallocatedGenericFvPatchField<Type>& pfld =
+                    refCast<unallocatedGenericFvPatchField<Type>>
+                    (
+                        bfld[patchi]
+                    );
+
+                const List<Pair<word>> entryTypes(pfld.entryTypes());
+
+                const List<Pair<word>>& allTypes =
+                    patchFieldToTypes[pfld.actualTypeName()];
+
+                forAll(allTypes, entryi)
+                {
+                    const Pair<word>& entry = allTypes[entryi];
+
+                    if (findEntry(entryTypes, entry.first()) == -1)
+                    {
+                        pfld.addEntry(entry.first(), entry.second());
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 template<class Type>
 Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedFvMesh>>
@@ -174,7 +304,6 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
                     // face direction.
                     reverseAddressing[facei] = cp[facei] - 1 - curPatchStart;
                 }
-
 
                 patchFields[curBPatch].rmap
                 (

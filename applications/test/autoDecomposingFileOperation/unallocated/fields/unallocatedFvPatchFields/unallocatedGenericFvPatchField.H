@@ -29,6 +29,14 @@ Description
     condition, useful as a fallback for handling unknown patch types.  Not
     generally applicable as a user-specified condition.
 
+    It uses parsing logic to decide the type of any Field entry, e.g.
+    'nonuniform List<scalar>'. This has problems with 'nonuniform 0' since
+    it does not output the type. Normally these get set to be a scalarField
+    but this gives problem in reconstruction since there we use in-place
+    mapping. What used to be a zero-sized field (can be read a scalar or vector
+    or anything) now becomes a non-zero sized scalar field which cannot be
+    read by a vectorField (in binary, when it is trying to steal the compound).
+
 See also
     Foam::genericFvPatchField
 
@@ -153,21 +161,29 @@ public:
 
     // Member functions
 
-        // Mapping functions
+        const word& actualTypeName() const
+        {
+            return actualTypeName_;
+        }
 
-            //- Map (and resize as needed) from self given a mapping object
-            virtual void autoMap
-            (
-                const fvPatchFieldMapper&
-            );
+        //- Extract list of entry names and their types (scalar, vector etc)
+        List<Pair<word>> entryTypes() const;
 
-            //- Reverse map the given fvPatchField onto this fvPatchField
-            virtual void rmap
-            (
-                const unallocatedFvPatchField<Type>&,
-                const labelList&
-            );
+        //- Add dummy field of given type
+        void addEntry(const word& key, const word& type);
 
+        //- Map (and resize as needed) from self given a mapping object
+        virtual void autoMap
+        (
+            const fvPatchFieldMapper&
+        );
+
+        //- Reverse map the given fvPatchField onto this fvPatchField
+        virtual void rmap
+        (
+            const unallocatedFvPatchField<Type>&,
+            const labelList&
+        );
 
         //- Write
         virtual void write(Ostream&) const;
