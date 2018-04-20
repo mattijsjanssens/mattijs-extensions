@@ -32,7 +32,7 @@ Foam::unallocatedFvPatchField<Type>::New
     const word& patchFieldType,
     const word& actualPatchType,
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF
+    const DimensionedField<Type, unallocatedVolMesh>& iF
 )
 {
     if (!patchConstructorTablePtr_)
@@ -101,7 +101,7 @@ Foam::unallocatedFvPatchField<Type>::New
 (
     const word& patchFieldType,
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF
+    const DimensionedField<Type, unallocatedVolMesh>& iF
 )
 {
     return New(patchFieldType, word::null, p, iF);
@@ -113,7 +113,7 @@ Foam::tmp<Foam::unallocatedFvPatchField<Type>>
 Foam::unallocatedFvPatchField<Type>::New
 (
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const dictionary& dict
 )
 {
@@ -182,7 +182,7 @@ Foam::unallocatedFvPatchField<Type>::New
 (
     const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const fvPatchFieldMapper& pfMapper
 )
 {

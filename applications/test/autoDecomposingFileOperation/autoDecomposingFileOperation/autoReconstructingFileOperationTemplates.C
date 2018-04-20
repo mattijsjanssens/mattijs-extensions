@@ -26,6 +26,7 @@ License
 #include "autoReconstructingFileOperation.H"
 #include "uVolFields.H"
 #include "unallocatedFvMesh.H"
+#include "unallocatedVolMesh.H"
 #include "unallocatedGenericFvPatchField.H"
 #include "unallocatedFvFieldReconstructor.H"
 #include "uFieldReconstructor.H"
@@ -42,7 +43,7 @@ writeReconstructedFvVolumeField
     Ostream& os
 ) const
 {
-    typedef GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh>
+    typedef GeometricField<Type, unallocatedFvPatchField, unallocatedVolMesh>
         GeoField;
 
 

@@ -69,14 +69,14 @@ public:
         unallocatedEmptyFvPatchField
         (
             const fvPatch&,
-            const DimensionedField<Type, unallocatedFvMesh>&
+            const DimensionedField<Type, unallocatedVolMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
         unallocatedEmptyFvPatchField
         (
             const fvPatch&,
-            const DimensionedField<Type, unallocatedFvMesh>&,
+            const DimensionedField<Type, unallocatedVolMesh>&,
             const dictionary&
         );
 
@@ -85,7 +85,7 @@ public:
         (
             const unallocatedFvPatchField<Type>&,
             const fvPatch&,
-            const DimensionedField<Type, unallocatedFvMesh>&,
+            const DimensionedField<Type, unallocatedVolMesh>&,
             const fvPatchFieldMapper&
         );
 
@@ -108,13 +108,13 @@ public:
         unallocatedEmptyFvPatchField
         (
             const unallocatedEmptyFvPatchField<Type>&,
-            const DimensionedField<Type, unallocatedFvMesh>&
+            const DimensionedField<Type, unallocatedVolMesh>&
         );
 
         //- Construct and return a clone setting internal field reference
         virtual tmp<unallocatedFvPatchField<Type>> clone
         (
-            const DimensionedField<Type, unallocatedFvMesh>& iF
+            const DimensionedField<Type, unallocatedVolMesh>& iF
         ) const
         {
             return tmp<unallocatedFvPatchField<Type>>

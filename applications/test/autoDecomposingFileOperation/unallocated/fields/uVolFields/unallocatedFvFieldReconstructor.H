@@ -36,9 +36,10 @@ SourceFiles
 #ifndef unallocatedFvFieldReconstructor_H
 #define unallocatedFvFieldReconstructor_H
 
-#include "PtrList.H"
-#include "unallocatedFvMesh.H"
+#include "unallocatedVolMesh.H"
 #include "unallocatedFvPatchField.H"
+#include "labelIOList.H"
+#include "GeometricField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -82,14 +83,11 @@ class unallocatedFvFieldReconstructor
         ) const;
 
 
-//        //- Construct per-patch addressing
-//        void createPatchFaceMaps();
-//
-//        //- Disallow default bitwise copy construct
-//        unallocatedFvFieldReconstructor
-//        (
-//            const unallocatedFvFieldReconstructor&
-//        );
+        //- Disallow default bitwise copy construct
+        unallocatedFvFieldReconstructor
+        (
+            const unallocatedFvFieldReconstructor&
+        );
 
         //- Disallow default bitwise assignment
         void operator=(const unallocatedFvFieldReconstructor&);
@@ -121,23 +119,23 @@ public:
                 <
                     Type,
                     unallocatedFvPatchField,
-                    unallocatedFvMesh
+                    unallocatedVolMesh
                 >
             >& procFields
         ) const;
 
         //- Reconstruct volume internal field
         template<class Type>
-        tmp<DimensionedField<Type, unallocatedFvMesh>>
+        tmp<DimensionedField<Type, unallocatedVolMesh>>
         reconstructFvVolumeInternalField
         (
             const IOobject& fieldIoObject,
-            const PtrList<DimensionedField<Type, unallocatedFvMesh>>& procFields
+            const PtrList<DimensionedField<Type, unallocatedVolMesh>>& pFields
         ) const;
 
         //- Reconstruct volume field
         template<class Type>
-        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh>>
+        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedVolMesh>>
         reconstructFvVolumeField
         (
             const IOobject& fieldIoObject,
@@ -147,7 +145,7 @@ public:
                 <
                     Type,
                     unallocatedFvPatchField,
-                    unallocatedFvMesh
+                    unallocatedVolMesh
                 >
             >&
         ) const;

@@ -38,7 +38,7 @@ void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
         <
             Type,
             unallocatedFvPatchField,
-            unallocatedFvMesh
+            unallocatedVolMesh
         >
     >& procFields
 ) const
@@ -47,7 +47,7 @@ void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
     <
         Type,
         unallocatedFvPatchField,
-        unallocatedFvMesh
+        unallocatedVolMesh
     > GeoField;
 
     label maxNPatches = 0;
@@ -159,11 +159,11 @@ void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
 
 
 template<class Type>
-Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedFvMesh>>
+Foam::tmp<Foam::DimensionedField<Type, Foam::unallocatedVolMesh>>
 Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeInternalField
 (
     const IOobject& fieldIoObject,
-    const PtrList<DimensionedField<Type, unallocatedFvMesh>>& procFields
+    const PtrList<DimensionedField<Type, unallocatedVolMesh>>& procFields
 ) const
 {
     // Create the internalField
@@ -171,7 +171,7 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeInternalField
 
     forAll(procMeshes_, proci)
     {
-        const DimensionedField<Type, unallocatedFvMesh>& procField =
+        const DimensionedField<Type, unallocatedVolMesh>& procField =
             procFields[proci];
 
         // Set the cell values in the reconstructed field
@@ -182,9 +182,9 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeInternalField
         );
     }
 
-    return tmp<DimensionedField<Type, unallocatedFvMesh>>
+    return tmp<DimensionedField<Type, unallocatedVolMesh>>
     (
-        new DimensionedField<Type, unallocatedFvMesh>
+        new DimensionedField<Type, unallocatedVolMesh>
         (
             fieldIoObject,
             mesh_,
@@ -202,7 +202,7 @@ Foam::tmp
     <
         Type,
         Foam::unallocatedFvPatchField,
-        Foam::unallocatedFvMesh
+        Foam::unallocatedVolMesh
     >
 >
 Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
@@ -214,7 +214,7 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
         <
             Type,
             unallocatedFvPatchField,
-            unallocatedFvMesh
+            unallocatedVolMesh
         >
     >& procFields
 ) const
@@ -223,7 +223,7 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
     <
         Type,
         unallocatedFvPatchField,
-        unallocatedFvMesh
+        unallocatedVolMesh
     > GeoField;
 
     // Create the internalField
@@ -291,7 +291,7 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
                         (
                             procField.boundaryField()[patchi],
                             mesh_.boundary()[curBPatch],
-                            DimensionedField<Type, unallocatedFvMesh>::null(),
+                            DimensionedField<Type, unallocatedVolMesh>::null(),
                             fvFieldReconstructor::fvPatchFieldReconstructor
                             (
                                 mesh_.boundary()[curBPatch].size()
@@ -362,7 +362,7 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
                                     DimensionedField
                                     <
                                         Type,
-                                        unallocatedFvMesh
+                                        unallocatedVolMesh
                                     >::null()
                                 )
                             );
@@ -399,7 +399,7 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
     //             (
     //                 emptyFvPatchField<Type>::typeName,
     //                 mesh_.boundary()[patchi],
-    //                 DimensionedField<Type, unallocatedFvMesh>::null()
+    //                 DimensionedField<Type, unallocatedVolMesh>::null()
     //             )
     //         );
     //     }

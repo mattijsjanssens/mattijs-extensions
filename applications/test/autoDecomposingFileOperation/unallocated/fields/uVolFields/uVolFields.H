@@ -35,7 +35,7 @@ SourceFiles
 #define uVolFields_H
 
 #include "GeometricFields.H"
-#include "unallocatedFvMesh.H"
+#include "unallocatedVolMesh.H"
 #include "unallocatedFvPatchField.H"
 //#include "fvMesh.H"
 //#include "fvPatchField.H"
@@ -50,18 +50,18 @@ namespace Foam
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<>
-tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
-GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
+tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>>
+GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>::component
 (
     const direction
 ) const;
 
 template<>
-void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::
+void GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>::
 replace
 (
     const direction,
-    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>& sf
+    const GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>&
 );
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

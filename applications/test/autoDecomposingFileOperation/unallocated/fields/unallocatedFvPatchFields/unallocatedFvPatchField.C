@@ -33,7 +33,7 @@ template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF
+    const DimensionedField<Type, unallocatedVolMesh>& iF
 )
 :
     Field<Type>(p.size()),
@@ -49,7 +49,7 @@ template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const Type& value
 )
 :
@@ -66,7 +66,7 @@ template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const word& patchType
 )
 :
@@ -83,7 +83,7 @@ template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const Field<Type>& f
 )
 :
@@ -100,7 +100,7 @@ template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const dictionary& dict,
     const bool valueRequired
 )
@@ -140,7 +140,7 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const unallocatedFvPatchField<Type>& ptf,
     const fvPatch& p,
-    const DimensionedField<Type, unallocatedFvMesh>& iF,
+    const DimensionedField<Type, unallocatedVolMesh>& iF,
     const fvPatchFieldMapper& mapper
 )
 :
@@ -176,7 +176,7 @@ template<class Type>
 Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
 (
     const unallocatedFvPatchField<Type>& ptf,
-    const DimensionedField<Type, unallocatedFvMesh>& iF
+    const DimensionedField<Type, unallocatedVolMesh>& iF
 )
 :
     Field<Type>(ptf),

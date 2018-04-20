@@ -43,7 +43,7 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-class unallocatedFvMesh;
+class unallocatedVolMesh;
 
 template<class Type>
 class unallocatedFvPatchField;
@@ -51,16 +51,16 @@ class unallocatedFvPatchField;
 template<class Type, template<class> class PatchField, class GeoMesh>
 class GeometricField;
 
-typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>
+typedef GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>
 uVolScalarField;
-typedef GeometricField<vector, unallocatedFvPatchField, unallocatedFvMesh>
+typedef GeometricField<vector, unallocatedFvPatchField, unallocatedVolMesh>
 uVolVectorField;
 typedef
-GeometricField<sphericalTensor, unallocatedFvPatchField, unallocatedFvMesh>
+GeometricField<sphericalTensor, unallocatedFvPatchField, unallocatedVolMesh>
 uVolSphericalTensorField;
-typedef GeometricField<symmTensor, unallocatedFvPatchField, unallocatedFvMesh>
+typedef GeometricField<symmTensor, unallocatedFvPatchField, unallocatedVolMesh>
 uVolSymmTensorField;
-typedef GeometricField<tensor, unallocatedFvPatchField, unallocatedFvMesh>
+typedef GeometricField<tensor, unallocatedFvPatchField, unallocatedVolMesh>
 uVolTensorField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

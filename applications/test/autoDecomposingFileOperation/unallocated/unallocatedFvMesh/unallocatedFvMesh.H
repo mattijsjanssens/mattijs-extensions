@@ -33,7 +33,7 @@ Description
 #define unallocatedFvMesh_H
 
 #include "unallocatedFvBoundaryMesh.H"
-#include "volMesh.H"
+#include "objectRegistry.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -41,16 +41,15 @@ namespace Foam
 {
 
 class globalMeshData;
+//class objectRegistry;
 
 /*---------------------------------------------------------------------------*\
-                           Class unallocatedFvMesh Declaration
+                      Class unallocatedFvMesh Declaration
 \*---------------------------------------------------------------------------*/
 
 class unallocatedFvMesh
-:
-    public volMesh
 {
-    // Permanent data
+    // Private Member Data
 
         const word name_;
 
@@ -114,19 +113,7 @@ public:
 
     // Member Functions
 
-        // volMesh functionality
-
-            //- Return number of cells
-            static label size(const Mesh& mesh)
-            {
-                return mesh.nCells_;
-            }
-
-            //- Return reference to boundary mesh
-            const unallocatedFvBoundaryMesh& boundary() const
-            {
-                return boundary_;
-            }
+        // Basic mesh info
 
             //- Return parallel info
             const globalMeshData& globalData() const
@@ -135,20 +122,17 @@ public:
                 return globalData_;
             }
 
-            //- Return the top-level database
-            const Time& time() const
-            {
-                return db_.time();
-            }
-
             //- Return database
             const objectRegistry& thisDb() const
             {
                 return db_;
             }
 
-
-        // Basic mesh info
+            //- Return the top-level database
+            const Time& time() const
+            {
+                return db_.time();
+            }
 
             //- Override database name since this might be Time
             const word& name() const
@@ -169,6 +153,12 @@ public:
             label nInternalFaces() const
             {
                 return nInternalFaces_;
+            }
+
+            //- Return reference to boundary mesh
+            const unallocatedFvBoundaryMesh& boundary() const
+            {
+                return boundary_;
             }
 
 

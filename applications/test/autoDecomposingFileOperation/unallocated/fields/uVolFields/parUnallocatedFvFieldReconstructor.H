@@ -41,6 +41,8 @@ SourceFiles
 
 #include "unallocatedFvMesh.H"
 #include "unallocatedFvPatchField.H"
+#include "unallocatedVolMesh.H"
+#include "GeometricField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -103,22 +105,22 @@ public:
 
         //- Reconstruct volume internal field
         template<class Type>
-        tmp<DimensionedField<Type, unallocatedFvMesh> >
+        tmp<DimensionedField<Type, unallocatedVolMesh> >
         reconstructFvVolumeInternalField
         (
-            const DimensionedField<Type, unallocatedFvMesh>&
+            const DimensionedField<Type, unallocatedVolMesh>&
         ) const;
 
         //- Reconstruct volume field
         template<class Type>
-        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedFvMesh> >
+        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedVolMesh> >
         reconstructFvVolumeField
         (
             const GeometricField
             <
                 Type,
                 unallocatedFvPatchField,
-                unallocatedFvMesh
+                unallocatedVolMesh
             >& fld
         ) const;
 };

@@ -34,6 +34,7 @@ Description
 #include "argList.H"
 #include "uVolFields.H"
 #include "unallocatedFvMesh.H"
+#include "unallocatedVolMesh.H"
 #include "unallocatedGenericFvPatchField.H"
 #include "parUnallocatedFvFieldReconstructor.H"
 #include "unallocatedFvMeshTools.H"

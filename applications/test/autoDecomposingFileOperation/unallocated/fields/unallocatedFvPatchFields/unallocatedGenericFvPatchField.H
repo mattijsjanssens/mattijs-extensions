@@ -50,7 +50,7 @@ SourceFiles
 
 #include "HashPtrTable.H"
 #include "unallocatedFvPatchField.H"
-#include "unallocatedFvMesh.H"
+#include "unallocatedVolMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -104,14 +104,14 @@ public:
         unallocatedGenericFvPatchField
         (
             const fvPatch&,
-            const DimensionedField<Type, unallocatedFvMesh>&
+            const DimensionedField<Type, unallocatedVolMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
         unallocatedGenericFvPatchField
         (
             const fvPatch&,
-            const DimensionedField<Type, unallocatedFvMesh>&,
+            const DimensionedField<Type, unallocatedVolMesh>&,
             const dictionary&
         );
 
@@ -120,7 +120,7 @@ public:
         (
             const unallocatedFvPatchField<Type>&,
             const fvPatch&,
-            const DimensionedField<Type, unallocatedFvMesh>&,
+            const DimensionedField<Type, unallocatedVolMesh>&,
             const fvPatchFieldMapper&
         );
 
@@ -143,13 +143,13 @@ public:
         unallocatedGenericFvPatchField
         (
             const unallocatedGenericFvPatchField<Type>&,
-            const DimensionedField<Type, unallocatedFvMesh>&
+            const DimensionedField<Type, unallocatedVolMesh>&
         );
 
         //- Construct and return a clone setting internal field reference
         virtual tmp<unallocatedFvPatchField<Type>> clone
         (
-            const DimensionedField<Type, unallocatedFvMesh>& iF
+            const DimensionedField<Type, unallocatedVolMesh>& iF
         ) const
         {
             return tmp<unallocatedFvPatchField<Type>>

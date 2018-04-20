@@ -59,8 +59,8 @@ defineTemplateTypeNameAndDebugWithName(uVolTensorField, "volTensorField", 0);
 
 // specialization for scalar fields
 template<>
-tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>>
-GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
+tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>>
+GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>::component
 (
     const direction
 ) const
@@ -71,10 +71,11 @@ GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::component
 
 // specialization for scalar fields
 template<>
-void GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>::replace
+void GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>::
+replace
 (
     const direction,
-    const GeometricField<scalar, unallocatedFvPatchField, unallocatedFvMesh>&
+    const GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>&
     gsf
 )
 {

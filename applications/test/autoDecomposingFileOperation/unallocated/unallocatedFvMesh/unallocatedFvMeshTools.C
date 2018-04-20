@@ -25,7 +25,8 @@ License
 
 #include "unallocatedFvMeshTools.H"
 #include "polyBoundaryMeshEntries.H"
-#include "unallocatedFvBoundaryMesh.H"
+//#include "unallocatedFvBoundaryMesh.H"
+#include "fvMesh.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 

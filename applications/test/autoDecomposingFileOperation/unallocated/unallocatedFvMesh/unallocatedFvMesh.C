@@ -40,23 +40,6 @@ defineTypeNameAndDebug(unallocatedFvMesh, 0);
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-//Foam::unallocatedFvMesh::unallocatedFvMesh
-//(
-//    //const fvMesh& procMesh,
-//    const objectRegistry& db,
-//    const label nCells,
-//    const unallocatedFvBoundaryMesh& boundary,
-//    const globalMeshData& globalData
-//)
-//:
-//    volMesh(*this), //(procMesh),
-//    db_(db),
-//    nCells_(nCells),
-//    boundary_(boundary),
-//    globalData_(globalData)
-//{}
-
-
 Foam::unallocatedFvMesh::unallocatedFvMesh
 (
     const word& name,
@@ -69,7 +52,6 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
     const globalMeshData& globalData
 )
 :
-    volMesh(*this), //(procMesh),
     name_(name),
     db_(db),
     nInternalFaces_(patchStarts.size() ? min(patchStarts) : 0),
@@ -114,10 +96,6 @@ Foam::unallocatedFvMesh::~unallocatedFvMesh()
             << endl;
     }
 }
-
-
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
 
 
 // * * * * * * * * * * * * * * * Member Operators  * * * * * * * * * * * * * //
@@ -175,8 +153,6 @@ Foam::Ostream& Foam::operator<<
 
     return os;
 }
-
-
 
 
 // ************************************************************************* //
