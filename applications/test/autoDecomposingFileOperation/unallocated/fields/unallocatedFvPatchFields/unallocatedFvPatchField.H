@@ -310,6 +310,13 @@ public:
                 return patchType_;
             }
 
+            //- Return dimensioned internal field reference
+            const DimensionedField<Type, unallocatedFvMesh>&
+            internalField() const
+            {
+                return internalField_;
+            }
+
 
         // Mapping functions
 

@@ -65,6 +65,7 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
     const wordList& patchNames,
     const labelList& patchSizes,
     const labelList& patchStarts,
+    const List<wordList>& basePatchGroups,
     const globalMeshData& globalData
 )
 :
@@ -88,7 +89,9 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
                 patchNames[patchi],
                 patchSizes[patchi],
                 patchStarts[patchi],
-                *reinterpret_cast<const fvBoundaryMesh*>(0) // unused reference
+                patchi,
+                *reinterpret_cast<const fvBoundaryMesh*>(0),// unused reference
+                basePatchGroups[patchi]
             )
         );
     }

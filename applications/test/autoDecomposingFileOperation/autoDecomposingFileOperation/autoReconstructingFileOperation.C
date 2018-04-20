@@ -83,7 +83,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::haveProcPath
     }
     else
     {
-        procObjectPath = fileName
+        procObjectPath = filePath
         (
             io.rootPath()
            /io.caseName()
@@ -267,7 +267,10 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
 
     if (!Pstream::parRun())
     {
-        fileName path(db.path("processor0"/instance, db.dbDir()/local));
+        fileName path
+        (
+            filePath(db.path("processor0"/instance, db.dbDir()/local))
+        );
 
         if (Foam::isDir(path))
         {
@@ -333,7 +336,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 
     if (!Pstream::parRun())
     {
-        fileName procDir(dir/"processor0");
+        fileName procDir(filePath(dir/"processor0"));
         if (exists(procDir))
         {
             instantList procTimes = uncollatedFileOperation::findTimes
@@ -491,7 +494,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     {
         const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
-        OStringStream os;
+        OStringStream os(IOstream::BINARY);
         if (type == volScalarField::typeName)
         {
             writeReconstructedFvVolumeField<scalar>(mesh, io, os);
@@ -512,7 +515,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         {
             writeReconstructedFvVolumeField<tensor>(mesh, io, os);
         }
-        IStringStream is(os.str());
+        IStringStream is(os.str(), IOstream::BINARY);
         io.readData(is);
         return true;
     }

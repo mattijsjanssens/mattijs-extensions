@@ -36,7 +36,7 @@ SourceFiles
 #define unallocatedGenericFvPatch_H
 
 #include "fvPatch.H"
-#include "genericPolyPatch.H"
+#include "patchIdentifier.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,19 +49,22 @@ namespace Foam
 
 class unallocatedGenericFvPatch
 :
-    public fvPatch
+    public fvPatch,
+    public patchIdentifier
 {
-    const word name_;
+//    const word name_;
 
     const label size_;
 
     const label start_;
 
+//    //- Optional groups patch belongs to
+//    wordList inGroups_;
+
 
 public:
 
     //- Runtime type information
-    //TypeName(genericPolyPatch::typeName_());
     TypeName("unallocatedGeneric");
 
 
@@ -74,11 +77,14 @@ public:
             const word& name,
             const label size,
             const label start,
-            const fvBoundaryMesh& bm
+            const label index,
+            const fvBoundaryMesh& bm,
+            const wordList& inGroups = wordList()
         )
         :
             fvPatch(patch, bm),
-            name_(name),
+            patchIdentifier(name, index, word::null, inGroups),
+            //name_(name),
             size_(size),
             start_(start)
         {}
@@ -106,7 +112,7 @@ public:
             //- Return name
             virtual const word& name() const
             {
-                return name_;
+                return patchIdentifier::name();
             }
 
             //- Return label of face in patch from global face label

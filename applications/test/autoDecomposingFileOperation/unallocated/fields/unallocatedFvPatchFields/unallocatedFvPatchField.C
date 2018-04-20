@@ -123,18 +123,12 @@ Foam::unallocatedFvPatchField<Type>::unallocatedFvPatchField
         }
         else
         {
-        //    FatalIOErrorInFunction
-        //    (
-        //        dict
-        //    )   << "Essential entry 'value' missing"
-        //        << exit(FatalIOError);
-
-            IOWarningInFunction
-            (
-                dict
-            )   << "Essential entry 'value' missing."
-                << " Initialising to zero instead"
-                << endl;
+            //IOWarningInFunction
+            //(
+            //    dict
+            //)   << "Essential entry 'value' missing."
+            //    << " Initialising to zero instead"
+            //    << endl;
             Field<Type>::operator=(Zero);
         }
     }
