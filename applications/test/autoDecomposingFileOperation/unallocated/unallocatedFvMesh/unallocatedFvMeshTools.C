@@ -296,7 +296,15 @@ Foam::autoPtr<Foam::unallocatedFvMesh> Foam::unallocatedFvMeshTools::newMesh
         );
 
         labelIOList owner(IOobject(meshIO, "owner"));
-        nCells = (owner.size() == 0 ? 0 : max(owner)+1);
+        if (owner.size() == 0)
+        {
+            nCells = 0;
+        }
+        else
+        {
+            labelIOList neighbour(IOobject(meshIO, "neighbour"));
+            nCells = max(max(owner), max(neighbour))+1;
+        }
 
         polyBoundaryMeshEntries patchEntries(IOobject(meshIO, "boundary"));
 

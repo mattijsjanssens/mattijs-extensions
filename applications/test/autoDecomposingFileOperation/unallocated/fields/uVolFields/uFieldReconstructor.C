@@ -67,6 +67,14 @@ void Foam::uFieldReconstructor::readProcMeshes
     const fileName& instance
 ) const
 {
+    if (debug)
+    {
+        Pout<< "uFieldReconstructor: reading *ProcAddressing from"
+            << " instance " << instance
+            << " path " << procDatabases_[0].path()
+            << endl;
+    }
+
     cellProcAddressing_.setSize(procDatabases_.size());
     faceProcAddressing_.setSize(procDatabases_.size());
     boundaryProcAddressing_.setSize(procDatabases_.size());
@@ -199,11 +207,23 @@ Foam::uFieldReconstructor::uFieldReconstructor(const polyMesh& mesh)
     label nProcs = fileHandler().nProcs(mesh.time().path(), word::null);
     if (debug)
     {
-        Pout<< "uFieldReconstructor detected nProcs:" << nProcs
+        Pout<< "uFieldReconstructor: detected nProcs:" << nProcs
             << " from:" << mesh.time().path() << endl;
     }
+
+    if (nProcs == 0)
+    {
+        FatalErrorInFunction << "Did not detect any processor directories."
+            << exit(FatalError);
+    }
+
     readProcDatabases(mesh.thisDb(), nProcs);
-    readProcMeshes(mesh.time(), mesh.facesInstance());
+
+    const fileName instance
+    (
+        procDatabases_[0].findInstance(fvMesh::meshSubDir, "faces")
+    );
+    readProcMeshes(mesh.time(), instance);
 }
 
 

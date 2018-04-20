@@ -237,6 +237,26 @@ Foam::unallocatedFvFieldReconstructor::reconstructFvVolumeField
     {
         const GeoField& procField = procFields[proci];
 
+        if (procField.size() != procField.mesh().nCells())
+        {
+            FatalErrorInFunction<< "field size:" << procField.size()
+                << " nCells:" << procField.mesh().nCells() << exit(FatalError);
+        }
+        if (procField.size() != cellProcAddressing_[proci].size())
+        {
+            FatalErrorInFunction<< "field size:" << procField.size()
+                << " addressing:" << cellProcAddressing_[proci].size()
+                << exit(FatalError);
+        }
+
+        //if (max(cellProcAddressing_[proci]) >= mesh_.nCells())
+        //{
+        //    FatalErrorInFunction<< "nTotalCells:" << mesh_.nCells()
+        //        << " max addressing:" << max(cellProcAddressing_[proci])
+        //        << exit(FatalError);
+        //}
+
+
         // Set the cell values in the reconstructed field
         internalField.rmap
         (

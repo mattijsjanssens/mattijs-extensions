@@ -28,6 +28,7 @@ License
 #include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
 #include "uFieldReconstructor.H"
+#include "unthreadedInitialise.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -41,6 +42,15 @@ namespace fileOperations
         fileOperation,
         autoReconstructingFileOperation,
         word
+    );
+
+    // Mark as not needing threaded mpi
+    addNamedToRunTimeSelectionTable
+    (
+        fileOperationInitialise,
+        unthreadedInitialise,
+        word,
+        autoReconstructing
     );
 
 
@@ -163,7 +173,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
             << " checkGlobal:" << checkGlobal << endl;
     }
 
-    // Problem: IOobjectList does a readDir followed
+    // Field files: problem: picked up by IOobjectList does a readDir followed
     // by a typeHeaderOk checking with 'labelIOList' as typeName. So
     // here we cannot use the wanted type (eg. volScalarField). Instead
     // we store the objects inside readObjects and check if it is
@@ -172,6 +182,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
     fileName objPath;
     fileName procPath;
 
+    // Cached field file?
     HashPtrTable<fileNameList, fileName>::const_iterator tmFnd =
         procObjects_.find(io.time().timeName());
 
@@ -283,7 +294,7 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
                     << "autoReconstructingFileOperation::readObjects :"
                     << " Returning processor directory searching:"
                     << endl << indent
-                    << "    path     :" << db.path() << endl << indent
+                    << "    path     :" << path << endl << indent
                     << "    objects  :" << objects << endl << endl;
             }
 
@@ -407,16 +418,12 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 //     const word& typeName
 // ) const
 // {
-//     //if (debug)
-//     //{
-//     //    Pout<< indent
-//     //        << "autoReconstructingFileOperation::readHeader :"
-//     //        << " Reading:" << type << " from: " << fName << endl;
-//     //}
-//     if (typeName == volScalarField::typeName)
+//     if (debug)
 //     {
+//         Pout<< indent
+//             << "autoReconstructingFileOperation::readHeader :"
+//             << " Reading:" << typeName << " from: " << fName << endl;
 //     }
-//
 //     bool ok = uncollatedFileOperation::readHeader(io, fName, typeName);
 //
 //     if (debug)
@@ -429,9 +436,9 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 //     }
 //     return ok;
 // }
-
-
-
+//
+//
+//
 // Foam::autoPtr<Foam::ISstream>
 // Foam::fileOperations::autoReconstructingFileOperation::readStream
 // (
