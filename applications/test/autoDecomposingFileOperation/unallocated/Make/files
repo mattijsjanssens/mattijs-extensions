@@ -15,4 +15,11 @@ fields/uVolFields/unallocatedFvFieldReconstructor.C
 fields/uVolFields/parUnallocatedFvFieldReconstructor.C
 fields/uVolFields/uFieldReconstructor.C
 
+fields/uSurfaceFields/uSurfaceFields.C
+
+fields/unallocatedFvsPatchFields/unallocatedFvsPatchFields.C
+fields/unallocatedFvsPatchFields/unallocatedGenericFvsPatchFields.C
+fields/unallocatedFvsPatchFields/unallocatedEmptyFvsPatchFields.C
+
+
 LIB = $(FOAM_USER_LIBBIN)/libunallocated
