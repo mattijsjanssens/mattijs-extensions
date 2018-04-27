@@ -496,6 +496,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
          || type == volSymmTensorField::typeName
          || type == volTensorField::typeName
          || type == surfaceScalarField::typeName
+         || type == surfaceVectorField::typeName
         )
      && haveProcPath(io, procPath)
     )
@@ -526,6 +527,10 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         else if (type == surfaceScalarField::typeName)
         {
             writeReconstructedFvSurfaceField<scalar>(mesh, io, os);
+        }
+        else if (type == surfaceVectorField::typeName)
+        {
+            writeReconstructedFvSurfaceField<vector>(mesh, io, os);
         }
         else
         {
