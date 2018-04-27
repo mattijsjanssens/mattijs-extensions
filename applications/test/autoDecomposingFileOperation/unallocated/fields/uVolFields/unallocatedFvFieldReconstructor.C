@@ -41,8 +41,7 @@ Foam::unallocatedFvFieldReconstructor::unallocatedFvFieldReconstructor
     procMeshes_(procMeshes),
     faceProcAddressing_(faceProcAddressing),
     cellProcAddressing_(cellProcAddressing),
-    boundaryProcAddressing_(boundaryProcAddressing),
-    nReconstructed_(0)
+    boundaryProcAddressing_(boundaryProcAddressing)
 {
     forAll(procMeshes_, proci)
     {
@@ -67,25 +66,6 @@ Foam::unallocatedFvFieldReconstructor::unallocatedFvFieldReconstructor
                 << exit(FatalError);
         }
     }
-}
-
-
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-Foam::label Foam::unallocatedFvFieldReconstructor::findEntry
-(
-    const List<Pair<word>>& lst,
-    const word& key
-) const
-{
-    forAll(lst, i)
-    {
-        if (lst[i].first() == key)
-        {
-            return i;
-        }
-    }
-    return -1;
 }
 
 

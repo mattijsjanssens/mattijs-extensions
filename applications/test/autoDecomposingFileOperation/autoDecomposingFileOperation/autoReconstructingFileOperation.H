@@ -73,6 +73,15 @@ class autoReconstructingFileOperation
             Ostream& os
         ) const;
 
+        //- Reconstruct surface field and stream
+        template<class Type>
+        Ostream& writeReconstructedFvSurfaceField
+        (
+            const fvMesh& mesh,
+            const IOobject& io,
+            Ostream& os
+        ) const;
+
 
 public:
 

@@ -43,6 +43,7 @@ Description
 #include "unallocatedFvMeshTools.H"
 #include "unallocatedFvFieldReconstructor.H"
 #include "unallocatedGenericFvsPatchField.H"
+#include "uFieldReconstructor.H"
 
 using namespace Foam;
 
@@ -56,21 +57,78 @@ int main(int argc, char *argv[])
     #include "createUnallocatedMesh.H"
     unallocatedSurfaceMesh uMesh(mesh);
 
-    uSurfaceScalarField ufld
+//     uSurfaceScalarField ufld
+//     (
+//         IOobject
+//         (
+//             "phi",
+//             mesh.time().timeName(),
+//             mesh.thisDb(),
+//             IOobject::MUST_READ,
+//             IOobject::NO_WRITE
+//         ),
+//         mesh
+//         //dimensionedScalar("zero", dimless, Zero),
+//         //unallocatedGenericFvsPatchField<scalar>::typeName
+//     );
+//     DebugVar(ufld);
+
+
+    // Read proc meshes
+    const uFieldReconstructor& reconstructor = uFieldReconstructor::New
     (
-        IOobject
-        (
-            "phi",
-            mesh.time().timeName(),
-            mesh.thisDb(),
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-        ),
-        mesh
-        //dimensionedScalar("zero", dimless, Zero),
-        //unallocatedGenericFvsPatchField<scalar>::typeName
+        uMesh.thisDb()
     );
-    DebugVar(ufld);
+    const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
+
+    // Read field on proc meshes
+    PtrList<uSurfaceScalarField> procFields(procMeshes.size());
+    forAll(procFields, proci)
+    {
+        const unallocatedFvMesh& procMesh = procMeshes[proci];
+        procFields.set
+        (
+            proci,
+            new uSurfaceScalarField
+            (
+                IOobject
+                (
+                    "phi",
+                    procMesh.time().timeName(),
+                    procMesh.thisDb(),
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                procMesh
+            )
+        );
+    }
+
+
+    // Map local field onto baseMesh
+    const unallocatedFvMesh& baseMesh = reconstructor.baseMesh();
+
+    tmp<uSurfaceScalarField> tfld
+    (
+        reconstructor.reconstructor().reconstructFvSurfaceField
+        (
+            IOobject
+            (
+                "phi",
+                baseMesh.time().timeName(),
+                baseMesh.thisDb(),
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE,
+                false
+            ),
+            procFields
+        )
+    );
+
+
+    DebugVar(tfld());
+
 
 
 //    if (!Pstream::parRun())

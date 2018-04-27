@@ -53,8 +53,10 @@ class unallocatedFvFieldReconstructor;
 \*---------------------------------------------------------------------------*/
 
 class uFieldReconstructor
+// :
+//     public MeshObject<polyMesh, TopologicalMeshObject, uFieldReconstructor>
 :
-    public MeshObject<polyMesh, TopologicalMeshObject, uFieldReconstructor>
+    public regIOobject
 {
     // Private Member Data
 
@@ -85,14 +87,20 @@ public:
 
     // Constructors
 
-        //- Constructor given polyMesh (undecomposed mesh). Mesh itself
-        //  not used apart from time
-        explicit uFieldReconstructor(const polyMesh& mesh);
+        //- Constructor given objectRegistry (undecomposed mesh). Registry
+        //  itself not used apart from its path and time
+        explicit uFieldReconstructor(const objectRegistry& obr);
+
+        //- Lookup or create
+        static const uFieldReconstructor& New(const objectRegistry& obr);
 
 
     //- Destructor
     virtual ~uFieldReconstructor()
     {}
+
+
+    // Member Functions
 
         //- Undecomposed mesh
         const unallocatedFvMesh& baseMesh() const
@@ -110,6 +118,12 @@ public:
         const unallocatedFvFieldReconstructor& reconstructor() const
         {
             return reconstructorPtr_();
+        }
+
+        virtual bool writeData(Foam::Ostream&) const
+        {
+            NotImplemented;
+            return false;
         }
 };
 

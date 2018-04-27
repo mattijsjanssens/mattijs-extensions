@@ -102,4 +102,77 @@ writeReconstructedFvVolumeField
 }
 
 
+template<class Type>
+Foam::Ostream&
+Foam::fileOperations::autoReconstructingFileOperation::
+writeReconstructedFvSurfaceField
+(
+    const fvMesh& mesh,
+    const IOobject& io,
+    Ostream& os
+) const
+{
+    typedef GeometricField
+    <
+        Type,
+        unallocatedFvsPatchField,
+        unallocatedSurfaceMesh
+    > GeoField;
+
+
+    const uFieldReconstructor& reconstructor = uFieldReconstructor::New(mesh);
+
+    const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
+
+    // Read field on proc meshes
+    PtrList<GeoField> procFields(procMeshes.size());
+    forAll(procFields, proci)
+    {
+        const unallocatedFvMesh& procMesh = procMeshes[proci];
+        procFields.set
+        (
+            proci,
+            new GeoField
+            (
+                IOobject
+                (
+                    io.name(),
+                    procMesh.time().timeName(),
+                    procMesh.thisDb(),
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                procMesh
+            )
+        );
+    }
+
+//     // Fix filtering of empty nonuniform entries
+//     reconstructor.reconstructor().fixGenericNonuniform(procFields);
+
+    // Map local field onto baseMesh
+    const unallocatedFvMesh& baseMesh = reconstructor.baseMesh();
+
+    tmp<GeoField> tfld
+    (
+        reconstructor.reconstructor().reconstructFvSurfaceField
+        (
+            IOobject
+            (
+                io.name(),
+                baseMesh.time().timeName(),
+                baseMesh.thisDb(),
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE,
+                false
+            ),
+            procFields
+        )
+    );
+
+    return os << tfld();
+}
+
+
 // ************************************************************************* //

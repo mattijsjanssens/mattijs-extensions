@@ -495,6 +495,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
          || type == volSphericalTensorField::typeName
          || type == volSymmTensorField::typeName
          || type == volTensorField::typeName
+         || type == surfaceScalarField::typeName
         )
      && haveProcPath(io, procPath)
     )
@@ -518,9 +519,18 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         {
             writeReconstructedFvVolumeField<symmTensor>(mesh, io, os);
         }
-        else
+        else if (type == volTensorField::typeName)
         {
             writeReconstructedFvVolumeField<tensor>(mesh, io, os);
+        }
+        else if (type == surfaceScalarField::typeName)
+        {
+            writeReconstructedFvSurfaceField<scalar>(mesh, io, os);
+        }
+        else
+        {
+            FatalErrorInFunction << "Problem : type " << type
+                << " not handled" << exit(FatalError);
         }
         IStringStream is(os.str(), IOstream::BINARY);
         io.readData(is);

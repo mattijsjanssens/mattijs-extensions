@@ -25,11 +25,14 @@ Class
     Foam::unallocatedFvFieldReconstructor
 
 Description
-    Finite volume reconstructor for (unallocated) volume fields.
+    Variant of fvFieldReconstructor but for unallocated fields.
 
 SourceFiles
     unallocatedFvFieldReconstructor.C
     unallocatedFvFieldReconstructorReconstructFields.C
+
+See Also
+    Foam::fvFieldReconstructor
 
 \*---------------------------------------------------------------------------*/
 
@@ -38,8 +41,12 @@ SourceFiles
 
 #include "unallocatedVolMesh.H"
 #include "unallocatedFvPatchField.H"
+
+#include "unallocatedSurfaceMesh.H"
+#include "unallocatedFvsPatchField.H"
 #include "labelIOList.H"
 #include "GeometricField.H"
+#include "wordPairList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -69,29 +76,6 @@ class unallocatedFvFieldReconstructor
         //- List of processor boundary addressing lists
         const PtrList<labelIOList>& boundaryProcAddressing_;
 
-        //- Number of fields reconstructed
-        label nReconstructed_;
-
-
-    // Private Member Functions
-
-        //- Find entry with same key
-        label findEntry
-        (
-            const List<Pair<word>>& lst,
-            const word& key
-        ) const;
-
-
-        //- Disallow default bitwise copy construct
-        unallocatedFvFieldReconstructor
-        (
-            const unallocatedFvFieldReconstructor&
-        );
-
-        //- Disallow default bitwise assignment
-        void operator=(const unallocatedFvFieldReconstructor&);
-
 
 public:
 
@@ -108,6 +92,19 @@ public:
         );
 
     // Member Functions
+
+        //- Fix generic non-uniform reading
+        template<class Type>
+        HashTable<wordPairList>
+        extractGenericTypes
+        (
+            const GeometricField
+            <
+                Type,
+                unallocatedFvPatchField,
+                unallocatedVolMesh
+            >& fld
+        ) const;
 
         //- Fix generic non-uniform reading
         template<class Type>
@@ -146,6 +143,32 @@ public:
                     Type,
                     unallocatedFvPatchField,
                     unallocatedVolMesh
+                >
+            >&
+        ) const;
+
+
+        //- Reconstruct surface field
+        template<class Type>
+        tmp
+        <
+            GeometricField
+            <
+                Type,
+                unallocatedFvsPatchField,
+                unallocatedSurfaceMesh
+            >
+        >
+        reconstructFvSurfaceField
+        (
+            const IOobject& fieldIoObject,
+            const PtrList
+            <
+                GeometricField
+                <
+                    Type,
+                    unallocatedFvsPatchField,
+                    unallocatedSurfaceMesh
                 >
             >&
         ) const;

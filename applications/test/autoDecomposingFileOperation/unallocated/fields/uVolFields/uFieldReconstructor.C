@@ -199,16 +199,26 @@ void Foam::uFieldReconstructor::readProcMeshes
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::uFieldReconstructor::uFieldReconstructor(const polyMesh& mesh)
+Foam::uFieldReconstructor::uFieldReconstructor(const objectRegistry& obr)
+//:
+//    MeshObject<polyMesh, TopologicalMeshObject, uFieldReconstructor>(mesh)
 :
-    MeshObject<polyMesh, TopologicalMeshObject, uFieldReconstructor>(mesh)
+    regIOobject
+    (
+        IOobject
+        (
+            uFieldReconstructor::typeName,
+            obr.instance(),
+            obr
+        )
+    )
 {
    // Read the processor databases
-    label nProcs = fileHandler().nProcs(mesh.time().path(), word::null);
+    label nProcs = fileHandler().nProcs(obr.time().path(), word::null);
     if (debug)
     {
         Pout<< "uFieldReconstructor: detected nProcs:" << nProcs
-            << " from:" << mesh.time().path() << endl;
+            << " from:" << obr.time().path() << endl;
     }
 
     if (nProcs == 0)
@@ -217,13 +227,51 @@ Foam::uFieldReconstructor::uFieldReconstructor(const polyMesh& mesh)
             << exit(FatalError);
     }
 
-    readProcDatabases(mesh.thisDb(), nProcs);
+    readProcDatabases(obr, nProcs);
 
     const fileName instance
     (
         procDatabases_[0].findInstance(fvMesh::meshSubDir, "faces")
     );
-    readProcMeshes(mesh.time(), instance);
+    readProcMeshes(obr.time(), instance);
+}
+
+
+const Foam::uFieldReconstructor& Foam::uFieldReconstructor::New
+(
+    const objectRegistry& obr
+)
+{
+    //const objectRegistry& obr = mesh.thisDb();
+
+    if
+    (
+        obr.foundObject<uFieldReconstructor>
+        (
+            uFieldReconstructor::typeName
+        )
+    )
+    {
+        return obr.lookupObject<uFieldReconstructor>
+        (
+            uFieldReconstructor::typeName
+        );
+    }
+    else
+    {
+        if (meshObject::debug)
+        {
+            Pout<< "MeshObject::New(const " << polyMesh::typeName
+                << "&) : constructing " << uFieldReconstructor::typeName
+                << " for region " << obr.name() << endl;
+        }
+
+        uFieldReconstructor* objectPtr = new uFieldReconstructor(obr);
+
+        regIOobject::store(objectPtr);
+
+        return *objectPtr;
+    }
 }
 
 

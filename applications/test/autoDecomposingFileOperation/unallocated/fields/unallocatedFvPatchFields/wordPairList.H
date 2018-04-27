@@ -21,49 +21,32 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Typedef
+    Foam::wordPairList
+
+Description
+    A List of pairs of words.
+
 \*---------------------------------------------------------------------------*/
 
-#include "unallocatedGenericFvsPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "unallocatedFvsPatchFields.H"
-#include "fvsPatchField.H"
+#ifndef wordPairList_H
+#define wordPairList_H
+
+#include "word.H"
+#include "List.H"
+#include "Pair.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-makeFvsPatchTypeField
-(
-    unallocatedFvsPatchScalarField,
-    genericUnallocatedFvsPatchScalarField
-);
-makeFvsPatchTypeField
-(
-    unallocatedFvsPatchVectorField,
-    genericUnallocatedFvsPatchVectorField
-);
-makeFvsPatchTypeField
-(
-    unallocatedFvsPatchSphericalTensorField,
-    genericUnallocatedFvsPatchSphericalTensorField
-);
-makeFvsPatchTypeField
-(
-    unallocatedFvsPatchSymmTensorField,
-    genericUnallocatedFvsPatchSymmTensorField
-);
-makeFvsPatchTypeField
-(
-    unallocatedFvsPatchTensorField,
-    genericUnallocatedFvsPatchTensorField
-);
-
+    typedef Pair<word> wordPair;
+    typedef UList<wordPair> wordPairUList;
+    typedef List<wordPair> wordPairList;
+}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace Foam
+#endif
 
 // ************************************************************************* //

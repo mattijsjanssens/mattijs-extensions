@@ -48,9 +48,8 @@ SourceFiles
 #ifndef unallocatedGenericFvsPatchField_H
 #define unallocatedGenericFvsPatchField_H
 
-#include "HashPtrTable.H"
 #include "unallocatedFvsPatchField.H"
-#include "fvsPatchField.H"
+#include "genericPatchFieldBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -64,32 +63,12 @@ namespace Foam
 template<class Type>
 class unallocatedGenericFvsPatchField
 :
-    public unallocatedFvsPatchField<Type>
+    public unallocatedFvsPatchField<Type>,
+    public genericPatchFieldBase
 {
     // Private data
 
-        word actualTypeName_;
-        dictionary dict_;
-        bool hasValue_;
-
-        HashPtrTable<scalarField> scalarFields_;
-        HashPtrTable<vectorField> vectorFields_;
-        HashPtrTable<sphericalTensorField> sphericalTensorFields_;
-        HashPtrTable<symmTensorField> symmTensorFields_;
-        HashPtrTable<tensorField> tensorFields_;
-
-
-   // Private Member Functions
-
-        void read
-        (
-            const dictionary& dict,
-            HashPtrTable<scalarField>& scalarFields,
-            HashPtrTable<vectorField>& vectorFields,
-            HashPtrTable<sphericalTensorField>& sphericalTensorFields,
-            HashPtrTable<symmTensorField>& symmTensorFields,
-            HashPtrTable<tensorField>& tensorFields
-        );
+        const bool hasValue_;
 
 
 public:
@@ -161,22 +140,8 @@ public:
 
     // Member functions
 
-        const word& actualTypeName() const
-        {
-            return actualTypeName_;
-        }
-
-        //- Extract list of entry names and their types (scalar, vector etc)
-        List<Pair<word>> entryTypes() const;
-
-        //- Add dummy field of given type
-        void addEntry(const word& key, const word& type);
-
         //- Map (and resize as needed) from self given a mapping object
-        virtual void autoMap
-        (
-            const fvPatchFieldMapper&
-        );
+        virtual void autoMap(const fvPatchFieldMapper&);
 
         //- Reverse map the given fvPatchField onto this fvPatchField
         virtual void rmap

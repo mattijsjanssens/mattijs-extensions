@@ -38,7 +38,7 @@ Description
     read by a vectorField (in binary, when it is trying to steal the compound).
 
 See also
-    Foam::genericFvPatchField
+    Foam::genericPatchFieldBase
 
 SourceFiles
     unallocatedGenericFvPatchField.C
@@ -48,9 +48,8 @@ SourceFiles
 #ifndef unallocatedGenericFvPatchField_H
 #define unallocatedGenericFvPatchField_H
 
-#include "HashPtrTable.H"
 #include "unallocatedFvPatchField.H"
-#include "unallocatedVolMesh.H"
+#include "genericPatchFieldBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -58,38 +57,18 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class genericFvPatch Declaration
+               Class unallocatedGenericFvPatchField Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class Type>
 class unallocatedGenericFvPatchField
 :
-    public unallocatedFvPatchField<Type>
+    public unallocatedFvPatchField<Type>,
+    public genericPatchFieldBase
 {
-    // Private data
+     // Private data
 
-        word actualTypeName_;
-        dictionary dict_;
-        bool hasValue_;
-
-        HashPtrTable<scalarField> scalarFields_;
-        HashPtrTable<vectorField> vectorFields_;
-        HashPtrTable<sphericalTensorField> sphericalTensorFields_;
-        HashPtrTable<symmTensorField> symmTensorFields_;
-        HashPtrTable<tensorField> tensorFields_;
-
-
-   // Private Member Functions
-
-        void read
-        (
-            const dictionary& dict,
-            HashPtrTable<scalarField>& scalarFields,
-            HashPtrTable<vectorField>& vectorFields,
-            HashPtrTable<sphericalTensorField>& sphericalTensorFields,
-            HashPtrTable<symmTensorField>& symmTensorFields,
-            HashPtrTable<tensorField>& tensorFields
-        );
+         const bool hasValue_;
 
 
 public:
@@ -161,22 +140,8 @@ public:
 
     // Member functions
 
-        const word& actualTypeName() const
-        {
-            return actualTypeName_;
-        }
-
-        //- Extract list of entry names and their types (scalar, vector etc)
-        List<Pair<word>> entryTypes() const;
-
-        //- Add dummy field of given type
-        void addEntry(const word& key, const word& type);
-
         //- Map (and resize as needed) from self given a mapping object
-        virtual void autoMap
-        (
-            const fvPatchFieldMapper&
-        );
+        virtual void autoMap(const fvPatchFieldMapper&);
 
         //- Reverse map the given fvPatchField onto this fvPatchField
         virtual void rmap
