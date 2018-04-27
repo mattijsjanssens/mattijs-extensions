@@ -78,7 +78,7 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 
 Foam::parUnallocatedFvFieldReconstructor::parUnallocatedFvFieldReconstructor
 (
-    unallocatedFvMesh& baseMesh,
+    const unallocatedFvMesh& baseMesh,
     const unallocatedFvMesh& procMesh,
     const mapDistributePolyMesh& distMap
 )

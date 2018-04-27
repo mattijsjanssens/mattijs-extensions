@@ -120,7 +120,8 @@ autoReconstructingFileOperation
 {
     if (verbose)
     {
-        Info<< "I/O    : " << typeName << endl;
+        Info<< "I/O    : " << typeName << nl
+            << "         (reconstructs on-the-fly in serial operation)" << endl;
     }
     if (regIOobject::fileModificationChecking == regIOobject::timeStampMaster)
     {

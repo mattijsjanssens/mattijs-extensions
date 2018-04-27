@@ -53,7 +53,7 @@ class mapDistributePolyMesh;
 class mapDistributeBase;
 
 /*---------------------------------------------------------------------------*\
-                   Class parUnallocatedFvFieldReconstructor Declaration
+             Class parUnallocatedFvFieldReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
 class parUnallocatedFvFieldReconstructor
@@ -61,7 +61,7 @@ class parUnallocatedFvFieldReconstructor
     // Private data
 
         //- Reconstructed mesh reference
-        unallocatedFvMesh& baseMesh_;
+        const unallocatedFvMesh& baseMesh_;
 
         //- Processor mesh reference
         const unallocatedFvMesh& procMesh_;
@@ -95,7 +95,7 @@ public:
         //- Construct from components
         parUnallocatedFvFieldReconstructor
         (
-            unallocatedFvMesh& baseMesh,
+            const unallocatedFvMesh& baseMesh,
             const unallocatedFvMesh& procMesh,
             const mapDistributePolyMesh& distMap
         );

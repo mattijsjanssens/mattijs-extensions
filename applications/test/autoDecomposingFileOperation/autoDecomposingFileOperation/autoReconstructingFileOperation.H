@@ -101,9 +101,9 @@ public:
 
     // Member Functions
 
-        // (reg)IOobject functinality
+        // fileOperation functionality
 
-            //- Overlaps other bounding box?
+            //- Reuse file-based filePath
             using fileOperation::filePath;
 
             //- Search for an object. checkGlobal : also check undecomposed case
