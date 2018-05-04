@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,53 +21,62 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-InClass
-    Foam::uVolFields
+Class
+    Foam::unallocatedFvMeshObject
 
 Description
-
-SourceFiles
-    uVolFields.C
+    Construct unallocatedFvMesh from fvMesh.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef uVolFields_H
-#define uVolFields_H
+#ifndef unallocatedFvMeshObject_H
+#define unallocatedFvMeshObject_H
 
-#include "GeometricFields.H"
-#include "unallocatedVolMesh.H"
-#include "unallocatedFvPatchField.H"
-#include "uVolFieldsFwd.H"
+#include "fvMesh.H"
+#include "unallocatedFvMesh.H"
+#include "MeshObject.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                   Class unallocatedFvMeshObject Declaration
+\*---------------------------------------------------------------------------*/
 
-template<>
-tmp<GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>>
-GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>::component
-(
-    const direction
-) const;
+class unallocatedFvMeshObject
+:
+    public MeshObject<fvMesh, TopologicalMeshObject, unallocatedFvMeshObject>,
+    public unallocatedFvMesh
+{
+    // Private Member Functions
 
-template<>
-void GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>::
-replace
-(
-    const direction,
-    const GeometricField<scalar, unallocatedFvPatchField, unallocatedVolMesh>&
-);
+        static wordList patchNames(const fvMesh&);
+        static labelList patchSizes(const fvMesh&);
+        static labelList patchStarts(const fvMesh&);
+        static List<wordList> patchGroups(const fvMesh&);
+
+
+public:
+
+    TypeName("unallocatedFvMesh");
+
+    // Constructors
+
+        //- Construct from fvMesh
+        unallocatedFvMeshObject(const fvMesh& mesh);
+
+
+    //- Destructor
+    virtual ~unallocatedFvMeshObject()
+    {}
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-//#include "uVolFieldsI.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

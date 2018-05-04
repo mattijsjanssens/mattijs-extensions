@@ -35,7 +35,7 @@ SourceFiles
 #ifndef uFieldReconstructor_H
 #define uFieldReconstructor_H
 
-#include "MeshObject.H"
+//#include "MeshObject.H"
 #include "polyMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

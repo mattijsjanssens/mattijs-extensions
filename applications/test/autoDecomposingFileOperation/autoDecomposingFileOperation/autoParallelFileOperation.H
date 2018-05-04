@@ -75,17 +75,32 @@ class autoParallelFileOperation
         //- Return the base mesh (demand loaded)
         const unallocatedFvMesh& baseMesh(const Time&) const;
 
-//         //- Return the reconstructor (demand loaded)
-//         const parUnallocatedFvFieldReconstructor& reconstructor
-//         (
-//             const unallocatedFvMesh&
-//         ) const;
-
-        //- Read, decompose and write to stream
+        //- Reconstruct and write
         template<class GeoField>
         bool reconstructAndWrite
         (
+            const unallocatedFvMesh& uMesh,
             const GeoField& procFld,
+            IOstream::streamFormat fmt,
+            IOstream::versionNumber ver,
+            IOstream::compressionType cmp
+        ) const;
+
+        //- Reconstruct and write
+        template<class GeoField>
+        bool reconstructAndWrite
+        (
+            const regIOobject& io,
+            IOstream::streamFormat fmt,
+            IOstream::versionNumber ver,
+            IOstream::compressionType cmp
+        ) const;
+
+        //- Reconstruct and write
+        template<class GeoField>
+        bool reconstructAndWrite2
+        (
+            const regIOobject& io,
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp
@@ -112,9 +127,9 @@ public:
 
         // (reg)IOobject functinality
 
-//             //- Search for an object. checkGlobal : also check undecomposed case
-//             //  This differs from uncollated in searching for parent
-//             //  also for files in time directories
+//         //- Search for an object. checkGlobal : also check undecomposed case
+//         //  This differs from uncollated in searching for parent
+//         //  also for files in time directories
 //             virtual fileName filePath
 //             (
 //                 const bool checkGlobal,

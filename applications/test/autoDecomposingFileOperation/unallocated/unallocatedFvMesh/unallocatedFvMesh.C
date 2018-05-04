@@ -35,8 +35,6 @@ defineTypeNameAndDebug(unallocatedFvMesh, 0);
 
 }
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -56,7 +54,6 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
     db_(db),
     nInternalFaces_(patchStarts.size() ? min(patchStarts) : 0),
     nCells_(nCells),
-    //boundary_(patchNames.size()),
     globalData_(globalData)
 {
     boundary_.setSize(patchNames.size());

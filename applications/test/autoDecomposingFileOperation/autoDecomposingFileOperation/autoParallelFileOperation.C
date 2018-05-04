@@ -36,6 +36,7 @@ License
 #include "unallocatedFvMeshTools.H"
 #include "parUnallocatedFvFieldReconstructor.H"
 #include "uVolFields.H"
+#include "unallocatedFvMeshObject.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -86,7 +87,7 @@ const Foam::Time& Foam::fileOperations::autoParallelFileOperation::baseRunTime
     const Time& runTime
 ) const
 {
-    if (baseRunTimePtr_.valid())
+    if (!baseRunTimePtr_.valid())
     {
         Info<< "Creating base time\n" << endl;
         baseRunTimePtr_.reset
@@ -332,7 +333,7 @@ Foam::fileOperations::autoParallelFileOperation::
 // 
 //             decomposeAndWrite<volScalarField>(io, parentIO, type, os);
 //             decomposeAndWrite<volVectorField>(io, parentIO, type, os);
-//             decomposeAndWrite<volSphericalTensorField>(io, parentIO, type, os);
+//      decomposeAndWrite<volSphericalTensorField>(io, parentIO, type, os);
 //             decomposeAndWrite<volSymmTensorField>(io, parentIO, type, os);
 //             decomposeAndWrite<volTensorField>(io, parentIO, type, os);
 // 
@@ -383,10 +384,11 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
         Pstream::parRun()
      && (
             io.type() == volScalarField::typeName
-         //|| io.type() == volVectorField::typeName
-         //|| io.type() == volSphericalTensorField::typeName
-         //|| io.type() == volSymmTensorField::typeName
-         //|| io.type() == volTensorField::typeName
+         || io.type() == volVectorField::typeName
+         || io.type() == volSphericalTensorField::typeName
+         || io.type() == volSymmTensorField::typeName
+         || io.type() == volTensorField::typeName
+         || io.type() == surfaceScalarField::typeName
         )
     )
     {
@@ -395,10 +397,41 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
             return ok;
         }
 
-Pout<< "** reconstructing:" << io.objectPath() << endl;
-        const volScalarField& fld = dynamic_cast<const uVolScalarField&>(io);
-Pout<< "** reconstructing:" << fld.name() << endl;
-        return reconstructAndWrite(fld, fmt, ver, cmp);
+        if (io.type() == volScalarField::typeName)
+        {
+            return reconstructAndWrite<volScalarField>(io, fmt, ver, cmp);
+        }
+        else if (io.type() == volVectorField::typeName)
+        {
+            return reconstructAndWrite<volVectorField>(io, fmt, ver, cmp);
+        }
+        else if (io.type() == volSphericalTensorField::typeName)
+        {
+            return reconstructAndWrite<volSphericalTensorField>
+            (
+                io,
+                fmt,
+                ver,
+                cmp
+            );
+        }
+        else if (io.type() == volSymmTensorField::typeName)
+        {
+            return reconstructAndWrite<volSymmTensorField>(io, fmt, ver, cmp);
+        }
+        else if (io.type() == volTensorField::typeName)
+        {
+            return reconstructAndWrite<volTensorField>(io, fmt, ver, cmp);
+        }
+        else if (io.type() == surfaceScalarField::typeName)
+        {
+            return reconstructAndWrite2<surfaceScalarField>(io, fmt, ver, cmp);
+        }
+        else
+        {
+            FatalErrorInFunction << "Problem" << exit(FatalError);
+            return false;
+        }
     }
     else
     {

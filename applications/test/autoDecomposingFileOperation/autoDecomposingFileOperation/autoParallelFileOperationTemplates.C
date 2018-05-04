@@ -23,32 +23,34 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-//#include "fvFieldDecomposer.H"
 #include "parUnallocatedFvFieldReconstructor.H"
 #include "uVolFields.H"
+#include "unallocatedFvMeshObject.H"
+#include "uSurfaceFields.H"
+#include "surfaceMesh.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class GeoField>
 bool Foam::fileOperations::autoParallelFileOperation::reconstructAndWrite
 (
+    const unallocatedFvMesh& uMesh,
     const GeoField& procFld,
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
     IOstream::compressionType cmp
 ) const
 {
-    Pout<< "**REconstructing " << procFld.name() << endl;
-
     if (!reconstructorPtr_.valid())
     {
+        // Read base mesh
         const unallocatedFvMesh& baseM = baseMesh(procFld.time());
 
         Info<< "Creating reconstructor" << nl << endl;
         reconstructorPtr_ = new parUnallocatedFvFieldReconstructor
         (
             baseM,
-            procFld.mesh(),
+            uMesh,
             distMapPtr_()
         );
     }
@@ -56,7 +58,7 @@ bool Foam::fileOperations::autoParallelFileOperation::reconstructAndWrite
         reconstructorPtr_();
 
     // Map local field onto baseMesh
-    tmp<uVolScalarField> tfld
+    tmp<GeoField> tfld
     (
         reconstructor.reconstructFvVolumeField(procFld)
     );
@@ -68,8 +70,115 @@ bool Foam::fileOperations::autoParallelFileOperation::reconstructAndWrite
         const bool oldParRun = Pstream::parRun();
         Pstream::parRun() = false;
         {
-            Pout<< "**Writign " << tfld().objectPath() << endl;
+            //Pout<< "**Writign " << tfld().objectPath() << endl;
             //state = tfld().write();
+            state = tfld().writeObject(fmt, ver, cmp, true);
+        }
+        Pstream::parRun() = oldParRun;
+    }
+
+    return state;
+}
+
+
+template<class GeoField>
+bool Foam::fileOperations::autoParallelFileOperation::reconstructAndWrite
+(
+    const regIOobject& io,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    Pout<< "** reconstructing:" << io.objectPath() << endl;
+    const GeoField& fld = dynamic_cast<const GeoField&>(io);
+
+    const unallocatedFvMesh& uMesh = unallocatedFvMeshObject::New(fld.mesh());
+
+    // We have a slight problem: fld is real field on real mesh (fvMesh),
+    // but the reconstructor is on an unallocated mesh. We cannot currently
+    // reconstruct from a real mesh onto an unallocated mesh.
+    // As a workaround convert the fld to its unallocated version
+
+    OStringStream os(IOstream::BINARY);
+    os  << fld;
+    IStringStream is(os.str(), IOstream::BINARY);
+
+    GeometricField
+    <
+        typename GeoField::value_type,
+        unallocatedFvPatchField,
+        unallocatedVolMesh
+    >
+    uProcFld(fld, uMesh, dictionary(is));
+
+    return reconstructAndWrite(uMesh, uProcFld, fmt, ver, cmp);
+}
+
+
+template<class GeoField>
+bool Foam::fileOperations::autoParallelFileOperation::reconstructAndWrite2
+(
+    const regIOobject& io,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    Pout<< "** reconstructing:" << io.objectPath() << endl;
+    const GeoField& procFld = dynamic_cast<const GeoField&>(io);
+
+    const unallocatedFvMesh& uMesh =
+        unallocatedFvMeshObject::New(procFld.mesh());
+
+    // We have a slight problem: fld is real field on real mesh (fvMesh),
+    // but the reconstructor is on an unallocated mesh. We cannot currently
+    // reconstruct from a real mesh onto an unallocated mesh.
+    // As a workaround convert the fld to its unallocated version
+
+    typedef GeometricField
+    <
+        typename GeoField::value_type,
+        unallocatedFvsPatchField,
+        unallocatedSurfaceMesh
+    > uGeoField;
+
+
+    OStringStream os(IOstream::BINARY);
+    os  << procFld;
+    IStringStream is(os.str(), IOstream::BINARY);
+    uGeoField uProcFld(procFld, uMesh, dictionary(is));
+
+
+    if (!reconstructorPtr_.valid())
+    {
+        // Read base mesh
+        const unallocatedFvMesh& baseM = baseMesh(uProcFld.time());
+
+        Info<< "Creating reconstructor" << nl << endl;
+        reconstructorPtr_ = new parUnallocatedFvFieldReconstructor
+        (
+            baseM,
+            uMesh,
+            distMapPtr_()
+        );
+    }
+    const parUnallocatedFvFieldReconstructor& reconstructor =
+        reconstructorPtr_();
+
+    // Map local field onto baseMesh
+    tmp<uGeoField> tfld
+    (
+        reconstructor.reconstructFvSurfaceField(uProcFld)
+    );
+
+    // Write master field to parent
+    bool state = true;
+    if (Pstream::master())
+    {
+        const bool oldParRun = Pstream::parRun();
+        Pstream::parRun() = false;
+        {
             state = tfld().writeObject(fmt, ver, cmp, true);
         }
         Pstream::parRun() = oldParRun;

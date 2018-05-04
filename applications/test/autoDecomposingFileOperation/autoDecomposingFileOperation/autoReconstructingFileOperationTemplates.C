@@ -28,6 +28,7 @@ License
 #include "unallocatedFvMesh.H"
 #include "unallocatedVolMesh.H"
 #include "unallocatedGenericFvPatchField.H"
+#include "unallocatedGenericFvsPatchField.H"
 #include "unallocatedFvFieldReconstructor.H"
 #include "uFieldReconstructor.H"
 
@@ -76,7 +77,11 @@ writeReconstructedFvVolumeField
     }
 
     // Fix filtering of empty nonuniform entries
-    reconstructor.reconstructor().fixGenericNonuniform(procFields);
+    reconstructor.reconstructor().fixGenericNonuniform
+    <
+        GeoField,
+        unallocatedGenericFvPatchField<Type>
+    >(procFields);
 
     // Map local field onto baseMesh
     const unallocatedFvMesh& baseMesh = reconstructor.baseMesh();
@@ -148,8 +153,12 @@ writeReconstructedFvSurfaceField
         );
     }
 
-//     // Fix filtering of empty nonuniform entries
-//     reconstructor.reconstructor().fixGenericNonuniform(procFields);
+    // Fix filtering of empty nonuniform entries
+    reconstructor.reconstructor().fixGenericNonuniform
+    <
+        GeoField,
+        unallocatedGenericFvsPatchField<Type>
+    >(procFields);
 
     // Map local field onto baseMesh
     const unallocatedFvMesh& baseMesh = reconstructor.baseMesh();

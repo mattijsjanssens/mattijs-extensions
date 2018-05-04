@@ -28,6 +28,9 @@ License
 #include "unallocatedFvMeshTools.H"
 #include "unallocatedFvFieldReconstructor.H"
 
+// For debug flag only
+#include "MeshObject.H"
+
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
 namespace Foam

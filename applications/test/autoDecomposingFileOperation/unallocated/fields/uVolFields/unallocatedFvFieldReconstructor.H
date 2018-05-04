@@ -94,32 +94,13 @@ public:
     // Member Functions
 
         //- Fix generic non-uniform reading
-        template<class Type>
+        template<class GeoField, class GenericType>
         HashTable<wordPairList>
-        extractGenericTypes
-        (
-            const GeometricField
-            <
-                Type,
-                unallocatedFvPatchField,
-                unallocatedVolMesh
-            >& fld
-        ) const;
+        extractGenericTypes(const GeoField& fld) const;
 
         //- Fix generic non-uniform reading
-        template<class Type>
-        void fixGenericNonuniform
-        (
-            PtrList
-            <
-                GeometricField
-                <
-                    Type,
-                    unallocatedFvPatchField,
-                    unallocatedVolMesh
-                >
-            >& procFields
-        ) const;
+        template<class GeoField, class GenericType>
+        void fixGenericNonuniform(PtrList<GeoField>& procFields) const;
 
         //- Reconstruct volume internal field
         template<class Type>

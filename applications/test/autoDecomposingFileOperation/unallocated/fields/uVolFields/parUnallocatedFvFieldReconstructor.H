@@ -103,26 +103,13 @@ public:
 
     // Member Functions
 
-        //- Reconstruct volume internal field
-        template<class Type>
-        tmp<DimensionedField<Type, unallocatedVolMesh> >
-        reconstructFvVolumeInternalField
-        (
-            const DimensionedField<Type, unallocatedVolMesh>&
-        ) const;
-
         //- Reconstruct volume field
-        template<class Type>
-        tmp<GeometricField<Type, unallocatedFvPatchField, unallocatedVolMesh> >
-        reconstructFvVolumeField
-        (
-            const GeometricField
-            <
-                Type,
-                unallocatedFvPatchField,
-                unallocatedVolMesh
-            >& fld
-        ) const;
+        template<class GeoField>
+        tmp<GeoField> reconstructFvVolumeField(const GeoField& fld) const;
+
+        //- Reconstruct surface field
+        template<class GeoField>
+        tmp<GeoField> reconstructFvSurfaceField(const GeoField& fld) const;
 };
 
 

@@ -29,35 +29,23 @@ License
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-template<class Type>
+template<class GeoField, class GenericType>
 Foam::HashTable<Foam::wordPairList>
 Foam::unallocatedFvFieldReconstructor::extractGenericTypes
 (
-    const GeometricField
-    <
-        Type,
-        unallocatedFvPatchField,
-        unallocatedVolMesh
-    >& fld
+    const GeoField& fld
 ) const
 {
-    typedef GeometricField
-    <
-        Type,
-        unallocatedFvPatchField,
-        unallocatedVolMesh
-    > GeoField;
-
     // PatchField type to list of entry+type
     HashTable<wordPairList> patchFieldToTypes(2*fld.boundaryField().size());
 
     const typename GeoField::Boundary& bfld = fld.boundaryField();
     forAll(bfld, patchi)
     {
-        if (isA<unallocatedGenericFvPatchField<Type>>(bfld[patchi]))
+        if (isA<GenericType>(bfld[patchi]))
         {
-            const unallocatedGenericFvPatchField<Type>& pfld =
-                refCast<const unallocatedGenericFvPatchField<Type>>
+            const GenericType& pfld =
+                refCast<const GenericType>
                 (
                     bfld[patchi]
                 );
@@ -74,28 +62,12 @@ Foam::unallocatedFvFieldReconstructor::extractGenericTypes
 }
 
 
-template<class Type>
+template<class GeoField, class GenericType>
 void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
 (
-    PtrList
-    <
-        GeometricField
-        <
-            Type,
-            unallocatedFvPatchField,
-            unallocatedVolMesh
-        >
-    >& procFields
+    PtrList<GeoField>& procFields
 ) const
 {
-    typedef GeometricField
-    <
-        Type,
-        unallocatedFvPatchField,
-        unallocatedVolMesh
-    > GeoField;
-
-
     // Extract field types of all genericFvPatchFields
 
     // PatchField type to list of entry+type
@@ -108,7 +80,7 @@ void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
     {
         HashTable<wordPairList> procTypes
         (
-            extractGenericTypes(procFields[proci])
+            extractGenericTypes<GeoField, GenericType>(procFields[proci])
         );
 
         forAllConstIter(HashTable<wordPairList>, procTypes, iter)
@@ -133,10 +105,10 @@ void Foam::unallocatedFvFieldReconstructor::fixGenericNonuniform
             procFields[proci].boundaryFieldRef();
         forAll(bfld, patchi)
         {
-            if (isA<unallocatedGenericFvPatchField<Type>>(bfld[patchi]))
+            if (isA<GenericType>(bfld[patchi]))
             {
-                unallocatedGenericFvPatchField<Type>& pfld =
-                    refCast<unallocatedGenericFvPatchField<Type>>
+                GenericType& pfld =
+                    refCast<GenericType>
                     (
                         bfld[patchi]
                     );

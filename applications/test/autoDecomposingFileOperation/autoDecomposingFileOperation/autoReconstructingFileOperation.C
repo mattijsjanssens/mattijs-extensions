@@ -502,6 +502,9 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
      && haveProcPath(io, procPath)
     )
     {
+        // Note: the regIOobject is the localIOdictionary used to read the
+        // field from.
+
         const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
         OStringStream os(IOstream::BINARY);
@@ -538,6 +541,9 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
             FatalErrorInFunction << "Problem : type " << type
                 << " not handled" << exit(FatalError);
         }
+
+        // Note: io is an IOdictionary so we can used the re-read
+        //       functionality
         IStringStream is(os.str(), IOstream::BINARY);
         io.readData(is);
         return true;
