@@ -39,6 +39,7 @@ License
 #include "fvsPatchFields.H"
 #include "unallocatedFvMesh.H"
 #include "unallocatedFvBoundaryMesh.H"
+#include "unallocatedSurfaceMesh.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -224,17 +225,28 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvSurfaceField
     // Create the internalField by remote mapping
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    // Note: faceMap() is for all faces, not just internal ones so
+    //       just extend field before mapping. Easier than rewriting
+    //       faceMap to be internal-to-internal
+
     distributedUnallocatedDirectFieldMapper mapper
     (
         labelUList::null(),
         distMap_.faceMap()
     );
 
-    Field<typename GeoField::value_type> internalField
+    Field<typename GeoField::value_type> intFld(fld.internalField());
+    // Pad to full length
+    intFld.setSize
     (
-        fld.internalField(),
-        mapper
+        distMap_.faceMap().constructSize(),
+        pTraits<typename GeoField::value_type>::zero
     );
+    // Do mapping
+    Field<typename GeoField::value_type> internalField(intFld, mapper);
+    // Shrink back to wanted size
+    internalField.setSize(unallocatedSurfaceMesh::size(baseMesh_));
+
 
     // Create the patchFields by remote mapping
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

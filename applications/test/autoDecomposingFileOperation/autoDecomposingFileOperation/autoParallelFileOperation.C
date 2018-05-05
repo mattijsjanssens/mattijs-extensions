@@ -379,10 +379,10 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
 {
     bool ok = true;
 
-    if
-    (
-        Pstream::parRun()
-     && (
+    if (Pstream::parRun())
+    {
+        if
+        (
             io.type() == volScalarField::typeName
          || io.type() == volVectorField::typeName
          || io.type() == volSphericalTensorField::typeName
@@ -390,47 +390,133 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
          || io.type() == volTensorField::typeName
          || io.type() == surfaceScalarField::typeName
         )
-    )
-    {
-        if (!valid)
         {
-            return ok;
-        }
+            if (!valid)
+            {
+                return ok;
+            }
 
-        if (io.type() == volScalarField::typeName)
-        {
-            return reconstructAndWrite<volScalarField>(io, fmt, ver, cmp);
+            if (io.type() == volScalarField::typeName)
+            {
+                return reconstructAndWrite<volScalarField>(io, fmt, ver, cmp);
+            }
+            else if (io.type() == volVectorField::typeName)
+            {
+                return reconstructAndWrite<volVectorField>(io, fmt, ver, cmp);
+            }
+            else if (io.type() == volSphericalTensorField::typeName)
+            {
+                return reconstructAndWrite<volSphericalTensorField>
+                (
+                    io,
+                    fmt,
+                    ver,
+                    cmp
+                );
+            }
+            else if (io.type() == volSymmTensorField::typeName)
+            {
+                return reconstructAndWrite<volSymmTensorField>
+                (
+                    io,
+                    fmt,
+                    ver,
+                    cmp
+                );
+            }
+            else if (io.type() == volTensorField::typeName)
+            {
+                return reconstructAndWrite<volTensorField>(io, fmt, ver, cmp);
+            }
+            else if (io.type() == surfaceScalarField::typeName)
+            {
+                return reconstructAndWrite2<surfaceScalarField>
+                (
+                    io,
+                    fmt,
+                    ver,
+                    cmp
+                );
+            }
+            else
+            {
+                FatalErrorInFunction << "Problem" << exit(FatalError);
+                return false;
+            }
         }
-        else if (io.type() == volVectorField::typeName)
+        else if
+        (
+            io.instance() == io.time().timeName()
+         && io.local() == "uniform"
+        )
         {
-            return reconstructAndWrite<volVectorField>(io, fmt, ver, cmp);
+            Pout<< "** uniform:" << io.objectPath() << endl;
+            if (valid)
+            {
+                // Copy of fileOperation::writeObject but with parent path
+
+                fileName pathName
+                (
+                    io.rootPath()
+                   /io.time().globalCaseName()
+                   /io.instance()
+                   /io.db().dbDir()
+                   /io.local()
+                   /io.name()
+                );
+
+                mkDir(pathName.path());
+
+                autoPtr<Ostream> osPtr
+                (
+                    NewOFstream
+                    (
+                        pathName,
+                        fmt,
+                        ver,
+                        cmp
+                    )
+                );
+
+                if (!osPtr.valid())
+                {
+                    return false;
+                }
+
+                Ostream& os = osPtr();
+
+                // If any of these fail, return (leave error handling to
+                // Ostream class)
+                if (!os.good())
+                {
+                    return false;
+                }
+
+                if (!io.writeHeader(os))
+                {
+                    return false;
+                }
+
+                // Write the data to the Ostream
+                if (!io.writeData(os))
+                {
+                    return false;
+                }
+
+                IOobject::writeEndDivider(os);
+            }
+            return true;
         }
-        else if (io.type() == volSphericalTensorField::typeName)
+        else
         {
-            return reconstructAndWrite<volSphericalTensorField>
+            ok = uncollatedFileOperation::writeObject
             (
                 io,
                 fmt,
                 ver,
-                cmp
+                cmp,
+                valid
             );
-        }
-        else if (io.type() == volSymmTensorField::typeName)
-        {
-            return reconstructAndWrite<volSymmTensorField>(io, fmt, ver, cmp);
-        }
-        else if (io.type() == volTensorField::typeName)
-        {
-            return reconstructAndWrite<volTensorField>(io, fmt, ver, cmp);
-        }
-        else if (io.type() == surfaceScalarField::typeName)
-        {
-            return reconstructAndWrite2<surfaceScalarField>(io, fmt, ver, cmp);
-        }
-        else
-        {
-            FatalErrorInFunction << "Problem" << exit(FatalError);
-            return false;
         }
     }
     else
