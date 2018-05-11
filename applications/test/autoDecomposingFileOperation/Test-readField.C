@@ -138,6 +138,9 @@ int main(int argc, char *argv[])
     }
     else
     {
+
+const bool reconstruct = false;
+
         // Read procAddressing files (from runTime). Deduct base mesh sizes.
         autoPtr<mapDistributePolyMesh> distMapPtr
         (
@@ -198,41 +201,70 @@ int main(int argc, char *argv[])
             distMap
         );
 
-        // Load local field
-        uVolScalarField p
-        (
-            IOobject
+        if (reconstruct)
+        {
+            // Load local field
+            uVolScalarField p
             (
-                "p",
-                mesh.time().timeName(),
-                mesh.thisDb(),
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            mesh
-        );
- DebugVar(p);
+                IOobject
+                (
+                    "p",
+                    mesh.time().timeName(),
+                    mesh.thisDb(),
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                mesh
+            );
 
+            // Map local field onto baseMesh
+            tmp<uVolScalarField> tfld
+            (
+                reconstructor.reconstructFvVolumeField(p)
+            );
 
-        // Map local field onto baseMesh
-        tmp<uVolScalarField> tfld
-        (
-            reconstructor.reconstructFvVolumeField(p)
-        );
+            // Write master field to parent
+            tfld.ref().rename("my_p");
+            {
+                const bool oldParRun = Pstream::parRun();
+                Pstream::parRun() = false;
+                if (Pstream::master())
+                {
+                    DebugVar(tfld());
+                    tfld().write();
+                }
+                Pstream::parRun() = oldParRun;
+            }
+        }
+        else
+        {
+            // Decompose
 
-         // Write master field to parent
-         tfld.ref().rename("my_p");
-         {
-             const bool oldParRun = Pstream::parRun();
-             Pstream::parRun() = false;
-             if (Pstream::master())
-             {
-                 DebugVar(tfld());
-                 tfld().write();
-             }
-             Pstream::parRun() = oldParRun;
-         }
+            // Load base field
+            uVolScalarField p
+            (
+                IOobject
+                (
+                    "p",
+                    baseMesh.time().timeName(),
+                    baseMesh.thisDb(),
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                baseMesh
+            );
+
+DebugVar(p);
+
+            // Map base field onto local mesh
+            tmp<uVolScalarField> tfld
+            (
+                reconstructor.decomposeFvVolumeField(p)
+            );
+            DebugVar(tfld());
+        }
     }
 
     return 0;

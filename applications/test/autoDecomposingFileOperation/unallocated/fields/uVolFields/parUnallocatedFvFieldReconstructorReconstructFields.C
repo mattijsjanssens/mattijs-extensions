@@ -41,6 +41,9 @@ License
 #include "unallocatedFvBoundaryMesh.H"
 #include "unallocatedSurfaceMesh.H"
 
+#include "distributedDirectFieldMapper.H"
+#include "distributedDirectFvPatchFieldMapper.H"
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 // template<class Type>
@@ -214,7 +217,8 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
         )
     );
 }
-//XXXXXX
+
+
 template<class GeoField>
 Foam::tmp<GeoField>
 Foam::parUnallocatedFvFieldReconstructor::reconstructFvSurfaceField
@@ -358,6 +362,157 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvSurfaceField
         )
     );
 }
-//XXXXXX
+
+
+//XXXXXXXXXX
+template<class GeoField>
+Foam::tmp<GeoField>
+Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
+(
+    const GeoField& fld
+) const
+{
+    if (fld.size() != baseMesh_.nCells())
+    {
+        FatalErrorInFunction<< "Size:" << fld.size()
+            << " base size:" << baseMesh_.nCells() << exit(FatalError);
+    }
+
+
+    // Create the internalField by remote mapping
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // Create reverse mapper
+    distributedDirectFieldMapper mapper
+    (
+        labelUList::null(),
+        distMap_.cellMap(),
+        procMesh_.nCells()              // Construct size
+    );
+
+    Field<typename GeoField::value_type> internalField
+    (
+        fld.internalField(),
+        mapper
+    );
+
+    // Create the patchFields by remote mapping
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Note: patchFields still on baseMesh, not procMesh
+
+    PtrList<typename GeoField::Patch> patchFields
+    (
+        fld.mesh().boundary().size()
+    );
+
+    const typename GeoField::Boundary& bfld = fld.boundaryField();
+
+    forAll(bfld, patchI)
+    {
+        DebugVar(bfld[patchI].patch().name());
+
+        if (patchFaceMaps_.set(patchI))
+        {
+            Pout<< "** mapping patch " << bfld[patchI].patch().name()
+                << " patchField type:" << bfld[patchI].type()
+                << " of field " << fld.name() << endl;
+
+            // Clone local patch field
+            patchFields.set(patchI, bfld[patchI].clone());
+
+            Pout<< "** patchField size:" << patchFields[patchI].size()
+                << endl;
+
+DebugVar(patchFields[patchI]);
+
+
+            distributedDirectFvPatchFieldMapper mapper
+            (
+                labelUList::null(),
+                patchFaceMaps_[patchI],
+                procMesh_.boundary()[patchI].size()
+            );
+
+            // Map into local copy
+            patchFields[patchI].autoMap(mapper);
+        }
+    }
+
+
+    PtrList<typename GeoField::Patch> procPatchFields
+    (
+        procMesh_.boundary().size()
+    );
+
+    // Clone the patchFields onto the proc patches. This is just to reset
+    // the reference to the patch, size and content stay the same.
+    forAll(patchFields, patchI)
+    {
+        if (patchFields.set(patchI))
+        {
+            const fvPatch& procPatch = procMesh_.boundary()[patchI];
+
+            const typename GeoField::Patch& pfld = patchFields[patchI];
+
+            labelList dummyMap(identity(pfld.size()));
+            directFvPatchFieldMapper dummyMapper(dummyMap);
+
+            procPatchFields.set
+            (
+                patchI,
+                GeoField::Patch::New
+                (
+                    pfld,
+                    procPatch,
+                    GeoField::Internal::null(),
+                    dummyMapper
+                )
+            );
+        }
+    }
+
+//    // Add some empty patches on remaining patches (tbd.probably processor
+//    // patches)
+//    forAll(basePatchFields, patchI)
+//    {
+//        if (patchI >= patchFields.size() || !patchFields.set(patchI))
+//        {
+//            basePatchFields.set
+//            (
+//                patchI,
+//                GeoField::Patch::New
+//                (
+//               emptyFvPatchField<typename GeoField::value_type>::typeName,
+//                    baseMesh_.boundary()[patchI],
+//                    GeoField::Internal::null()
+//                )
+//            );
+//        }
+//    }
+
+    // Construct a GeoField
+    IOobject procIO
+    (
+        fld.name(),
+        procMesh_.time().timeName(),
+        fld.local(),
+        procMesh_.thisDb(),
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    );
+
+    return tmp<GeoField>
+    (
+        new GeoField
+        (
+            procIO,
+            procMesh_,
+            fld.dimensions(),
+            internalField,
+            procPatchFields
+        )
+    );
+}
+//XXXXXXXXXX
 
 // ************************************************************************* //
