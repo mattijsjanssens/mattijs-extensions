@@ -60,7 +60,12 @@ class unallocatedGenericFvPatch
 public:
 
     //- Runtime type information
-    TypeName("generic");
+//    TypeName("generic");
+    ClassName("generic");
+    virtual const word& type() const
+    {
+        return actualTypeName_;
+    }
 
 
     // Constructors
@@ -111,10 +116,10 @@ public:
                 return patchIdentifier::name();
             }
 
-            const word& actualTypeName() const
-            {
-                return actualTypeName_;
-            }
+//             const word& actualTypeName() const
+//             {
+//                 return actualTypeName_;
+//             }
 
             //- Return label of face in patch from global face label
             inline label whichFace(const label l) const

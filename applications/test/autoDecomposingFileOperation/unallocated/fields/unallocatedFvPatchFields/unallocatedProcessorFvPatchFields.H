@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,20 +23,36 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "cyclicAMILduInterface.H"
+#ifndef unallocatedProcessorFvPatchFields_H
+#define unallocatedProcessorFvPatchFields_H
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+#include "unallocatedProcessorFvPatchField.H"
+#include "fieldTypes.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-defineTypeNameAndDebug(cyclicAMILduInterface, 0);
-}
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+typedef unallocatedProcessorFvPatchField<scalar>
+    processorUnallocatedFvPatchScalarField;
+typedef unallocatedProcessorFvPatchField<vector>
+    processorUnallocatedFvPatchVectorField;
+typedef unallocatedProcessorFvPatchField<sphericalTensor>
+    processorUnallocatedFvPatchSphericalTensorField;
+typedef unallocatedProcessorFvPatchField<symmTensor>
+    processorUnallocatedFvPatchSymmTensorField;
+typedef unallocatedProcessorFvPatchField<tensor>
+    processorUnallocatedFvPatchTensorField;
 
-Foam::cyclicAMILduInterface::~cyclicAMILduInterface()
-{}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
 
 // ************************************************************************* //

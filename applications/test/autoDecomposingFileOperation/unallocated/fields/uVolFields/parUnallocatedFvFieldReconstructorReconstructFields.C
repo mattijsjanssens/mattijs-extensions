@@ -424,9 +424,6 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
             Pout<< "** patchField size:" << patchFields[patchI].size()
                 << endl;
 
-DebugVar(patchFields[patchI]);
-
-
             distributedDirectFvPatchFieldMapper mapper
             (
                 labelUList::null(),
@@ -499,16 +496,11 @@ DebugVar(patchType);
                 patchI,
                 GeoField::Patch::New
                 (
-                    // processorFvPatchField
-                    // <
-                    //     typename GeoField::value_type
-                    // >::typeName,
                     patchType,
                     procPatch,
                     GeoField::Internal::null()
                 )
             );
-Pout<< "** done synthesised field " << procPatchFields[patchI] << endl;
         }
     }
 

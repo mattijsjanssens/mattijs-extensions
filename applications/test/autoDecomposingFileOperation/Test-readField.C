@@ -29,6 +29,7 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "mapDistributeBase.H"
 #include "unallocatedFvBoundaryMesh.H"
 #include "GeometricField.H"
 #include "argList.H"

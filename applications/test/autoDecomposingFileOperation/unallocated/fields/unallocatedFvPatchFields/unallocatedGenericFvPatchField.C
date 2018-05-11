@@ -40,10 +40,10 @@ Foam::unallocatedGenericFvPatchField<Type>::unallocatedGenericFvPatchField
     genericPatchFieldBase(p.name(), p.size()),
     hasValue_(false)
 {
-    FatalErrorInFunction
-        << "Trying to construct an unallocatedGenericFvPatchField on patch "
-        << this->patch().name()
-        << abort(FatalError);
+//    FatalErrorInFunction
+//        << "Trying to construct an unallocatedGenericFvPatchField on patch "
+//        << this->patch().name()
+//        << abort(FatalError);
 }
 
 
