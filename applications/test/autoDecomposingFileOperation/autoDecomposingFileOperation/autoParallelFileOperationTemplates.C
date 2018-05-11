@@ -188,4 +188,59 @@ bool Foam::fileOperations::autoParallelFileOperation::reconstructAndWrite2
 }
 
 
+template<class GeoField>
+bool Foam::fileOperations::autoParallelFileOperation::decomposeAndWrite
+(
+    const IOobject& procIO,
+    const IOobject& parentIO,
+    const word& type,
+    Ostream& os
+) const
+{
+    if (type == GeoField::typeName)
+    {
+        Info<< "Loading field " << parentIO.name() << endl;
+
+        GeometricField
+        <
+            typename GeoField::value_type,
+            unallocatedFvPatchField,
+            unallocatedVolMesh
+        > baseFld
+        (
+            parentIO,
+XXXXXX
+
+            IOobject
+            (
+                "p",
+                mesh.time().timeName(),
+                mesh.thisDb(),
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh
+        );
+
+
+        const fvMesh& undecomposedMesh = baseMesh(parentIO.time());
+        GeoField parentFld(parentIO, undecomposedMesh);
+
+        const fvFieldDecomposer& volDecomposer(decomposer(procIO));
+
+        // Decompose field and transfer to stream
+        tmp<GeoField> fld(volDecomposer.decomposeField(parentFld));
+        fld().writeData(os);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+
+
 // ************************************************************************* //

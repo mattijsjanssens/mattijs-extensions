@@ -221,151 +221,203 @@ Foam::fileOperations::autoParallelFileOperation::
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-// Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
-// (
-//     const bool checkGlobal,
-//     const IOobject& io,
-//     const word& typeName
-// ) const
-// {
-//     if (debug)
-//     {
-//         Pout<< "autoParallelFileOperation::filePath :"
-//             << " objectPath:" << io.objectPath()
-//             << " checkGlobal:" << checkGlobal << endl;
-//     }
-// 
-//     // Try uncollated searching
-//     fileName objPath = uncollatedFileOperation::filePath
-//     (
-//         checkGlobal,
-//         io,
-//         typeName
-//     );
-// 
-//     // If not found and parallel check parent
-//     if (objPath.empty() && checkGlobal && io.time().processorCase())
-//     {
-//         fileName parentObjectPath =
-//             io.rootPath()/io.time().globalCaseName()
-//            /io.instance()/io.db().dbDir()/io.local()/io.name();
-// 
-//         if (isFile(parentObjectPath))
-//         {
-//             objPath = parentObjectPath;
-//         }
-//     }
-// 
-//     if (debug)
-//     {
-//         Pout<< "autoParallelFileOperation::filePath :"
-//             << " Returning from file searching:" << endl
-//             << "    objectPath:" << io.objectPath() << endl
-//             << "    filePath  :" << objPath << endl << endl;
-//     }
-//     return objPath;
-// }
-// 
-// 
-// bool Foam::fileOperations::autoParallelFileOperation::read
-// (
-//     regIOobject& io,
-//     const bool masterOnly,
-//     const IOstream::streamFormat format,
-//     const word& type
-// ) const
-// {
-//     bool ok = true;
-// 
-//     if
-//     (
-//         Pstream::parRun()
-//      && (
-//             type == volScalarField::typeName
-//          || type == volVectorField::typeName
-//          || type == volSphericalTensorField::typeName
-//          || type == volSymmTensorField::typeName
-//          || type == volTensorField::typeName
-//         )
-//     )
-//     {
-//         // Set flag for e.g. codeStream
-//         const bool oldGlobal = io.globalObject();
-//         io.globalObject() = masterOnly;
-//         // If codeStream originates from dictionary which is
-//         // not IOdictionary we have a problem so use global
-//         //const bool oldFlag = regIOobject::masterOnlyReading;
-//         //regIOobject::masterOnlyReading = masterOnly;
-// 
-// 
-//         // Find file, check in parent directory
-//         fileName objPath = filePath(true, io, type);
-// 
-//         // Check if the file comes from the parent path
-//         fileName parentObjectPath =
-//             io.rootPath()/io.time().globalCaseName()
-//            /io.instance()/io.db().dbDir()/io.local()/io.name();
-// 
-//         if (debug)
-//         {
-//             Pout<< "io.objectPath   :" << io.objectPath() << endl;
-//             Pout<< "filePath        :" << objPath << endl;
-//             Pout<< "parentObjectPath:" << parentObjectPath << endl;
-//         }
-// 
-//         if (io.objectPath() != objPath && objPath == parentObjectPath)
-//         {
-//             // Force reading of the baseMesh
-//             const fvMesh& undecomposedMesh = baseMesh(io.time());
-// 
-//             IOobject parentIO
-//             (
-//                 io.name(),
-//                 io.instance(),
-//                 io.local(),
-//                 undecomposedMesh,
-//                 IOobject::MUST_READ,
-//                 IOobject::NO_WRITE,
-//                 false
-//             );
-// 
-//             OStringStream os;
-// 
-//             decomposeAndWrite<volScalarField>(io, parentIO, type, os);
-//             decomposeAndWrite<volVectorField>(io, parentIO, type, os);
-//      decomposeAndWrite<volSphericalTensorField>(io, parentIO, type, os);
-//             decomposeAndWrite<volSymmTensorField>(io, parentIO, type, os);
-//             decomposeAndWrite<volTensorField>(io, parentIO, type, os);
-// 
-//             IStringStream is(os.str());
-// 
-//             // Read field from stream
-//             ok = io.readData(is);
-//             io.close();
-//         }
-//         else
-//         {
-//             ok = io.readData(io.readStream(type));
-//             io.close();
-//         }
-// 
-//         // Restore flags
-//         io.globalObject() = oldGlobal;
-//         //regIOobject::masterOnlyReading = oldFlag;
-//     }
-//     else
-//     {
-//         ok = uncollatedFileOperation::read
-//         (
-//             io,
-//             masterOnly,
-//             format,
-//             type
-//         );
-//     }
-// 
-//     return ok;
-// }
+Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
+(
+    const bool checkGlobal,
+    const IOobject& io,
+    const word& typeName
+) const
+{
+    if (debug)
+    {
+        Pout<< "autoParallelFileOperation::filePath :"
+            << " objectPath:" << io.objectPath()
+            << " checkGlobal:" << checkGlobal << endl;
+    }
+
+    // Try uncollated searching
+    fileName objPath = uncollatedFileOperation::filePath
+    (
+        checkGlobal,
+        io,
+        typeName
+    );
+
+    // If not found and parallel check parent
+    if (objPath.empty() && checkGlobal && io.time().processorCase())
+    {
+        fileName parentObjectPath =
+            io.rootPath()/io.time().globalCaseName()
+           /io.instance()/io.db().dbDir()/io.local()/io.name();
+
+        if (isFile(parentObjectPath))
+        {
+            objPath = parentObjectPath;
+        }
+    }
+
+    if (debug)
+    {
+        Pout<< "autoParallelFileOperation::filePath :"
+            << " Returning from file searching:" << endl
+            << "    objectPath:" << io.objectPath() << endl
+            << "    filePath  :" << objPath << endl << endl;
+    }
+    return objPath;
+}
+
+
+bool Foam::fileOperations::autoParallelFileOperation::read
+(
+    regIOobject& io,
+    const bool masterOnly,
+    const IOstream::streamFormat format,
+    const word& type
+) const
+{
+    bool ok = true;
+
+    if
+    (
+        Pstream::parRun()
+     && (
+            type == volScalarField::typeName
+         //|| type == volVectorField::typeName
+         //|| type == volSphericalTensorField::typeName
+         //|| type == volSymmTensorField::typeName
+         //|| type == volTensorField::typeName
+        )
+    )
+    {
+        // Set flag for e.g. codeStream
+        const bool oldGlobal = io.globalObject();
+        io.globalObject() = masterOnly;
+        // If codeStream originates from dictionary which is
+        // not IOdictionary we have a problem so use global
+        //const bool oldFlag = regIOobject::masterOnlyReading;
+        //regIOobject::masterOnlyReading = masterOnly;
+
+
+        // Find file, check in parent directory
+        fileName objPath = filePath(true, io, type);
+
+        // Check if the file comes from the parent path
+        fileName parentObjectPath =
+            io.rootPath()/io.time().globalCaseName()
+           /io.instance()/io.db().dbDir()/io.local()/io.name();
+
+        if (debug)
+        {
+            Pout<< "io.objectPath   :" << io.objectPath() << endl;
+            Pout<< "filePath        :" << objPath << endl;
+            Pout<< "parentObjectPath:" << parentObjectPath << endl;
+        }
+
+        if (io.objectPath() != objPath && objPath == parentObjectPath)
+        {
+            const Time& runTime = io.time();
+
+            // Read procAddressing files (from runTime). Deduct base mesh sizes.
+            autoPtr<mapDistributePolyMesh> distMapPtr
+            (
+                unallocatedFvMeshTools::readReconstructMap
+                (
+                    IOobject
+                    (
+                        "dummy",
+                        runTime.findInstance(fvMesh::meshSubDir, "faces"),
+                        fvMesh::meshSubDir,
+                        runTime,
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE,
+                        false
+                    )
+                )
+            );
+            const mapDistributePolyMesh& distMap = distMapPtr();
+            // Parent database
+            Time baseRunTime
+            (
+                runTime.controlDict(),
+                runTime.rootPath(),
+                runTime.globalCaseName(),
+                runTime.system(),
+                runTime.constant(),
+                false                   // enableFunctionObjects
+            );
+            baseRunTime.setTime(runTime);
+
+            // Parent mesh
+            autoPtr<unallocatedFvMesh> baseMeshPtr
+            (
+                unallocatedFvMeshTools::newMesh
+                (
+                    IOobject
+                    (
+                        fvMesh::defaultRegion,      // name of mesh
+                        baseRunTime.timeName(),
+                        baseRunTime,
+                        IOobject::MUST_READ
+                    ),
+                    distMap.cellMap().constructSize()
+                )
+            );
+            unallocatedFvMesh& baseMesh = baseMeshPtr();
+
+
+            // Local mesh
+            #include "createUnallocatedMesh.H"
+
+
+            IOobject parentIO
+            (
+                io.name(),
+                io.instance(),
+                io.local(),
+                baseMesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false
+            );
+
+            OStringStream os(IOstream::BINARY);
+
+            decomposeAndWrite<volScalarField>(io, parentIO, type, os);
+            //decomposeAndWrite<volVectorField>(io, parentIO, type, os);
+            //decomposeAndWrite<volSphericalTensorField>
+            //(io, parentIO, type, os);
+            //decomposeAndWrite<volSymmTensorField>(io, parentIO, type, os);
+            //decomposeAndWrite<volTensorField>(io, parentIO, type, os);
+
+            IStringStream is(os.str(), IOstream::BINARY);
+
+            // Read field from stream
+            ok = io.readData(is);
+            io.close();
+        }
+        else
+        {
+            ok = io.readData(io.readStream(type));
+            io.close();
+        }
+
+        // Restore flags
+        io.globalObject() = oldGlobal;
+        //regIOobject::masterOnlyReading = oldFlag;
+    }
+    else
+    {
+        ok = uncollatedFileOperation::read
+        (
+            io,
+            masterOnly,
+            format,
+            type
+        );
+    }
+
+    return ok;
+}
 
 
 bool Foam::fileOperations::autoParallelFileOperation::writeObject
