@@ -52,6 +52,21 @@ Foam::wordList Foam::unallocatedFvMeshObject::patchNames
 }
 
 
+Foam::wordList Foam::unallocatedFvMeshObject::patchTypes
+(
+    const fvMesh& mesh
+)
+{
+    const fvBoundaryMesh& bm = mesh.boundary();
+    wordList types(bm.size());
+    forAll(bm, i)
+    {
+        types[i] = bm[i].type();
+    }
+    return types;
+}
+
+
 Foam::labelList Foam::unallocatedFvMeshObject::patchSizes
 (
     const fvMesh& mesh
@@ -108,6 +123,7 @@ Foam::unallocatedFvMeshObject::unallocatedFvMeshObject(const fvMesh& mesh)
         mesh.thisDb(),
         mesh.nCells(),
         patchNames(mesh),
+        patchTypes(mesh),
         patchSizes(mesh),
         patchStarts(mesh),
         patchGroups(mesh),

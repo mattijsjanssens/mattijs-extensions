@@ -60,7 +60,7 @@ class parUnallocatedFvFieldReconstructor
 {
     // Private data
 
-        //- Reconstructed mesh reference
+        //- Undecomposed mesh reference
         const unallocatedFvMesh& baseMesh_;
 
         //- Processor mesh reference
@@ -69,7 +69,7 @@ class parUnallocatedFvFieldReconstructor
         //- Distribution map reference
         const mapDistributePolyMesh& distMap_;
 
-        //- Patch mappers
+        //- Patch mappers (constructed from distMap)
         PtrList<mapDistributeBase> patchFaceMaps_;
 
 

@@ -53,6 +53,7 @@ class unallocatedFvMeshObject
     // Private Member Functions
 
         static wordList patchNames(const fvMesh&);
+        static wordList patchTypes(const fvMesh&);
         static labelList patchSizes(const fvMesh&);
         static labelList patchStarts(const fvMesh&);
         static List<wordList> patchGroups(const fvMesh&);

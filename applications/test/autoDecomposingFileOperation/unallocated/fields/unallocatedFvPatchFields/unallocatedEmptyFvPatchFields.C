@@ -47,6 +47,12 @@ addToRunTimeSelectionTable
     emptyUnallocatedFvPatchScalarField,
     patchMapper
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchScalarField,
+    emptyUnallocatedFvPatchScalarField,
+    patch
+);
 
 defineNamedTemplateTypeNameAndDebug(emptyUnallocatedFvPatchVectorField, 0);
 addToRunTimeSelectionTable
@@ -60,6 +66,12 @@ addToRunTimeSelectionTable
     unallocatedFvPatchVectorField,
     emptyUnallocatedFvPatchVectorField,
     patchMapper
+);
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchVectorField,
+    emptyUnallocatedFvPatchVectorField,
+    patch
 );
 
 defineNamedTemplateTypeNameAndDebug
@@ -78,6 +90,12 @@ addToRunTimeSelectionTable
     emptyUnallocatedFvPatchSphericalTensorField,
     patchMapper
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchSphericalTensorField,
+    emptyUnallocatedFvPatchSphericalTensorField,
+    patch
+);
 
 defineNamedTemplateTypeNameAndDebug(emptyUnallocatedFvPatchSymmTensorField, 0);
 addToRunTimeSelectionTable
@@ -92,6 +110,12 @@ addToRunTimeSelectionTable
     emptyUnallocatedFvPatchSymmTensorField,
     patchMapper
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchSymmTensorField,
+    emptyUnallocatedFvPatchSymmTensorField,
+    patch
+);
 
 defineNamedTemplateTypeNameAndDebug(emptyUnallocatedFvPatchTensorField, 0);
 addToRunTimeSelectionTable
@@ -105,6 +129,12 @@ addToRunTimeSelectionTable
     unallocatedFvPatchTensorField,
     emptyUnallocatedFvPatchTensorField,
     patchMapper
+);
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchTensorField,
+    emptyUnallocatedFvPatchTensorField,
+    patch
 );
 
 

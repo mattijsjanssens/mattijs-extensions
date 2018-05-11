@@ -47,11 +47,14 @@ class distributedDirectFvPatchFieldMapper
 :
     public fvPatchFieldMapper
 {
-    const labelList directAddressing_;
+    //- Reference to direct addressing. Note: this HAS to be a reference
+    //  if used with isNull.
+    const labelUList& directAddressing_;
 
     mapDistributeBase distMap_;
 
     bool hasUnmapped_;
+
 
 public:
 

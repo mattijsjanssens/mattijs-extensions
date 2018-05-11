@@ -28,6 +28,7 @@ License
 #include "PtrList.H"
 #include "fvPatchFields.H"
 #include "emptyFvPatchField.H"
+#include "processorFvPatchField.H"
 #include "IOobjectList.H"
 #include "mapDistributePolyMesh.H"
 #include "processorFvPatch.H"
@@ -175,24 +176,24 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
         }
     }
 
-    // Add some empty patches on remaining patches (tbd.probably processor
-    // patches)
-    forAll(basePatchFields, patchI)
-    {
-        if (patchI >= patchFields.size() || !patchFields.set(patchI))
-        {
-            basePatchFields.set
-            (
-                patchI,
-                GeoField::Patch::New
-                (
-                    emptyFvPatchField<typename GeoField::value_type>::typeName,
-                    baseMesh_.boundary()[patchI],
-                    GeoField::Internal::null()
-                )
-            );
-        }
-    }
+    // // Add some empty patches on remaining patches (tbd.probably processor
+    // // patches)
+    // forAll(basePatchFields, patchI)
+    // {
+    //     if (patchI >= patchFields.size() || !patchFields.set(patchI))
+    //     {
+    //         basePatchFields.set
+    //         (
+    //             patchI,
+    //             GeoField::Patch::New
+    //             (
+    //                 baseMesh_.boundary()[patchI].type(),
+    //                 baseMesh_.boundary()[patchI],
+    //                 GeoField::Internal::null()
+    //             )
+    //         );
+    //     }
+    // }
 
     // Construct a GeoField
     IOobject baseIO
@@ -320,24 +321,24 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvSurfaceField
         }
     }
 
-    // Add some empty patches on remaining patches (tbd.probably processor
-    // patches)
-    forAll(basePatchFields, patchI)
-    {
-        if (patchI >= patchFields.size() || !patchFields.set(patchI))
-        {
-            basePatchFields.set
-            (
-                patchI,
-                GeoField::Patch::New
-                (
-                    emptyFvPatchField<typename GeoField::value_type>::typeName,
-                    baseMesh_.boundary()[patchI],
-                    GeoField::Internal::null()
-                )
-            );
-        }
-    }
+    // // Add some empty patches on remaining patches (tbd.probably processor
+    // // patches)
+    // forAll(basePatchFields, patchI)
+    // {
+    //     if (patchI >= patchFields.size() || !patchFields.set(patchI))
+    //     {
+    //         basePatchFields.set
+    //         (
+    //             patchI,
+    //             GeoField::Patch::New
+    //             (
+    //                 baseMesh_.boundary()[patchI].type(),
+    //                 baseMesh_.boundary()[patchI],
+    //                 GeoField::Internal::null()
+    //             )
+    //         );
+    //     }
+    // }
 
     // Construct a GeoField
     IOobject baseIO
@@ -471,24 +472,45 @@ DebugVar(patchFields[patchI]);
         }
     }
 
-//    // Add some empty patches on remaining patches (tbd.probably processor
-//    // patches)
-//    forAll(basePatchFields, patchI)
-//    {
-//        if (patchI >= patchFields.size() || !patchFields.set(patchI))
-//        {
-//            basePatchFields.set
-//            (
-//                patchI,
-//                GeoField::Patch::New
-//                (
-//               emptyFvPatchField<typename GeoField::value_type>::typeName,
-//                    baseMesh_.boundary()[patchI],
-//                    GeoField::Internal::null()
-//                )
-//            );
-//        }
-//    }
+    // Add some empty patches on remaining patches (tbd.probably processor
+    // patches)
+    forAll(procPatchFields, patchI)
+    {
+        if (!procPatchFields.set(patchI))
+        {
+            const fvPatch& procPatch = procMesh_.boundary()[patchI];
+
+Pout<< "** synthesising field of type " << procPatch.type()
+    << " on " << procPatch.name() << endl;
+
+            word patchType(procPatch.type());
+//             if (isA<unallocatedGenericFvPatch>(procPatch))
+//             {
+//                 patchType = refCast
+//                 <
+//                     const unallocatedGenericFvPatch
+//                 >(procPatch).actualTypeName();
+//             }
+DebugVar(patchType);
+
+
+            procPatchFields.set
+            (
+                patchI,
+                GeoField::Patch::New
+                (
+                    // processorFvPatchField
+                    // <
+                    //     typename GeoField::value_type
+                    // >::typeName,
+                    patchType,
+                    procPatch,
+                    GeoField::Internal::null()
+                )
+            );
+Pout<< "** done synthesised field " << procPatchFields[patchI] << endl;
+        }
+    }
 
     // Construct a GeoField
     IOobject procIO

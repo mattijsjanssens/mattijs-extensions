@@ -52,20 +52,15 @@ class unallocatedGenericFvPatch
     public fvPatch,
     public patchIdentifier
 {
-//    const word name_;
-
+    const word actualTypeName_;
     const label size_;
-
     const label start_;
-
-//    //- Optional groups patch belongs to
-//    wordList inGroups_;
 
 
 public:
 
     //- Runtime type information
-    TypeName("unallocatedGeneric");
+    TypeName("generic");
 
 
     // Constructors
@@ -75,6 +70,7 @@ public:
         (
             const polyPatch& patch,
             const word& name,
+            const word& actualTypeName,
             const label size,
             const label start,
             const label index,
@@ -84,20 +80,20 @@ public:
         :
             fvPatch(patch, bm),
             patchIdentifier(name, index, word::null, inGroups),
-            //name_(name),
+            actualTypeName_(actualTypeName),
             size_(size),
             start_(start)
         {}
 
 
-     //- Destructor
-     virtual ~unallocatedGenericFvPatch()
+    //- Destructor
+    virtual ~unallocatedGenericFvPatch()
     {}
 
 
     // Member Functions
 
-            //- Return size
+            //- Return size (overrides underlying polyPatch::size)
             virtual label size() const
             {
                 return size_;
@@ -113,6 +109,11 @@ public:
             virtual const word& name() const
             {
                 return patchIdentifier::name();
+            }
+
+            const word& actualTypeName() const
+            {
+                return actualTypeName_;
             }
 
             //- Return label of face in patch from global face label

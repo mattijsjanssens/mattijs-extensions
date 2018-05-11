@@ -44,6 +44,7 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
     const objectRegistry& db,
     const label nCells,
     const wordList& patchNames,
+    const wordList& patchTypes,
     const labelList& patchSizes,
     const labelList& patchStarts,
     const List<wordList>& basePatchGroups,
@@ -66,6 +67,7 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
             (
                 *reinterpret_cast<const polyPatch*>(0), //unused reference
                 patchNames[patchi],
+                patchTypes[patchi],
                 patchSizes[patchi],
                 patchStarts[patchi],
                 patchi,

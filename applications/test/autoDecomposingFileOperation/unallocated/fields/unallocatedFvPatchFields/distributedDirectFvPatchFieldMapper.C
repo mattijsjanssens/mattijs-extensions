@@ -53,10 +53,6 @@ Foam::distributedDirectFvPatchFieldMapper::distributedDirectFvPatchFieldMapper
         distMap_.constructHasFlip() = distMap.subHasFlip();
     }
 
-DebugVar(distMap_.constructSize());
-DebugVar(distMap_.subMap());
-DebugVar(distMap_.constructMap());
-
     if
     (
         notNull(directAddressing_)

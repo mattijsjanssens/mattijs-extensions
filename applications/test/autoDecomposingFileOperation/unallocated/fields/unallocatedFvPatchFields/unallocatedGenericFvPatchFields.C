@@ -48,6 +48,12 @@ addToRunTimeSelectionTable
     genericUnallocatedFvPatchScalarField,
     patchMapper
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchScalarField,
+    genericUnallocatedFvPatchScalarField,
+    patch
+);
 
 // Vector
 defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchVectorField, 0);
@@ -62,6 +68,12 @@ addToRunTimeSelectionTable
     unallocatedFvPatchVectorField,
     genericUnallocatedFvPatchVectorField,
     patchMapper
+);
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchVectorField,
+    genericUnallocatedFvPatchVectorField,
+    patch
 );
 
 // SphericalTensor
@@ -82,6 +94,12 @@ addToRunTimeSelectionTable
     genericUnallocatedFvPatchSphericalTensorField,
     patchMapper
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchSphericalTensorField,
+    genericUnallocatedFvPatchSphericalTensorField,
+    patch
+);
 
 //SymmTensor
 defineNamedTemplateTypeNameAndDebug
@@ -101,6 +119,12 @@ addToRunTimeSelectionTable
     genericUnallocatedFvPatchSymmTensorField,
     patchMapper
 );
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchSymmTensorField,
+    genericUnallocatedFvPatchSymmTensorField,
+    patch
+);
 
 // Tensor
 defineNamedTemplateTypeNameAndDebug(genericUnallocatedFvPatchTensorField, 0);
@@ -115,6 +139,12 @@ addToRunTimeSelectionTable
     unallocatedFvPatchTensorField,
     genericUnallocatedFvPatchTensorField,
     patchMapper
+);
+addToRunTimeSelectionTable
+(
+    unallocatedFvPatchTensorField,
+    genericUnallocatedFvPatchTensorField,
+    patch
 );
 
 

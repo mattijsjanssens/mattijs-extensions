@@ -41,7 +41,6 @@ namespace Foam
 {
 
 class globalMeshData;
-//class objectRegistry;
 
 /*---------------------------------------------------------------------------*\
                       Class unallocatedFvMesh Declaration
@@ -100,6 +99,7 @@ public:
             const objectRegistry& db,
             const label nCells,
             const wordList& patchNames,
+            const wordList& patchTypes,
             const labelList& patchSizes,
             const labelList& patchStarts,
             const List<wordList>& patchGroups,
