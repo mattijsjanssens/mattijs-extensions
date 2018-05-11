@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,20 +23,37 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "cyclicAMILduInterface.H"
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-namespace Foam
+inline const Foam::word& Foam::cyclicAMIPolyPatch::neighbPatchName() const
 {
-defineTypeNameAndDebug(cyclicAMILduInterface, 0);
+    if (nbrPatchName_.empty())
+    {
+        // Try and use patchGroup to find samplePatch and sampleRegion
+        label patchID = coupleGroup_.findOtherPatchID(*this);
+
+        nbrPatchName_ = boundaryMesh()[patchID].name();
+    }
+    return nbrPatchName_;
 }
 
 
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+inline const Foam::vector& Foam::cyclicAMIPolyPatch::rotationAxis() const
+{
+    return rotationAxis_;
+}
 
-Foam::cyclicAMILduInterface::~cyclicAMILduInterface()
-{}
+
+inline const Foam::point& Foam::cyclicAMIPolyPatch::rotationCentre() const
+{
+    return rotationCentre_;
+}
+
+
+inline const Foam::vector& Foam::cyclicAMIPolyPatch::separationVector() const
+{
+    return separationVector_;
+}
 
 
 // ************************************************************************* //

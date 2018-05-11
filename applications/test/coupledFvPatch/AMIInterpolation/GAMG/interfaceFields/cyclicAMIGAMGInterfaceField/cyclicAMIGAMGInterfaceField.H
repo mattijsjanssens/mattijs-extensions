@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -51,7 +51,7 @@ namespace Foam
 class cyclicAMIGAMGInterfaceField
 :
     public GAMGInterfaceField,
-    virtual public cyclicAMILduInterfaceField
+    public cyclicAMILduInterfaceField
 {
     // Private data
 
@@ -128,7 +128,7 @@ public:
 
         //- Cyclic interface functions
 
-            //- Does the interface field perform the transfromation
+            //- Does the interface field perform the transformation
             virtual bool doTransform() const
             {
                 return doTransform_;
