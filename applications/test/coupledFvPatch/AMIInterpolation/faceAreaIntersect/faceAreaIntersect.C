@@ -219,7 +219,8 @@ void Foam::faceAreaIntersect::triSliceWithPlane
 }
 
 
-Foam::scalar Foam::faceAreaIntersect::triangleIntersect
+Foam::Tuple2<Foam::scalar, Foam::point>
+Foam::faceAreaIntersect::triangleIntersect
 (
     const triPoints& src,
     const triPoints& tgt,
@@ -250,7 +251,7 @@ Foam::scalar Foam::faceAreaIntersect::triangleIntersect
 
     if (nWorkTris1 == 0)
     {
-        return 0.0;
+        return Tuple2<scalar, point>(0.0, Zero);
     }
 
     // edge1
@@ -270,7 +271,7 @@ Foam::scalar Foam::faceAreaIntersect::triangleIntersect
 
         if (nWorkTris2 == 0)
         {
-            return 0.0;
+            return Tuple2<scalar, point>(0.0, Zero);
         }
     }
 
@@ -291,18 +292,21 @@ Foam::scalar Foam::faceAreaIntersect::triangleIntersect
 
         if (nWorkTris1 == 0)
         {
-            return 0.0;
+            return Tuple2<scalar, point>(0.0, Zero);
         }
         else
         {
             // calculate area of sub-triangles
             scalar area = 0.0;
+            point ctr = Zero;
             for (label i = 0; i < nWorkTris1; i++)
             {
-                area += triArea(workTris1[i]);
+                const triPoints& t = workTris1[i];
+                area += triArea(t);
+                ctr  += 1.0/3.0*(t[0]+t[1]+t[2]);
             }
 
-            return area;
+            return Tuple2<scalar, point>(area, ctr);
         }
     }
 }
@@ -368,7 +372,8 @@ void Foam::faceAreaIntersect::triangulate
 }
 
 
-Foam::scalar Foam::faceAreaIntersect::calc
+Foam::Tuple2<Foam::scalar, Foam::point>
+Foam::faceAreaIntersect::calc
 (
     const face& faceA,
     const face& faceB,
@@ -383,6 +388,7 @@ Foam::scalar Foam::faceAreaIntersect::calc
 
     // intersect triangles
     scalar totalArea = 0.0;
+    point totalCtr = Zero;
     forAll(trisA, tA)
     {
         triPoints tpA = getTriPoints(pointsA_, trisA[tA], false);
@@ -395,13 +401,15 @@ Foam::scalar Foam::faceAreaIntersect::calc
 
 //                if (triArea(tpB) > rootVSmall)
                 {
-                    totalArea += triangleIntersect(tpA, tpB, n);
+                    Tuple2<scalar, point> a(triangleIntersect(tpA, tpB, n));
+                    totalArea += a.first();
+                    totalCtr += a.second();
                 }
             }
         }
     }
 
-    return totalArea;
+    return Tuple2<scalar, point>(totalArea, totalCtr);
 }
 
 

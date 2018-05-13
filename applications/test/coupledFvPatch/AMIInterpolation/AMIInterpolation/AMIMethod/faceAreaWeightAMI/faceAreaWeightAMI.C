@@ -304,8 +304,6 @@ Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     const label tgtFacei
 ) const
 {
-    scalar area = 0;
-
     const pointField& srcPoints = this->srcPatch_.points();
     const pointField& tgtPoints = this->tgtPatch_.points();
 
@@ -319,7 +317,7 @@ Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     {
         return Tuple2<scalar, point>
         (
-            area,
+            0,
             this->srcPatch_.faceCentres()[srcFacei]
         );
     }
@@ -329,7 +327,7 @@ Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     {
         return Tuple2<scalar, point>
         (
-            area,
+            0,
             this->tgtPatch_.faceCentres()[tgtFacei]
         );
     }
@@ -349,9 +347,16 @@ Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     }
     scalar magN = mag(n);
 
+    Tuple2<scalar, point> area(0, Zero);
+
     if (magN > rootVSmall)
     {
         area = inter.calc(src, tgt, n/magN, this->triMode_);
+
+Pout<< "For srcFace:" << this->srcPatch_.faceCentres()[srcFacei]
+    << " tgtFace:" << this->tgtPatch_.faceCentres()[tgtFacei]
+    << " have area:" << area << endl;
+
     }
     else
     {
@@ -364,12 +369,19 @@ Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     }
 
 
-    if ((debug > 1) && (area > 0))
+    if ((debug > 1) && (area.first() > 0))
     {
-        this->writeIntersectionOBJ(area, src, tgt, srcPoints, tgtPoints);
+        this->writeIntersectionOBJ
+        (
+            area.first(),
+            src,
+            tgt,
+            srcPoints,
+            tgtPoints
+        );
     }
 
-    return Tuple2<scalar, point>(area, this->srcPatch_.faceCentres()[srcFacei]);
+    return area;
 }
 
 

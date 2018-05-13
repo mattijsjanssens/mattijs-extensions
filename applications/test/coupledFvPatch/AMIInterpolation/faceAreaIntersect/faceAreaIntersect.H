@@ -42,6 +42,7 @@ SourceFiles
 #include "plane.H"
 #include "face.H"
 #include "NamedEnum.H"
+#include "Tuple2.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -130,7 +131,7 @@ private:
         );
 
         //- Return area of intersection of triangles src and tgt
-        scalar triangleIntersect
+        Tuple2<scalar, point> triangleIntersect
         (
             const triPoints& src,
             const triPoints& tgt,
@@ -166,7 +167,7 @@ public:
         );
 
         //- Return area of intersection of faceA with faceB
-        scalar calc
+        Tuple2<scalar, point> calc
         (
             const face& faceA,
             const face& faceB,
