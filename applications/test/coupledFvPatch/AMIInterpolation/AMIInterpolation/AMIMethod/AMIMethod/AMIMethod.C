@@ -72,8 +72,10 @@ bool Foam::AMIMethod<SourcePatch, TargetPatch>::initialise
 (
     labelListList& srcAddress,
     scalarListList& srcWeights,
+    List<List<point>>& srcCentroids,
     labelListList& tgtAddress,
     scalarListList& tgtWeights,
+    List<List<point>>& tgtCentroids,
     label& srcFacei,
     label& tgtFacei
 )
@@ -84,8 +86,10 @@ bool Foam::AMIMethod<SourcePatch, TargetPatch>::initialise
     // returns false below
     srcAddress.setSize(srcPatch_.size());
     srcWeights.setSize(srcPatch_.size());
+    srcCentroids.setSize(srcPatch_.size());
     tgtAddress.setSize(tgtPatch_.size());
     tgtWeights.setSize(tgtPatch_.size());
+    tgtCentroids.setSize(tgtPatch_.size());
 
     // check that patch sizes are valid
     if (!srcPatch_.size())

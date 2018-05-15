@@ -298,15 +298,16 @@ Foam::faceAreaIntersect::triangleIntersect
         {
             // calculate area of sub-triangles
             scalar area = 0.0;
-            point ctr = Zero;
+            point inertia = Zero;
             for (label i = 0; i < nWorkTris1; i++)
             {
                 const triPoints& t = workTris1[i];
-                area += triArea(t);
-                ctr  += 1.0/3.0*(t[0]+t[1]+t[2]);
+                const scalar triA(triArea(t));
+                area += triA;
+                inertia += triA*1.0/3.0*(t[0]+t[1]+t[2]);
             }
 
-            return Tuple2<scalar, point>(area, ctr);
+            return Tuple2<scalar, point>(area, inertia);
         }
     }
 }
@@ -388,7 +389,7 @@ Foam::faceAreaIntersect::calc
 
     // intersect triangles
     scalar totalArea = 0.0;
-    point totalCtr = Zero;
+    point totalInertia = Zero;
     forAll(trisA, tA)
     {
         triPoints tpA = getTriPoints(pointsA_, trisA[tA], false);
@@ -403,13 +404,13 @@ Foam::faceAreaIntersect::calc
                 {
                     Tuple2<scalar, point> a(triangleIntersect(tpA, tpB, n));
                     totalArea += a.first();
-                    totalCtr += a.second();
+                    totalInertia += a.second();
                 }
             }
         }
     }
 
-    return Tuple2<scalar, point>(totalArea, totalCtr);
+    return Tuple2<scalar, point>(totalArea, totalInertia);
 }
 
 

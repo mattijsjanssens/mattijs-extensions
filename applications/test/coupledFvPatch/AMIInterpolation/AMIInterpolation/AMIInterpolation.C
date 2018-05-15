@@ -346,6 +346,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
     const scalarField& fineSrcMagSf,
     const labelListList& fineSrcAddress,
     const scalarListList& fineSrcWeights,
+    const List<List<point>>& fineSrcCentroids,
 
     const labelList& sourceRestrictAddressing,
     const labelList& targetRestrictAddressing,
@@ -354,6 +355,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
     labelListList& srcAddress,
     scalarListList& srcWeights,
     scalarField& srcWeightsSum,
+    List<List<point>>& srcCentroids,
     autoPtr<mapDistribute>& tgtMap
 )
 {
@@ -509,6 +511,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
 
         srcAddress.setSize(sourceCoarseSize);
         srcWeights.setSize(sourceCoarseSize);
+        srcCentroids.setSize(sourceCoarseSize);
 
         forAll(fineSrcAddress, facei)
         {
@@ -516,6 +519,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
             // mapDistribute'd data.
             const labelList& elems = fineSrcAddress[facei];
             const scalarList& weights = fineSrcWeights[facei];
+            const List<point>& centroids = fineSrcCentroids[facei];
             const scalar fineArea = fineSrcMagSf[facei];
 
             label coarseFacei = sourceRestrictAddressing[facei];
@@ -524,6 +528,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
 
             labelList& newElems = srcAddress[coarseFacei];
             scalarList& newWeights = srcWeights[coarseFacei];
+            List<point>& newCentroids = srcCentroids[coarseFacei];
 
             forAll(elems, i)
             {
@@ -535,10 +540,12 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
                 {
                     newElems.append(coarseElemI);
                     newWeights.append(fineArea/coarseArea*weights[i]);
+                    newCentroids.append(centroids[i]);
                 }
                 else
                 {
                     newWeights[index] += fineArea/coarseArea*weights[i];
+                    newCentroids[index] += centroids[i];
                 }
             }
         }
@@ -557,6 +564,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
     {
         srcAddress.setSize(sourceCoarseSize);
         srcWeights.setSize(sourceCoarseSize);
+        srcCentroids.setSize(sourceCoarseSize);
 
         forAll(fineSrcAddress, facei)
         {
@@ -565,6 +573,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
             const labelList& elems = fineSrcAddress[facei];
             const scalarList& weights = fineSrcWeights[facei];
             const scalar fineArea = fineSrcMagSf[facei];
+            const List<point>& centroids = fineSrcCentroids[facei];
 
             label coarseFacei = sourceRestrictAddressing[facei];
 
@@ -572,6 +581,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
 
             labelList& newElems = srcAddress[coarseFacei];
             scalarList& newWeights = srcWeights[coarseFacei];
+            List<point>& newCentroids = srcCentroids[coarseFacei];
 
             forAll(elems, i)
             {
@@ -583,10 +593,12 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::agglomerate
                 {
                     newElems.append(coarseElemI);
                     newWeights.append(fineArea/coarseArea*weights[i]);
+                    newCentroids.append(centroids[i]);
                 }
                 else
                 {
                     newWeights[index] += fineArea/coarseArea*weights[i];
+                    newCentroids[index] += centroids[i];
                 }
             }
         }
@@ -687,9 +699,11 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
     srcAddress_(),
     srcWeights_(),
     srcWeightsSum_(),
+    srcCentroids_(),
     tgtAddress_(),
     tgtWeights_(),
     tgtWeightsSum_(),
+    tgtCentroids_(),
     triMode_(triMode),
     srcMapPtr_(nullptr),
     tgtMapPtr_(nullptr)
@@ -719,9 +733,11 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
     srcAddress_(),
     srcWeights_(),
     srcWeightsSum_(),
+    srcCentroids_(),
     tgtAddress_(),
     tgtWeights_(),
     tgtWeightsSum_(),
+    tgtCentroids_(),
     triMode_(triMode),
     srcMapPtr_(nullptr),
     tgtMapPtr_(nullptr)
@@ -752,9 +768,11 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
     srcAddress_(),
     srcWeights_(),
     srcWeightsSum_(),
+    srcCentroids_(),
     tgtAddress_(),
     tgtWeights_(),
     tgtWeightsSum_(),
+    tgtCentroids_(),
     triMode_(triMode),
     srcMapPtr_(nullptr),
     tgtMapPtr_(nullptr)
@@ -785,9 +803,11 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
     srcAddress_(),
     srcWeights_(),
     srcWeightsSum_(),
+    srcCentroids_(),
     tgtAddress_(),
     tgtWeights_(),
     tgtWeightsSum_(),
+    tgtCentroids_(),
     triMode_(triMode),
     srcMapPtr_(nullptr),
     tgtMapPtr_(nullptr)
@@ -813,9 +833,11 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
     srcAddress_(),
     srcWeights_(),
     srcWeightsSum_(),
+    srcCentroids_(),
     tgtAddress_(),
     tgtWeights_(),
     tgtWeightsSum_(),
+    tgtCentroids_(),
     triMode_(fineAMI.triMode_),
     srcMapPtr_(nullptr),
     tgtMapPtr_(nullptr)
@@ -868,6 +890,7 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
         fineAMI.srcMagSf(),
         fineAMI.srcAddress(),
         fineAMI.srcWeights(),
+        fineAMI.srcCentroids(),
 
         sourceRestrictAddressing,
         targetRestrictAddressing,
@@ -876,6 +899,7 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
         srcAddress_,
         srcWeights_,
         srcWeightsSum_,
+        srcCentroids_,
         tgtMapPtr_
     );
 
@@ -885,6 +909,7 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
         fineAMI.tgtMagSf(),
         fineAMI.tgtAddress(),
         fineAMI.tgtWeights(),
+        fineAMI.tgtCentroids(),
 
         targetRestrictAddressing,
         sourceRestrictAddressing,
@@ -893,6 +918,7 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::AMIInterpolation
         tgtAddress_,
         tgtWeights_,
         tgtWeightsSum_,
+        tgtCentroids_,
         srcMapPtr_
     );
 
@@ -1019,8 +1045,10 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::update
         (
             srcAddress_,
             srcWeights_,
+            srcCentroids_,
             tgtAddress_,
-            tgtWeights_
+            tgtWeights_,
+            tgtCentroids_
         );
 
         // Now
@@ -1118,8 +1146,10 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::update
         (
             srcAddress_,
             srcWeights_,
+            srcCentroids_,
             tgtAddress_,
-            tgtWeights_
+            tgtWeights_,
+            tgtCentroids_
         );
     }
 
@@ -1325,16 +1355,115 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
             {
                 const labelList& faces = tgtAddress_[facei];
                 const scalarList& weights = tgtWeights_[facei];
+                const List<point>& centroids = tgtCentroids_[facei];
+
+                Pout<< "Result on face:" << facei
+                    << " results from" << nl;
 
                 forAll(faces, i)
                 {
+                    Pout<< "    w:" << weights[i] << " sourceface:" << faces[i]
+                        << " centroid:" << centroids[i] << endl;
                     cop(result[facei], facei, fld[faces[i]], weights[i]);
                 }
             }
         }
     }
 }
-
+//XXXXXXX
+//template<class SourcePatch, class TargetPatch>
+//template<class Type, class CombineOp>
+//void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
+//(
+//    const UList<Type>& fld,
+//    const Field<outerProduct<vector, Type>>& gradFld,
+//    const CombineOp& cop,
+//    List<Type>& result,
+//    const UList<Type>& defaultValues
+//) const
+//{
+//    if (fld.size() != srcAddress_.size())
+//    {
+//        FatalErrorInFunction
+//            << "Supplied field size is not equal to source patch size" << nl
+//            << "    source patch   = " << srcAddress_.size() << nl
+//            << "    target patch   = " << tgtAddress_.size() << nl
+//            << "    supplied field = " << fld.size()
+//            << abort(FatalError);
+//    }
+//
+//    if (lowWeightCorrection_ > 0)
+//    {
+//        if (defaultValues.size() != tgtAddress_.size())
+//        {
+//            FatalErrorInFunction
+//                << "Employing default values when sum of weights falls below "
+//                << lowWeightCorrection_
+//                << " but supplied default field size is not equal to target "
+//                << "patch size" << nl
+//                << "    default values = " << defaultValues.size() << nl
+//                << "    target patch   = " << tgtAddress_.size() << nl
+//                << abort(FatalError);
+//        }
+//    }
+//
+//    result.setSize(tgtAddress_.size());
+//
+//    if (singlePatchProc_ == -1)
+//    {
+//        const mapDistribute& map = srcMapPtr_();
+//
+//        List<Type> work(fld);
+//        map.distribute(work);
+//
+//        forAll(result, facei)
+//        {
+//            if (tgtWeightsSum_[facei] < lowWeightCorrection_)
+//            {
+//                result[facei] = defaultValues[facei];
+//            }
+//            else
+//            {
+//                const labelList& faces = tgtAddress_[facei];
+//                const scalarList& weights = tgtWeights_[facei];
+//
+//                forAll(faces, i)
+//                {
+//                    cop(result[facei], facei, work[faces[i]], weights[i]);
+//                }
+//            }
+//        }
+//    }
+//    else
+//    {
+//        forAll(result, facei)
+//        {
+//            if (tgtWeightsSum_[facei] < lowWeightCorrection_)
+//            {
+//                result[facei] = defaultValues[facei];
+//            }
+//            else
+//            {
+//                const labelList& faces = tgtAddress_[facei];
+//                const scalarList& weights = tgtWeights_[facei];
+//                const List<point>& centroids = tgtCentroids_[facei];
+//
+//                Pout<< "Result on face:" << facei
+//                    << " results from" << nl;
+//
+//                forAll(faces, i)
+//                {
+//                    Pout<< "    w:" << weights[i]
+//                        << " sourceface:" << faces[i]
+//                        << " centroid:" << centroids[i] << endl;
+//                    //cop(result[facei], facei, fld[faces[i]], weights[i]);
+//                    result[facei] += weights[i]*fld[faces[i]];
+//                }
+//            }
+//        }
+//    }
+//}
+//XXXXXXX
 
 template<class SourcePatch, class TargetPatch>
 template<class Type, class CombineOp>

@@ -118,8 +118,10 @@ protected:
             (
                 labelListList& srcAddress,
                 scalarListList& srcWeights,
+                List<List<point>>& srcCentroids,
                 labelListList& tgtAddress,
                 scalarListList& tgtWeights,
+                List<List<point>>& tgtCentroids,
                 label& srcFacei,
                 label& tgtFacei
             );
@@ -236,8 +238,10 @@ public:
             (
                 labelListList& srcAddress,
                 scalarListList& srcWeights,
+                List<List<point>>& srcCentroids,
                 labelListList& tgtAddress,
                 scalarListList& tgtWeights,
+                List<List<point>>& tgtCentroids,
                 label srcFacei = -1,
                 label tgtFacei = -1
             ) = 0;

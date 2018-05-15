@@ -77,8 +77,10 @@ protected:
             (
                 List<DynamicList<label>>& srcAddress,
                 List<DynamicList<scalar>>& srcWeights,
+                List<DynamicList<point>>& srcCentroid,
                 List<DynamicList<label>>& tgtAddress,
                 List<DynamicList<scalar>>& tgtWeights,
+                List<DynamicList<point>>& tgtCentroid,
                 label srcFacei,
                 label tgtFacei
             );
@@ -92,8 +94,10 @@ protected:
                 DynamicList<label>& visitedFaces,
                 List<DynamicList<label>>& srcAddr,
                 List<DynamicList<scalar>>& srcWght,
+                List<DynamicList<point>>& srcCentroid,
                 List<DynamicList<label>>& tgtAddr,
-                List<DynamicList<scalar>>& tgtWght
+                List<DynamicList<scalar>>& tgtWght,
+                List<DynamicList<point>>& tgtCentroid
             );
 
             //- Attempt to re-evaluate source faces that have not been included
@@ -101,8 +105,10 @@ protected:
             (
                 List<DynamicList<label>>& srcAddr,
                 List<DynamicList<scalar>>& srcWght,
+                List<DynamicList<point>>& srcCentroid,
                 List<DynamicList<label>>& tgtAddr,
-                List<DynamicList<scalar>>& tgtWght
+                List<DynamicList<scalar>>& tgtWght,
+                List<DynamicList<point>>& tgtCentroid
             );
 
             //- Set the source and target seed faces
@@ -166,8 +172,10 @@ public:
             (
                 labelListList& srcAddress,
                 scalarListList& srcWeights,
+                List<List<point>>& srcCentroids,
                 labelListList& tgtAddress,
                 scalarListList& tgtWeights,
+                List<List<point>>& tgtCentroids,
                 label srcFacei = -1,
                 label tgtFacei = -1
             );

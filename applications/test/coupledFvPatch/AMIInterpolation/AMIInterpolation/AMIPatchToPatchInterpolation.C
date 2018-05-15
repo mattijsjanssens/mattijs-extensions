@@ -38,11 +38,11 @@ namespace Foam
 {
     makeAMIMethod(AMIPatchToPatchInterpolation);
 
-    makeAMIMethodType(AMIPatchToPatchInterpolation, directAMI);
-    makeAMIMethodType(AMIPatchToPatchInterpolation, mapNearestAMI);
+//    makeAMIMethodType(AMIPatchToPatchInterpolation, directAMI);
+//    makeAMIMethodType(AMIPatchToPatchInterpolation, mapNearestAMI);
     makeAMIMethodType(AMIPatchToPatchInterpolation, faceAreaWeightAMI);
-    makeAMIMethodType(AMIPatchToPatchInterpolation, partialFaceAreaWeightAMI);
-    makeAMIMethodType(AMIPatchToPatchInterpolation, sweptFaceAreaWeightAMI);
+//    makeAMIMethodType(AMIPatchToPatchInterpolation, partialFaceAreaWeightAMI);
+//    makeAMIMethodType(AMIPatchToPatchInterpolation, sweptFaceAreaWeightAMI);
 }
 
 

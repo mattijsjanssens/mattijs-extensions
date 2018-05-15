@@ -127,15 +127,19 @@ void Foam::partialFaceAreaWeightAMI<SourcePatch, TargetPatch>::calculate
     // temporary storage for addressing and weights
     List<DynamicList<label>> srcAddr(this->srcPatch_.size());
     List<DynamicList<scalar>> srcWght(srcAddr.size());
+    List<DynamicList<point>> srcCentroid(srcAddr.size());
     List<DynamicList<label>> tgtAddr(this->tgtPatch_.size());
     List<DynamicList<scalar>> tgtWght(tgtAddr.size());
+    List<DynamicList<point>> tgtCentroid(tgtAddr.size());
 
     faceAreaWeightAMI<SourcePatch, TargetPatch>::calcAddressing
     (
         srcAddr,
         srcWght,
+        srcCentroid,
         tgtAddr,
         tgtWght,
+        tgtCentroid,
         srcFacei,
         tgtFacei
     );

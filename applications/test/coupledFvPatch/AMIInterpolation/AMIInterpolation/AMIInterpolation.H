@@ -160,6 +160,8 @@ private:
             //- Sum of weights of target faces per source face
             scalarField srcWeightsSum_;
 
+            List<List<point>> srcCentroids_;
+
 
         // Target patch
 
@@ -174,6 +176,8 @@ private:
 
             //- Sum of weights of source faces per target face
             scalarField tgtWeightsSum_;
+
+            List<List<point>> tgtCentroids_;
 
 
         //- Face triangulation mode
@@ -299,6 +303,7 @@ private:
                 const scalarField& fineSrcMagSf,
                 const labelListList& fineSrcAddress,
                 const scalarListList& fineSrcWeights,
+                const List<List<point>>& fineSrcCentroids,
 
                 const labelList& sourceRestrictAddressing,
                 const labelList& targetRestrictAddressing,
@@ -307,6 +312,7 @@ private:
                 labelListList& srcAddress,
                 scalarListList& srcWeights,
                 scalarField& srcWeightsSum,
+                List<List<point>>& srcCentroids,
                 autoPtr<mapDistribute>& tgtMap
             );
 
@@ -430,6 +436,9 @@ public:
                 //  patch weights (i.e. the sum before normalisation)
                 inline scalarField& srcWeightsSum();
 
+                //- Return const access to source patch centroids
+                inline const List<List<point>>& srcCentroids() const;
+
                 //- Source map pointer - valid only if singlePatchProc = -1
                 //  This gets source data into a form to be consumed by
                 //  tgtAddress, tgtWeights
@@ -457,6 +466,9 @@ public:
                 //- Return access to normalisation factor of target
                 //  patch weights (i.e. the sum before normalisation)
                 inline scalarField& tgtWeightsSum();
+
+                //- Return const access to taget patch centroids
+                inline const List<List<point>>& tgtCentroids() const;
 
                 //- Target map pointer -  valid only if singlePatchProc=-1.
                 //  This gets target data into a form to be consumed by

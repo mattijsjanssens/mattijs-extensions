@@ -32,8 +32,10 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calcAddressing
 (
     List<DynamicList<label>>& srcAddr,
     List<DynamicList<scalar>>& srcWght,
+    List<DynamicList<point>>& srcCentroid,
     List<DynamicList<label>>& tgtAddr,
     List<DynamicList<scalar>>& tgtWght,
+    List<DynamicList<point>>& tgtCentroid,
     label srcFacei,
     label tgtFacei
 )
@@ -73,8 +75,10 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calcAddressing
 
             srcAddr,
             srcWght,
+            srcCentroid,
             tgtAddr,
-            tgtWght
+            tgtWght,
+            tgtCentroid
         );
 
         mapFlag[srcFacei] = false;
@@ -119,8 +123,10 @@ bool Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::processSourceFace
     // temporary storage for addressing and weights
     List<DynamicList<label>>& srcAddr,
     List<DynamicList<scalar>>& srcWght,
+    List<DynamicList<point>>& srcCentroid,
     List<DynamicList<label>>& tgtAddr,
-    List<DynamicList<scalar>>& tgtWght
+    List<DynamicList<scalar>>& tgtWght,
+    List<DynamicList<point>>& tgtCentroid
 )
 {
     if (tgtStartFacei == -1)
@@ -153,16 +159,21 @@ bool Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::processSourceFace
         const scalar tgtArea = this->tgtMagSf_[tgtFacei];
 
         // calculate the intersection area
-        const scalar area = interArea(srcFacei, tgtFacei).first();
+        Tuple2<scalar, point> areaAndInertia(interArea(srcFacei, tgtFacei));
+        const scalar area = areaAndInertia.first();
 
         // store when intersection fractional area > min weight
         if (area/srcArea > minWeight())
         {
+            const point centroid(areaAndInertia.second()/area);
+
             srcAddr[srcFacei].append(tgtFacei);
             srcWght[srcFacei].append(area/srcArea);
+            srcCentroid[srcFacei].append(centroid);
 
             tgtAddr[tgtFacei].append(srcFacei);
             tgtWght[tgtFacei].append(area/tgtArea);
+            tgtCentroid[tgtFacei].append(centroid);
 
             this->appendNbrFaces
             (
@@ -353,9 +364,9 @@ Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     {
         area = inter.calc(src, tgt, n/magN, this->triMode_);
 
-Pout<< "For srcFace:" << this->srcPatch_.faceCentres()[srcFacei]
-    << " tgtFace:" << this->tgtPatch_.faceCentres()[tgtFacei]
-    << " have area:" << area << endl;
+//Pout<< "For srcFace:" << this->srcPatch_.faceCentres()[srcFacei]
+//    << " tgtFace:" << this->tgtPatch_.faceCentres()[tgtFacei]
+//    << " have area:" << area << endl;
 
     }
     else
@@ -391,8 +402,10 @@ restartUncoveredSourceFace
 (
     List<DynamicList<label>>& srcAddr,
     List<DynamicList<scalar>>& srcWght,
+    List<DynamicList<point>>& srcCentroid,
     List<DynamicList<label>>& tgtAddr,
-    List<DynamicList<scalar>>& tgtWght
+    List<DynamicList<scalar>>& tgtWght,
+    List<DynamicList<point>>& tgtCentroid
 )
 {
     // Collect all src faces with a low weight
@@ -423,24 +436,28 @@ restartUncoveredSourceFace
 
         DynamicList<label> okSrcFaces(10);
         DynamicList<scalar> okSrcWeights(10);
+        DynamicList<point> okSrcCentroids(10);
         forAll(tgtAddr, tgtFacei)
         {
             okSrcFaces.clear();
             okSrcWeights.clear();
             DynamicList<label>& srcFaces = tgtAddr[tgtFacei];
             DynamicList<scalar>& srcWeights = tgtWght[tgtFacei];
+            DynamicList<point>& srcCentroids = tgtCentroid[tgtFacei];
             forAll(srcFaces, i)
             {
                 if (!lowWeightFaces.found(srcFaces[i]))
                 {
                     okSrcFaces.append(srcFaces[i]);
                     okSrcWeights.append(srcWeights[i]);
+                    okSrcCentroids.append(srcCentroids[i]);
                 }
             }
             if (okSrcFaces.size() < srcFaces.size())
             {
                 srcFaces.transfer(okSrcFaces);
                 srcWeights.transfer(okSrcWeights);
+                srcCentroids.transfer(okSrcCentroids);
             }
         }
 
@@ -472,8 +489,10 @@ restartUncoveredSourceFace
 
                     srcAddr,
                     srcWght,
+                    srcCentroid,
                     tgtAddr,
-                    tgtWght
+                    tgtWght,
+                    tgtCentroid
                 );
                 // ? Check faceProcessed to see if restarting has worked.
             }
@@ -533,8 +552,10 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calculate
 (
     labelListList& srcAddress,
     scalarListList& srcWeights,
+    List<List<point>>& srcCentroids,
     labelListList& tgtAddress,
     scalarListList& tgtWeights,
+    List<List<point>>& tgtCentroids,
     label srcFacei,
     label tgtFacei
 )
@@ -544,8 +565,10 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calculate
         (
             srcAddress,
             srcWeights,
+            srcCentroids,
             tgtAddress,
             tgtWeights,
+            tgtCentroids,
             srcFacei,
             tgtFacei
         );
@@ -558,15 +581,19 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calculate
     // temporary storage for addressing and weights
     List<DynamicList<label>> srcAddr(this->srcPatch_.size());
     List<DynamicList<scalar>> srcWght(srcAddr.size());
+    List<DynamicList<point>> srcCentroid(srcAddr.size());
     List<DynamicList<label>> tgtAddr(this->tgtPatch_.size());
     List<DynamicList<scalar>> tgtWght(tgtAddr.size());
+    List<DynamicList<point>> tgtCentroid(tgtAddr.size());
 
     calcAddressing
     (
         srcAddr,
         srcWght,
+        srcCentroid,
         tgtAddr,
         tgtWght,
+        tgtCentroid,
         srcFacei,
         tgtFacei
     );
@@ -586,8 +613,10 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calculate
         (
             srcAddr,
             srcWght,
+            srcCentroid,
             tgtAddr,
-            tgtWght
+            tgtWght,
+            tgtCentroid
         );
     }
 
@@ -597,11 +626,13 @@ void Foam::faceAreaWeightAMI<SourcePatch, TargetPatch>::calculate
     {
         srcAddress[i].transfer(srcAddr[i]);
         srcWeights[i].transfer(srcWght[i]);
+        srcCentroids[i].transfer(srcCentroid[i]);
     }
     forAll(tgtAddr, i)
     {
         tgtAddress[i].transfer(tgtAddr[i]);
         tgtWeights[i].transfer(tgtWght[i]);
+        tgtCentroids[i].transfer(tgtCentroid[i]);
     }
 }
 
