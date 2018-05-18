@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -60,12 +60,21 @@ int main(int argc, char *argv[])
 //         ),
 //         mesh
 //     );
+
+    runTime++;
+
     Info<< "Constructing field p\n" << endl;
     volScalarField p
     (
         "p",
         mesh.C().component(vector::X)
     );
+
+p.correctBoundaryConditions();
+p.instance() = runTime.timeName();
+p.write();
+return 0;
+
 
     const surfaceScalarField& deltaCoeffs =
         fv::correctedSnGrad<scalar>(mesh).deltaCoeffs(p);

@@ -55,7 +55,8 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
             result.ref() +=
                 nei.AMIs()[i].interpolateToTarget
                 (
-                    nei.AMITransforms()[i].transform(fld),
+                    nei.AMITransforms()[i].transform(fld)(),
+                    plusEqOp<Type>(),
                     defaultValues
                 );
         }

@@ -437,6 +437,12 @@ public:
         virtual void write(Ostream&) const;
 };
 
+template<>
+Foam::tmp<Foam::Field<Foam::scalar>> Foam::cyclicAMIPolyPatch::interpolate
+(
+    const Field<scalar>& fld,
+    const UList<scalar>& defaultValues
+) const;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

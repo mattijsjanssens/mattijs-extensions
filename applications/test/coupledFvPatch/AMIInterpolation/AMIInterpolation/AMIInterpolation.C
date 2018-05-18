@@ -1370,100 +1370,7 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
         }
     }
 }
-//XXXXXXX
-//template<class SourcePatch, class TargetPatch>
-//template<class Type, class CombineOp>
-//void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
-//(
-//    const UList<Type>& fld,
-//    const Field<outerProduct<vector, Type>>& gradFld,
-//    const CombineOp& cop,
-//    List<Type>& result,
-//    const UList<Type>& defaultValues
-//) const
-//{
-//    if (fld.size() != srcAddress_.size())
-//    {
-//        FatalErrorInFunction
-//            << "Supplied field size is not equal to source patch size" << nl
-//            << "    source patch   = " << srcAddress_.size() << nl
-//            << "    target patch   = " << tgtAddress_.size() << nl
-//            << "    supplied field = " << fld.size()
-//            << abort(FatalError);
-//    }
-//
-//    if (lowWeightCorrection_ > 0)
-//    {
-//        if (defaultValues.size() != tgtAddress_.size())
-//        {
-//            FatalErrorInFunction
-//                << "Employing default values when sum of weights falls below "
-//                << lowWeightCorrection_
-//                << " but supplied default field size is not equal to target "
-//                << "patch size" << nl
-//                << "    default values = " << defaultValues.size() << nl
-//                << "    target patch   = " << tgtAddress_.size() << nl
-//                << abort(FatalError);
-//        }
-//    }
-//
-//    result.setSize(tgtAddress_.size());
-//
-//    if (singlePatchProc_ == -1)
-//    {
-//        const mapDistribute& map = srcMapPtr_();
-//
-//        List<Type> work(fld);
-//        map.distribute(work);
-//
-//        forAll(result, facei)
-//        {
-//            if (tgtWeightsSum_[facei] < lowWeightCorrection_)
-//            {
-//                result[facei] = defaultValues[facei];
-//            }
-//            else
-//            {
-//                const labelList& faces = tgtAddress_[facei];
-//                const scalarList& weights = tgtWeights_[facei];
-//
-//                forAll(faces, i)
-//                {
-//                    cop(result[facei], facei, work[faces[i]], weights[i]);
-//                }
-//            }
-//        }
-//    }
-//    else
-//    {
-//        forAll(result, facei)
-//        {
-//            if (tgtWeightsSum_[facei] < lowWeightCorrection_)
-//            {
-//                result[facei] = defaultValues[facei];
-//            }
-//            else
-//            {
-//                const labelList& faces = tgtAddress_[facei];
-//                const scalarList& weights = tgtWeights_[facei];
-//                const List<point>& centroids = tgtCentroids_[facei];
-//
-//                Pout<< "Result on face:" << facei
-//                    << " results from" << nl;
-//
-//                forAll(faces, i)
-//                {
-//                    Pout<< "    w:" << weights[i]
-//                        << " sourceface:" << faces[i]
-//                        << " centroid:" << centroids[i] << endl;
-//                    //cop(result[facei], facei, fld[faces[i]], weights[i]);
-//                    result[facei] += weights[i]*fld[faces[i]];
-//                }
-//            }
-//        }
-//    }
-//}
-//XXXXXXX
+
 
 template<class SourcePatch, class TargetPatch>
 template<class Type, class CombineOp>
@@ -1691,6 +1598,297 @@ Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
     return interpolateToTarget(tFld(), plusEqOp<Type>(), defaultValues);
 }
 
+
+//XXXXXX
+//XXXXXXX
+template<class SourcePatch, class TargetPatch>
+template<class Type, class CombineOp>
+void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToSource
+(
+    const UList<Type>& fld,
+    const Field<typename outerProduct<vector, Type>::type>& gradFld,
+    const pointField& fc,
+    const CombineOp& cop,
+    List<Type>& result,
+    const UList<Type>& defaultValues
+) const
+{
+    if
+    (
+        fld.size() != tgtAddress_.size()
+     || fld.size() != gradFld.size()
+     || fld.size() != fc.size()
+    )
+    {
+        FatalErrorInFunction
+            << "Supplied field size is not equal to target patch size" << nl
+            << "    source patch   = " << srcAddress_.size() << nl
+            << "    target patch   = " << tgtAddress_.size() << nl
+            << "    supplied field = " << fld.size()
+            << ", gradient field = " << gradFld.size()
+            << ", face centres = " << fc.size()
+            << abort(FatalError);
+    }
+
+    if (lowWeightCorrection_ > 0)
+    {
+        if (defaultValues.size() != srcAddress_.size())
+        {
+            FatalErrorInFunction
+                << "Employing default values when sum of weights falls below "
+                << lowWeightCorrection_
+                << " but supplied default field size is not equal to target "
+                << "patch size" << nl
+                << "    default values = " << defaultValues.size() << nl
+                << "    source patch   = " << srcAddress_.size() << nl
+                << abort(FatalError);
+        }
+    }
+
+    result.setSize(srcAddress_.size());
+
+    if (singlePatchProc_ == -1)
+    {
+        const mapDistribute& map = tgtMapPtr_();
+
+        List<Type> workFld(fld);
+        map.distribute(workFld);
+        List<typename outerProduct<vector, Type>::type> workGrad(gradFld);
+        map.distribute(workGrad);
+
+        forAll(result, facei)
+        {
+            if (srcWeightsSum_[facei] < lowWeightCorrection_)
+            {
+                result[facei] = defaultValues[facei];
+            }
+            else
+            {
+                const labelList& faces = srcAddress_[facei];
+                const scalarList& weights = srcWeights_[facei];
+                const List<point>& centroids = srcCentroids_[facei];
+
+                forAll(faces, i)
+                {
+                    const label sloti = faces[i];
+                    const Type corr(workGrad[sloti]&(centroids[i]-fc[sloti]));
+                    const Type t(workFld[sloti]+corr);
+
+                    cop(result[facei], facei, t, weights[i]);
+                }
+            }
+        }
+    }
+    else
+    {
+        forAll(result, facei)
+        {
+            if (srcWeightsSum_[facei] < lowWeightCorrection_)
+            {
+                result[facei] = defaultValues[facei];
+            }
+            else
+            {
+                const labelList& faces = srcAddress_[facei];
+                const scalarList& weights = srcWeights_[facei];
+                const List<point>& centroids = srcCentroids_[facei];
+
+                forAll(faces, i)
+                {
+                    const label sloti = faces[i];
+                    const vector d(centroids[i]-fc[sloti]);
+                    const Type corr(gradFld[sloti]&(centroids[i]-fc[sloti]));
+                    const Type t(fld[sloti]+corr);
+
+                    cop(result[facei], facei, t, weights[i]);
+                }
+            }
+        }
+    }
+}
+template<class SourcePatch, class TargetPatch>
+template<class Type, class CombineOp>
+void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
+(
+    const UList<Type>& fld,
+    const Field<typename outerProduct<vector, Type>::type>& gradFld,
+    const pointField& fc,
+    const CombineOp& cop,
+    List<Type>& result,
+    const UList<Type>& defaultValues
+) const
+{
+    if
+    (
+        fld.size() != srcAddress_.size()
+     || fld.size() != gradFld.size()
+     || fld.size() != fc.size()
+    )
+    {
+        FatalErrorInFunction
+            << "Supplied field size is not equal to source patch size" << nl
+            << "    source patch   = " << srcAddress_.size() << nl
+            << "    target patch   = " << tgtAddress_.size() << nl
+            << "    supplied field = " << fld.size()
+            << ", gradient field = " << gradFld.size()
+            << ", face centres = " << fc.size()
+            << abort(FatalError);
+    }
+
+    if (lowWeightCorrection_ > 0)
+    {
+        if (defaultValues.size() != tgtAddress_.size())
+        {
+            FatalErrorInFunction
+                << "Employing default values when sum of weights falls below "
+                << lowWeightCorrection_
+                << " but supplied default field size is not equal to target "
+                << "patch size" << nl
+                << "    default values = " << defaultValues.size() << nl
+                << "    target patch   = " << tgtAddress_.size() << nl
+                << abort(FatalError);
+        }
+    }
+
+    result.setSize(tgtAddress_.size());
+
+    if (singlePatchProc_ == -1)
+    {
+        const mapDistribute& map = srcMapPtr_();
+
+        List<Type> workFld(fld);
+        map.distribute(workFld);
+        List<typename outerProduct<vector, Type>::type> workGrad(gradFld);
+        map.distribute(workGrad);
+
+        forAll(result, facei)
+        {
+            if (tgtWeightsSum_[facei] < lowWeightCorrection_)
+            {
+                result[facei] = defaultValues[facei];
+            }
+            else
+            {
+                const labelList& faces = tgtAddress_[facei];
+                const scalarList& weights = tgtWeights_[facei];
+                const List<point>& centroids = tgtCentroids_[facei];
+
+                forAll(faces, i)
+                {
+                    const label sloti = faces[i];
+                    const Type corr(workGrad[sloti]&(centroids[i]-fc[sloti]));
+                    const Type t(workFld[sloti]+corr);
+
+                    cop(result[facei], facei, t, weights[i]);
+                }
+            }
+        }
+    }
+    else
+    {
+        forAll(result, facei)
+        {
+            if (tgtWeightsSum_[facei] < lowWeightCorrection_)
+            {
+                result[facei] = defaultValues[facei];
+            }
+            else
+            {
+                const labelList& faces = tgtAddress_[facei];
+                const scalarList& weights = tgtWeights_[facei];
+                const List<point>& centroids = tgtCentroids_[facei];
+
+                Pout<< "Result on face:" << facei
+                    << " results from" << nl;
+
+                forAll(faces, i)
+                {
+                    const label sloti = faces[i];
+                    const vector d(centroids[i]-fc[sloti]);
+                    const Type corr(gradFld[sloti]&(centroids[i]-fc[sloti]));
+
+                    Pout<< "    w:" << weights[i]
+                        << " sourceface:" << faces[i]
+                        << " centroid:" << centroids[i]
+                        << " source fld:" << fld[sloti]
+                        << " correction:" << corr << endl;
+                    //cop(result[facei], facei, fld[faces[i]], weights[i]);
+
+                    const Type t(fld[sloti]+corr);
+                    result[facei] += weights[i]*t;
+                }
+            }
+        }
+        DebugVar(result);
+    }
+}
+template<class SourcePatch, class TargetPatch>
+template<class Type, class CombineOp>
+Foam::tmp<Foam::Field<Type>>
+Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToSource
+(
+    const Field<Type>& fld,
+    const Field<typename outerProduct<vector, Type>::type>& gradFld,
+    const pointField& faceCentres,
+    const CombineOp& cop,
+    const UList<Type>& defaultValues
+) const
+{
+    tmp<Field<Type>> tresult
+    (
+        new Field<Type>
+        (
+            srcAddress_.size(),
+            Zero
+        )
+    );
+
+    interpolateToSource
+    (
+        fld,
+        gradFld,
+        faceCentres,
+        multiplyWeightedOp<Type, CombineOp>(cop),
+        tresult.ref(),
+        defaultValues
+    );
+
+    return tresult;
+}
+template<class SourcePatch, class TargetPatch>
+template<class Type, class CombineOp>
+Foam::tmp<Foam::Field<Type>>
+Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
+(
+    const Field<Type>& fld,
+    const Field<typename outerProduct<vector, Type>::type>& gradFld,
+    const pointField& faceCentres,
+    const CombineOp& cop,
+    const UList<Type>& defaultValues
+) const
+{
+    tmp<Field<Type>> tresult
+    (
+        new Field<Type>
+        (
+            tgtAddress_.size(),
+            Zero
+        )
+    );
+
+    interpolateToTarget
+    (
+        fld,
+        gradFld,
+        faceCentres,
+        multiplyWeightedOp<Type, CombineOp>(cop),
+        tresult.ref(),
+        defaultValues
+    );
+
+    return tresult;
+}
+//XXXXXX
 
 template<class SourcePatch, class TargetPatch>
 Foam::label Foam::AMIInterpolation<SourcePatch, TargetPatch>::srcPointFace

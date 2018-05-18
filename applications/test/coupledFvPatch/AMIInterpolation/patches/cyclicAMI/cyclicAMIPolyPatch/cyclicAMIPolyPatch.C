@@ -1242,4 +1242,55 @@ void Foam::cyclicAMIPolyPatch::write(Ostream& os) const
 }
 
 
+template<>
+Foam::tmp<Foam::Field<Foam::scalar>> Foam::cyclicAMIPolyPatch::interpolate
+(
+    const Field<scalar>& fld,
+    const UList<scalar>& defaultValues
+) const
+{
+    const cyclicAMIPolyPatch& nei = neighbPatch();
+
+    typedef typename outerProduct<vector, scalar>::type GradType;
+    DebugVar(name());
+    DebugVar(size());
+    Field<GradType> gradFld(fld.size(), vector(0, 1, 0));
+
+    tmp<Field<scalar>> result(new Field<scalar>(size(), Zero));
+
+    if (owner())
+    {
+        forAll(AMIs(), i)
+        {
+            result.ref() +=
+                AMIs()[i].interpolateToSource
+                (
+                    AMITransforms()[i].invTransform(fld)(),
+                    gradFld,
+                    nei.faceCentres(),
+                    plusEqOp<scalar>(),
+                    defaultValues
+                );
+        }
+    }
+    else
+    {
+        forAll(nei.AMIs(), i)
+        {
+            result.ref() +=
+                nei.AMIs()[i].interpolateToTarget
+                (
+                    nei.AMITransforms()[i].transform(fld)(),
+                    gradFld,
+                    nei.faceCentres(),
+                    plusEqOp<scalar>(),
+                    defaultValues
+                );
+        }
+    }
+
+    return result;
+}
+
+
 // ************************************************************************* //

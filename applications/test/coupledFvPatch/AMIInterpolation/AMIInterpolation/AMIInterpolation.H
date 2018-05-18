@@ -49,6 +49,8 @@ SourceFiles
 #ifndef AMIInterpolation_H
 #define AMIInterpolation_H
 
+#include "volFieldsFwd.H"
+#include "surfaceFieldsFwd.H"
 #include "className.H"
 #include "searchableSurface.H"
 #include "treeBoundBoxList.H"
@@ -545,6 +547,33 @@ public:
                     const UList<Type>& defaultValues = UList<Type>::null()
                 ) const;
 
+//XXXXX
+                //- Interpolate from target to source with supplied op
+                //  to combine existing value with remote value and weight
+                template<class Type, class CombineOp>
+                void interpolateToSource
+                (
+                    const UList<Type>& fld,
+                    const Field<typename outerProduct<vector, Type>::type>&,
+                    const pointField& faceCentres,
+                    const CombineOp& cop,
+                    List<Type>& result,
+                    const UList<Type>& defaultValues = UList<Type>::null()
+                ) const;
+                //- Interpolate from source to target with supplied op
+                //  to combine existing value with remote value and weight
+                template<class Type, class CombineOp>
+                void interpolateToTarget
+                (
+                    const UList<Type>& fld,
+                    const Field<typename outerProduct<vector, Type>::type>&,
+                    const pointField& faceCentres,
+                    const CombineOp& cop,
+                    List<Type>& result,
+                    const UList<Type>& defaultValues = UList<Type>::null()
+                ) const;
+//XXXXX
+
 
             //- Interpolate from target to source with supplied op
             template<class Type, class CombineOp>
@@ -613,6 +642,30 @@ public:
                 const tmp<Field<Type>>& tFld,
                 const UList<Type>& defaultValues = UList<Type>::null()
             ) const;
+
+
+//XXXXXX
+            //- Interpolate from target to source with supplied op
+            template<class Type, class CombineOp>
+            tmp<Field<Type>> interpolateToSource
+            (
+                const Field<Type>& fld,
+                const Field<typename outerProduct<vector, Type>::type>& gradFld,
+                const pointField& faceCentres,
+                const CombineOp& cop,
+                const UList<Type>& defaultValues = UList<Type>::null()
+            ) const;
+            //- Interpolate from source to target with supplied op
+            template<class Type, class CombineOp>
+            tmp<Field<Type>> interpolateToTarget
+            (
+                const Field<Type>& fld,
+                const Field<typename outerProduct<vector, Type>::type>& gradFld,
+                const pointField& faceCentres,
+                const CombineOp& cop,
+                const UList<Type>& defaultValues = UList<Type>::null()
+            ) const;
+//XXXXXX
 
 
         // Point intersections
