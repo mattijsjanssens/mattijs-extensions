@@ -386,6 +386,17 @@ public:
                     const scalarUList& defaultValues = scalarUList()
                 ) const;
 
+//XXXX
+                //- Interpolate field
+                template<class Type>
+                tmp<Field<Type>> interpolate
+                (
+                    const Field<Type>& fld,
+                    const Field<typename outerProduct<vector, Type>::type>&,
+                    const UList<Type>& defaultValues = UList<Type>()
+                ) const;
+//XXXX
+
 
         //- Calculate the patch geometry
         virtual void calcGeometry
@@ -441,6 +452,7 @@ template<>
 Foam::tmp<Foam::Field<Foam::scalar>> Foam::cyclicAMIPolyPatch::interpolate
 (
     const Field<scalar>& fld,
+    const Field<typename outerProduct<vector, scalar>::type>& gradFld,
     const UList<scalar>& defaultValues
 ) const;
 

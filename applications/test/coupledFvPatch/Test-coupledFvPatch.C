@@ -47,30 +47,37 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-//     Info<< "Reading field p\n" << endl;
-//     volScalarField p
-//     (
-//         IOobject
-//         (
-//             "p",
-//             runTime.timeName(),
-//             mesh,
-//             IOobject::MUST_READ,
-//             IOobject::AUTO_WRITE
-//         ),
-//         mesh
-//     );
+    Info<< "Reading field p\n" << endl;
+    volScalarField p
+    (
+        IOobject
+        (
+            "p",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh
+    );
+    p.primitiveFieldRef() =  mesh.C().component(vector::Y);
+
+DebugVar(p);
 
     runTime++;
 
-    Info<< "Constructing field p\n" << endl;
-    volScalarField p
-    (
-        "p",
-        mesh.C().component(vector::X)
-    );
+//    Info<< "Constructing field p\n" << endl;
+//    volScalarField p
+//    (
+//        "p",
+//        mesh.C().component(vector::X)
+//    );
 
 p.correctBoundaryConditions();
+
+DebugVar(p);
+
+
 p.instance() = runTime.timeName();
 p.write();
 return 0;

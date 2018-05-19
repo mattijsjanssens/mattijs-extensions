@@ -1355,15 +1355,9 @@ void Foam::AMIInterpolation<SourcePatch, TargetPatch>::interpolateToTarget
             {
                 const labelList& faces = tgtAddress_[facei];
                 const scalarList& weights = tgtWeights_[facei];
-                const List<point>& centroids = tgtCentroids_[facei];
-
-                Pout<< "Result on face:" << facei
-                    << " results from" << nl;
 
                 forAll(faces, i)
                 {
-                    Pout<< "    w:" << weights[i] << " sourceface:" << faces[i]
-                        << " centroid:" << centroids[i] << endl;
                     cop(result[facei], facei, fld[faces[i]], weights[i]);
                 }
             }

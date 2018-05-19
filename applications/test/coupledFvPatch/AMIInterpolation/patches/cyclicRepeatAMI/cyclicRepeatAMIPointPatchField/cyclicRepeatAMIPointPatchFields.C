@@ -34,7 +34,12 @@ namespace Foam
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-makePointPatchFields(cyclicRepeatAMI);
+//makePointPatchFields(cyclicRepeatAMI);
+makeTemplatePointPatchTypeField
+(
+    pointPatchScalarField,
+    cyclicRepeatAMIPointPatchScalarField
+);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

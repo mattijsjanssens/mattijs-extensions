@@ -23,6 +23,8 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "fvcGrad.H"
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class Type>
@@ -34,7 +36,8 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
 :
     coupledFvPatchField<Type>(p, iF),
     cyclicAMILduInterfaceField(),
-    cyclicAMIPatch_(refCast<const cyclicAMIFvPatch>(p))
+    cyclicAMIPatch_(refCast<const cyclicAMIFvPatch>(p)),
+    corrected_(false)
 {}
 
 
@@ -48,7 +51,8 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
 :
     coupledFvPatchField<Type>(p, iF, dict, dict.found("value")),
     cyclicAMILduInterfaceField(),
-    cyclicAMIPatch_(refCast<const cyclicAMIFvPatch>(p))
+    cyclicAMIPatch_(refCast<const cyclicAMIFvPatch>(p)),
+    corrected_(dict.lookup("corrected"))
 {
     if (!isA<cyclicAMIFvPatch>(p))
     {
@@ -67,6 +71,11 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
     {
         this->evaluate(Pstream::commsTypes::blocking);
     }
+
+Pout<< "** dict patch:" << this->patch().name() << endl;
+Pout<< "** dictfield:" << this->internalField().name() << endl;
+Pout<< "** dict corrected_:" << this->corrected_ << endl;
+
 }
 
 
@@ -81,7 +90,8 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
 :
     coupledFvPatchField<Type>(ptf, p, iF, mapper),
     cyclicAMILduInterfaceField(),
-    cyclicAMIPatch_(refCast<const cyclicAMIFvPatch>(p))
+    cyclicAMIPatch_(refCast<const cyclicAMIFvPatch>(p)),
+    corrected_(ptf.corrected_)
 {
     if (!isA<cyclicAMIFvPatch>(this->patch()))
     {
@@ -103,7 +113,8 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
 :
     coupledFvPatchField<Type>(ptf),
     cyclicAMILduInterfaceField(),
-    cyclicAMIPatch_(ptf.cyclicAMIPatch_)
+    cyclicAMIPatch_(ptf.cyclicAMIPatch_),
+    corrected_(ptf.corrected_)
 {}
 
 
@@ -116,7 +127,8 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
 :
     coupledFvPatchField<Type>(ptf, iF),
     cyclicAMILduInterfaceField(),
-    cyclicAMIPatch_(ptf.cyclicAMIPatch_)
+    cyclicAMIPatch_(ptf.cyclicAMIPatch_),
+    corrected_(ptf.corrected_)
 {}
 
 
@@ -137,16 +149,71 @@ Foam::cyclicAMIFvPatchField<Type>::patchNeighbourField() const
     const labelUList& nbrFaceCells =
         cyclicAMIPatch_.cyclicAMIPatch().neighbPatch().faceCells();
 
+
+Pout<< "** patch:" << this->patch().name() << endl;
+Pout<< "** field:" << this->internalField().name() << endl;
+Pout<< "** corrected_:" << this->corrected_ << endl;
+
+
     Field<Type> pnf(iField, nbrFaceCells);
 
     tmp<Field<Type>> tpnf;
-    if (cyclicAMIPatch_.applyLowWeightCorrection())
+    if (!corrected_)
     {
-        tpnf = cyclicAMIPatch_.interpolate(pnf, this->patchInternalField()());
+        if (cyclicAMIPatch_.applyLowWeightCorrection())
+        {
+            tpnf = cyclicAMIPatch_.interpolate
+            (
+                pnf,
+                this->patchInternalField()()
+            );
+        }
+        else
+        {
+            tpnf = cyclicAMIPatch_.interpolate(pnf);
+        }
     }
     else
     {
-        tpnf = cyclicAMIPatch_.interpolate(pnf);
+DebugVar(pnf);
+        typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+
+        const FieldType& fld = dynamic_cast<const FieldType&>
+        (
+            this->internalField()
+        );
+Pout<< "Field:" << fld.name() << " patch:" << this->patch().name()
+    << " corrected:" << corrected_ << endl;
+
+const Switch oldCorrected(corrected_);
+corrected_ = false;
+
+        typedef typename outerProduct<vector, Type>::type GradType;
+        tmp<GeometricField<GradType, fvPatchField, volMesh>> tgradFld
+        (
+            fvc::grad(fld)
+        );
+
+        Field<GradType> gradPnf(tgradFld(), nbrFaceCells);
+
+DebugVar(gradPnf);
+
+        if (cyclicAMIPatch_.applyLowWeightCorrection())
+        {
+            tpnf = cyclicAMIPatch_.interpolate
+            (
+                pnf,
+                gradPnf,
+                this->patchInternalField()()
+            );
+        }
+        else
+        {
+            tpnf = cyclicAMIPatch_.interpolate(pnf, gradPnf);
+        }
+
+corrected_ = oldCorrected;
+
     }
 
     if (doTransform())
@@ -255,6 +322,7 @@ void Foam::cyclicAMIFvPatchField<Type>::write(Ostream& os) const
 {
     fvPatchField<Type>::write(os);
     this->writeEntry("value", os);
+    os.writeKeyword("corrected") << corrected_ << token::END_STATEMENT << nl;
 }
 
 

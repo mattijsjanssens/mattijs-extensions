@@ -193,6 +193,22 @@ public:
                 return cyclicAMIPolyPatch_.interpolate(tFld, defaultValues);
             }
 
+            template<class Type>
+            tmp<Field<Type>> interpolate
+            (
+                const Field<Type>& fld,
+                const Field<typename outerProduct<vector, Type>::type>& grad,
+                const UList<Type>& defaultValues = UList<Type>()
+            ) const
+            {
+                return cyclicAMIPolyPatch_.interpolate
+                (
+                    fld,
+                    grad,
+                    defaultValues
+                );
+            }
+
 
         // Interface transfer functions
 

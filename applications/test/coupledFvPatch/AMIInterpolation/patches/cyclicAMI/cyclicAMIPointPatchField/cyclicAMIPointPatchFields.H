@@ -36,7 +36,8 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePointPatchFieldTypedefs(cyclicAMI);
+//makePointPatchFieldTypedefs(cyclicAMI);
+typedef cyclicAMIPointPatchField<scalar> cyclicAMIPointPatchScalarField;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

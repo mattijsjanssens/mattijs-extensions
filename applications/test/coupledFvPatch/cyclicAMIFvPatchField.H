@@ -81,6 +81,8 @@ class cyclicAMIFvPatchField
         //- Local reference cast into the cyclic patch
         const cyclicAMIFvPatch& cyclicAMIPatch_;
 
+        mutable Switch corrected_;
+
 
 public:
 

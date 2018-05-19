@@ -1246,15 +1246,15 @@ template<>
 Foam::tmp<Foam::Field<Foam::scalar>> Foam::cyclicAMIPolyPatch::interpolate
 (
     const Field<scalar>& fld,
+    const Field<typename outerProduct<vector, scalar>::type>& gradFld,
     const UList<scalar>& defaultValues
 ) const
 {
     const cyclicAMIPolyPatch& nei = neighbPatch();
 
-    typedef typename outerProduct<vector, scalar>::type GradType;
+    //typedef typename outerProduct<vector, scalar>::type GradType;
     DebugVar(name());
     DebugVar(size());
-    Field<GradType> gradFld(fld.size(), vector(0, 1, 0));
 
     tmp<Field<scalar>> result(new Field<scalar>(size(), Zero));
 

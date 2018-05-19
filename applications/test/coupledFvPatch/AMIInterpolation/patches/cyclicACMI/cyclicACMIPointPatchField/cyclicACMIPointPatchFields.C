@@ -34,7 +34,12 @@ namespace Foam
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-makePointPatchFields(cyclicACMI);
+//makePointPatchFields(cyclicACMI);
+makeTemplatePointPatchTypeField
+(
+    pointPatchScalarField,
+    cyclicACMIPointPatchScalarField
+);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
