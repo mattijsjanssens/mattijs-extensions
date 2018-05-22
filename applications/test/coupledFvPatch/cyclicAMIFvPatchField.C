@@ -71,11 +71,6 @@ Foam::cyclicAMIFvPatchField<Type>::cyclicAMIFvPatchField
     {
         this->evaluate(Pstream::commsTypes::blocking);
     }
-
-Pout<< "** dict patch:" << this->patch().name() << endl;
-Pout<< "** dictfield:" << this->internalField().name() << endl;
-Pout<< "** dict corrected_:" << this->corrected_ << endl;
-
 }
 
 
@@ -149,12 +144,6 @@ Foam::cyclicAMIFvPatchField<Type>::patchNeighbourField() const
     const labelUList& nbrFaceCells =
         cyclicAMIPatch_.cyclicAMIPatch().neighbPatch().faceCells();
 
-
-Pout<< "** patch:" << this->patch().name() << endl;
-Pout<< "** field:" << this->internalField().name() << endl;
-Pout<< "** corrected_:" << this->corrected_ << endl;
-
-
     Field<Type> pnf(iField, nbrFaceCells);
 
     tmp<Field<Type>> tpnf;
@@ -175,15 +164,12 @@ Pout<< "** corrected_:" << this->corrected_ << endl;
     }
     else
     {
-DebugVar(pnf);
         typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
 
         const FieldType& fld = dynamic_cast<const FieldType&>
         (
             this->internalField()
         );
-Pout<< "Field:" << fld.name() << " patch:" << this->patch().name()
-    << " corrected:" << corrected_ << endl;
 
 const Switch oldCorrected(corrected_);
 corrected_ = false;
@@ -194,9 +180,16 @@ corrected_ = false;
             fvc::grad(fld)
         );
 
+//DebugVar(fld);
+//DebugVar(tgradFld());
+
+
         Field<GradType> gradPnf(tgradFld(), nbrFaceCells);
 
-DebugVar(gradPnf);
+Pout<< "Field:" << fld.name() << " patch:" << this->patch().name()
+    << " size:" << this->patch().size()
+    << " nbrFld:" << pnf
+    << " correcting with:" << gradPnf << endl;
 
         if (cyclicAMIPatch_.applyLowWeightCorrection())
         {
@@ -260,14 +253,48 @@ void Foam::cyclicAMIFvPatchField<Type>::updateInterfaceMatrix
     // Transform according to the transformation tensors
     transformCoupleField(pnf, cmpt);
 
-    if (cyclicAMIPatch_.applyLowWeightCorrection())
+    if (!corrected_)
     {
-        scalarField pif(psiInternal, cyclicAMIPatch_.faceCells());
-        pnf = cyclicAMIPatch_.interpolate(pnf, pif);
+        if (cyclicAMIPatch_.applyLowWeightCorrection())
+        {
+            scalarField pif(psiInternal, cyclicAMIPatch_.faceCells());
+            pnf = cyclicAMIPatch_.interpolate(pnf, pif);
+        }
+        else
+        {
+            pnf = cyclicAMIPatch_.interpolate(pnf);
+        }
     }
     else
     {
-        pnf = cyclicAMIPatch_.interpolate(pnf);
+        typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+
+        const FieldType& fld = dynamic_cast<const FieldType&>
+        (
+            this->internalField()
+        );
+
+        const Switch oldCorrected(corrected_);
+        corrected_ = false;
+
+        typedef typename outerProduct<vector, Type>::type GradType;
+        tmp<GeometricField<GradType, fvPatchField, volMesh>> tgradFld
+        (
+            fvc::grad(fld)
+        );
+        Field<GradType> gradPnf(tgradFld(), nbrFaceCells);
+
+        corrected_ = oldCorrected;
+
+        if (cyclicAMIPatch_.applyLowWeightCorrection())
+        {
+            scalarField pif(psiInternal, cyclicAMIPatch_.faceCells());
+            pnf = cyclicAMIPatch_.interpolate(pnf, gradPnf, pif);
+        }
+        else
+        {
+            pnf = cyclicAMIPatch_.interpolate(pnf, gradPnf);
+        }
     }
 
     // Multiply the field by coefficients and add into the result
@@ -297,14 +324,48 @@ void Foam::cyclicAMIFvPatchField<Type>::updateInterfaceMatrix
     // Transform according to the transformation tensors
     transformCoupleField(pnf);
 
-    if (cyclicAMIPatch_.applyLowWeightCorrection())
+    if (!corrected_)
     {
-        Field<Type> pif(psiInternal, cyclicAMIPatch_.faceCells());
-        pnf = cyclicAMIPatch_.interpolate(pnf, pif);
+        if (cyclicAMIPatch_.applyLowWeightCorrection())
+        {
+            Field<Type> pif(psiInternal, cyclicAMIPatch_.faceCells());
+            pnf = cyclicAMIPatch_.interpolate(pnf, pif);
+        }
+        else
+        {
+            pnf = cyclicAMIPatch_.interpolate(pnf);
+        }
     }
     else
     {
-        pnf = cyclicAMIPatch_.interpolate(pnf);
+        typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+
+        const FieldType& fld = dynamic_cast<const FieldType&>
+        (
+            this->internalField()
+        );
+
+        const Switch oldCorrected(corrected_);
+        corrected_ = false;
+
+        typedef typename outerProduct<vector, Type>::type GradType;
+        tmp<GeometricField<GradType, fvPatchField, volMesh>> tgradFld
+        (
+            fvc::grad(fld)
+        );
+        Field<GradType> gradPnf(tgradFld(), nbrFaceCells);
+
+        corrected_ = oldCorrected;
+
+        if (cyclicAMIPatch_.applyLowWeightCorrection())
+        {
+            Field<Type> pif(psiInternal, cyclicAMIPatch_.faceCells());
+            pnf = cyclicAMIPatch_.interpolate(pnf, gradPnf, pif);
+        }
+        else
+        {
+            pnf = cyclicAMIPatch_.interpolate(pnf, gradPnf);
+        }
     }
 
     // Multiply the field by coefficients and add into the result

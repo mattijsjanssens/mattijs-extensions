@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  dev                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      cellDisplacement;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    left1
+    {
+        //type            slip;   //cellMotion;
+        type zeroGradient;
+        //value           $internalField;
+    }
+    right1
+    {
+        patchType       cyclicAMI;
+        type zeroGradient;
+        //type            slip;
+    }
+    walls1
+    {
+        type            slip;   //cellMotion;
+        //type zeroGradient;
+        //value           $internalField;
+    }
+    left2
+    {
+        patchType       cyclicAMI;
+        type            slip;
+        //type zeroGradient;
+    }
+    right2
+    {
+        //type            slip;   //cellMotion;
+        type zeroGradient;
+        //value           $internalField;
+    }
+    walls2
+    {
+        //type            slip;   //cellMotion;
+        type zeroGradient;
+        //value           $internalField;
+    }
+    lift
+    {
+        type            cellMotion;
+        value           $internalField;
+    }
+    frontAndBack
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

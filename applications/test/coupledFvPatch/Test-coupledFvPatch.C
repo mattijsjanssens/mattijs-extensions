@@ -60,7 +60,8 @@ int main(int argc, char *argv[])
         ),
         mesh
     );
-    p.primitiveFieldRef() =  mesh.C().component(vector::Y);
+    p.dimensions().reset(dimLength);
+    p == mesh.C().component(vector::Y);
 
 DebugVar(p);
 
