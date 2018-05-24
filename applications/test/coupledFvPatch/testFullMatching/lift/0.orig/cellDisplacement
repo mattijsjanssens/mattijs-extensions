@@ -41,7 +41,7 @@ boundaryField
     left2
     {
         patchType       cyclicAMI;
-        type            slip;
+        type            zeroGradient;
         //type zeroGradient;
     }
     right2
