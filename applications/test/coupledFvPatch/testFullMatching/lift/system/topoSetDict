@@ -31,6 +31,49 @@ actions
         type    cellSet;
         action  invert;
     }
+
+    {
+        name    topFaces;
+        type    faceSet;
+        action  new;
+        source  boxToFace;
+        sourceInfo
+        {
+            box (-100 4.799 -100)(1 4.801 100);
+        }
+    }
+    {
+        name    top;
+        type    faceZoneSet;
+        action  new;
+        source  setToFaceZone;
+        sourceInfo
+        {
+            faceSet topFaces;
+        }
+    }
+
+    {
+        name    bottomFaces;
+        type    faceSet;
+        action  new;
+        source  boxToFace;
+        sourceInfo
+        {
+            box (-100 3.899 -100)(1 3.901 100);
+        }
+    }
+    {
+        name    bottom;
+        type    faceZoneSet;
+        action  new;
+        source  setToFaceZone;
+        sourceInfo
+        {
+            faceSet bottomFaces;
+        }
+    }
+
 );
 
 // ************************************************************************* //

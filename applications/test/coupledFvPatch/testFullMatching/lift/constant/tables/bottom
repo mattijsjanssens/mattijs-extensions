@@ -9,20 +9,16 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    location    "constant";
-    object      dynamicMeshDict;
+    class       scalarVectorTable;
+    location    "constant/tables";
+    object      top;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dynamicFvMesh   dynamicMotionSolverFvMesh;
+(
+(0      (0  0 0))
+(0.1    (0 -1 0))
+)
 
-motionSolverLibs ("libfvMotionSolvers.so");
-
-//motionSolver    displacementLaplacian;
-//diffusivity     uniform 1;
-
-motionSolver            displacementInterpolation;
-interpolationTables     ((top top)(bottom bottom));
 
 // ************************************************************************* //
