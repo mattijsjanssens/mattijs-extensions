@@ -94,17 +94,28 @@ bool Foam::fileOperations::autoReconstructingFileOperation::haveProcPath
     }
     else
     {
-        procObjectPath = filePath
-        (
-            io.rootPath()
-           /io.caseName()
-           /"processor0"
-           /io.instance()
-           /io.db().dbDir()
-           /io.local()
-           /io.name()
-        );
-        return exists(procObjectPath);
+        // tbd. lagrangian: scan all processor directories.
+        //label numProcs = fileOperation::nProcs(io.time().path(), word::null);
+        label numProcs = 1;
+
+        for (label proci = 0; proci < numProcs; proci++)
+        {
+            procObjectPath = filePath
+            (
+                io.rootPath()
+               /io.caseName()
+               /"processor" + Foam::name(proci)
+               /io.instance()
+               /io.db().dbDir()
+               /io.local()
+               /io.name()
+            );
+            if (exists(procObjectPath))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -280,6 +291,7 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
 
     if (!Pstream::parRun())
     {
+        // tbd: lagrangian. dbDir="", local = "lagrangian/KinematicCloud"
         fileName path
         (
             filePath(db.path("processor0"/instance, db.dbDir()/local))
@@ -331,8 +343,10 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
         Pout<< indent
             << "autoReconstructingFileOperation::readObjects :"
             << " Returning from directory searching:" << endl << indent
-            << "    path     :" << db.path() << endl << indent
-            << "    objects  :" << objects << endl << endl;
+            << "    path     :" << db.path(instance, db.dbDir()/local)
+            << endl << indent
+            << "    objects  :" << objects << endl << indent
+            << "    newInst  :" << newInstance << endl << endl;
     }
     return objects;
 }
@@ -491,6 +505,13 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     fileName procPath;
     if (haveProcPath(io, procPath))
     {
+        if (debug)
+        {
+            Pout<< indent
+                << "autoReconstructingFileOperation::read :"
+                << " Seraching for reconstructor for type:" << type
+                << " of object: " << io.objectPath() << endl;
+        }
         autoPtr<streamReconstructor> reconstructor
         (
             streamReconstructor::New(type)
@@ -498,6 +519,14 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
 
         if (reconstructor.valid())
         {
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoReconstructingFileOperation::read :"
+                    << " Found reconstructor for type:" << type
+                    << " of object: " << io.objectPath() << endl;
+            }
+
             const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
             OStringStream os(IOstream::BINARY);

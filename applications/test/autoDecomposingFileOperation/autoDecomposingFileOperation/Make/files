@@ -2,6 +2,7 @@ autoReconstructingFileOperation.C
 streamReconstructor/streamReconstructor.C
 streamReconstructor/streamReconstructorNew.C
 streamReconstructor/volFieldStreamReconstructors.C
+streamReconstructor/internalFieldStreamReconstructors.C
 streamReconstructor/surfaceFieldStreamReconstructors.C
 
 /* autoParallelFileOperation.C */
