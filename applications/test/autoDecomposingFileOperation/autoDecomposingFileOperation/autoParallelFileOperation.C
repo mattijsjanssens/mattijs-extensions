@@ -374,7 +374,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                 io.name(),
                 io.instance(),
                 io.local(),
-                baseMesh,
+                baseMesh.db(),
                 IOobject::MUST_READ,
                 IOobject::NO_WRITE,
                 false

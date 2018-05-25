@@ -245,8 +245,6 @@ const Foam::uFieldReconstructor& Foam::uFieldReconstructor::New
     const objectRegistry& obr
 )
 {
-    //const objectRegistry& obr = mesh.thisDb();
-
     if
     (
         obr.foundObject<uFieldReconstructor>
@@ -276,6 +274,12 @@ const Foam::uFieldReconstructor& Foam::uFieldReconstructor::New
         return *objectPtr;
     }
 }
+
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::uFieldReconstructor::~uFieldReconstructor()
+{}
 
 
 // ************************************************************************* //

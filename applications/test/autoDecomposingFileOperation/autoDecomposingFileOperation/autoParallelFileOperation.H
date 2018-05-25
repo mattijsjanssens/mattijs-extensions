@@ -127,24 +127,24 @@ public:
 
         // (reg)IOobject functinality
 
-//         //- Search for an object. checkGlobal : also check undecomposed case
-//         //  This differs from uncollated in searching for parent
-//         //  also for files in time directories
-//             virtual fileName filePath
-//             (
-//                 const bool checkGlobal,
-//                 const IOobject&,
-//                 const word& typeName
-//             ) const;
-// 
-//             //- Top-level read
-//             virtual bool read
-//             (
-//                 regIOobject&,
-//                 const bool masterOnly,
-//                 const IOstream::streamFormat format,
-//                 const word& typeName
-//             ) const;
+            //- Search for an object. checkGlobal : also check undecomposed case
+            //  This differs from uncollated in searching for parent
+            //  also for files in time directories
+            virtual fileName filePath
+            (
+                const bool checkGlobal,
+                const IOobject&,
+                const word& typeName
+            ) const;
+
+            //- Top-level read
+            virtual bool read
+            (
+                regIOobject&,
+                const bool masterOnly,
+                const IOstream::streamFormat format,
+                const word& typeName
+            ) const;
 
             //- Writes a regIOobject
             virtual bool writeObject

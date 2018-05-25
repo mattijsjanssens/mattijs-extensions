@@ -23,94 +23,18 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "autoReconstructingFileOperation.H"
-#include "uVolFields.H"
+#include "surfaceFieldStreamReconstructor.H"
+#include "uSurfaceFields.H"
 #include "unallocatedFvMesh.H"
-#include "unallocatedVolMesh.H"
-#include "unallocatedGenericFvPatchField.H"
+#include "unallocatedSurfaceMesh.H"
 #include "unallocatedGenericFvsPatchField.H"
 #include "unallocatedFvFieldReconstructor.H"
 #include "uFieldReconstructor.H"
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
-Foam::Ostream&
-Foam::fileOperations::autoReconstructingFileOperation::
-writeReconstructedFvVolumeField
-(
-    const fvMesh& mesh,
-    const IOobject& io,
-    Ostream& os
-) const
-{
-    typedef GeometricField<Type, unallocatedFvPatchField, unallocatedVolMesh>
-        GeoField;
-
-
-    const uFieldReconstructor& reconstructor = uFieldReconstructor::New(mesh);
-
-    const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
-
-    // Read field on proc meshes
-    PtrList<GeoField> procFields(procMeshes.size());
-    forAll(procFields, proci)
-    {
-        const unallocatedFvMesh& procMesh = procMeshes[proci];
-        procFields.set
-        (
-            proci,
-            new GeoField
-            (
-                IOobject
-                (
-                    io.name(),
-                    procMesh.time().timeName(),
-                    procMesh.thisDb(),
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE,
-                    false
-                ),
-                procMesh
-            )
-        );
-    }
-
-    // Fix filtering of empty nonuniform entries
-    reconstructor.reconstructor().fixGenericNonuniform
-    <
-        GeoField,
-        unallocatedGenericFvPatchField<Type>
-    >(procFields);
-
-    // Map local field onto baseMesh
-    const unallocatedFvMesh& baseMesh = reconstructor.baseMesh();
-
-    tmp<GeoField> tfld
-    (
-        reconstructor.reconstructor().reconstructFvVolumeField
-        (
-            IOobject
-            (
-                io.name(),
-                baseMesh.time().timeName(),
-                baseMesh.thisDb(),
-                IOobject::NO_READ,
-                IOobject::AUTO_WRITE,
-                false
-            ),
-            procFields
-        )
-    );
-
-    return os << tfld();
-}
-
-
-template<class Type>
-Foam::Ostream&
-Foam::fileOperations::autoReconstructingFileOperation::
-writeReconstructedFvSurfaceField
+bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 (
     const fvMesh& mesh,
     const IOobject& io,
@@ -123,7 +47,6 @@ writeReconstructedFvSurfaceField
         unallocatedFvsPatchField,
         unallocatedSurfaceMesh
     > GeoField;
-
 
     const uFieldReconstructor& reconstructor = uFieldReconstructor::New(mesh);
 
@@ -180,7 +103,9 @@ writeReconstructedFvSurfaceField
         )
     );
 
-    return os << tfld();
+    os << tfld();
+
+    return os.good();
 }
 
 

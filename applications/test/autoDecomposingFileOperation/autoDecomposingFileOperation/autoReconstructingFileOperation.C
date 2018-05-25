@@ -29,6 +29,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "uFieldReconstructor.H"
 #include "unthreadedInitialise.H"
+#include "streamReconstructor.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -488,67 +489,37 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     }
 
     fileName procPath;
-    if
-    (
-        (
-            type == volScalarField::typeName
-         || type == volVectorField::typeName
-         || type == volSphericalTensorField::typeName
-         || type == volSymmTensorField::typeName
-         || type == volTensorField::typeName
-         || type == surfaceScalarField::typeName
-         || type == surfaceVectorField::typeName
-        )
-     && haveProcPath(io, procPath)
-    )
+    if (haveProcPath(io, procPath))
     {
-        // Note: the regIOobject is the localIOdictionary used to read the
-        // field from.
+        autoPtr<streamReconstructor> reconstructor
+        (
+            streamReconstructor::New(type)
+        );
 
-        const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
+        if (reconstructor.valid())
+        {
+            const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
-        OStringStream os(IOstream::BINARY);
-        if (type == volScalarField::typeName)
-        {
-            writeReconstructedFvVolumeField<scalar>(mesh, io, os);
-        }
-        else if (type == volVectorField::typeName)
-        {
-            writeReconstructedFvVolumeField<vector>(mesh, io, os);
-        }
-        else if (type == volSphericalTensorField::typeName)
-        {
-            writeReconstructedFvVolumeField<sphericalTensor>(mesh, io, os);
-        }
-        else if (type == volSymmTensorField::typeName)
-        {
-            writeReconstructedFvVolumeField<symmTensor>(mesh, io, os);
-        }
-        else if (type == volTensorField::typeName)
-        {
-            writeReconstructedFvVolumeField<tensor>(mesh, io, os);
-        }
-        else if (type == surfaceScalarField::typeName)
-        {
-            writeReconstructedFvSurfaceField<scalar>(mesh, io, os);
-        }
-        else if (type == surfaceVectorField::typeName)
-        {
-            writeReconstructedFvSurfaceField<vector>(mesh, io, os);
+            OStringStream os(IOstream::BINARY);
+            if (!reconstructor().reconstruct(mesh, io, os))
+            {
+                return false;
+            }
+            else
+            {
+                IStringStream is(os.str(), IOstream::BINARY);
+                return io.readData(is);
+            }
         }
         else
         {
-            FatalErrorInFunction << "Problem : type " << type
-                << " not handled" << exit(FatalError);
+            return uncollatedFileOperation::read(io, masterOnly, format, type);
         }
-
-        // Note: io is an IOdictionary so we can used the re-read
-        //       functionality
-        IStringStream is(os.str(), IOstream::BINARY);
-        io.readData(is);
-        return true;
     }
-    return uncollatedFileOperation::read(io, masterOnly, format, type);
+    else
+    {
+        return uncollatedFileOperation::read(io, masterOnly, format, type);
+    }
 }
 
 

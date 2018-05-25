@@ -35,26 +35,20 @@ SourceFiles
 #ifndef uFieldReconstructor_H
 #define uFieldReconstructor_H
 
-//#include "MeshObject.H"
 #include "polyMesh.H"
+#include "unallocatedFvMesh.H"
+#include "unallocatedFvFieldReconstructor.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// Forward declaration of classes
-class unallocatedFvMesh;
-class unallocatedFvFieldReconstructor;
-
-
 /*---------------------------------------------------------------------------*\
                      Class uFieldReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
 class uFieldReconstructor
-// :
-//     public MeshObject<polyMesh, TopologicalMeshObject, uFieldReconstructor>
 :
     public regIOobject
 {
@@ -66,7 +60,6 @@ class uFieldReconstructor
         mutable PtrList<labelIOList> faceProcAddressing_;
         mutable PtrList<labelIOList> boundaryProcAddressing_;
         mutable PtrList<unallocatedFvMesh> procMeshes_;
-
         mutable autoPtr<unallocatedFvFieldReconstructor> reconstructorPtr_;
 
 
@@ -96,8 +89,7 @@ public:
 
 
     //- Destructor
-    virtual ~uFieldReconstructor()
-    {}
+    virtual ~uFieldReconstructor();
 
 
     // Member Functions

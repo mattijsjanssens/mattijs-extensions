@@ -64,25 +64,25 @@ class autoReconstructingFileOperation
         //- Check for equivalent object inside processor0/
         bool haveProcPath(const IOobject& io, fileName&) const;
 
-        //- Reconstruct volume field and stream
-        template<class Type>
-        Ostream& writeReconstructedFvVolumeField
-        (
-            const fvMesh& mesh,
-            const IOobject& io,
-            Ostream& os
-        ) const;
-
-        //- Reconstruct surface field and stream
-        template<class Type>
-        Ostream& writeReconstructedFvSurfaceField
-        (
-            const fvMesh& mesh,
-            const IOobject& io,
-            Ostream& os
-        ) const;
-
-
+//         //- Reconstruct volume field and stream
+//         template<class Type>
+//         static Ostream& writeReconstructedFvVolumeField
+//         (
+//             const fvMesh& mesh,
+//             const IOobject& io,
+//             Ostream& os
+//         );
+//
+//         //- Reconstruct surface field and stream
+//         template<class Type>
+//         static Ostream& writeReconstructedFvSurfaceField
+//         (
+//             const fvMesh& mesh,
+//             const IOobject& io,
+//             Ostream& os
+//         );
+//
+//
 public:
 
         //- Runtime type information
@@ -151,12 +151,6 @@ public:
 
 } // End namespace fileOperations
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-    #include "autoReconstructingFileOperationTemplates.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
