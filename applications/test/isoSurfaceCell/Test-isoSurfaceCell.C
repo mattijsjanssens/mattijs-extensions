@@ -33,6 +33,7 @@ Application
 #include "OBJstream.H"
 #include "DynamicField.H"
 #include "vtkSurfaceWriter.H"
+#include "triSurfaceMesh.H"
 
 using namespace Foam;
 
@@ -203,23 +204,140 @@ int main(int argc, char *argv[])
     #include "createPolyMesh.H"
 
 
-    scalarField ccx(mesh.cellCentres().component(vector::Y));
-    scalarField pointsx(mesh.points().component(vector::Y));
+    Random rndGen(0);
 
-    const scalar value = 1.1*average(pointsx);
+    scalarField cellValues;
+    scalarField pointValues;
+    scalar isoValue;
+
+    // Random or from positions
+    if (false)
+    {
+        cellValues = mesh.cellCentres().component(vector::Y);
+        pointValues = mesh.points().component(vector::Y);
+        const scalar minPoints(min(pointValues));
+        const scalar maxPoints(max(pointValues));
+
+        forAll(pointValues, i)
+        {
+            pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
+        }
+        isoValue = 0.5*(average(cellValues)+average(pointValues));
+    }
+    if (true)
+    {
+        const triSurfaceMesh searchSurf
+        (
+            IOobject
+            (
+                "object.stl",
+                runTime.constant(),
+                "triSurface",
+                runTime
+            )
+        );
+        List<pointIndexHit> cellNearest;
+        vectorField cellNormal;
+        {
+            const pointField& cc = mesh.cellCentres();
+
+            searchSurf.findNearest
+            (
+                cc,
+                scalarField(cc.size(), great),
+                cellNearest
+            );
+            searchSurf.getNormal(cellNearest, cellNormal);
+
+            cellValues.setSize(cc.size());
+            forAll(cc, celli)
+            {
+                const vector d(cc[celli]-cellNearest[celli].hitPoint());
+                cellValues[celli] = sign(d&cellNormal[celli])*mag(d);
+            }
+        }
+        List<pointIndexHit> pointNearest;
+        vectorField pointNormal;
+        {
+            const pointField& points = mesh.points();
+
+            searchSurf.findNearest
+            (
+                points,
+                scalarField(points.size(), great),
+                pointNearest
+            );
+            searchSurf.getNormal(pointNearest, pointNormal);
+
+            pointValues.setSize(points.size());
+            forAll(points, pointi)
+            {
+                const vector d(points[pointi]-pointNearest[pointi].hitPoint());
+                pointValues[pointi] = sign(d&pointNormal[pointi])*mag(d);
+            }
+
+            isoValue = 0.0;
+        }
+    }
+
+    {
+        OBJstream farCells(runTime.path()/"straddlingCells.obj");
+
+        const labelListList& cellPoints = mesh.cellPoints();
+        forAll(cellPoints, celli)
+        {
+            bool cSign = sign(cellValues[celli]);
+XXXXX
+Detect change of sign
+
+        }
+    }
+
+
+
+    // Optimisation 1: isoSurfaceCell can remove the cell centre
+
+    //- From point field and interpolated cell.
+    scalarField cellAvg(mesh.nCells(), scalar(0));
+    {
+        labelField nPointCells(mesh.nCells(), 0);
+        {
+            for (label pointi = 0; pointi < mesh.nPoints(); pointi++)
+            {
+                const labelList& pCells = mesh.pointCells(pointi);
+
+                forAll(pCells, i)
+                {
+                    label celli = pCells[i];
+                    cellAvg[celli] += pointValues[pointi];
+                    nPointCells[celli]++;
+                }
+            }
+        }
+        forAll(cellAvg, celli)
+        {
+            cellAvg[celli] /= nPointCells[celli];
+        }
+    }
+
 
     isoSurfaceCell iso
     (
         mesh,
-        ccx,
-        pointsx,
-        value,
-        false       // regularise,
+        cellAvg,    //cellValues,
+        pointValues,
+        isoValue,
+        false       // regularise = remove cell centre
     );
 
     Pout<< "iso:" << iso << endl;
 
     iso.write("iso.obj");
+
+
+    // Optimisation 2: keep the outside loop only. Make a single face
+    // of all of the interior
+
 
     // Collect triangles per face and filter according to cells
     const labelList& meshCells = iso.meshCells();
