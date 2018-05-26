@@ -211,20 +211,19 @@ int main(int argc, char *argv[])
     scalar isoValue;
 
     // Random or from positions
-    if (false)
+    //if (false)
     {
         cellValues = mesh.cellCentres().component(vector::Y);
         pointValues = mesh.points().component(vector::Y);
-        const scalar minPoints(min(pointValues));
-        const scalar maxPoints(max(pointValues));
-
-        forAll(pointValues, i)
-        {
-            pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
-        }
-        isoValue = 0.5*(average(cellValues)+average(pointValues));
+        //const scalar minPoints(min(pointValues));
+        //const scalar maxPoints(max(pointValues));
+        //forAll(pointValues, i)
+        //{
+        //    pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
+        //}
+        isoValue = 0.51*(average(cellValues)+average(pointValues));
     }
-    if (true)
+    if (false)  //true)
     {
         const triSurfaceMesh searchSurf
         (
@@ -280,18 +279,15 @@ int main(int argc, char *argv[])
         }
     }
 
-    {
-        OBJstream farCells(runTime.path()/"straddlingCells.obj");
-
-        const labelListList& cellPoints = mesh.cellPoints();
-        forAll(cellPoints, celli)
-        {
-            bool cSign = sign(cellValues[celli]);
-XXXXX
-Detect change of sign
-
-        }
-    }
+//    {
+//        OBJstream farCells(runTime.path()/"straddlingCells.obj");
+//
+//        const labelListList& cellPoints = mesh.cellPoints();
+//        forAll(cellPoints, celli)
+//        {
+//            bool cSign = sign(cellValues[celli]);
+//        }
+//    }
 
 
 
@@ -324,7 +320,7 @@ Detect change of sign
     isoSurfaceCell iso
     (
         mesh,
-        cellAvg,    //cellValues,
+        cellValues,
         pointValues,
         isoValue,
         false       // regularise = remove cell centre

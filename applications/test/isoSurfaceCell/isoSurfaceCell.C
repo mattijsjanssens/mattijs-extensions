@@ -1622,6 +1622,7 @@ Foam::isoSurfaceCell::isoSurfaceCell
         DynamicList<point> triPoints(3*nCutCells_);
         DynamicList<label> triMeshCells(nCutCells_);
         DynamicList<bool> usesCellCentre(3*nCutCells_);
+        DynamicList<bool> usesDiag(3*nCutCells_);
 
         generateTriPoints
         (
@@ -1637,7 +1638,8 @@ Foam::isoSurfaceCell::isoSurfaceCell
 
             triPoints,
             triMeshCells,
-            usesCellCentre
+            usesCellCentre,
+            usesDiag
         );
 
         if (debug)
@@ -1670,15 +1672,24 @@ Foam::isoSurfaceCell::isoSurfaceCell
         {
             meshCells_[i] = triMeshCells[triMap[i]];
         }
+        isOnDiag_.setSize(triPoints.size());
+        forAll(triPointMergeMap_, i)
+        {
+            isOnDiag_[triPointMergeMap_[i]] = usesDiag[i];
+        }
+
 
         if (regularise)
         {
             const boolList oldUsesCellCentre(usesCellCentre.xfer());
+            const boolList oldUsesDiag(usesDiag.xfer());
             usesCellCentre.setSize(points().size());
+            usesDiag.setSize(points().size());
             forAll(triPointMergeMap_, oldi)
             {
                 label mergedi = triPointMergeMap_[oldi];
                 usesCellCentre[mergedi] = oldUsesCellCentre[oldi];
+                usesDiag[mergedi] = oldUsesDiag[oldi];
             }
 
 
@@ -1709,6 +1720,8 @@ Foam::isoSurfaceCell::isoSurfaceCell
             meshCells_.transfer(compactCellIDs);
             labelList reversePointMap(invert(nOldPoints, pointCompactMap));
             inplaceRenumber(reversePointMap, triPointMergeMap_);
+
+            isOnDiag_ = UIndirectList<bool>(usesDiag, pointCompactMap);
         }
     }
 

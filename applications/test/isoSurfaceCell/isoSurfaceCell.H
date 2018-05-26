@@ -106,6 +106,10 @@ class isoSurfaceCell
         //- For every unmerged triangle point the point in the triSurface
         labelList triPointMergeMap_;
 
+        //- For every triangle point whether it originates from a face
+        //  diagonal
+        boolList isOnDiag_;
+
 
     // Private Member Functions
 
@@ -218,24 +222,14 @@ class isoSurfaceCell
         void generateTriPoints
         (
             const DynamicList<Type>& snapped,
-            const scalar s0,
-            const Type& p0,
-            const label p0Index,
-            const bool isCc0,
-            const scalar s1,
-            const Type& p1,
-            const label p1Index,
-            const bool isCc1,
-            const scalar s2,
-            const Type& p2,
-            const label p2Index,
-            const bool isCc2,
-            const scalar s3,
-            const Type& p3,
-            const label p3Index,
-            const bool isCc3,
-            DynamicList<Type>& points,
-            DynamicList<bool>& usesCc
+            const FixedList<label, 4>& s,
+            const FixedList<Type, 4>& p,
+            const FixedList<label, 4>& pIndex,
+            const label ccIndex,
+            const FixedList<bool, 6>& edgeIsDiag,
+            DynamicList<Type>& pts,
+            DynamicList<bool>& usesCc,
+            DynamicList<bool>& onDiag
         ) const;
 
         template<class Type>
@@ -253,7 +247,8 @@ class isoSurfaceCell
 
             DynamicList<Type>& triPoints,
             DynamicList<label>& triMeshCells,
-            DynamicList<bool>& usesCellCentre
+            DynamicList<bool>& usesCellCentre,
+            DynamicList<bool>& usesDiag
         ) const;
 
         triSurface stitchTriPoints
@@ -352,6 +347,12 @@ public:
         const labelList& meshCells() const
         {
             return meshCells_;
+        }
+
+        //- For every point whether it originates from a face diagonal
+        const boolList& isOnDiag() const
+        {
+            return isOnDiag_;
         }
 
         //- Interpolates cCoords,pCoords.
