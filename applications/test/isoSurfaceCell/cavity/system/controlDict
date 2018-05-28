@@ -18,6 +18,7 @@ FoamFile
 DebugSwitches
 {
     localFileOperation 1;
+    isoSurfaceCell  1;
 }
 
 application     icoFoam;

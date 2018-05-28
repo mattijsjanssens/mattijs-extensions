@@ -306,7 +306,7 @@ void Foam::isoSurfaceCell::generateTriPoints
 (
     const DynamicList<Type>& snapped,
 
-    const FixedList<label, 4>& s,
+    const FixedList<scalar, 4>& s,
     const FixedList<Type, 4>& p,
     const FixedList<label, 4>& pIndex,
 
@@ -346,13 +346,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x01:
         case 0x0E:
         {
-            pts.append(generatePoint(snapped,s[0],p[0],pIndex[0],s[1],p[1],pIndex[1]));
+            pts.append
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[1],p[1],pIndex[1])
+            );
             usesCc.append(ccIndex==0||ccIndex==1);
             onDiag.append(edgeIsDiag[0]);
-            pts.append(generatePoint(snapped,s[0],p[0],pIndex[0],s[2],p[2],pIndex[2]));
+            pts.append
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[2],p[2],pIndex[2])
+            );
             usesCc.append(ccIndex==0||ccIndex==2);
             onDiag.append(edgeIsDiag[1]);
-            pts.append(generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3]));
+            pts.append
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3])
+            );
             usesCc.append(ccIndex==0||ccIndex==3);
             onDiag.append(edgeIsDiag[2]);
 
@@ -370,13 +379,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x02:
         case 0x0D:
         {
-            pts.append(generatePoint(snapped,s[1],p[1],pIndex[1],s[0],p[0],pIndex[0]));
+            pts.append
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[0],p[0],pIndex[0])
+            );
             usesCc.append(ccIndex==1||ccIndex==0);
             onDiag.append(edgeIsDiag[0]);
-            pts.append(generatePoint(snapped,s[1],p[1],pIndex[1],s[3],p[3],pIndex[3]));
+            pts.append
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[3],p[3],pIndex[3])
+            );
             usesCc.append(ccIndex==1||ccIndex==3);
             onDiag.append(edgeIsDiag[3]);
-            pts.append(generatePoint(snapped,s[1],p[1],pIndex[1],s[2],p[2],pIndex[2]));
+            pts.append
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[2],p[2],pIndex[2])
+            );
             usesCc.append(ccIndex==1||ccIndex==2);
             onDiag.append(edgeIsDiag[4]);
 
@@ -394,10 +412,19 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x03:
         case 0x0C:
         {
-            Type p0p2 = generatePoint(snapped,s[0],p[0],pIndex[0],s[2],p[2],pIndex[2]);
-            Type p1p3 = generatePoint(snapped,s[1],p[1],pIndex[1],s[3],p[3],pIndex[3]);
+            Type p0p2
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[2],p[2],pIndex[2])
+            );
+            Type p1p3
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[3],p[3],pIndex[3])
+            );
 
-            pts.append(generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3]));
+            pts.append
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3])
+            );
             usesCc.append(ccIndex==0||ccIndex==3);
             onDiag.append(edgeIsDiag[2]);
             pts.append(p1p3);
@@ -410,7 +437,10 @@ void Foam::isoSurfaceCell::generateTriPoints
             pts.append(p1p3);
             usesCc.append(ccIndex==1||ccIndex==3);
             onDiag.append(edgeIsDiag[3]);
-            pts.append(generatePoint(snapped,s[1],p[1],pIndex[1],s[2],p[2],pIndex[2]));
+            pts.append
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[2],p[2],pIndex[2])
+            );
             usesCc.append(ccIndex==1||ccIndex==2);
             onDiag.append(edgeIsDiag[4]);
             pts.append(p0p2);
@@ -434,13 +464,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x04:
         case 0x0B:
         {
-            pts.append(generatePoint(snapped,s[2],p[2],pIndex[2],s[0],p[0],pIndex[0]));
+            pts.append
+            (
+                generatePoint(snapped,s[2],p[2],pIndex[2],s[0],p[0],pIndex[0])
+            );
             usesCc.append(ccIndex==2||ccIndex==0);
             onDiag.append(edgeIsDiag[1]);
-            pts.append(generatePoint(snapped,s[2],p[2],pIndex[2],s[1],p[1],pIndex[1]));
+            pts.append
+            (
+                generatePoint(snapped,s[2],p[2],pIndex[2],s[1],p[1],pIndex[1])
+            );
             usesCc.append(ccIndex==2||ccIndex==1);
             onDiag.append(edgeIsDiag[4]);
-            pts.append(generatePoint(snapped,s[2],p[2],pIndex[2],s[3],p[3],pIndex[3]));
+            pts.append
+            (
+                generatePoint(snapped,s[2],p[2],pIndex[2],s[3],p[3],pIndex[3])
+            );
             usesCc.append(ccIndex==2||ccIndex==3);
             onDiag.append(edgeIsDiag[5]);
 
@@ -458,8 +497,14 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x05:
         case 0x0A:
         {
-            Type p0p1 = generatePoint(snapped,s[0],p[0],pIndex[0],s[1],p[1],pIndex[1]);
-            Type p2p3 = generatePoint(snapped,s[2],p[2],pIndex[2],s[3],p[3],pIndex[3]);
+            Type p0p1
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[1],p[1],pIndex[1])
+            );
+            Type p2p3
+            (
+                generatePoint(snapped,s[2],p[2],pIndex[2],s[3],p[3],pIndex[3])
+            );
 
             pts.append(p0p1);
             usesCc.append(ccIndex==0||ccIndex==1);
@@ -467,14 +512,20 @@ void Foam::isoSurfaceCell::generateTriPoints
             pts.append(p2p3);
             usesCc.append(ccIndex==2||ccIndex==3);
             onDiag.append(edgeIsDiag[5]);
-            pts.append(generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3]));
+            pts.append
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3]))
+            );
             usesCc.append(ccIndex==0||ccIndex==3);
             onDiag.append(edgeIsDiag[2]);
 
             pts.append(p0p1);
             usesCc.append(ccIndex==0||ccIndex==1);
             onDiag.append(edgeIsDiag[0]);
-            pts.append(generatePoint(snapped,s[1],p[1],pIndex[1],s[2],p[2],pIndex[2]));
+            pts.append
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[2],p[2],pIndex[2])
+            );
             usesCc.append(ccIndex==1||ccIndex==2);
             onDiag.append(edgeIsDiag[4]);
             pts.append(p2p3);
@@ -498,13 +549,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x06:
         case 0x09:
         {
-            Type p0p1 = generatePoint(snapped,s[0],p[0],pIndex[0],s[1],p[1],pIndex[1]);
-            Type p2p3 = generatePoint(snapped,s[2],p[2],pIndex[2],s[3],p[3],pIndex[3]);
+            Type p0p1
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[1],p[1],pIndex[1])
+            );
+            Type p2p3
+            (
+                generatePoint(snapped,s[2],p[2],pIndex[2],s[3],p[3],pIndex[3])
+            );
 
             pts.append(p0p1);
             usesCc.append(ccIndex==0||ccIndex==1);
             onDiag.append(edgeIsDiag[0]);
-            pts.append(generatePoint(snapped,s[1],p[1],pIndex[1],s[3],p[3],pIndex[3]));
+            pts.append
+            (
+                generatePoint(snapped,s[1],p[1],pIndex[1],s[3],p[3],pIndex[3])
+            );
             usesCc.append(ccIndex==1||ccIndex==3);
             onDiag.append(edgeIsDiag[3]);
             pts.append(p2p3);
@@ -517,7 +577,10 @@ void Foam::isoSurfaceCell::generateTriPoints
             pts.append(p2p3);
             usesCc.append(ccIndex==2||ccIndex==3);
             onDiag.append(edgeIsDiag[5]);
-            pts.append(generatePoint(snapped,s[0],p[0],pIndex[0],s[2],p[2],pIndex[2]));
+            pts.append
+            (
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[2],p[2],pIndex[2])
+            );
             usesCc.append(ccIndex==0||ccIndex==2);
             onDiag.append(edgeIsDiag[1]);
 
@@ -538,13 +601,22 @@ void Foam::isoSurfaceCell::generateTriPoints
         case 0x08:
         case 0x07:
         {
-            pts.append(generatePoint(snapped,s[3],p[3],pIndex[3],s[0],p[0],pIndex[0]));
+            pts.append
+            (
+                generatePoint(snapped,s[3],p[3],pIndex[3],s[0],p[0],pIndex[0])
+            );
             usesCc.append(ccIndex==3||ccIndex==0);
             onDiag.append(edgeIsDiag[2]);
-            pts.append(generatePoint(snapped,s[3],p[3],pIndex[3],s[2],p[2],pIndex[2]));
+            pts.append
+            (
+                generatePoint(snapped,s[3],p[3],pIndex[3],s[2],p[2],pIndex[2])
+            );
             usesCc.append(ccIndex==3||ccIndex==2);
             onDiag.append(edgeIsDiag[5]);
-            pts.append(generatePoint(snapped,s[3],p[3],pIndex[3],s[1],p[1],pIndex[1]));
+            pts.append
+            (
+                generatePoint(snapped,s[3],p[3],pIndex[3],s[1],p[1],pIndex[1])
+            );
             usesCc.append(ccIndex==3||ccIndex==1);
             onDiag.append(edgeIsDiag[3]);
             if (triIndex == 0x07)
@@ -584,7 +656,7 @@ void Foam::isoSurfaceCell::generateTriPoints
     tetMatcher tet;
     label countNotFoundTets = 0;
 
-    FixedList<label, 4> s;
+    FixedList<scalar, 4> s;
     FixedList<Type, 4> p;
     FixedList<label, 4> pIndex;
     FixedList<bool, 6> edgeIsDiag;
@@ -746,8 +818,8 @@ void Foam::isoSurfaceCell::generateTriPoints
                                 p,
                                 pIndex,
 
-                                3,              // index in tet numbering of cell centre
-                                edgeIsDiag,     // per tet edge whether is face diag
+                                3,          // index of cell centre
+                                edgeIsDiag, // per tet edge whether is face diag
 
                                 triPoints,
                                 usesCellCentre,
@@ -784,8 +856,8 @@ void Foam::isoSurfaceCell::generateTriPoints
                                 p,
                                 pIndex,
 
-                                3,              // index in tet numbering of cell centre
-                                edgeIsDiag,     // per tet edge whether is face diag
+                                3,          // cell centre index
+                                edgeIsDiag, // per tet edge :is face diag
 
                                 triPoints,
                                 usesCellCentre,

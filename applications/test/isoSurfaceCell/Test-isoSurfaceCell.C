@@ -34,6 +34,8 @@ Application
 #include "DynamicField.H"
 #include "vtkSurfaceWriter.H"
 #include "triSurfaceMesh.H"
+#include "volFields.H"
+#include "pointFields.H"
 
 using namespace Foam;
 
@@ -201,7 +203,7 @@ int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
-    #include "createPolyMesh.H"
+    #include "createMesh.H"
 
 
     Random rndGen(0);
@@ -211,7 +213,7 @@ int main(int argc, char *argv[])
     scalar isoValue;
 
     // Random or from positions
-    //if (false)
+    if (false)
     {
         cellValues = mesh.cellCentres().component(vector::Y);
         pointValues = mesh.points().component(vector::Y);
@@ -223,7 +225,7 @@ int main(int argc, char *argv[])
         //}
         isoValue = 0.51*(average(cellValues)+average(pointValues));
     }
-    if (false)  //true)
+    if (true)
     {
         const triSurfaceMesh searchSurf
         (
@@ -317,10 +319,47 @@ int main(int argc, char *argv[])
     }
 
 
+    {
+        volScalarField cDist
+        (
+            IOobject
+            (
+                "cellDistance",
+                mesh.time().timeName(),
+                mesh.time(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimLength, 0)
+        );
+        cDist.primitiveFieldRef()= cellValues;
+        cDist.correctBoundaryConditions();
+        cDist.write();
+
+        pointScalarField pDist
+        (
+            IOobject
+            (
+                "pointDistance",
+                mesh.time().timeName(),
+                mesh.time(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            pointMesh::New(mesh),
+            dimensionedScalar("zero", dimLength, 0)
+        );
+        pDist.primitiveFieldRef() = pointValues;
+        pDist.write();
+    }
+
     isoSurfaceCell iso
     (
         mesh,
-        cellValues,
+        cellValues,     //cellAvg
         pointValues,
         isoValue,
         false       // regularise = remove cell centre
@@ -329,6 +368,17 @@ int main(int argc, char *argv[])
     Pout<< "iso:" << iso << endl;
 
     iso.write("iso.obj");
+
+//    {
+//        OBJstream str("isOnDiag.obj");
+//        forAll(iso.isOnDiag(), pointi)
+//        {
+//            if (iso.isOnDiag()[pointi])
+//            {
+//                str.write(iso.points()[pointi]);
+//            }
+//        }
+//    }
 
 
     // Optimisation 2: keep the outside loop only. Make a single face
@@ -367,12 +417,20 @@ int main(int argc, char *argv[])
                         if (loop.size() > 2)
                         {
                             face f(loop.size());
+                            label fpi = 0;
                             forAll(f, i)
                             {
-                                f[i] = mp[loop[i]];
+                                if (!iso.isOnDiag()[mp[loop[i]]])
+                                {
+                                    f[fpi++] = mp[loop[i]];
+                                }
                             }
-                            faces.append(f);
-                            faceMeshCells.append(scalar(meshCells[start]));
+                            if (fpi > 2)
+                            {
+                                f.setSize(fpi);
+                                faces.append(f);
+                                faceMeshCells.append(scalar(meshCells[start]));
+                            }
                         }
                     }
                 }
@@ -404,25 +462,35 @@ int main(int argc, char *argv[])
                     if (loop.size() > 2)
                     {
                         face f(loop.size());
+                        label fpi = 0;
                         forAll(f, i)
                         {
-                            f[i] = mp[loop[i]];
+                            if (!iso.isOnDiag()[mp[loop[i]]])
+                            {
+                                f[fpi++] = mp[loop[i]];
+                            }
                         }
-                        faces.append(f);
-                        faceMeshCells.append(scalar(meshCells[start]));
+                        if (fpi > 2)
+                        {
+                            f.setSize(fpi);
+                            faces.append(f);
+                            faceMeshCells.append(scalar(meshCells[start]));
+                        }
                     }
                 }
             }
         }
     }
 
+    primitiveFacePatch compact(faces, iso.points());
+
     vtkSurfaceWriter vtk;
     vtk.write
     (
         runTime.path(),
         "mySurface",
-        iso.points(),
-        faces,
+        compact.localPoints(),  //iso.points(),
+        compact.localFaces(),   //faces,
         "meshCells",
         faceMeshCells,
         false

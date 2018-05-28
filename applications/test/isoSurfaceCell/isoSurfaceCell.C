@@ -1672,7 +1672,7 @@ Foam::isoSurfaceCell::isoSurfaceCell
         {
             meshCells_[i] = triMeshCells[triMap[i]];
         }
-        isOnDiag_.setSize(triPoints.size());
+        isOnDiag_.setSize(this->points().size());
         forAll(triPointMergeMap_, i)
         {
             isOnDiag_[triPointMergeMap_[i]] = usesDiag[i];

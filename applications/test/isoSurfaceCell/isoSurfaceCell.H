@@ -222,7 +222,7 @@ class isoSurfaceCell
         void generateTriPoints
         (
             const DynamicList<Type>& snapped,
-            const FixedList<label, 4>& s,
+            const FixedList<scalar, 4>& s,
             const FixedList<Type, 4>& p,
             const FixedList<label, 4>& pIndex,
             const label ccIndex,
