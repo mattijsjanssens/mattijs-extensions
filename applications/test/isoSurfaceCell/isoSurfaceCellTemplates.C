@@ -70,237 +70,6 @@ Type Foam::isoSurfaceCell::generatePoint
 }
 
 
-//template<class Type>
-//void Foam::isoSurfaceCell::generateTriPoints
-//(
-//    const DynamicList<Type>& snapped,
-//
-//    const scalar s0,
-//    const Type& p0,
-//    const label p0Index,
-//    const bool isCc0,
-//
-//    const scalar s1,
-//    const Type& p1,
-//    const label p1Index,
-//    const bool isCc1,
-//
-//    const scalar s2,
-//    const Type& p2,
-//    const label p2Index,
-//    const bool isCc2,
-//
-//    const scalar s3,
-//    const Type& p3,
-//    const label p3Index,
-//    const bool isCc3,
-//
-//    DynamicList<Type>& pts,
-//    DynamicList<bool>& usesCc
-//) const
-//{
-//    int triIndex = 0;
-//    if (s0 < iso_)
-//    {
-//        triIndex |= 1;
-//    }
-//    if (s1 < iso_)
-//    {
-//        triIndex |= 2;
-//    }
-//    if (s2 < iso_)
-//    {
-//        triIndex |= 4;
-//    }
-//    if (s3 < iso_)
-//    {
-//        triIndex |= 8;
-//    }
-//
-//    /* Form the vertices of the triangles for each case */
-//    switch (triIndex)
-//    {
-//        case 0x00:
-//        case 0x0F:
-//        break;
-//
-//        case 0x01:
-//        case 0x0E:
-//        {
-//            pts.append(generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index));
-//            usesCc.append(isCc0||isCc1);
-//            pts.append(generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index));
-//            usesCc.append(isCc0||isCc2);
-//            pts.append(generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index));
-//            usesCc.append(isCc0||isCc3);
-//
-//            if (triIndex == 0x0E)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//
-//        case 0x02:
-//        case 0x0D:
-//        {
-//            pts.append(generatePoint(snapped,s1,p1,p1Index,s0,p0,p0Index));
-//            usesCc.append(isCc1||isCc0);
-//            pts.append(generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index));
-//            usesCc.append(isCc1||isCc3);
-//            pts.append(generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index));
-//            usesCc.append(isCc1||isCc2);
-//
-//            if (triIndex == 0x0D)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//
-//        case 0x03:
-//        case 0x0C:
-//        {
-//            Type p0p2 = generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index);
-//            Type p1p3 = generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index);
-//
-//            pts.append(generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index));
-//            usesCc.append(isCc0||isCc3);
-//            pts.append(p1p3);
-//            usesCc.append(isCc1||isCc3);
-//            pts.append(p0p2);
-//            usesCc.append(isCc0||isCc2);
-//
-//            pts.append(p1p3);
-//            usesCc.append(isCc1||isCc3);
-//            pts.append(generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index));
-//            usesCc.append(isCc1||isCc2);
-//            pts.append(p0p2);
-//            usesCc.append(isCc0||isCc2);
-//
-//            if (triIndex == 0x0C)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-5], pts[sz-4]);
-//                Swap(usesCc[sz-5], usesCc[sz-4]);
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//
-//        case 0x04:
-//        case 0x0B:
-//        {
-//            pts.append(generatePoint(snapped,s2,p2,p2Index,s0,p0,p0Index));
-//            usesCc.append(isCc2||isCc0);
-//            pts.append(generatePoint(snapped,s2,p2,p2Index,s1,p1,p1Index));
-//            usesCc.append(isCc2||isCc1);
-//            pts.append(generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index));
-//            usesCc.append(isCc2||isCc3);
-//
-//            if (triIndex == 0x0B)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//
-//        case 0x05:
-//        case 0x0A:
-//        {
-//            Type p0p1 = generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index);
-//            Type p2p3 = generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index);
-//
-//            pts.append(p0p1);
-//            usesCc.append(isCc0||isCc1);
-//            pts.append(p2p3);
-//            usesCc.append(isCc2||isCc3);
-//            pts.append(generatePoint(snapped,s0,p0,p0Index,s3,p3,p3Index));
-//            usesCc.append(isCc0||isCc3);
-//
-//            pts.append(p0p1);
-//            usesCc.append(isCc0||isCc1);
-//            pts.append(generatePoint(snapped,s1,p1,p1Index,s2,p2,p2Index));
-//            usesCc.append(isCc1||isCc2);
-//            pts.append(p2p3);
-//            usesCc.append(isCc2||isCc3);
-//
-//            if (triIndex == 0x0A)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-5], pts[sz-4]);
-//                Swap(usesCc[sz-5], usesCc[sz-4]);
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//
-//        case 0x06:
-//        case 0x09:
-//        {
-//            Type p0p1 = generatePoint(snapped,s0,p0,p0Index,s1,p1,p1Index);
-//            Type p2p3 = generatePoint(snapped,s2,p2,p2Index,s3,p3,p3Index);
-//
-//            pts.append(p0p1);
-//            usesCc.append(isCc0||isCc1);
-//            pts.append(generatePoint(snapped,s1,p1,p1Index,s3,p3,p3Index));
-//            usesCc.append(isCc1||isCc3);
-//            pts.append(p2p3);
-//            usesCc.append(isCc2||isCc3);
-//
-//            pts.append(p0p1);
-//            usesCc.append(isCc0||isCc1);
-//            pts.append(p2p3);
-//            usesCc.append(isCc2||isCc3);
-//            pts.append(generatePoint(snapped,s0,p0,p0Index,s2,p2,p2Index));
-//            usesCc.append(isCc0||isCc2);
-//
-//            if (triIndex == 0x09)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-5], pts[sz-4]);
-//                Swap(usesCc[sz-5], usesCc[sz-4]);
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//
-//        case 0x08:
-//        case 0x07:
-//        {
-//            pts.append(generatePoint(snapped,s3,p3,p3Index,s0,p0,p0Index));
-//            usesCc.append(isCc3||isCc0);
-//            pts.append(generatePoint(snapped,s3,p3,p3Index,s2,p2,p2Index));
-//            usesCc.append(isCc3||isCc2);
-//            pts.append(generatePoint(snapped,s3,p3,p3Index,s1,p1,p1Index));
-//            usesCc.append(isCc3||isCc1);
-//            if (triIndex == 0x07)
-//            {
-//                // Flip normals
-//                label sz = pts.size();
-//                Swap(pts[sz-2], pts[sz-1]);
-//                Swap(usesCc[sz-2], usesCc[sz-1]);
-//            }
-//        }
-//        break;
-//    }
-//}
-//XXXXXXXXXXXX
 template<class Type>
 void Foam::isoSurfaceCell::generateTriPoints
 (
@@ -631,7 +400,6 @@ void Foam::isoSurfaceCell::generateTriPoints
         break;
     }
 }
-//XXXXXXX
 
 
 template<class Type>
@@ -655,11 +423,6 @@ void Foam::isoSurfaceCell::generateTriPoints
 {
     tetMatcher tet;
     label countNotFoundTets = 0;
-
-    FixedList<scalar, 4> s;
-    FixedList<Type, 4> p;
-    FixedList<label, 4> pIndex;
-    FixedList<bool, 6> edgeIsDiag;
 
     forAll(mesh_.cells(), celli)
     {
@@ -689,80 +452,57 @@ void Foam::isoSurfaceCell::generateTriPoints
                     }
                 }
 
+                FixedList<scalar, 4> s
+                ({
+                    pVals[f0[0]],
+                    pVals[f0[1]],
+                    pVals[f0[2]],
+                    pVals[oppositeI]
+                });
+
+                FixedList<Type, 4> p
+                ({
+                    pCoords[f0[0]],
+                    pCoords[f0[1]],
+                    pCoords[f0[2]],
+                    pCoords[oppositeI]
+                });
+
+                FixedList<label, 4> pIndex
+                ({
+                    snappedPoint[f0[0]],
+                    snappedPoint[f0[1]],
+                    snappedPoint[f0[2]],
+                    snappedPoint[oppositeI],
+                });
+
+                FixedList<bool, 6> edgeIsDiag(false);
+
+
                 // Start off from positive volume tet to make sure we
                 // generate outwards pointing tets
                 if (mesh_.faceOwner()[cFaces[0]] == celli)
                 {
-                    s[0] = pVals[f0[1]];
-                    p[0] = pCoords[f0[1]];
-                    pIndex[0] = snappedPoint[f0[1]];
-
-                    s[1] = pVals[f0[0]];
-                    p[1] = pCoords[f0[0]];
-                    pIndex[1] = snappedPoint[f0[0]];
-
-                    s[2] = pVals[f0[2]];
-                    p[2] = pCoords[f0[2]];
-                    pIndex[2] = snappedPoint[f0[2]];
-
-                    s[3] = pVals[oppositeI];
-                    p[3] = pCoords[oppositeI];
-                    pIndex[3] = snappedPoint[oppositeI];
-
-                    edgeIsDiag = false;
-
-                    generateTriPoints
-                    (
-                        snappedPoints,
-
-                        s,
-                        p,
-                        pIndex,
-
-                        -1,             // index in tet numbering of cell centre
-                        edgeIsDiag,     // per tet edge whether is face diag
-
-                        triPoints,
-                        usesCellCentre,
-                        usesDiag
-                    );
+                    Swap(s[0], s[1]);
+                    Swap(p[0], p[1]);
+                    Swap(pIndex[0], pIndex[1]);
                 }
-                else
-                {
-                    s[0] = pVals[f0[0]];
-                    p[0] = pCoords[f0[0]];
-                    pIndex[0] = snappedPoint[f0[0]];
 
-                    s[1] = pVals[f0[1]];
-                    p[1] = pCoords[f0[1]];
-                    pIndex[1] = snappedPoint[f0[1]];
+                generateTriPoints
+                (
+                    snappedPoints,
 
-                    s[2] = pVals[f0[2]];
-                    p[2] = pCoords[f0[2]];
-                    pIndex[2] = snappedPoint[f0[2]];
+                    s,
+                    p,
+                    pIndex,
 
-                    s[3] = pVals[oppositeI];
-                    p[3] = pCoords[oppositeI];
-                    pIndex[3] = snappedPoint[oppositeI];
+                    -1,             // index in tet numbering of cell centre
+                    edgeIsDiag,     // per tet edge whether is face diag
 
-                    edgeIsDiag = false;
-
-                    generateTriPoints
-                    (
-                        snappedPoints,
-
-                        s,
-                        p,
-                        pIndex,
-
-                        -1,             // index in tet numbering of cell centre
-                        edgeIsDiag,     // per tet edge whether is face diag
-
-                        triPoints,
-                        usesCellCentre,
-                        usesDiag
-                    );
-                }
+                    triPoints,
+                    usesCellCentre,
+                    usesDiag
+                );
             }
             else
             {
@@ -788,82 +528,62 @@ void Foam::isoSurfaceCell::generateTriPoints
 
                         // Start off from positive volume tet to make sure we
                         // generate outwards pointing tets
+                        FixedList<scalar, 4> s
+                        ({
+                            pVals[tri[0]],
+                            pVals[tri[1]],
+                            pVals[tri[2]],
+                            cVals[celli]
+                        });
+
+                        FixedList<Type, 4> p
+                        ({
+                            pCoords[tri[0]],
+                            pCoords[tri[1]],
+                            pCoords[tri[2]],
+                            cCoords[celli]
+                        });
+
+                        FixedList<label, 4> pIndex
+                        ({
+                            snappedPoint[tri[0]],
+                            snappedPoint[tri[1]],
+                            snappedPoint[tri[2]],
+                            snappedCc[celli]
+                        });
+
+                        FixedList<bool, 6> edgeIsDiag(false);
+
                         if (mesh_.faceOwner()[facei] == celli)
                         {
-                            s[0] = pVals[tri[1]];
-                            p[0] = pCoords[tri[1]];
-                            pIndex[0] = snappedPoint[tri[1]];
+                            Swap(s[0], s[1]);
+                            Swap(p[0], p[1]);
+                            Swap(pIndex[0], pIndex[1]);
 
-                            s[1] = pVals[tri[0]];
-                            p[1] = pCoords[tri[0]];
-                            pIndex[1] = snappedPoint[tri[0]];
-
-                            s[2] = pVals[tri[2]];
-                            p[2] = pCoords[tri[2]];
-                            pIndex[2] = snappedPoint[tri[2]];
-
-                            s[3] = cVals[celli];
-                            p[3] = cCoords[celli];
-                            pIndex[3] = snappedCc[celli];
-
-                            edgeIsDiag = false;
                             if (i != 2) edgeIsDiag[0] = true;
                             if (i != f.size()-1) edgeIsDiag[4] = true;
-
-                            generateTriPoints
-                            (
-                                snappedPoints,
-
-                                s,
-                                p,
-                                pIndex,
-
-                                3,          // index of cell centre
-                                edgeIsDiag, // per tet edge whether is face diag
-
-                                triPoints,
-                                usesCellCentre,
-                                usesDiag
-                            );
                         }
                         else
                         {
-                            s[0] = pVals[tri[0]];
-                            p[0] = pCoords[tri[0]];
-                            pIndex[0] = snappedPoint[tri[0]];
-
-                            s[1] = pVals[tri[1]];
-                            p[1] = pCoords[tri[1]];
-                            pIndex[1] = snappedPoint[tri[1]];
-
-                            s[2] = pVals[tri[2]];
-                            p[2] = pCoords[tri[2]];
-                            pIndex[2] = snappedPoint[tri[2]];
-
-                            s[3] = cVals[celli];
-                            p[3] = cCoords[celli];
-                            pIndex[3] = snappedCc[celli];
-
-                            edgeIsDiag = false;
                             if (i != 2) edgeIsDiag[0] = true;
                             if (i != f.size()-1) edgeIsDiag[1] = true;
-
-                            generateTriPoints
-                            (
-                                snappedPoints,
-
-                                s,
-                                p,
-                                pIndex,
-
-                                3,          // cell centre index
-                                edgeIsDiag, // per tet edge :is face diag
-
-                                triPoints,
-                                usesCellCentre,
-                                usesDiag
-                            );
                         }
+
+                        generateTriPoints
+                        (
+                            snappedPoints,
+
+                            s,
+                            p,
+                            pIndex,
+
+                            3,          // cell centre index
+                            edgeIsDiag, // per tet edge :is face diag
+
+                            triPoints,
+                            usesCellCentre,
+                            usesDiag
+                        );
 
                         fp = nextFp;
                     }
