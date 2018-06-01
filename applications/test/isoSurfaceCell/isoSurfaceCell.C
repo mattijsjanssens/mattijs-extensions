@@ -1476,7 +1476,19 @@ void Foam::isoSurfaceCell::triangulateOutside
                 }
             }
 
-            f.setSize(fpi);
+            if (fpi > 2)
+            {
+                f.setSize(fpi);
+            }
+            else
+            {
+                // Keep original face
+                forAll(f, i)
+                {
+                    label pointi = mp[loop[i]];
+                    f[i] = pointi;
+                }
+            }
             triFaces.clear();
             f.triangles(points, triFaces);
 
