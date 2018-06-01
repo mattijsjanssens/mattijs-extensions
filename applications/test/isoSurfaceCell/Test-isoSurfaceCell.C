@@ -37,6 +37,7 @@ Application
 #include "smoothTriSurfaceMesh.H"
 #include "volFields.H"
 #include "pointFields.H"
+#include "EdgeMap.H"
 
 using namespace Foam;
 
@@ -271,6 +272,593 @@ using namespace Foam;
 // }
 
 
+label generatePoint
+(
+    const scalar isoValue,
+    const scalar v0,
+    const point& pt0,
+    const label i0,                     // index
+
+    const scalar v1,
+    const point& pt1,
+    const label i1,                     // index
+
+    DynamicList<point>& points,
+    EdgeMap<label>& endToPoint
+)
+{
+    scalar s = (isoValue-v0)/(v1-v0);
+
+    EdgeMap<label>::const_iterator edgeFnd = endToPoint.find(edge(i0, i1));
+    if (edgeFnd != endToPoint.end())
+    {
+        Pout<< "For edge between " << pt0
+            << " and " << pt1 << " found existing point " << edgeFnd()
+            << " at location:" << points[edgeFnd()] << endl;
+        return edgeFnd();
+    }
+    else
+    {
+        // Generate new point
+        label pointi = points.size();
+        points.append(s*pt1+(1.0-s)*pt0);
+        endToPoint.insert(edge(i0, i1), pointi);
+        return pointi;
+    }
+}
+void generateEdgeCut
+(
+    const scalar isoValue,
+    const scalar v0,
+    const point& pt0,
+    const label i0,                     // index
+
+    const scalar v1,
+    const point& pt1,
+    const label i1,                     // index
+
+    DynamicList<point>& points,
+    EdgeMap<label>& endToPoint,
+    DynamicList<label>& verts
+)
+{
+    if
+    (
+        (v0 < isoValue && v1 > isoValue)
+     || (v0 > isoValue && v1 < isoValue)
+    )
+    {
+        verts.append
+        (
+            generatePoint
+            (
+                isoValue, v0, pt0, i0, v1, pt1, i1, 
+                points,
+                endToPoint
+            )
+        );
+    }
+}
+
+
+void generateEdgeCuts
+(
+    const scalar isoValue,
+    const scalar v0,
+    const point& pt0,
+    const label i0,                     // index
+
+    const scalar v1,
+    const point& pt1,
+    const label i1,                     // index
+
+    const scalar v2,
+    const point& pt2,
+    const label i2,                     // index
+
+    const scalar v3,
+    const point& pt3,
+    const label i3,
+
+    DynamicList<point>& points,
+    EdgeMap<label>& table,
+    DynamicList<label>& verts
+)
+{
+    generateEdgeCut(isoValue, v0, pt0, i0, v1, pt1, i1, points, table, verts);
+    generateEdgeCut(isoValue, v0, pt0, i0, v2, pt2, i2, points, table, verts);
+    generateEdgeCut(isoValue, v0, pt0, i0, v3, pt3, i3, points, table, verts);
+    generateEdgeCut(isoValue, v1, pt1, i1, v2, pt2, i2, points, table, verts);
+    generateEdgeCut(isoValue, v2, pt2, i2, v3, pt3, i3, points, table, verts);
+}
+void generateTriPoints
+(
+    const scalar isoValue,
+    const FixedList<scalar, 4>& s,
+    const FixedList<point, 4>& p,
+    const FixedList<label, 4>& pIndex,
+
+    DynamicList<point>& points,
+    EdgeMap<label>& endToPoint,
+    DynamicList<label>& verts       // every three verts is new triangle
+)
+{
+    int triIndex = 0;
+    if (s[0] < isoValue)
+    {
+        triIndex |= 1;
+    }
+    if (s[1] < isoValue)
+    {
+        triIndex |= 2;
+    }
+    if (s[2] < isoValue)
+    {
+        triIndex |= 4;
+    }
+    if (s[3] < isoValue)
+    {
+        triIndex |= 8;
+    }
+
+    /* Form the vertices of the triangles for each case */
+    switch (triIndex)
+    {
+        case 0x00:
+        case 0x0F:
+        break;
+
+        case 0x01:
+        case 0x0E:
+        {
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0], p[0], pIndex[0], s[1], p[1], pIndex[1],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+
+            if (triIndex == 0x0E)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+
+        case 0x02:
+        case 0x0D:
+        {
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[0],p[0],pIndex[0],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+
+            if (triIndex == 0x0D)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+
+        case 0x03:
+        case 0x0C:
+        {
+            label p0p2
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+            label p1p3
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append(p1p3);
+            verts.append(p0p2);
+            verts.append(p1p3);
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append(p0p2);
+
+            if (triIndex == 0x0C)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-5], verts[sz-4]);
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+
+        case 0x04:
+        case 0x0B:
+        {
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[2],p[2],pIndex[2],s[0],p[0],pIndex[0],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[2],p[2],pIndex[2],s[1],p[1],pIndex[1],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+
+            if (triIndex == 0x0B)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+
+        case 0x05:
+        case 0x0A:
+        {
+            label p0p1
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[1],p[1],pIndex[1],
+                    points,
+                    endToPoint
+                )
+            );
+            label p2p3
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+
+            verts.append(p0p1);
+            verts.append(p2p3);
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append(p0p1);
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append(p2p3);
+
+            if (triIndex == 0x0A)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-5], verts[sz-4]);
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+
+        case 0x06:
+        case 0x09:
+        {
+            label p0p1
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[1],p[1],pIndex[1],
+                    points,
+                    endToPoint
+                )
+            );
+            label p2p3
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+
+            verts.append(p0p1);
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append(p2p3);
+            verts.append(p0p1);
+            verts.append(p2p3);
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+
+            if (triIndex == 0x09)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-5], verts[sz-4]);
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+
+        case 0x08:
+        case 0x07:
+        {
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[3],p[3],pIndex[3],s[0],p[0],pIndex[0],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[3],p[3],pIndex[3],s[2],p[2],pIndex[2],
+                    points,
+                    endToPoint
+                )
+            );
+            verts.append
+            (
+                generatePoint
+                (
+                    isoValue,
+                    s[3],p[3],pIndex[3],s[1],p[1],pIndex[1],
+                    points,
+                    endToPoint
+                )
+            );
+            if (triIndex == 0x07)
+            {
+                // Flip normals
+                label sz = verts.size();
+                Swap(verts[sz-2], verts[sz-1]);
+            }
+        }
+        break;
+    }
+}
+
+
+
+// isosurface algorithm
+void generateEdgeCuts
+(
+    const polyMesh& mesh,
+    const scalar isoValue,
+    const scalarField& cellValues,
+    const scalarField& pointValues,
+    const label celli,
+
+    DynamicList<point>& points,
+    EdgeMap<label>& endToPoint,
+    DynamicList<label>& verts
+)
+{
+    const cell& cFaces = mesh.cells()[celli];
+    forAll(cFaces, cFacei)
+    {
+        label facei = cFaces[cFacei];
+        const face& f = mesh.faces()[facei];
+
+        label fp0 = mesh.tetBasePtIs()[facei];
+
+        // Skip undefined tets
+        if (fp0 < 0)
+        {
+            fp0 = 0;
+        }
+
+        label fp = f.fcIndex(fp0);
+        for (label i = 2; i < f.size(); i++)
+        {
+            label nextFp = f.fcIndex(fp);
+
+            label p0 = f[fp0];
+            label p1 = f[fp];
+            label p2 = f[nextFp];
+            if (mesh.faceOwner()[facei] == celli)
+            {
+                Swap(p1, p2);
+            }
+
+            generateTriPoints
+            (
+                isoValue,
+                FixedList<scalar, 4>
+                ({
+                    pointValues[p0],
+                    pointValues[p1],
+                    pointValues[p2],
+                    cellValues[celli]
+                }),
+                FixedList<point, 4>
+                ({
+                    mesh.points()[p0],
+                    mesh.points()[p1],
+                    mesh.points()[p2],
+                    mesh.cellCentres()[celli]
+                }),
+                FixedList<label, 4>
+                ({
+                    p0,
+                    p1,
+                    p2,
+                    mesh.nPoints()+celli
+                }),
+
+                points,
+                endToPoint,
+                verts       // every three verts is new triangle
+            );
+
+            // generateEdgeCuts
+            // (
+            //     isoValue,
+            //     p0,                     // index
+            //     pointValues[p0],
+            //     mesh.points()[p0],
+            //     p1,                     // index
+            //     pointValues[p1],
+            //     mesh.points()[p1],
+            //     p2,                     // index
+            //     pointValues[p2],
+            //     mesh.points()[p2],
+            // 
+            //     mesh.nPoints()+celli,   // index
+            //     cellValues[celli],
+            //     mesh.cellCentres()[celli],
+            // 
+            //     points,
+            //     endToPoint,
+            //     verts
+            // );
+
+            fp = nextFp;
+        }
+    }
+}
+
+
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
@@ -285,7 +873,7 @@ int main(int argc, char *argv[])
     scalar isoValue;
 
     // Random or from positions
-    if (false)
+    if (true)
     {
         cellValues = mesh.cellCentres().component(vector::Y);
         pointValues = mesh.points().component(vector::Y);
@@ -296,6 +884,34 @@ int main(int argc, char *argv[])
         //    pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
         //}
         isoValue = 0.51*(average(cellValues)+average(pointValues));
+
+        DynamicList<point> points;
+        EdgeMap<label> endToPoint;
+        DynamicList<label> verts;
+        generateEdgeCuts
+        (
+            mesh,
+            isoValue,
+            cellValues,
+            pointValues,
+            0,
+
+            points,
+            endToPoint,
+            verts
+        );
+
+        List<labelledTri> tris(verts.size()/3);
+        label verti = 0;
+        forAll(tris, i)
+        {
+            label v0 = verts[verti++];
+            label v1 = verts[verti++];
+            label v2 = verts[verti++];
+            tris[i] = labelledTri(v0, v1, v2, 0);
+        }
+        triSurface s(tris, pointField(points));
+        s.write("simple.obj");
     }
     if (true)
     {
