@@ -33,7 +33,8 @@ Application
 #include "OBJstream.H"
 #include "DynamicField.H"
 #include "vtkSurfaceWriter.H"
-#include "triSurfaceMesh.H"
+//#include "triSurfaceMesh.H"
+#include "smoothTriSurfaceMesh.H"
 #include "volFields.H"
 #include "pointFields.H"
 
@@ -41,162 +42,233 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void triangulateOutside
-(
-    const triSurface& s,
-    const label cellID,
-
-    label start,
-    label size,
-
-    face& f,
-    DynamicList<face>& triFaces,
-    DynamicList<labelledTri>& compactTris,
-    DynamicList<label>& compactCellIDs
-)
-{
-    const pointField& points = s.points();
-
-    // All triangles of the current cell
-    SubList<labelledTri> cellTris(s, size, start);
-
-Pout<< "Triangulating slice size:" << size
-    << " start:" << start << endl;
-
-    PrimitivePatch<labelledTri, SubList, const pointField&> pp
-    (
-        cellTris,
-        points
-    );
-
-    // Retriangulate the exterior loops
-
-    const labelListList& edgeLoops = pp.edgeLoops();
-    const labelList& mp = pp.meshPoints();
-
-    forAll(edgeLoops, loopi)
-    {
-        const labelList& loop = edgeLoops[loopi];
-
-        f.setSize(loop.size());
-        forAll(f, i)
-        {
-            f[i] = mp[loop[i]];
-        }
-
-        triFaces.clear();
-        f.triangles(points, triFaces);
-
-        forAll(triFaces, i)
-        {
-            const face& f = triFaces[i];
-            compactTris.append(labelledTri(f[0], f[1], f[2], 0));
-            compactCellIDs.append(cellID);
-        }
-    }
-
-    DebugVar(compactTris);
-    DebugVar(compactCellIDs);
-}
-
-
-triSurface removeInsidePoints
-(
-    const triSurface& s,
-    const labelList& cellIDs,
-    const boolList& usesCellCentre,
-    DynamicList<label>& pointCompactMap,    // per returned point the original
-    DynamicList<label>& compactCellIDs      // per returned tri the cellID
-)
-{
-    const pointField& points = s.points();
-
-    if (cellIDs.size() != s.size() || usesCellCentre.size() != points.size())
-    {
-        FatalErrorInFunction << " Size mismatch" << exit(FatalError);
-    }
-
-    pointCompactMap.clear();
-    compactCellIDs.clear();
-
-    DynamicList<face> triFaces;
-    DynamicList<labelledTri> compactTris;
-    face f;
-
-
-    label start = 0;
-    forAll(s, trii)
-    {
-        if (trii > 0 && cellIDs[trii] != cellIDs[trii-1])
-        {
-            // All triangles of the current cell
-            triangulateOutside
-            (
-                s,
-                cellIDs[trii-1],
-
-                start,
-                trii-start,
-
-                f,
-                triFaces,
-                compactTris,
-                compactCellIDs
-            );
-
-            start = trii;
-        }
-    }
-
-    // Do final
-    triangulateOutside
-    (
-        s,
-        cellIDs[cellIDs.size()-1],
-
-        start,
-        cellIDs.size()-start,
-
-        f,
-        triFaces,
-        compactTris,
-        compactCellIDs
-    );
-
-
-
-
-    // Compact out unused points
-    // Pick up the used vertices
-    labelList oldToCompact(points.size(), -1);
-    DynamicField<point> compactPoints(points.size());
-    pointCompactMap.clear();
-
-    forAll(compactTris, i)
-    {
-        labelledTri& f = compactTris[i];
-        forAll(f, fp)
-        {
-            label pointi = f[fp];
-            label compacti = oldToCompact[pointi];
-            if (compacti == -1)
-            {
-                compacti = compactPoints.size();
-                oldToCompact[pointi] = compacti;
-                compactPoints.append(points[pointi]);
-                pointCompactMap.append(pointi);
-            }
-            f[fp] = compacti;
-        }
-    }
-
-    return triSurface
-    (
-        compactTris.xfer(),
-        geometricSurfacePatchList(0),
-        compactPoints.xfer()
-    );
-}
+// void triangulateOutside
+// (
+//     const triSurface& s,
+//     const label cellID,
+// 
+//     label start,
+//     label size,
+// 
+//     face& f,
+//     DynamicList<face>& triFaces,
+//     DynamicList<labelledTri>& compactTris,
+//     DynamicList<label>& compactCellIDs
+// )
+// {
+//     const pointField& points = s.points();
+// 
+//     // All triangles of the current cell
+//     SubList<labelledTri> cellTris(s, size, start);
+// 
+// Pout<< "Triangulating slice size:" << size
+//     << " start:" << start << endl;
+// 
+//     PrimitivePatch<labelledTri, SubList, const pointField&> pp
+//     (
+//         cellTris,
+//         points
+//     );
+// 
+//     // Retriangulate the exterior loops
+// 
+//     const labelListList& edgeLoops = pp.edgeLoops();
+//     const labelList& mp = pp.meshPoints();
+// 
+//     forAll(edgeLoops, loopi)
+//     {
+//         const labelList& loop = edgeLoops[loopi];
+// 
+//         f.setSize(loop.size());
+//         forAll(f, i)
+//         {
+//             f[i] = mp[loop[i]];
+//         }
+// 
+//         triFaces.clear();
+//         f.triangles(points, triFaces);
+// 
+//         forAll(triFaces, i)
+//         {
+//             const face& f = triFaces[i];
+//             compactTris.append(labelledTri(f[0], f[1], f[2], 0));
+//             compactCellIDs.append(cellID);
+//         }
+//     }
+// 
+//     DebugVar(compactTris);
+//     DebugVar(compactCellIDs);
+// }
+// 
+// 
+// triSurface removeInsidePoints
+// (
+//     const triSurface& s,
+//     const labelList& cellIDs,
+//     const boolList& usesCellCentre,
+//     DynamicList<label>& pointCompactMap,    // per returned point the original
+//     DynamicList<label>& compactCellIDs      // per returned tri the cellID
+// )
+// {
+//     const pointField& points = s.points();
+// 
+//     if (cellIDs.size() != s.size() || usesCellCentre.size() != points.size())
+//     {
+//         FatalErrorInFunction << " Size mismatch" << exit(FatalError);
+//     }
+// 
+//     pointCompactMap.clear();
+//     compactCellIDs.clear();
+// 
+//     DynamicList<face> triFaces;
+//     DynamicList<labelledTri> compactTris;
+//     face f;
+// 
+// 
+//     label start = 0;
+//     forAll(s, trii)
+//     {
+//         if (trii > 0 && cellIDs[trii] != cellIDs[trii-1])
+//         {
+//             // All triangles of the current cell
+//             triangulateOutside
+//             (
+//                 s,
+//                 cellIDs[trii-1],
+// 
+//                 start,
+//                 trii-start,
+// 
+//                 f,
+//                 triFaces,
+//                 compactTris,
+//                 compactCellIDs
+//             );
+// 
+//             start = trii;
+//         }
+//     }
+// 
+//     // Do final
+//     triangulateOutside
+//     (
+//         s,
+//         cellIDs[cellIDs.size()-1],
+// 
+//         start,
+//         cellIDs.size()-start,
+// 
+//         f,
+//         triFaces,
+//         compactTris,
+//         compactCellIDs
+//     );
+// 
+// 
+// 
+// 
+//     // Compact out unused points
+//     // Pick up the used vertices
+//     labelList oldToCompact(points.size(), -1);
+//     DynamicField<point> compactPoints(points.size());
+//     pointCompactMap.clear();
+// 
+//     forAll(compactTris, i)
+//     {
+//         labelledTri& f = compactTris[i];
+//         forAll(f, fp)
+//         {
+//             label pointi = f[fp];
+//             label compacti = oldToCompact[pointi];
+//             if (compacti == -1)
+//             {
+//                 compacti = compactPoints.size();
+//                 oldToCompact[pointi] = compacti;
+//                 compactPoints.append(points[pointi]);
+//                 pointCompactMap.append(pointi);
+//             }
+//             f[fp] = compacti;
+//         }
+//     }
+// 
+//     return triSurface
+//     (
+//         compactTris.xfer(),
+//         geometricSurfacePatchList(0),
+//         compactPoints.xfer()
+//     );
+// }
+// 
+// 
+// void filterDiag
+// (
+//     const isoSurfaceCell& iso,
+//     const label start,
+//     const label size,
+//     DynamicList<face>& faces,
+//     DynamicField<scalar>& faceMeshCells
+// )
+// {
+//     const labelList& meshCells = iso.meshCells();
+// 
+//     // All triangles of the current cell
+//     SubList<labelledTri> cellTris(iso, size, start);
+// 
+//     PrimitivePatch<labelledTri, SubList, const pointField&> pp
+//     (
+//         cellTris,
+//         iso.points()
+//     );
+// 
+//     const labelListList& edgeLoops = pp.edgeLoops();
+//     const labelList& mp = pp.meshPoints();
+// 
+//     forAll(edgeLoops, loopi)
+//     {
+//         const labelList& loop = edgeLoops[loopi];
+// 
+//         bool filtered = false;
+//         if (loop.size() > 2)
+//         {
+//             face f(loop.size());
+//             label fpi = 0;
+//             forAll(f, i)
+//             {
+//                 if (!iso.isOnDiag()[mp[loop[i]]])
+//                 {
+//                     f[fpi++] = mp[loop[i]];
+//                 }
+//             }
+//             if (fpi > 2)
+//             {
+//                 f.setSize(fpi);
+//                 faces.append(f);
+//                 faceMeshCells.append(scalar(meshCells[start]));
+//                 filtered = true;
+//             }
+//             else
+//             {
+//                 Pout<< "Discarding filtered face:"
+//                     << SubList<label>(f, fpi)
+//                     << " for cell:" << SubList<label>(meshCells, size, start)
+//                     << " with triangles:" << pp
+//                     << " with trianglescc:" << pp.faceCentres()
+//                     << endl;
+//             }   
+//         }
+// 
+//         if (!filtered)
+//         {
+//             faces.append(face(UIndirectList<label>(mp, loop)()));
+//             faceMeshCells.append(scalar(meshCells[start]));
+// 
+// Pout<< "For cell:" << SubList<label>(meshCells, size, start)
+//     << " have triangles:" << pp
+//     << " have trianglescc:" << pp.faceCentres()
+//     << " have face:" << faces.last() << endl;
+//         }
+//     }
+// }
 
 
 int main(int argc, char *argv[])
@@ -227,7 +299,7 @@ int main(int argc, char *argv[])
     }
     if (true)
     {
-        const triSurfaceMesh searchSurf
+        const smoothTriSurfaceMesh searchSurf
         (
             IOobject
             (
@@ -235,7 +307,8 @@ int main(int argc, char *argv[])
                 runTime.constant(),
                 "triSurface",
                 runTime
-            )
+            ),
+            180
         );
         List<pointIndexHit> cellNearest;
         vectorField cellNormal;
@@ -279,18 +352,54 @@ int main(int argc, char *argv[])
 
             isoValue = 0.0;
         }
+
+
+        // Check inconsistency: change of sign inside cell & cell further
+        // away
+        OBJstream farCells(runTime.path()/"straddlingCells.obj");
+        forAll(cellNearest, celli)
+        {
+            const point& cc = mesh.cellCentres()[celli];
+            const point& near = cellNearest[celli].hitPoint();
+            if (mag(near-cc) > 0.1)
+            {
+                const labelList& cPoints = mesh.cellPoints()[celli];
+                bool straddle = false;
+                forAll(cPoints, i)
+                {
+                    label pointi = cPoints[i];
+                    if (sign(cellValues[celli]) != sign(pointValues[pointi]))
+                    {
+                        straddle = true;
+                        break;
+                    }
+                }
+                if (straddle)
+                {
+                    Pout<< "DEtected cell " << cc
+                        << " with multiple signs." << endl;
+
+                    const cell& cFaces = mesh.cells()[celli];
+                    forAll(cFaces, cFacei)
+                    {
+                        const face& f = mesh.faces()[cFaces[cFacei]];
+                        farCells.write(f, mesh.points());
+                    }
+
+                    farCells.write(linePointRef(cc, near));
+                    forAll(cPoints, i)
+                    {
+                        label pointi = cPoints[i];
+                        const point& pt = mesh.points()[pointi];
+                        const point& nearPt = pointNearest[pointi].hitPoint();
+                        farCells.write(linePointRef(pt, nearPt));
+                    }
+                }
+            }
+        }
+        Pout<< "Written " << farCells.nVertices() << " to " << farCells.name()
+            << endl;
     }
-
-//    {
-//        OBJstream farCells(runTime.path()/"straddlingCells.obj");
-//
-//        const labelListList& cellPoints = mesh.cellPoints();
-//        forAll(cellPoints, celli)
-//        {
-//            bool cSign = sign(cellValues[celli]);
-//        }
-//    }
-
 
 
     // Optimisation 1: isoSurfaceCell can remove the cell centre
@@ -362,139 +471,103 @@ int main(int argc, char *argv[])
         cellValues,     //cellAvg
         pointValues,
         isoValue,
-        false       // regularise = remove cell centre
+        true       // regularise = remove cell centre
     );
 
-    Pout<< "iso:" << iso << endl;
+    Pout<< "iso:" << iso.size() << endl;
 
     iso.write("iso.obj");
 
-//    {
-//        OBJstream str("isOnDiag.obj");
-//        forAll(iso.isOnDiag(), pointi)
-//        {
-//            if (iso.isOnDiag()[pointi])
-//            {
-//                str.write(iso.points()[pointi]);
-//            }
-//        }
-//    }
-
-
-    // Optimisation 2: keep the outside loop only. Make a single face
-    // of all of the interior
-
-
-    // Collect triangles per face and filter according to cells
-    const labelList& meshCells = iso.meshCells();
-
-
-    DynamicList<face> faces;
-    DynamicField<scalar> faceMeshCells;
     {
-        label start = 0;
-        forAll(meshCells, trii)
+        vtkSurfaceWriter vtk;
+        const labelList& meshCells = iso.meshCells();
+        faceList localFaces(meshCells.size());
+        scalarField scalarMeshCells(meshCells.size());
+        forAll(meshCells, i)
         {
-            if (meshCells[trii] != meshCells[start])
-            {
-                // All triangles of the current cell
-                SubList<labelledTri> cellTris(iso, trii-start, start);
-
-                PrimitivePatch<labelledTri, SubList, const pointField&> pp
-                (
-                    cellTris,
-                    iso.points()
-                );
-
-                {
-                    const labelListList& edgeLoops = pp.edgeLoops();
-                    const labelList& mp = pp.meshPoints();
-
-                    forAll(edgeLoops, loopi)
-                    {
-                        const labelList& loop = edgeLoops[loopi];
-
-                        if (loop.size() > 2)
-                        {
-                            face f(loop.size());
-                            label fpi = 0;
-                            forAll(f, i)
-                            {
-                                if (!iso.isOnDiag()[mp[loop[i]]])
-                                {
-                                    f[fpi++] = mp[loop[i]];
-                                }
-                            }
-                            if (fpi > 2)
-                            {
-                                f.setSize(fpi);
-                                faces.append(f);
-                                faceMeshCells.append(scalar(meshCells[start]));
-                            }
-                        }
-                    }
-                }
-
-
-                start = trii;
-            }
+            localFaces[i] = face(iso.localFaces()[i]);
+            scalarMeshCells[i] = 1.0*meshCells[i];
         }
-        // Do the last ones
-        if (meshCells.size())
-        {
-            // All triangles of the current cell
-            SubList<labelledTri> cellTris(iso, meshCells.size()-start, start);
-
-            PrimitivePatch<labelledTri, SubList, const pointField&> pp
-            (
-                cellTris,
-                iso.points()
-            );
-
-            {
-                const labelListList& edgeLoops = pp.edgeLoops();
-                const labelList& mp = pp.meshPoints();
-
-                forAll(edgeLoops, loopi)
-                {
-                    const labelList& loop = edgeLoops[loopi];
-
-                    if (loop.size() > 2)
-                    {
-                        face f(loop.size());
-                        label fpi = 0;
-                        forAll(f, i)
-                        {
-                            if (!iso.isOnDiag()[mp[loop[i]]])
-                            {
-                                f[fpi++] = mp[loop[i]];
-                            }
-                        }
-                        if (fpi > 2)
-                        {
-                            f.setSize(fpi);
-                            faces.append(f);
-                            faceMeshCells.append(scalar(meshCells[start]));
-                        }
-                    }
-                }
-            }
-        }
+        vtk.write
+        (
+            runTime.path(),
+            "iso_with_meshCells",
+            iso.localPoints(),  //iso.points(),
+            localFaces,   //faces,
+            "meshCells",
+            scalarMeshCells,
+            false
+        );
     }
 
-    primitiveFacePatch compact(faces, iso.points());
-
-    vtkSurfaceWriter vtk;
-    vtk.write
-    (
-        runTime.path(),
-        "mySurface",
-        compact.localPoints(),  //iso.points(),
-        compact.localFaces(),   //faces,
-        "meshCells",
-        faceMeshCells,
-        false
-    );
+// 
+//     {
+//         OBJstream str("isOnDiag.obj");
+//         forAll(iso.isOnDiag(), pointi)
+//         {
+//             if (iso.isOnDiag()[pointi])
+//             {
+//                 str.write(iso.points()[pointi]);
+//             }
+//         }
+//     }
+// 
+// 
+//     // Optimisation 2: keep the outside loop only. Make a single face
+//     // of all of the interior
+// 
+// 
+//     // Collect triangles per face and filter according to cells
+//     const labelList& meshCells = iso.meshCells();
+// 
+// 
+//     DynamicList<face> faces;
+//     DynamicField<scalar> faceMeshCells;
+//     {
+//         label start = 0;
+//         forAll(meshCells, trii)
+//         {
+//             if (meshCells[trii] != meshCells[start])
+//             {
+//                 filterDiag
+//                 (
+//                     iso,
+//                     start,
+//                     trii-start,
+//                     faces,
+//                     faceMeshCells
+//                 );
+// 
+//                 start = trii;
+//             }
+//         }
+//         // Do the last ones
+//         if (meshCells.size())
+//         {
+//             filterDiag
+//             (
+//                 iso,
+//                 start,
+//                 meshCells.size()-start,
+//                 faces,
+//                 faceMeshCells
+//             );
+//         }
+//     }
+// 
+//     primitiveFacePatch compact(faces, iso.points());
+// 
+//     vtkSurfaceWriter vtk;
+//     vtk.write
+//     (
+//         runTime.path(),
+//         "mySurface",
+//         compact.localPoints(),  //iso.points(),
+//         compact.localFaces(),   //faces,
+//         "meshCells",
+//         faceMeshCells,
+//         false
+//     );
 
 //    OBJstream str("ccPoints.obj");
 //    forAll(iso.usesCellCentre(), pointi)
@@ -504,102 +577,6 @@ int main(int argc, char *argv[])
 //            str.write(iso.points()[pointi]);
 //        }
 //    }
-
-
-//    {
-//        const labelListList& edgeLoops = iso.edgeLoops();
-//        const labelList& mp = iso.meshPoints();
-//
-//        DynamicList<face> triFaces;
-//        face f;
-//        forAll(edgeLoops, loopi)
-//        {
-//            const labelList& loop = edgeLoops[loopi];
-//
-//            f.setSize(loop.size());
-//            forAll(f, i)
-//            {
-//                f[i] = mp[loop[i]];
-//            }
-//            f.triangles(iso.points(), triFaces);
-//        }
-//
-//
-//        // Pick up the used vertices
-//        labelList oldToCompact(mp.size(), -1);
-//        DynamicField<point> compactPoints(mp.size());
-//
-//        forAll(triFaces, i)
-//        {
-//            face& f = triFaces[i];
-//            forAll(f, fp)
-//            {
-//                label pointi = f[fp];
-//                label compacti = oldToCompact[pointi];
-//                if (compacti == -1)
-//                {
-//                    compacti = compactPoints.size();
-//                    oldToCompact[pointi] = compacti;
-//                    compactPoints.append(iso.points()[pointi]);
-//                }
-//                f[fp] = compacti;
-//            }
-//        }
-//
-//
-//        OBJstream str("loops.obj");
-//        str.write(triFaces.shrink(), compactPoints, false);
-//    }
-//    {
-//        DynamicList<label> pointCompactMap;
-//        DynamicList<label> compactCellIDs;
-//        triSurface newSurf
-//        (
-//            removeInsidePoints
-//            (
-//                iso,
-//                iso.meshCells(),
-//                iso.usesCellCentre(),
-//                pointCompactMap,    // per returned point the original
-//                compactCellIDs      // per returned tri the cellID
-//            )
-//        );
-//
-//
-//        OBJstream str("compact.obj");
-//        newSurf.write("compact.obj");
-//    }
-
-
-//    point avgVert(point::zero);
-//    label nVert = 0;
-//
-//    forAll(iso.usesCellCentre(), pointi)
-//    {
-//        if (!iso.usesCellCentre()[pointi])
-//        {
-//            avgVert += iso.points()[pointi];
-//            nVert++;
-//        }
-//    }
-//
-//    avgVert /= nVert;
-//
-//    label nCc = iso.points().size()-nVert;
-//    if (nCc > 0)
-//    {
-//        pointField newPoints(iso.points());
-//        forAll(iso.usesCellCentre(), pointi)
-//        {
-//            if (iso.usesCellCentre()[pointi])
-//            {
-//                newPoints[pointi] = avgVert;
-//            }
-//        }
-//        iso.movePoints(newPoints);
-//        iso.write("newIso.obj");
-//    }
-
 
     Info<< "End\n" << endl;
 

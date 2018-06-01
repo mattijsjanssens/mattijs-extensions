@@ -299,7 +299,9 @@ class isoSurfaceCell
 
         void triangulateOutside
         (
+            const bool filterDiag,
             const triSurface& s,
+            const boolList& pointUsesDiag,
             const label cellID,
 
             label start,
@@ -313,9 +315,10 @@ class isoSurfaceCell
 
         triSurface removeInsidePoints
         (
+            const bool filterDiag,
             const triSurface& s,
+            const boolList& pointUsesDiag,
             const labelList& cellIDs,
-            const boolList& usesCellCentre,
             DynamicList<label>& compactToOldPoint,
             DynamicList<label>& compactCellIDs
         ) const;
@@ -349,11 +352,11 @@ public:
             return meshCells_;
         }
 
-        //- For every point whether it originates from a face diagonal
-        const boolList& isOnDiag() const
-        {
-            return isOnDiag_;
-        }
+        ////- For every point whether it originates from a face diagonal
+        //const boolList& isOnDiag() const
+        //{
+        //    return isOnDiag_;
+        //}
 
         //- Interpolates cCoords,pCoords.
         template<class Type>

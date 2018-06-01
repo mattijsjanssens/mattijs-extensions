@@ -514,7 +514,7 @@ void Foam::isoSurfaceCell::generateTriPoints
             onDiag.append(edgeIsDiag[5]);
             pts.append
             (
-                generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3]))
+                generatePoint(snapped,s[0],p[0],pIndex[0],s[3],p[3],pIndex[3])
             );
             usesCc.append(ccIndex==0||ccIndex==3);
             onDiag.append(edgeIsDiag[2]);

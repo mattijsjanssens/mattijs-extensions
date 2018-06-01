@@ -73,7 +73,7 @@ private:
 
 
         //- Disallow default bitwise copy construct
-        smoothTriSurfaceMesh(const triSurfaceMesh&);
+        smoothTriSurfaceMesh(const smoothTriSurfaceMesh&);
 
         //- Disallow default bitwise assignment
         void operator=(const smoothTriSurfaceMesh&);

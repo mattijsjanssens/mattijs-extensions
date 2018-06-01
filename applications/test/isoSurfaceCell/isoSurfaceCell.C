@@ -1364,9 +1364,74 @@ Foam::triSurface Foam::isoSurfaceCell::subsetMesh
 }
 
 
+// void Foam::isoSurfaceCell::faceOutside
+// (
+//     const bool filterDiag,
+//     const triSurface& s,
+//     const boolList& pointUsesDiag,
+//     const label start,
+//     const label size,
+//     DynamicList<face>& outsideFaces
+// ) const
+// {
+//     const pointField& points = s.points();
+// 
+//     // All triangles of the current cell
+//     SubList<labelledTri> cellTris(s, size, start);
+// 
+//     PrimitivePatch<labelledTri, SubList, const pointField&> pp
+//     (
+//         cellTris,
+//         points
+//     );
+// 
+//     // Retriangulate the exterior loops
+// 
+//     const labelListList& edgeLoops = pp.edgeLoops();
+//     const labelList& mp = pp.meshPoints();
+// 
+//     forAll(edgeLoops, loopi)
+//     {
+//         const labelList& loop = edgeLoops[loopi];
+// 
+//         face f(loop.size());
+//         label fpi = 0;
+//         if (loop.size() > 2)
+//         {
+//             f.setSize(loop.size());
+//             forAll(f, i)
+//             {
+//                 label pointi = mp[loop[i]];
+//                 if (!filterDiag || !pointUsesDiag[pointi])
+//                 {
+//                     f[fpi++] = pointi;
+//                 }
+//             }
+//         }
+// 
+//         if (fpi > 2)
+//         {
+//             f.setSize(fpi);
+//             outsideFaces.append(f);
+//         }
+//         else if (filterDiag)
+//         {
+//             // Use original face
+//             forAll(f, i)
+//             {
+//                 f[i] = mp[loop[i]];
+//             }
+//             outsideFaces.append(f);
+//         }            
+//     }
+// }
+
+
 void Foam::isoSurfaceCell::triangulateOutside
 (
+    const bool filterDiag,
     const triSurface& s,
+    const boolList& pointUsesDiag,
     const label cellID,
 
     label start,
@@ -1401,11 +1466,17 @@ void Foam::isoSurfaceCell::triangulateOutside
         if (loop.size() > 2)
         {
             f.setSize(loop.size());
+            label fpi = 0;
             forAll(f, i)
             {
-                f[i] = mp[loop[i]];
+                label pointi = mp[loop[i]];
+                if (!filterDiag || !pointUsesDiag[pointi])
+                {
+                    f[fpi++] = pointi;
+                }
             }
 
+            f.setSize(fpi);
             triFaces.clear();
             f.triangles(points, triFaces);
 
@@ -1422,16 +1493,17 @@ void Foam::isoSurfaceCell::triangulateOutside
 
 Foam::triSurface Foam::isoSurfaceCell::removeInsidePoints
 (
+    const bool filterDiag,
     const triSurface& s,
+    const boolList& pointUsesDiag,
     const labelList& cellIDs,
-    const boolList& usesCellCentre,
     DynamicList<label>& pointCompactMap,    // per returned point the original
     DynamicList<label>& compactCellIDs      // per returned tri the cellID
 ) const
 {
     const pointField& points = s.points();
 
-    if (cellIDs.size() != s.size() || usesCellCentre.size() != points.size())
+    if (cellIDs.size() != s.size())
     {
         FatalErrorInFunction << " Size mismatch" << exit(FatalError);
     }
@@ -1452,7 +1524,10 @@ Foam::triSurface Foam::isoSurfaceCell::removeInsidePoints
             // All triangles of the current cell
             triangulateOutside
             (
+                filterDiag,
                 s,
+                pointUsesDiag,
+
                 cellIDs[trii-1],
 
                 start,
@@ -1471,7 +1546,9 @@ Foam::triSurface Foam::isoSurfaceCell::removeInsidePoints
     // Do final
     triangulateOutside
     (
+        filterDiag,
         s,
+        pointUsesDiag,
         cellIDs[cellIDs.size()-1],
 
         start,
@@ -1482,7 +1559,6 @@ Foam::triSurface Foam::isoSurfaceCell::removeInsidePoints
         compactTris,
         compactCellIDs
     );
-
 
 
 
@@ -1594,18 +1670,18 @@ Foam::isoSurfaceCell::isoSurfaceCell
 
     // Per point -1 or a point inside snappedPoints.
     labelList snappedPoint;
-    if (regularise)
-    {
-        calcSnappedPoint
-        (
-            isTet,
-            cVals,
-            pVals,
-            snappedPoints,
-            snappedPoint
-        );
-    }
-    else
+//     if (regularise)
+//     {
+//         calcSnappedPoint
+//         (
+//             isTet,
+//             cVals,
+//             pVals,
+//             snappedPoints,
+//             snappedPoint
+//         );
+//     }
+//     else
     {
         snappedPoint.setSize(mesh_.nPoints());
         snappedPoint = -1;
@@ -1654,7 +1730,7 @@ Foam::isoSurfaceCell::isoSurfaceCell
         (
             stitchTriPoints
             (
-                regularise,         // check for duplicate tris
+                false,              // check for duplicate tris
                 triPoints,
                 triPointMergeMap_,  // unmerged to merged point
                 triMap              // merged to unmerged triangle
@@ -1672,27 +1748,30 @@ Foam::isoSurfaceCell::isoSurfaceCell
         {
             meshCells_[i] = triMeshCells[triMap[i]];
         }
+        // Very close non-diag and diag points might get merged. If so
+        // make sure non-diag wins
         isOnDiag_.setSize(this->points().size());
+        isOnDiag_ = true;
         forAll(triPointMergeMap_, i)
         {
-            isOnDiag_[triPointMergeMap_[i]] = usesDiag[i];
+            if (!usesDiag[i])
+            {
+                isOnDiag_[triPointMergeMap_[i]] = false;
+            }
+        }
+        const boolList oldUsesCellCentre(usesCellCentre.xfer());
+        usesCellCentre.setSize(points().size());
+        usesCellCentre = true;
+        forAll(triPointMergeMap_, i)
+        {
+            if (!oldUsesCellCentre[i])
+            {
+                usesCellCentre[triPointMergeMap_[i]] = false;
+            }
         }
 
-
-        if (regularise)
+        if (size() && regularise)
         {
-            const boolList oldUsesCellCentre(usesCellCentre.xfer());
-            const boolList oldUsesDiag(usesDiag.xfer());
-            usesCellCentre.setSize(points().size());
-            usesDiag.setSize(points().size());
-            forAll(triPointMergeMap_, oldi)
-            {
-                label mergedi = triPointMergeMap_[oldi];
-                usesCellCentre[mergedi] = oldUsesCellCentre[oldi];
-                usesDiag[mergedi] = oldUsesDiag[oldi];
-            }
-
-
             const label nOldPoints = points().size();
 
             // Triangulate outside
@@ -1702,9 +1781,10 @@ Foam::isoSurfaceCell::isoSurfaceCell
             (
                 removeInsidePoints
                 (
+                    true,   //removeDiagPoints
                     *this,
+                    isOnDiag_,
                     meshCells_,
-                    usesCellCentre,
                     pointCompactMap,
                     compactCellIDs
                 )
@@ -1720,8 +1800,7 @@ Foam::isoSurfaceCell::isoSurfaceCell
             meshCells_.transfer(compactCellIDs);
             labelList reversePointMap(invert(nOldPoints, pointCompactMap));
             inplaceRenumber(reversePointMap, triPointMergeMap_);
-
-            isOnDiag_ = UIndirectList<bool>(usesDiag, pointCompactMap);
+            isOnDiag_ = UIndirectList<bool>(isOnDiag_, pointCompactMap)();
         }
     }
 
@@ -1739,66 +1818,66 @@ Foam::isoSurfaceCell::isoSurfaceCell
     }
 
 
-    if (regularise)
-    {
-        List<FixedList<label, 3>> faceEdges;
-        labelList edgeFace0, edgeFace1;
-        Map<labelList> edgeFacesRest;
-
-
-        while (true)
-        {
-            // Calculate addressing
-            calcAddressing
-            (
-                *this,
-                faceEdges,
-                edgeFace0,
-                edgeFace1,
-                edgeFacesRest
-            );
-
-            // See if any dangling triangles
-            boolList keepTriangles;
-            label nDangling = markDanglingTriangles
-            (
-                faceEdges,
-                edgeFace0,
-                edgeFace1,
-                edgeFacesRest,
-                keepTriangles
-            );
-
-            if (debug)
-            {
-                Pout<< "isoSurfaceCell : detected " << nDangling
-                    << " dangling triangles." << endl;
-            }
-
-            if (nDangling == 0)
-            {
-                break;
-            }
-
-            // Create face map (new to old)
-            labelList subsetTriMap(findIndices(keepTriangles, true));
-
-            labelList subsetPointMap;
-            labelList reversePointMap;
-            triSurface::operator=
-            (
-                subsetMesh
-                (
-                    *this,
-                    subsetTriMap,
-                    reversePointMap,
-                    subsetPointMap
-                )
-            );
-            meshCells_ = labelField(meshCells_, subsetTriMap);
-            inplaceRenumber(reversePointMap, triPointMergeMap_);
-        }
-    }
+//     if (regularise)
+//     {
+//         List<FixedList<label, 3>> faceEdges;
+//         labelList edgeFace0, edgeFace1;
+//         Map<labelList> edgeFacesRest;
+// 
+// 
+//         while (true)
+//         {
+//             // Calculate addressing
+//             calcAddressing
+//             (
+//                 *this,
+//                 faceEdges,
+//                 edgeFace0,
+//                 edgeFace1,
+//                 edgeFacesRest
+//             );
+// 
+//             // See if any dangling triangles
+//             boolList keepTriangles;
+//             label nDangling = markDanglingTriangles
+//             (
+//                 faceEdges,
+//                 edgeFace0,
+//                 edgeFace1,
+//                 edgeFacesRest,
+//                 keepTriangles
+//             );
+// 
+//             if (debug)
+//             {
+//                 Pout<< "isoSurfaceCell : detected " << nDangling
+//                     << " dangling triangles." << endl;
+//             }
+// 
+//             if (nDangling == 0)
+//             {
+//                 break;
+//             }
+// 
+//             // Create face map (new to old)
+//             labelList subsetTriMap(findIndices(keepTriangles, true));
+// 
+//             labelList subsetPointMap;
+//             labelList reversePointMap;
+//             triSurface::operator=
+//             (
+//                 subsetMesh
+//                 (
+//                     *this,
+//                     subsetTriMap,
+//                     reversePointMap,
+//                     subsetPointMap
+//                 )
+//             );
+//             meshCells_ = labelField(meshCells_, subsetTriMap);
+//             inplaceRenumber(reversePointMap, triPointMergeMap_);
+//         }
+//     }
 }
 
 
