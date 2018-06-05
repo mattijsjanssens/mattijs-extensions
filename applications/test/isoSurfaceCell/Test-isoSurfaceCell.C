@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -33,11 +33,12 @@ Application
 #include "OBJstream.H"
 #include "DynamicField.H"
 #include "vtkSurfaceWriter.H"
-//#include "triSurfaceMesh.H"
-#include "smoothTriSurfaceMesh.H"
+#include "triSurfaceMesh.H"
+//#include "smoothTriSurfaceMesh.H"
 #include "volFields.H"
 #include "pointFields.H"
 #include "EdgeMap.H"
+#include "tetPointRef.H"
 
 using namespace Foam;
 
@@ -107,8 +108,8 @@ using namespace Foam;
 //     const triSurface& s,
 //     const labelList& cellIDs,
 //     const boolList& usesCellCentre,
-//     DynamicList<label>& pointCompactMap,    // per returned point the original
-//     DynamicList<label>& compactCellIDs      // per returned tri the cellID
+//     DynamicList<label>& pointCompactMap,
+//     DynamicList<label>& compactCellIDs
 // )
 // {
 //     const pointField& points = s.points();
@@ -272,114 +273,238 @@ using namespace Foam;
 // }
 
 
-label generatePoint
+void triangulateOutside
 (
-    const scalar isoValue,
-    const scalar v0,
-    const point& pt0,
-    const label i0,                     // index
+    const bool filterDiag,
+    const triSurface& s,
+    const boolList& pointFromDiag,
+    const label cellID,
 
-    const scalar v1,
-    const point& pt1,
-    const label i1,                     // index
+    label start,
+    label size,
 
-    DynamicList<point>& points,
-    EdgeMap<label>& endToPoint
+    face& f,
+    DynamicList<face>& triFaces,
+    DynamicList<labelledTri>& compactTris,
+    DynamicList<label>& compactCellIDs
 )
 {
-    scalar s = (isoValue-v0)/(v1-v0);
+    const pointField& points = s.points();
 
-    EdgeMap<label>::const_iterator edgeFnd = endToPoint.find(edge(i0, i1));
-    if (edgeFnd != endToPoint.end())
+    // All triangles of the current cell
+    SubList<labelledTri> cellTris(s, size, start);
+
+    PrimitivePatch<labelledTri, SubList, const pointField&> pp
+    (
+        cellTris,
+        points
+    );
+
+    // Retriangulate the exterior loops
+
+    const labelListList& edgeLoops = pp.edgeLoops();
+    const labelList& mp = pp.meshPoints();
+
+    forAll(edgeLoops, loopi)
     {
-        Pout<< "For edge between " << pt0
-            << " and " << pt1 << " found existing point " << edgeFnd()
-            << " at location:" << points[edgeFnd()] << endl;
+        const labelList& loop = edgeLoops[loopi];
+
+        if (loop.size() > 2)
+        {
+            f.setSize(loop.size());
+            label fpi = 0;
+            forAll(f, i)
+            {
+                label pointi = mp[loop[i]];
+                if (!filterDiag || !pointFromDiag[pointi])
+                {
+                    f[fpi++] = pointi;
+                }
+            }
+
+            if (fpi > 2)
+            {
+                f.setSize(fpi);
+            }
+            else
+            {
+                // Keep original face
+                forAll(f, i)
+                {
+                    label pointi = mp[loop[i]];
+                    f[i] = pointi;
+                }
+            }
+            triFaces.clear();
+            f.triangles(points, triFaces);
+
+            forAll(triFaces, i)
+            {
+                const face& f = triFaces[i];
+                compactTris.append(labelledTri(f[0], f[1], f[2], 0));
+                compactCellIDs.append(cellID);
+            }
+        }
+    }
+}
+triSurface removeInsidePoints
+(
+    const bool filterDiag,
+    const triSurface& s,
+    const boolList& pointFromDiag,
+    const labelList& cellIDs,
+    DynamicList<label>& pointCompactMap,    // per returned point the original
+    DynamicList<label>& compactCellIDs      // per returned tri the cellID
+)
+{
+    const pointField& points = s.points();
+
+    if (cellIDs.size() != s.size())
+    {
+        FatalErrorInFunction << " Size mismatch" << exit(FatalError);
+    }
+
+    pointCompactMap.clear();
+    compactCellIDs.clear();
+
+    DynamicList<face> triFaces;
+    DynamicList<labelledTri> compactTris;
+    face f;
+
+
+    label start = 0;
+    forAll(s, trii)
+    {
+        if (trii > 0 && cellIDs[trii] != cellIDs[trii-1])
+        {
+            // All triangles of the current cell
+            triangulateOutside
+            (
+                filterDiag,
+                s,
+                pointFromDiag,
+
+                cellIDs[trii-1],
+
+                start,
+                trii-start,
+
+                f,
+                triFaces,
+                compactTris,
+                compactCellIDs
+            );
+
+            start = trii;
+        }
+    }
+
+    // Do final
+    triangulateOutside
+    (
+        filterDiag,
+        s,
+        pointFromDiag,
+        cellIDs[cellIDs.size()-1],
+
+        start,
+        cellIDs.size()-start,
+
+        f,
+        triFaces,
+        compactTris,
+        compactCellIDs
+    );
+
+
+
+    // Compact out unused points
+    // Pick up the used vertices
+    labelList oldToCompact(points.size(), -1);
+    DynamicField<point> compactPoints(points.size());
+    pointCompactMap.clear();
+
+    forAll(compactTris, i)
+    {
+        labelledTri& f = compactTris[i];
+        forAll(f, fp)
+        {
+            label pointi = f[fp];
+            label compacti = oldToCompact[pointi];
+            if (compacti == -1)
+            {
+                compacti = compactPoints.size();
+                oldToCompact[pointi] = compacti;
+                compactPoints.append(points[pointi]);
+                pointCompactMap.append(pointi);
+            }
+            f[fp] = compacti;
+        }
+    }
+
+    return triSurface
+    (
+        compactTris.xfer(),
+        geometricSurfacePatchList(0),
+        compactPoints.xfer()
+    );
+}
+label generatePoint
+(
+    const label facei,
+    const bool edgeIsDiag,
+    const edge& vertices,
+    //const scalar isoValue,
+    //const scalar v0,
+    //const point& pt0,
+
+    //const scalar v1,
+    //const point& pt1,
+
+    //DynamicList<point>& points,
+    DynamicList<edge>& pointToVerts,
+    DynamicList<label>& pointToFace,
+    DynamicList<bool>& pointFromDiag,
+    EdgeMap<label>& vertsToPoint
+)
+{
+    EdgeMap<label>::const_iterator edgeFnd = vertsToPoint.find(vertices);
+    if (edgeFnd != vertsToPoint.end())
+    {
+        //Pout<< "For edge between " << pt0
+        //    << " and " << pt1 << " found existing point " << edgeFnd()
+        //    << endl;
         return edgeFnd();
     }
     else
     {
         // Generate new point
-        label pointi = points.size();
-        points.append(s*pt1+(1.0-s)*pt0);
-        endToPoint.insert(edge(i0, i1), pointi);
+        label pointi = pointToVerts.size();
+
+        //scalar s = (isoValue-v0)/(v1-v0);
+        //points.append(s*pt1+(1.0-s)*pt0);
+        pointToVerts.append(vertices);
+        pointToFace.append(facei);
+        pointFromDiag.append(edgeIsDiag);
+        vertsToPoint.insert(vertices, pointi);
         return pointi;
     }
 }
-void generateEdgeCut
-(
-    const scalar isoValue,
-    const scalar v0,
-    const point& pt0,
-    const label i0,                     // index
-
-    const scalar v1,
-    const point& pt1,
-    const label i1,                     // index
-
-    DynamicList<point>& points,
-    EdgeMap<label>& endToPoint,
-    DynamicList<label>& verts
-)
-{
-    if
-    (
-        (v0 < isoValue && v1 > isoValue)
-     || (v0 > isoValue && v1 < isoValue)
-    )
-    {
-        verts.append
-        (
-            generatePoint
-            (
-                isoValue, v0, pt0, i0, v1, pt1, i1, 
-                points,
-                endToPoint
-            )
-        );
-    }
-}
-
-
-void generateEdgeCuts
-(
-    const scalar isoValue,
-    const scalar v0,
-    const point& pt0,
-    const label i0,                     // index
-
-    const scalar v1,
-    const point& pt1,
-    const label i1,                     // index
-
-    const scalar v2,
-    const point& pt2,
-    const label i2,                     // index
-
-    const scalar v3,
-    const point& pt3,
-    const label i3,
-
-    DynamicList<point>& points,
-    EdgeMap<label>& table,
-    DynamicList<label>& verts
-)
-{
-    generateEdgeCut(isoValue, v0, pt0, i0, v1, pt1, i1, points, table, verts);
-    generateEdgeCut(isoValue, v0, pt0, i0, v2, pt2, i2, points, table, verts);
-    generateEdgeCut(isoValue, v0, pt0, i0, v3, pt3, i3, points, table, verts);
-    generateEdgeCut(isoValue, v1, pt1, i1, v2, pt2, i2, points, table, verts);
-    generateEdgeCut(isoValue, v2, pt2, i2, v3, pt3, i3, points, table, verts);
-}
 void generateTriPoints
 (
+    const label facei,
     const scalar isoValue,
     const FixedList<scalar, 4>& s,
     const FixedList<point, 4>& p,
     const FixedList<label, 4>& pIndex,
+    const FixedList<bool, 6>& edgeIsDiag,// per tet edge whether is face diag
 
-    DynamicList<point>& points,
-    EdgeMap<label>& endToPoint,
+    //DynamicList<point>& points,
+    DynamicList<edge>& pointToVerts,
+    DynamicList<label>& pointToFace,
+    DynamicList<bool>& pointFromDiag,
+
+    EdgeMap<label>& vertsToPoint,
     DynamicList<label>& verts       // every three verts is new triangle
 )
 {
@@ -415,30 +540,36 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0], p[0], pIndex[0], s[1], p[1], pIndex[1],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[0],
+                    edge(pIndex[0], pIndex[1]),
+                    //isoValue,
+                    //s[0], p[0], pIndex[0], s[1], p[1], pIndex[1],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[1],
+                    edge(pIndex[0], pIndex[2]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[2],
+                    edge(pIndex[0], pIndex[3]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -458,30 +589,36 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[0],p[0],pIndex[0],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[0],
+                    edge(pIndex[1], pIndex[0]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[0],p[0],pIndex[0],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[3],
+                    edge(pIndex[1], pIndex[3]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[4],
+                    edge(pIndex[1], pIndex[2]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -501,20 +638,24 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[1],
+                    edge(pIndex[0], pIndex[2]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             label p1p3
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[3],
+                    edge(pIndex[1], pIndex[3]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -522,10 +663,12 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[2],
+                    edge(pIndex[0], pIndex[3]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append(p1p3);
@@ -535,10 +678,12 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[4],
+                    edge(pIndex[1], pIndex[2]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append(p0p2);
@@ -560,30 +705,36 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[2],p[2],pIndex[2],s[0],p[0],pIndex[0],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[1],
+                    edge(pIndex[2], pIndex[0]),
+                    //isoValue,
+                    //s[2],p[2],pIndex[2],s[0],p[0],pIndex[0],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[2],p[2],pIndex[2],s[1],p[1],pIndex[1],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[4],
+                    edge(pIndex[2], pIndex[1]),
+                    //isoValue,
+                    //s[2],p[2],pIndex[2],s[1],p[1],pIndex[1],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[5],
+                    edge(pIndex[2], pIndex[3]),
+                    //isoValue,
+                    //s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -603,20 +754,24 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[1],p[1],pIndex[1],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[0],
+                    edge(pIndex[0], pIndex[1]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[1],p[1],pIndex[1],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             label p2p3
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[5],
+                    edge(pIndex[2], pIndex[3]),
+                    //isoValue,
+                    //s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -626,10 +781,12 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[2],
+                    edge(pIndex[0], pIndex[3]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append(p0p1);
@@ -637,10 +794,12 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[4],
+                    edge(pIndex[1], pIndex[2]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append(p2p3);
@@ -662,20 +821,24 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[1],p[1],pIndex[1],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[0],
+                    edge(pIndex[0], pIndex[1]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[1],p[1],pIndex[1],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             label p2p3
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[5],
+                    edge(pIndex[2], pIndex[3]),
+                    //isoValue,
+                    //s[2],p[2],pIndex[2],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -684,10 +847,12 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[3],
+                    edge(pIndex[1], pIndex[3]),
+                    //isoValue,
+                    //s[1],p[1],pIndex[1],s[3],p[3],pIndex[3],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append(p2p3);
@@ -697,10 +862,12 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[1],
+                    edge(pIndex[0], pIndex[2]),
+                    //isoValue,
+                    //s[0],p[0],pIndex[0],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
 
@@ -721,30 +888,36 @@ void generateTriPoints
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[3],p[3],pIndex[3],s[0],p[0],pIndex[0],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[2],
+                    edge(pIndex[3], pIndex[0]),
+                    //isoValue,
+                    //s[3],p[3],pIndex[3],s[0],p[0],pIndex[0],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[3],p[3],pIndex[3],s[2],p[2],pIndex[2],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[5],
+                    edge(pIndex[3], pIndex[2]),
+                    //isoValue,
+                    //s[3],p[3],pIndex[3],s[2],p[2],pIndex[2],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             verts.append
             (
                 generatePoint
                 (
-                    isoValue,
-                    s[3],p[3],pIndex[3],s[1],p[1],pIndex[1],
-                    points,
-                    endToPoint
+                    facei,
+                    edgeIsDiag[3],
+                    edge(pIndex[3], pIndex[1]),
+                    //isoValue,
+                    //s[3],p[3],pIndex[3],s[1],p[1],pIndex[1],
+                    pointToVerts, pointToFace, pointFromDiag, vertsToPoint
                 )
             );
             if (triIndex == 0x07)
@@ -761,7 +934,7 @@ void generateTriPoints
 
 
 // isosurface algorithm
-void generateEdgeCuts
+void generateTriPoints
 (
     const polyMesh& mesh,
     const scalar isoValue,
@@ -769,9 +942,14 @@ void generateEdgeCuts
     const scalarField& pointValues,
     const label celli,
 
-    DynamicList<point>& points,
-    EdgeMap<label>& endToPoint,
-    DynamicList<label>& verts
+    //DynamicList<point>& points,
+    DynamicList<edge>& pointToVerts,
+    DynamicList<label>& pointToFace,
+    DynamicList<bool>& pointFromDiag,
+
+    EdgeMap<label>& vertsToPoint,
+    DynamicList<label>& verts,
+    DynamicList<label>& faceLabels
 )
 {
     const cell& cFaces = mesh.cells()[celli];
@@ -781,6 +959,8 @@ void generateEdgeCuts
         const face& f = mesh.faces()[facei];
 
         label fp0 = mesh.tetBasePtIs()[facei];
+
+        label startTrii = verts.size();
 
         // Skip undefined tets
         if (fp0 < 0)
@@ -793,16 +973,34 @@ void generateEdgeCuts
         {
             label nextFp = f.fcIndex(fp);
 
+            FixedList<bool, 6> edgeIsDiag(false);
+
             label p0 = f[fp0];
             label p1 = f[fp];
             label p2 = f[nextFp];
             if (mesh.faceOwner()[facei] == celli)
             {
                 Swap(p1, p2);
+                if (i != 2) edgeIsDiag[1] = true;
+                if (i != f.size()-1) edgeIsDiag[0] = true;
             }
+            else
+            {
+                if (i != 2) edgeIsDiag[0] = true;
+                if (i != f.size()-1) edgeIsDiag[1] = true;
+            }
+
+            tetPointRef tet
+            (
+                mesh.points()[p0],
+                mesh.points()[p1],
+                mesh.points()[p2],
+                mesh.cellCentres()[celli]
+            );
 
             generateTriPoints
             (
+                facei,
                 isoValue,
                 FixedList<scalar, 4>
                 ({
@@ -825,35 +1023,106 @@ void generateEdgeCuts
                     p2,
                     mesh.nPoints()+celli
                 }),
+                edgeIsDiag,
 
-                points,
-                endToPoint,
+                //points,
+                pointToVerts,
+                pointToFace,
+                pointFromDiag,
+                vertsToPoint,
                 verts       // every three verts is new triangle
             );
 
-            // generateEdgeCuts
-            // (
-            //     isoValue,
-            //     p0,                     // index
-            //     pointValues[p0],
-            //     mesh.points()[p0],
-            //     p1,                     // index
-            //     pointValues[p1],
-            //     mesh.points()[p1],
-            //     p2,                     // index
-            //     pointValues[p2],
-            //     mesh.points()[p2],
-            // 
-            //     mesh.nPoints()+celli,   // index
-            //     cellValues[celli],
-            //     mesh.cellCentres()[celli],
-            // 
-            //     points,
-            //     endToPoint,
-            //     verts
-            // );
-
             fp = nextFp;
+
+
+            Pout<< endl;
+        }
+
+        label nTris = (verts.size()-startTrii)/3;
+        for (label i = 0; i < nTris; i++)
+        {
+            faceLabels.append(facei);
+        }
+    }
+}
+template<class Type>
+tmp<Field<Type>> interpolate
+(
+    const polyMesh& mesh,
+    const scalar isoValue,
+    const DynamicList<edge>& pointToVerts,
+
+    const scalarField& cellValues,
+    const scalarField& pointValues,
+
+    const Field<Type>& cellCoords,
+    const Field<Type>& pointCoords
+)
+{
+    tmp<Field<Type>> tfld(new Field<Type>(pointToVerts.size()));
+    Field<Type>& fld = tfld.ref();
+
+    forAll(pointToVerts, i)
+    {
+        scalar s0;
+        Type p0;
+        {
+            label v0 = pointToVerts[i][0];
+            if (v0 < mesh.nPoints())
+            {
+                s0 = pointValues[v0];
+                p0 = pointCoords[v0];
+            }
+            else
+            {
+                label celli = v0-mesh.nPoints();
+                s0 = cellValues[celli];
+                p0 = cellCoords[celli];
+            }
+        }
+
+        scalar s1;
+        Type p1;
+        {
+            label v1 = pointToVerts[i][1];
+            if (v1 < mesh.nPoints())
+            {
+                s1 = pointValues[v1];
+                p1 = pointCoords[v1];
+            }
+            else
+            {
+                label celli = v1-mesh.nPoints();
+                s1 = cellValues[celli];
+                p1 = cellCoords[celli];
+            }
+        }
+
+        scalar s = (isoValue-s0)/(s1-s0);
+
+        fld[i] = s*p1+(1.0-s)*p0;
+    }
+    return tfld;
+}
+void removeRealEdges
+(
+    const polyMesh& mesh,
+    EdgeMap<label>& vertsToPoint
+)
+{
+    const faceList& faces = mesh.faces();
+    forAll(faces, facei)
+    {
+        const face& f = faces[facei];
+        forAll(f, fp)
+        {
+            edge e(f[fp], f[f.fcIndex(fp)]);
+            if (vertsToPoint.erase(e))
+            {
+                Pout<< "** removed real edge " << e
+                    << " at " << e.line(mesh.points()) << endl;
+            }
         }
     }
 }
@@ -881,25 +1150,64 @@ int main(int argc, char *argv[])
         //const scalar maxPoints(max(pointValues));
         //forAll(pointValues, i)
         //{
-        //    pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
+        // pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
         //}
         isoValue = 0.51*(average(cellValues)+average(pointValues));
 
-        DynamicList<point> points;
-        EdgeMap<label> endToPoint;
-        DynamicList<label> verts;
-        generateEdgeCuts
-        (
-            mesh,
-            isoValue,
-            cellValues,
-            pointValues,
-            0,
+        DynamicList<edge> pointToVerts(mesh.nCells());
+        DynamicList<label> pointToFace(mesh.nCells());
+        DynamicList<bool> pointFromDiag(mesh.nCells());
 
-            points,
-            endToPoint,
-            verts
+        EdgeMap<label> vertsToPoint(mesh.nCells());
+        DynamicList<label> verts(mesh.nCells());
+        DynamicList<label> faceLabels(mesh.nCells());
+        DynamicList<label> cellLabels(mesh.nCells());
+
+        for (label celli = 0; celli < mesh.nCells(); celli++)
+        {
+            label nOldTris = faceLabels.size();
+            generateTriPoints
+            (
+                mesh,
+                isoValue,
+                cellValues,
+                pointValues,
+                celli,
+
+                //points,
+                pointToVerts,
+                pointToFace,
+                pointFromDiag,
+
+                vertsToPoint,
+                verts,
+                faceLabels
+            );
+
+            for (label i = nOldTris; i < faceLabels.size(); i++)
+            {
+                cellLabels.append(celli);
+            }
+        }
+
+        //DebugVar(faceLabels);
+        //DebugVar(cellLabels);
+
+
+        pointField allPoints
+        (
+            interpolate
+            (
+                mesh,
+                isoValue,
+                pointToVerts,
+                cellValues,
+                pointValues,
+                mesh.cellCentres(),
+                mesh.points()
+            )
         );
+
 
         List<labelledTri> tris(verts.size()/3);
         label verti = 0;
@@ -910,12 +1218,96 @@ int main(int argc, char *argv[])
             label v2 = verts[verti++];
             tris[i] = labelledTri(v0, v1, v2, 0);
         }
-        triSurface s(tris, pointField(points));
+
+
+        //removeRealEdges(mesh, vertsToPoint);
+
+
+        // Now:
+        // - detect faces on coupled boundaries
+        // - detect loops on these faces : set of removes of
+        //   diagonal edges
+        // - remove diagonal edge if both sides agree
+
+        // - how to detect diag cuts? Need diag-to-face addressing
+//
+//        const labelList& loop = edgeLoops[loopi];
+//        forAll(loop, i)
+//        {
+//            const edge& e = pointToVerts[mp[loop[i]]];
+//            label facei = pointToFace[mp[loop[i]]];
+//            if (facei != -1 && !protectedFace[facei])
+//            {
+//                filter
+//            }
+//        }
+//        if (newFace.size() <= 2)
+//        {
+//            // Redo loop. Mark all as protectedFace
+//            forAll(loop, i)
+//            {
+//                const edge& e = pointToVerts[mp[loop[i]]];
+//                label facei = faceLabels[mp[loop[i]]];
+//                if (facei != -1)
+//                {
+//                    protectedFace[facei] = true;
+//                }
+//            }
+//        }
+
+
+
+        triSurface s(tris, allPoints);
         s.write("simple.obj");
+
+DebugVar(pointFromDiag.size());
+DebugVar(allPoints.size());
+DebugVar(pointFromDiag);
+
+        {
+            OBJstream str("pointFromDiag.obj");
+            forAll(pointFromDiag, pointi)
+            {
+                if (pointFromDiag[pointi])
+                {
+                    str.write(allPoints[pointi]);
+                }
+            }
+        }
+
+
+
+        //const label nOldPoints = s.points().size();
+
+        // Triangulate outside
+        DynamicList<label> pointCompactMap; // back to original point
+        DynamicList<label> compactCellIDs;  // per returned tri the cellID
+        s = removeInsidePoints
+        (
+            true,   //removeDiagPoints
+            s,
+            pointFromDiag,
+            cellLabels,
+            pointCompactMap,
+            compactCellIDs
+        );
+
+        {
+            Pout<< "isoSurfaceCell :"
+                << " after removing cell centre triangles : " << s.size()
+                << endl;
+        }
+
+        s.write("filtered.obj");
+
+
+
+return 0;
+
     }
     if (true)
     {
-        const smoothTriSurfaceMesh searchSurf
+        const triSurfaceMesh searchSurf
         (
             IOobject
             (
@@ -923,8 +1315,8 @@ int main(int argc, char *argv[])
                 runTime.constant(),
                 "triSurface",
                 runTime
-            ),
-            180
+            )
+            //180
         );
         List<pointIndexHit> cellNearest;
         vectorField cellNormal;
@@ -1118,7 +1510,7 @@ int main(int argc, char *argv[])
 
 // 
 //     {
-//         OBJstream str("isOnDiag.obj");
+//         OBJstream str("ispointFromDiag.obj");
 //         forAll(iso.isOnDiag(), pointi)
 //         {
 //             if (iso.isOnDiag()[pointi])
