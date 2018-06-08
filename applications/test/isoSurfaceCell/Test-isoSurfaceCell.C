@@ -39,6 +39,7 @@ Application
 #include "pointFields.H"
 #include "EdgeMap.H"
 #include "tetPointRef.H"
+#include "volPointInterpolation.H"
 
 using namespace Foam;
 
@@ -1034,9 +1035,6 @@ void generateTriPoints
             );
 
             fp = nextFp;
-
-
-            Pout<< endl;
         }
 
         label nTris = (verts.size()-startTrii)/3;
@@ -1144,16 +1142,35 @@ int main(int argc, char *argv[])
     // Random or from positions
     if (true)
     {
-        cellValues = mesh.cellCentres().component(vector::Y);
-        pointValues = mesh.points().component(vector::Y);
+        //cellValues = mesh.cellCentres().component(vector::Y);
+        //pointValues = mesh.points().component(vector::Y);
         //const scalar minPoints(min(pointValues));
         //const scalar maxPoints(max(pointValues));
         //forAll(pointValues, i)
         //{
         // pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
         //}
-        isoValue = 0.51*(average(cellValues)+average(pointValues));
+        //isoValue = 0.51*(average(cellValues)+average(pointValues));
 
+        isoValue = 10000;
+        volScalarField Q
+        (
+            IOobject
+            (
+                "Q",
+                mesh.time().timeName(),
+                mesh.time(),
+                IOobject::MUST_READ
+            ),
+            mesh
+        );
+        cellValues = Q.internalField();
+        pointScalarField pointQ
+        (
+            volPointInterpolation::New(mesh).interpolate(Q)
+        );
+        pointValues = pointQ.internalField();
+Pout<< "Starting iso surface" << endl;
         DynamicList<edge> pointToVerts(mesh.nCells());
         DynamicList<label> pointToFace(mesh.nCells());
         DynamicList<bool> pointFromDiag(mesh.nCells());
@@ -1256,30 +1273,32 @@ int main(int argc, char *argv[])
 //        }
 
 
-
+Pout<< "Writign surface" << endl;
         triSurface s(tris, allPoints);
         s.write("simple.obj");
+Pout<< "Done Writign surface" << endl;
 
-DebugVar(pointFromDiag.size());
-DebugVar(allPoints.size());
-DebugVar(pointFromDiag);
+//DebugVar(pointFromDiag.size());
+//DebugVar(allPoints.size());
+//DebugVar(pointFromDiag);
 
-        {
-            OBJstream str("pointFromDiag.obj");
-            forAll(pointFromDiag, pointi)
-            {
-                if (pointFromDiag[pointi])
-                {
-                    str.write(allPoints[pointi]);
-                }
-            }
-        }
+//         {
+//             OBJstream str("pointFromDiag.obj");
+//             forAll(pointFromDiag, pointi)
+//             {
+//                 if (pointFromDiag[pointi])
+//                 {
+//                     str.write(allPoints[pointi]);
+//                 }
+//             }
+//         }
 
 
 
         //const label nOldPoints = s.points().size();
 
         // Triangulate outside
+Pout<< "Triangulating outside" << endl;
         DynamicList<label> pointCompactMap; // back to original point
         DynamicList<label> compactCellIDs;  // per returned tri the cellID
         s = removeInsidePoints
@@ -1292,6 +1311,7 @@ DebugVar(pointFromDiag);
             compactCellIDs
         );
 
+Pout<< "Done Triangulating outside" << endl;
         {
             Pout<< "isoSurfaceCell :"
                 << " after removing cell centre triangles : " << s.size()
