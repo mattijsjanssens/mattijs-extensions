@@ -26,8 +26,8 @@ License
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 template<class Type>
-Foam::tmp<Foam::Field<Type>>Type
-Foam::isoSurfaceCellTopo::interpolate
+Foam::tmp<Foam::Field<Type>>
+Foam::isoSurfaceTopo::interpolate
 (
     const Field<Type>& cellCoords,
     const Field<Type>& pointCoords
@@ -75,8 +75,12 @@ Foam::isoSurfaceCellTopo::interpolate
         scalar d = s1-s0;
         if (mag(d) > VSMALL)
         {
-            scalar s = (iso_-s0)/(s1-s0);
+            scalar s = (iso_-s0)/d;
             fld[i] = s*p1+(1.0-s)*p0;
+        }
+        else
+        {
+            fld[i] = 0.5*(p0+p1);
         }
     }
     return tfld;

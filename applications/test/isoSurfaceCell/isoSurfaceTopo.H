@@ -22,17 +22,17 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::isoSurfaceCellTopo
+    Foam::isoSurfaceTopo
 
 Description
 
 SourceFiles
-    isoSurfaceCellTopo.C
+    isoSurfaceTopo.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef isoSurfaceCellTopo_H
-#define isoSurfaceCellTopo_H
+#ifndef isoSurfaceTopo_H
+#define isoSurfaceTopo_H
 
 #include "labelPair.H"
 #include "pointIndexHit.H"
@@ -46,12 +46,13 @@ namespace Foam
 {
 
 class polyMesh;
+class tetMatcher;
 
 /*---------------------------------------------------------------------------*\
-                       Class isoSurfaceCellTopo Declaration
+                       Class isoSurfaceTopo Declaration
 \*---------------------------------------------------------------------------*/
 
-class isoSurfaceCellTopo
+class isoSurfaceTopo
 :
     public MeshedSurface<face>
 {
@@ -72,7 +73,7 @@ class isoSurfaceCellTopo
 
         const scalarField& pVals_;
 
-        //- iso  value
+        //- Iso value
         const scalar iso_;
 
         //- Whether cell might be cut
@@ -90,13 +91,6 @@ class isoSurfaceCellTopo
 
     // Private Member Functions
 
-        //- Get location of iso value as fraction inbetween s0,s1
-        scalar isoFraction
-        (
-            const scalar s0,
-            const scalar s1
-        ) const;
-
         //- Does any edge of triangle cross iso value?
         bool isTriCut
         (
@@ -111,24 +105,93 @@ class isoSurfaceCellTopo
             const label
         ) const;
 
+        //- Determine for all mesh whether cell is cut
+        void calcCutTypes(tetMatcher& tet);
+
+        //- Generate single point on edge
+        label generatePoint
+        (
+            const label facei,
+            const bool edgeIsDiag,
+            const edge& vertices,
+
+            DynamicList<edge>& pointToVerts,
+            DynamicList<label>& pointToFace,
+            DynamicList<bool>& pointFromDiag,
+            EdgeMap<label>& vertsToPoint
+        ) const;
+
+        //- Generate triangles from tet
+        void generateTriPoints
+        (
+            const label facei,
+            const FixedList<scalar, 4>& s,
+            const FixedList<point, 4>& p,
+            const FixedList<label, 4>& pIndex,
+            const FixedList<bool, 6>& edgeIsDiag,
+
+            DynamicList<edge>& pointToVerts,
+            DynamicList<label>& pointToFace,
+            DynamicList<bool>& pointFromDiag,
+
+            EdgeMap<label>& vertsToPoint,
+            DynamicList<label>& verts
+        ) const;
+
+        //- Generate triangles from cell
+        void generateTriPoints
+        (
+            const polyMesh& mesh,
+            const label celli,
+            const bool isTet,
+
+            DynamicList<edge>& pointToVerts,
+            DynamicList<label>& pointToFace,
+            DynamicList<bool>& pointFromDiag,
+
+            EdgeMap<label>& vertsToPoint,
+            DynamicList<label>& verts,
+            DynamicList<label>& faceLabels
+        ) const;
+
+        void triangulateOutside
+        (
+            const bool filterDiag,
+            const PrimitivePatch<face, SubList, const pointField&>& pp,
+            const boolList& pointFromDiag,
+            const label cellID,
+
+            DynamicList<face>& compactFaces,
+            DynamicList<label>& compactCellIDs
+        ) const;
+
+        MeshedSurface<face> removeInsidePoints
+        (
+            const bool filterDiag,
+            const MeshedSurface<face>& s,
+            const boolList& pointFromDiag,
+            const labelList& cellIDs,
+            DynamicList<label>& pointCompactMap, // per point the original
+            DynamicList<label>& compactCellIDs   // per face the cellID
+        ) const;
+
 
 public:
 
     //- Runtime type information
-    TypeName("isoSurfaceCellTopo");
+    TypeName("isoSurfaceTopo");
 
 
     // Constructors
 
         //- Construct from dictionary
-        isoSurfaceCellTopo
+        isoSurfaceTopo
         (
             const polyMesh& mesh,
             const scalarField& cellValues,
             const scalarField& pointValues,
             const scalar iso,
-            const bool regularise,
-            const scalar mergeTol = 1e-10    // fraction of bounding box
+            const bool regularise
         );
 
 
@@ -138,6 +201,12 @@ public:
         const labelList& meshCells() const
         {
             return meshCells_;
+        }
+
+        //- Per point: originating mesh vertex/cc. See encoding above·
+        const edgeList& pointToVerts() const
+        {
+            return pointToVerts_;
         }
 
         //- Interpolates cCoords,pCoords.
@@ -157,7 +226,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "isoSurfaceCellTopoTemplates.C"
+    #include "isoSurfaceTopoTemplates.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

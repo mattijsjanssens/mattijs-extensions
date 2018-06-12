@@ -40,6 +40,7 @@ Application
 #include "EdgeMap.H"
 #include "tetPointRef.H"
 #include "volPointInterpolation.H"
+#include "isoSurfaceTopo.H"
 
 using namespace Foam;
 
@@ -1142,34 +1143,83 @@ int main(int argc, char *argv[])
     // Random or from positions
     if (true)
     {
-        //cellValues = mesh.cellCentres().component(vector::Y);
-        //pointValues = mesh.points().component(vector::Y);
+        cellValues = mesh.cellCentres().component(vector::Y);
+        pointValues = mesh.points().component(vector::Y);
         //const scalar minPoints(min(pointValues));
         //const scalar maxPoints(max(pointValues));
         //forAll(pointValues, i)
         //{
         // pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
         //}
-        //isoValue = 0.51*(average(cellValues)+average(pointValues));
+        isoValue = 0.51*(average(cellValues)+average(pointValues));
 
-        isoValue = 10000;
-        volScalarField Q
+        //isoValue = 10000;
+        //volScalarField Q
+        //(
+        //    IOobject
+        //    (
+        //        "Q",
+        //        mesh.time().timeName(),
+        //        mesh.time(),
+        //        IOobject::MUST_READ
+        //    ),
+        //    mesh
+        //);
+        //cellValues = Q.internalField();
+        //pointScalarField pointQ
+        //(
+        //    volPointInterpolation::New(mesh).interpolate(Q)
+        //);
+        //pointValues = pointQ.internalField();
+
+
+        isoSurfaceTopo iso
         (
-            IOobject
+            mesh,
+            cellValues,     //cellAvg
+            pointValues,
+            isoValue,
+            true       // regularise = remove cell centre
+        );
+
+        Pout<< "iso:" << iso.size() << endl;
+
+        {
+            OBJstream verts(runTime.path()/"vertices.obj");
+
+            pointField newPoints
             (
-                "Q",
-                mesh.time().timeName(),
-                mesh.time(),
-                IOobject::MUST_READ
-            ),
-            mesh
-        );
-        cellValues = Q.internalField();
-        pointScalarField pointQ
+                iso.interpolate(mesh.cellCentres(), mesh.points())
+            );
+            forAll(newPoints, i)
+            {
+                verts.write(newPoints[i]);
+            }
+        }
+
+
+        vtkSurfaceWriter vtk;
+        const labelList& meshCells = iso.meshCells();
+        faceList localFaces(meshCells.size());
+        scalarField scalarMeshCells(meshCells.size());
+        forAll(meshCells, i)
+        {
+            localFaces[i] = face(iso.localFaces()[i]);
+            scalarMeshCells[i] = 1.0*meshCells[i];
+        }
+        vtk.write
         (
-            volPointInterpolation::New(mesh).interpolate(Q)
+            runTime.path(),
+            "iso_with_meshCells",
+            iso.points(),
+            iso.faces(),
+            "meshCells",
+            scalarMeshCells,
+            false
         );
-        pointValues = pointQ.internalField();
+        return 0;
+
+
 Pout<< "Starting iso surface" << endl;
         DynamicList<edge> pointToVerts(mesh.nCells());
         DynamicList<label> pointToFace(mesh.nCells());

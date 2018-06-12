@@ -23,45 +23,23 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "isoSurfaceCellTopo.H"
-// #include "dictionary.H"
-// #include "polyMesh.H"
-// #include "mergePoints.H"
-// #include "tetMatcher.H"
-// #include "syncTools.H"
-// #include "addToRunTimeSelectionTable.H"
-// #include "DynamicField.H"
+#include "isoSurfaceTopo.H"
+#include "polyMesh.H"
+#include "tetMatcher.H"
+#include "tetPointRef.H"
+#include "DynamicField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(isoSurfaceCellTopo, 0);
+    defineTypeNameAndDebug(isoSurfaceTopo, 0);
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-Foam::scalar Foam::isoSurfaceCellTopo::isoFraction
-(
-    const scalar s0,
-    const scalar s1
-) const
-{
-    scalar d = s1-s0;
-
-    if (mag(d) > VSMALL)
-    {
-        return (iso_-s0)/d;
-    }
-    else
-    {
-        return -1.0;
-    }
-}
-
-
-bool Foam::isoSurfaceCellTopo::isTriCut
+bool Foam::isoSurfaceTopo::isTriCut
 (
     const triFace& tri,
     const scalarField& pointValues
@@ -75,7 +53,7 @@ bool Foam::isoSurfaceCellTopo::isTriCut
 }
 
 
-Foam::isoSurfaceCellTopo::cellCutType Foam::isoSurfaceCellTopo::calcCutType
+Foam::isoSurfaceTopo::cellCutType Foam::isoSurfaceTopo::calcCutType
 (
     const bool isTet,
     const label celli
@@ -184,7 +162,7 @@ Foam::isoSurfaceCellTopo::cellCutType Foam::isoSurfaceCellTopo::calcCutType
 }
 
 
-void Foam::isoSurfaceCellTopo::calcCutTypes(const tetMatcher& tet)
+void Foam::isoSurfaceTopo::calcCutTypes(tetMatcher& tet)
 {
     cellCutType_.setSize(mesh_.nCells());
     nCutCells_ = 0;
@@ -204,13 +182,13 @@ void Foam::isoSurfaceCellTopo::calcCutTypes(const tetMatcher& tet)
 
     if (debug)
     {
-        Pout<< "isoSurfaceCellTopo : detected " << nCutCells_
+        Pout<< "isoSurfaceTopo : detected " << nCutCells_
             << " candidate cut cells." << endl;
     }
 }
 
 
-Foam::label Foam::isoSurfaceCellTopo::generatePoint
+Foam::label Foam::isoSurfaceTopo::generatePoint
 (
     const label facei,
     const bool edgeIsDiag,
@@ -241,7 +219,7 @@ Foam::label Foam::isoSurfaceCellTopo::generatePoint
 }
 
 
-void Foam::isoSurfaceCellTopo::generateTriPoints
+void Foam::isoSurfaceTopo::generateTriPoints
 (
     const label facei,
     const FixedList<scalar, 4>& s,
@@ -633,7 +611,7 @@ void Foam::isoSurfaceCellTopo::generateTriPoints
 }
 
 
-void Foam::isoSurfaceCellTopo::generateTriPoints
+void Foam::isoSurfaceTopo::generateTriPoints
 (
     const polyMesh& mesh,
     const label celli,
@@ -655,7 +633,8 @@ void Foam::isoSurfaceCellTopo::generateTriPoints
         // For tets don't do cell-centre decomposition, just use the
         // tet points and values
 
-        const face& f0 = mesh_.faces()[cFaces[0]];
+        label facei = cFaces[0];
+        const face& f0 = mesh_.faces()[facei];
 
         // Get the other point
         const face& f1 = mesh_.faces()[cFaces[1]];
@@ -821,9 +800,175 @@ void Foam::isoSurfaceCellTopo::generateTriPoints
 }
 
 
+void Foam::isoSurfaceTopo::triangulateOutside
+(
+    const bool filterDiag,
+    const PrimitivePatch<face, SubList, const pointField&>& pp,
+    const boolList& pointFromDiag,
+    const label cellID,
+
+    DynamicList<face>& compactFaces,
+    DynamicList<label>& compactCellIDs
+) const
+{
+    // Retriangulate the exterior loops
+
+    const labelListList& edgeLoops = pp.edgeLoops();
+    const labelList& mp = pp.meshPoints();
+
+    forAll(edgeLoops, loopi)
+    {
+        const labelList& loop = edgeLoops[loopi];
+
+        if (loop.size() > 2)
+        {
+            compactFaces.append(face(0));
+            face& f = compactFaces.last();
+
+            f.setSize(loop.size());
+            label fpi = 0;
+            forAll(f, i)
+            {
+                label pointi = mp[loop[i]];
+                if (!filterDiag || !pointFromDiag[pointi])
+                {
+                    f[fpi++] = pointi;
+                }
+            }
+
+            if (fpi > 2)
+            {
+                f.setSize(fpi);
+            }
+            else
+            {
+                // Keep original face
+                forAll(f, i)
+                {
+                    label pointi = mp[loop[i]];
+                    f[i] = pointi;
+                }
+            }
+            compactCellIDs.append(cellID);
+        }
+    }
+}
+
+
+Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
+(
+    const bool filterDiag,
+    const MeshedSurface<face>& s,
+    const boolList& pointFromDiag,
+    const labelList& cellIDs,
+    DynamicList<label>& pointCompactMap,    // per returned point the original
+    DynamicList<label>& compactCellIDs      // per returned tri the cellID
+) const
+{
+    const pointField& points = s.points();
+
+    if (cellIDs.size() != s.size())
+    {
+        FatalErrorInFunction << " Size mismatch" << exit(FatalError);
+    }
+
+    pointCompactMap.clear();
+    compactCellIDs.clear();
+
+    DynamicList<face> compactFaces(s.size()/8);
+
+
+    label start = 0;
+    forAll(s, trii)
+    {
+        if (trii > 0 && cellIDs[trii] != cellIDs[trii-1])
+        {
+            // All triangles of the current cell
+            SubList<face> cellFaces(s, trii-start, start);
+
+            const PrimitivePatch<face, SubList, const pointField&> pp
+            (
+                cellFaces,
+                points
+            );
+
+            triangulateOutside
+            (
+                filterDiag,
+                pp,
+                pointFromDiag,
+                cellIDs[trii-1],
+
+                compactFaces,
+                compactCellIDs
+            );
+
+            start = trii;
+        }
+    }
+
+    // Do final
+    SubList<face> cellFaces(s, cellIDs.size()-start, start);
+
+    const PrimitivePatch<face, SubList, const pointField&> pp
+    (
+        cellFaces,
+        points
+    );
+
+    triangulateOutside
+    (
+        filterDiag,
+        pp,
+        pointFromDiag,
+        cellIDs[cellIDs.size()-1],
+
+        compactFaces,
+        compactCellIDs
+    );
+
+
+
+    // Compact out unused points
+    // Pick up the used vertices
+    labelList oldToCompact(points.size(), -1);
+    DynamicField<point> compactPoints(points.size());
+    pointCompactMap.clear();
+
+    forAll(compactFaces, i)
+    {
+        face& f = compactFaces[i];
+        forAll(f, fp)
+        {
+            label pointi = f[fp];
+            label compacti = oldToCompact[pointi];
+            if (compacti == -1)
+            {
+                compacti = compactPoints.size();
+                oldToCompact[pointi] = compacti;
+                compactPoints.append(points[pointi]);
+                pointCompactMap.append(pointi);
+            }
+            f[fp] = compacti;
+        }
+    }
+
+
+    MeshedSurface<face> cpSurface;
+    cpSurface.reset
+    (
+        compactPoints.xfer(),
+        compactFaces.xfer(),
+        xferCopy(s.surfZones())
+    );
+
+    return cpSurface;
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::isoSurfaceCellTopo::isoSurfaceCellTopo
+Foam::isoSurfaceTopo::isoSurfaceTopo
 (
     const polyMesh& mesh,
     const scalarField& cVals,
@@ -839,15 +984,15 @@ Foam::isoSurfaceCellTopo::isoSurfaceCellTopo
 {
     if (debug)
     {
-        Pout<< "isoSurfaceCellTopo : iso:" << iso_
+        Pout<< "isoSurfaceTopo : iso:" << iso_
             << " regularise:" << regularise
             << endl;
     }
 
-    const tetMatcher tet;
+    tetMatcher tet;
 
     // Determine if any cut through cell
-    calcCutTypes(tet, cVals_, pVals_);
+    calcCutTypes(tet);
 
     // Per cell: 5 pyramids cut, each generating 2 triangles
     DynamicList<edge> pointToVerts(10*nCutCells_);
@@ -859,6 +1004,7 @@ Foam::isoSurfaceCellTopo::isoSurfaceCellTopo
     //          - 4 of the pyramid edges
     EdgeMap<label> vertsToPoint(12*nCutCells_);
     DynamicList<label> verts(12*nCutCells_);
+    // Per cell: 5 pyramids cut (since only one pyramid not cut)
     DynamicList<label> faceLabels(5*nCutCells_);
     DynamicList<label> cellLabels(5*nCutCells_);
 
@@ -897,7 +1043,7 @@ Foam::isoSurfaceCellTopo::isoSurfaceCellTopo
     (
         interpolate
         (
-            mesh_,
+            mesh_.cellCentres(),
             mesh_.points()
         )
     );
@@ -914,107 +1060,54 @@ Foam::isoSurfaceCellTopo::isoSurfaceCellTopo
     }
 
 
+    surfZoneList allZones(1);
+    allZones[0] = surfZone
+    (
+        "allFaces",
+        allTris.size(),     // size
+        0,                  // start
+        0                   // index
+    );
 
-//XXXXXXX
-
-
-
-        if (debug)
-        {
-            Pout<< "isoSurfaceCellTopo : generated " << triMeshCells.size()
-                << " unmerged triangles." << endl;
-        }
-
-        // Merge points and compact out non-valid triangles
-        labelList triMap;
-        triSurface::operator=
-        (
-            stitchTriPoints
-            (
-                false,              // check for duplicate tris
-                triPoints,
-                triPointMergeMap_,  // unmerged to merged point
-                triMap              // merged to unmerged triangle
-            )
-        );
-
-        if (debug)
-        {
-            Pout<< "isoSurfaceCellTopo : generated " << triMap.size()
-                << " merged triangles." << endl;
-        }
-
-        meshCells_.setSize(triMap.size());
-        forAll(triMap, i)
-        {
-            meshCells_[i] = triMeshCells[triMap[i]];
-        }
-        // Very close non-diag and diag points might get merged. If so
-        // make sure non-diag wins
-        isOnDiag_.setSize(this->points().size());
-        isOnDiag_ = true;
-        forAll(triPointMergeMap_, i)
-        {
-            if (!usesDiag[i])
-            {
-                isOnDiag_[triPointMergeMap_[i]] = false;
-            }
-        }
-        const boolList oldUsesCellCentre(usesCellCentre.xfer());
-        usesCellCentre.setSize(points().size());
-        usesCellCentre = true;
-        forAll(triPointMergeMap_, i)
-        {
-            if (!oldUsesCellCentre[i])
-            {
-                usesCellCentre[triPointMergeMap_[i]] = false;
-            }
-        }
-
-        if (size() && regularise)
-        {
-            const label nOldPoints = points().size();
-
-            // Triangulate outside
-            DynamicList<label> pointCompactMap; // back to original point
-            DynamicList<label> compactCellIDs;  // per returned tri the cellID
-            triSurface::operator=
-            (
-                removeInsidePoints
-                (
-                    true,   //removeDiagPoints
-                    *this,
-                    isOnDiag_,
-                    meshCells_,
-                    pointCompactMap,
-                    compactCellIDs
-                )
-            );
-
-            if (debug)
-            {
-                Pout<< "isoSurfaceCellTopo :"
-                    << " after removing cell centre triangles : " << size()
-                    << endl;
-            }
-
-            meshCells_.transfer(compactCellIDs);
-            labelList reversePointMap(invert(nOldPoints, pointCompactMap));
-            inplaceRenumber(reversePointMap, triPointMergeMap_);
-            isOnDiag_ = UIndirectList<bool>(isOnDiag_, pointCompactMap)();
-        }
-    }
-
+    MeshedSurface<face>::reset
+    (
+        allPoints.ref().xfer(),
+        allTris.xfer(),
+        allZones.xfer()
+    );
 
     if (debug)
     {
-        Pout<< "isoSurfaceCellTopo : checking " << size()
-            << " triangles for validity." << endl;
+        Pout<< "isoSurfaceTopo : generated " << size() << " faces." << endl;
+    }
 
-        forAll(*this, triI)
+
+    if (size() && regularise)
+    {
+        // Triangulate outside
+        DynamicList<label> pointCompactMap; // back to original point
+        DynamicList<label> compactCellIDs;  // per returned tri the cellID
+        MeshedSurface<face>::operator=
+        (
+            removeInsidePoints
+            (
+                true,   //removeDiagPoints
+                *this,
+                pointFromDiag,
+                meshCells_,
+                pointCompactMap,
+                compactCellIDs
+            )
+        );
+
+        pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointCompactMap)();
+        meshCells_.transfer(compactCellIDs);
+
+        if (debug)
         {
-            // Copied from surfaceCheck
-            validTri(*this, triI);
+            Pout<< "isoSurfaceTopo :"
+                << " after removing cell centre triangles : " << size()
+                << endl;
         }
     }
 }
