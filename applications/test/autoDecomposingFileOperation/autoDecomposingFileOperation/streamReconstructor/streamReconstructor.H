@@ -44,6 +44,9 @@ SourceFiles
 namespace Foam
 {
 
+class unallocatedFvMesh;
+class parUnallocatedFvFieldReconstructor;
+
 /*---------------------------------------------------------------------------*\
                      Class streamReconstructor Declaration
 \*---------------------------------------------------------------------------*/
@@ -95,13 +98,43 @@ public:
 
     // Member Functions
 
-        //- Reconstruct and stream
+        //- Read, reconstruct and stream
         virtual bool reconstruct
         (
             const fvMesh& mesh,
             const IOobject& io,
             Ostream& os
         ) const = 0;
+
+        //- Read, decompose and stream
+        virtual bool decompose
+        (
+            const parUnallocatedFvFieldReconstructor& reconstructor,
+            const unallocatedFvMesh& baseMesh,
+            const IOobject& baseIO,
+
+            const unallocatedFvMesh& thisMesh,
+            const IOobject& thisIO,
+            Ostream& os
+        ) const
+        {
+            NotImplemented;
+            return false;
+        }
+
+        //- Reconstruct and write
+        virtual bool reconstruct
+        (
+            const parUnallocatedFvFieldReconstructor& reconstructor,
+            const regIOobject& thisIO,
+            IOstream::streamFormat fmt,
+            IOstream::versionNumber ver,
+            IOstream::compressionType cmp
+        ) const
+        {
+            NotImplemented;
+            return false;
+        }
 };
 
 

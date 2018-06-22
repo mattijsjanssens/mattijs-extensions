@@ -509,7 +509,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         {
             Pout<< indent
                 << "autoReconstructingFileOperation::read :"
-                << " Seraching for reconstructor for type:" << type
+                << " Searching for reconstructor for type:" << type
                 << " of object: " << io.objectPath() << endl;
         }
         autoPtr<streamReconstructor> reconstructor

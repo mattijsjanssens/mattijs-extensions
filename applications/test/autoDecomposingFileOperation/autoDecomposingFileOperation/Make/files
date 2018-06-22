@@ -5,7 +5,7 @@ streamReconstructor/volFieldStreamReconstructors.C
 streamReconstructor/internalFieldStreamReconstructors.C
 streamReconstructor/surfaceFieldStreamReconstructors.C
 
-/* autoParallelFileOperation.C */
+autoParallelFileOperation.C
 /* autoDecomposingFileOperation.C */
 
 LIB = $(FOAM_USER_LIBBIN)/libautoDecomposingFileOperation

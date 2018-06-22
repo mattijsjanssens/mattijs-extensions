@@ -96,7 +96,7 @@ class autoParallelFileOperation
             IOstream::compressionType cmp
         ) const;
 
-        //- Reconstruct and write
+        //- Reconstruct and write a surface field
         template<class GeoField>
         bool reconstructAndWrite2
         (
