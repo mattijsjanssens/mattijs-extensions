@@ -907,7 +907,7 @@ Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
         }
     }
 
-    // Do final
+    // Do final cell
     SubList<face> cellFaces(s, cellIDs.size()-start, start);
 
     const PrimitivePatch<face, SubList, const pointField&> pp
@@ -1084,6 +1084,23 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
 
     if (size() && regularise)
     {
+        // - uncheck diagonal edges that are on multiple faces (rare)
+        // - do cell
+        // - check if can be simplified
+        // - push onto faces
+        // - sync faces
+        // - redo cells neighbouring changed faces
+
+        // Any face that cannot
+        PackedBoolList protectedFace(mesh.nFaces());
+
+        forAll(frontCells, i)
+        {
+            label celli = frontCells[i];
+
+
+
+
         // Triangulate outside
         DynamicList<label> pointCompactMap; // back to original point
         DynamicList<label> compactCellIDs;  // per returned tri the cellID
