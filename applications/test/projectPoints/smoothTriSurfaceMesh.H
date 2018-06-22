@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -73,7 +73,7 @@ private:
 
 
         //- Disallow default bitwise copy construct
-        smoothTriSurfaceMesh(const triSurfaceMesh&);
+        smoothTriSurfaceMesh(const smoothTriSurfaceMesh&);
 
         //- Disallow default bitwise assignment
         void operator=(const smoothTriSurfaceMesh&);
