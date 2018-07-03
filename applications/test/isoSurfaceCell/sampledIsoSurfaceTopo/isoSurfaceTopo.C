@@ -813,6 +813,13 @@ void Foam::isoSurfaceTopo::triangulateOutside
     DynamicList<label>& compactCellIDs
 ) const
 {
+// We can form pockets:
+// - 1. triangle on face
+// - 2. multiple triangles on interior (from diag edges)
+// - the edge loop will be pocket since it is only the diag
+//   edges that give it volume?
+
+
     // Retriangulate the exterior loops
     const labelListList& edgeLoops = pp.edgeLoops();
     const labelList& mp = pp.meshPoints();

@@ -1143,80 +1143,95 @@ int main(int argc, char *argv[])
     // Random or from positions
     if (true)
     {
-        cellValues = mesh.cellCentres().component(vector::Y);
-        pointValues = mesh.points().component(vector::Y);
+        //cellValues = mesh.cellCentres().component(vector::Y);
+        //pointValues = mesh.points().component(vector::Y);
         //const scalar minPoints(min(pointValues));
         //const scalar maxPoints(max(pointValues));
         //forAll(pointValues, i)
         //{
         // pointValues[i] = minPoints+(maxPoints-minPoints)*rndGen.scalar01();
         //}
-        isoValue = 0.51*(average(cellValues)+average(pointValues));
+        //isoValue = 0.51*(average(cellValues)+average(pointValues));
 
-        //isoValue = 10000;
-        //volScalarField Q
-        //(
-        //    IOobject
-        //    (
-        //        "Q",
-        //        mesh.time().timeName(),
-        //        mesh.time(),
-        //        IOobject::MUST_READ
-        //    ),
-        //    mesh
-        //);
-        //cellValues = Q.internalField();
-        //pointScalarField pointQ
-        //(
-        //    volPointInterpolation::New(mesh).interpolate(Q)
-        //);
-        //pointValues = pointQ.internalField();
-
-
-        isoSurfaceTopo iso
+        isoValue = 100;
+        volScalarField Q
         (
-            mesh,
-            cellValues,     //cellAvg
-            pointValues,
-            isoValue,
-            true       // regularise = remove cell centre
-        );
-
-        Pout<< "iso:" << iso.size() << endl;
-
-        {
-            OBJstream verts(runTime.path()/"vertices.obj");
-
-            pointField newPoints
+            IOobject
             (
-                iso.interpolate(mesh.cellCentres(), mesh.points())
-            );
-            forAll(newPoints, i)
-            {
-                verts.write(newPoints[i]);
-            }
-        }
-
-
-        vtkSurfaceWriter vtk;
-        const labelList& meshCells = iso.meshCells();
-        faceList localFaces(meshCells.size());
-        scalarField scalarMeshCells(meshCells.size());
-        forAll(meshCells, i)
-        {
-            localFaces[i] = face(iso.localFaces()[i]);
-            scalarMeshCells[i] = 1.0*meshCells[i];
-        }
-        vtk.write
-        (
-            runTime.path(),
-            "iso_with_meshCells",
-            iso.points(),
-            iso.faces(),
-            "meshCells",
-            scalarMeshCells,
-            false
+                "omega",
+                mesh.time().timeName(),
+                mesh.time(),
+                IOobject::MUST_READ
+            ),
+            mesh
         );
+        cellValues = Q.internalField();
+        pointScalarField pointQ
+        (
+            volPointInterpolation::New(mesh).interpolate(Q)
+        );
+        pointValues = pointQ.internalField();
+
+        {
+            isoSurfaceTopo iso
+            (
+                mesh,
+                cellValues,
+                pointValues,
+                isoValue,
+                false       // no regularise
+            );
+            Pout<< "iso:" << iso.size() << endl;
+            vtkSurfaceWriter vtk;
+            const labelList& meshCells = iso.meshCells();
+            faceList localFaces(meshCells.size());
+            scalarField scalarMeshCells(meshCells.size());
+            forAll(meshCells, i)
+            {
+                localFaces[i] = face(iso.localFaces()[i]);
+                scalarMeshCells[i] = 1.0*meshCells[i];
+            }
+            vtk.write
+            (
+                runTime.path(),
+                "iso_with_meshCells_nonReg",
+                iso.points(),
+                iso.faces(),
+                "meshCells",
+                scalarMeshCells,
+                false
+            );
+        }
+        {
+            isoSurfaceTopo iso
+            (
+                mesh,
+                cellValues,
+                pointValues,
+                isoValue,
+                true       // regularise = remove cell centre
+            );
+            Pout<< "iso:" << iso.size() << endl;
+            vtkSurfaceWriter vtk;
+            const labelList& meshCells = iso.meshCells();
+            faceList localFaces(meshCells.size());
+            scalarField scalarMeshCells(meshCells.size());
+            forAll(meshCells, i)
+            {
+                localFaces[i] = face(iso.localFaces()[i]);
+                scalarMeshCells[i] = 1.0*meshCells[i];
+            }
+            vtk.write
+            (
+                runTime.path(),
+                "iso_with_meshCells_reg",
+                iso.points(),
+                iso.faces(),
+                "meshCells",
+                scalarMeshCells,
+                false
+            );
+        }
         return 0;
 
 
