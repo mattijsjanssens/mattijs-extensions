@@ -60,7 +60,7 @@ class sampledIsoSurfaceTopo
         const word isoField_;
 
         //- Iso value
-        const scalar isoVal_;
+        const scalarField isoVals_;
 
         //- Whether to coarsen
         const Switch regularise_;

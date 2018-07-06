@@ -1107,7 +1107,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
     }
 
 
-    if (size() && regularise)
+    if (regularise)
     {
         // Triangulate outside
         DynamicList<label> pointCompactMap; // back to original point
@@ -1135,54 +1135,22 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         if (debug)
         {
             Pout<< "isoSurfaceTopo :"
-                << " after removing cell centre triangles : " << size()
-                << endl;
-        }
-
-        {
-            OBJstream str(mesh.time().path()/"pointToFaceCentre.obj");
-            forAll(pointToFace, pointi)
-            {
-                const point& fc = mesh.faceCentres()[pointToFace[pointi]];
-                str.write(linePointRef(points()[pointi], fc));
-            }
-        }
-        {
-            OBJstream str(mesh.time().path()/"pointFromDiag.obj");
-            forAll(pointFromDiag, pointi)
-            {
-                if (pointFromDiag[pointi])
-                {
-                    str.write(points()[pointi]);
-                }
-            }
-        }
-        {
-            OBJstream str(mesh.time().path()/"pointToVerts.obj");
-            forAll(pointToVerts_, pointi)
-            {
-                const edge& e = pointToVerts_[pointi];
-                const point& p0
-                (
-                    (e[0] >= mesh.nPoints())
-                  ? mesh.cellCentres()[e[0]-mesh.nPoints()]
-                  : mesh.points()[e[0]]
-                );
-                const point& p1
-                (
-                    (e[1] >= mesh.nPoints())
-                  ? mesh.cellCentres()[e[1]-mesh.nPoints()]
-                  : mesh.points()[e[1]]
-                );
-                str.write(linePointRef(p0, p1));
-            }
+                << " after removing cell centre and face-diag triangles : "
+                << size() << endl;
         }
 
 
+        // We remove verts on face diagonals. This is in fact just
+        // straightening the edges of the face through the cell. This can
+        // close off 'pockets' of triangles and create open or
+        // multiply-connected triangles
+
+        // Solved by eroding open-edges
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-
-        // Check for open edges
+        // Mark points on mesh outside. Note that we extend with nCells
+        // so we can easily index with pointToVerts_.
         PackedBoolList isBoundaryPoint(mesh.nPoints() + mesh.nCells());
         for
         (
@@ -1195,11 +1163,8 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         }
 
 
-
-        //OBJstream str(mesh.time().path()/"my_open_edges.obj");
         while (true)
         {
-            //DynamicList<label> frontEdges;
             PackedBoolList removeFace(this->size());
             label nFaces = 0;
             {
@@ -1213,16 +1178,10 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
                         // Open edge. Check that vertices do not originate from
                         // a boundary face
                         const edge& e = edges()[edgei];
-                        label mp0 = meshPoints()[e[0]];
-                        const edge& verts0 = pointToVerts_[mp0];
-                        label mp1 = meshPoints()[e[1]];
-                        const edge& verts1 = pointToVerts_[mp1];
+                        const edge& verts0 = pointToVerts_[meshPoints()[e[0]]];
+                        const edge& verts1 = pointToVerts_[meshPoints()[e[1]]];
                         if
                         (
-                           //!pointFromDiag[mp0]
-                        //&&  pointToFace[mp0] >= mesh.nInternalFaces()
-                        //&& !pointFromDiag[mp1]
-                        //&&  pointToFace[mp1] >= mesh.nInternalFaces()
                             isBoundaryPoint[verts0[0]]
                          && isBoundaryPoint[verts0[1]]
                          && isBoundaryPoint[verts1[0]]
@@ -1234,24 +1193,23 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
                         else
                         {
                             // Open edge. Mark for erosion
-                            //frontEdges.append(edgei);
                             if (removeFace.set(eFaces[0]))
                             {
                                 nFaces++;
                             }
-
-                            //str.write
-                            //(
-                            //    linePointRef(points()[mp0], points()[mp1])
-                            //);
                         }
                     }
                 }
             }
 
-            label nErode = returnReduce(nFaces, sumOp<label>());
+            if (debug)
+            {
+                Pout<< "isoSurfaceTopo :"
+                    << " removing " << nFaces << " faces since on open edges"
+                    << endl;
+            }
 
-            if (nErode == 0)
+            if (returnReduce(nFaces, sumOp<label>()) == 0)
             {
                 break;
             }
@@ -1265,9 +1223,6 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
                     keepFaces.insert(facei);
                 }
             }
-
-            Pout<< "keeping:" << keepFaces.size() << " out of "
-                << size() << " faces" << endl;
 
             labelList pointMap;
             labelList faceMap;
