@@ -162,8 +162,6 @@ class isoSurfaceTopo
                 const bool filterDiag,
                 const PrimitivePatch<face, SubList, const pointField&>& pp,
                 const boolList& pointFromDiag,
-                //const labelList& pointToFace,
-                //const boolList& protectedFace,
                 const label cellID,
 
                 DynamicList<face>& compactFaces,
@@ -175,8 +173,6 @@ class isoSurfaceTopo
                 const bool filterDiag,
                 const MeshedSurface<face>& s,
                 const boolList& pointFromDiag,
-                //const labelList& pointToFace,
-                //const boolList& protectedFace,
                 const labelList& start,              // per cell:starting tri
                 DynamicList<label>& pointCompactMap, // per point the original
                 DynamicList<label>& compactCellIDs   // per face the cellID
@@ -198,7 +194,8 @@ public:
             const scalarField& cellValues,
             const scalarField& pointValues,
             const scalar iso,
-            const bool regularise
+            const bool regularise,
+            const bool removeDiagPoints = true
         );
 
 

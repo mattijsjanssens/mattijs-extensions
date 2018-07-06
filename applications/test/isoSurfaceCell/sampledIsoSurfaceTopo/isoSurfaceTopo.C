@@ -806,8 +806,6 @@ void Foam::isoSurfaceTopo::triangulateOutside
     const bool filterDiag,
     const primitivePatch& pp,
     const boolList& pointFromDiag,
-    //const labelList& pointToFace,
-    //const boolList& protectedFace,
     const label cellID,
 
     DynamicList<face>& compactFaces,
@@ -895,8 +893,6 @@ Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
     const bool filterDiag,
     const MeshedSurface<face>& s,
     const boolList& pointFromDiag,
-    //const labelList& pointToFace,
-    //const boolList& protectedFace,
     const labelList& start,                 // per cell the starting triangle
     DynamicList<label>& pointCompactMap,    // per returned point the original
     DynamicList<label>& compactCellIDs      // per returned tri the cellID
@@ -982,7 +978,8 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
     const scalarField& cVals,
     const scalarField& pVals,
     const scalar iso,
-    const bool regularise
+    const bool regularise,
+    const bool removeDiagPoints
 )
 :
     mesh_(mesh),
@@ -1116,11 +1113,9 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         (
             removeInsidePoints
             (
-                true,   //removeDiagPoints
+                removeDiagPoints,
                 *this,
                 pointFromDiag,
-                //pointToFace,
-                //protectedFace,
                 startTri,
                 pointCompactMap,
                 compactCellIDs
