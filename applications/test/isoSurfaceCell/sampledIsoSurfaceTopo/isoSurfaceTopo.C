@@ -28,6 +28,7 @@ License
 #include "tetMatcher.H"
 #include "tetPointRef.H"
 #include "DynamicField.H"
+#include "OBJstream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -1090,6 +1091,16 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         allZones.xfer()
     );
 
+
+    // Now:
+    // - generated faces and points are assigned to *this
+    // - per point we know:
+    //  - pointOnDiag: whether it is on a face-diagonal edge
+    //  - pointToFace: from what pyramid (cell+face) it was produced
+    //    (note that the pyramid faces are shared between multiple mesh faces)
+    //  - pointToVerts_ : originating mesh vertex or cell centre
+
+
     if (debug)
     {
         Pout<< "isoSurfaceTopo : generated " << size() << " faces." << endl;
@@ -1098,65 +1109,6 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
 
     if (size() && regularise)
     {
-        // // If regularising can fail (it can't at the moment) we would
-        // // have to loop around the neighbours of the cells to make
-        // // sure the cuts remain consistent.
-        // // - uncheck diagonal edges that are real edges as well (rare)
-        // // - do cell
-        // // - check if can be simplified
-        // // - push onto faces
-        // // - sync faces
-        // // - redo cells neighbouring changed faces
-        //
-        // // Any face that cannot be simplified
-        // //boolList protectedFace(mesh.nFaces());
-        //
-        //
-        // // Mark any diagonal edges that are real edges
-        // // Problem: we don't have the addressing to do this. We only store
-        // // whether the point is on a diagonal if that is the first time
-        // // we have the vertex-vertex combination. Tbd.
-        //
-        // {
-        //     faceListList allFaces(mesh.nCells());
-        //
-        //     labelList frontCells(identity(mesh.nCells()));
-        //     while (true)
-        //     {
-        //         DynamicList<label> newFrontCells(frontCells.size());
-        //
-        //         forAll(frontCells, i)
-        //         {
-        //             label celli = frontCells[i];
-        //
-        //             // Generate compact surface
-        //             SubList<face> cellFaces
-        //             (
-        //                 *this,
-        //                 startTri[celli+1]-startTri[celli],
-        //                 startTri[celli]
-        //             );
-        //             const primitivePatch pp(cellFaces, this->points());
-        //
-        //             DynamicList<face> compactFaces(cellFaces.size());
-        //             DynamicList<label> compactCellIDs(cellFaces.size());
-        //             triangulateOutside
-        //             (
-        //                 filterDiag,
-        //                 pp,
-        //                 pointToFace,
-        //                 pointFromDiag,
-        //                 protectedFace,
-        //                 celli,
-        //
-        //                 compactFaces,
-        //                 compactCellIDs
-        //             );
-        //         }
-        //     }
-        // }
-
-
         // Triangulate outside
         DynamicList<label> pointCompactMap; // back to original point
         DynamicList<label> compactCellIDs;  // per returned tri the cellID
@@ -1176,6 +1128,8 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         );
 
         pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointCompactMap)();
+        pointToFace = UIndirectList<label>(pointToFace, pointCompactMap)();
+        pointFromDiag = UIndirectList<bool>(pointFromDiag, pointCompactMap)();
         meshCells_.transfer(compactCellIDs);
 
         if (debug)
@@ -1183,6 +1137,155 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
             Pout<< "isoSurfaceTopo :"
                 << " after removing cell centre triangles : " << size()
                 << endl;
+        }
+
+        {
+            OBJstream str(mesh.time().path()/"pointToFaceCentre.obj");
+            forAll(pointToFace, pointi)
+            {
+                const point& fc = mesh.faceCentres()[pointToFace[pointi]];
+                str.write(linePointRef(points()[pointi], fc));
+            }
+        }
+        {
+            OBJstream str(mesh.time().path()/"pointFromDiag.obj");
+            forAll(pointFromDiag, pointi)
+            {
+                if (pointFromDiag[pointi])
+                {
+                    str.write(points()[pointi]);
+                }
+            }
+        }
+        {
+            OBJstream str(mesh.time().path()/"pointToVerts.obj");
+            forAll(pointToVerts_, pointi)
+            {
+                const edge& e = pointToVerts_[pointi];
+                const point& p0
+                (
+                    (e[0] >= mesh.nPoints())
+                  ? mesh.cellCentres()[e[0]-mesh.nPoints()]
+                  : mesh.points()[e[0]]
+                );
+                const point& p1
+                (
+                    (e[1] >= mesh.nPoints())
+                  ? mesh.cellCentres()[e[1]-mesh.nPoints()]
+                  : mesh.points()[e[1]]
+                );
+                str.write(linePointRef(p0, p1));
+            }
+        }
+
+
+
+
+
+        // Check for open edges
+        PackedBoolList isBoundaryPoint(mesh.nPoints() + mesh.nCells());
+        for
+        (
+            label facei = mesh.nInternalFaces();
+            facei < mesh.nFaces();
+            facei++
+        )
+        {
+            isBoundaryPoint.set(mesh.faces()[facei]);
+        }
+
+
+
+        //OBJstream str(mesh.time().path()/"my_open_edges.obj");
+        while (true)
+        {
+            //DynamicList<label> frontEdges;
+            PackedBoolList removeFace(this->size());
+            label nFaces = 0;
+            {
+                const labelListList& edgeFaces =
+                    MeshedSurface<face>::edgeFaces();
+                forAll(edgeFaces, edgei)
+                {
+                    const labelList& eFaces = edgeFaces[edgei];
+                    if (eFaces.size() == 1)
+                    {
+                        // Open edge. Check that vertices do not originate from
+                        // a boundary face
+                        const edge& e = edges()[edgei];
+                        label mp0 = meshPoints()[e[0]];
+                        const edge& verts0 = pointToVerts_[mp0];
+                        label mp1 = meshPoints()[e[1]];
+                        const edge& verts1 = pointToVerts_[mp1];
+                        if
+                        (
+                           //!pointFromDiag[mp0]
+                        //&&  pointToFace[mp0] >= mesh.nInternalFaces()
+                        //&& !pointFromDiag[mp1]
+                        //&&  pointToFace[mp1] >= mesh.nInternalFaces()
+                            isBoundaryPoint[verts0[0]]
+                         && isBoundaryPoint[verts0[1]]
+                         && isBoundaryPoint[verts1[0]]
+                         && isBoundaryPoint[verts1[1]]
+                        )
+                        {
+                            // Open edge on boundary face. Keep
+                        }
+                        else
+                        {
+                            // Open edge. Mark for erosion
+                            //frontEdges.append(edgei);
+                            if (removeFace.set(eFaces[0]))
+                            {
+                                nFaces++;
+                            }
+
+                            //str.write
+                            //(
+                            //    linePointRef(points()[mp0], points()[mp1])
+                            //);
+                        }
+                    }
+                }
+            }
+
+            label nErode = returnReduce(nFaces, sumOp<label>());
+
+            if (nErode == 0)
+            {
+                break;
+            }
+
+            // Remove the faces
+            labelHashSet keepFaces(2*size());
+            forAll(removeFace, facei)
+            {
+                if (!removeFace[facei])
+                {
+                    keepFaces.insert(facei);
+                }
+            }
+
+            Pout<< "keeping:" << keepFaces.size() << " out of "
+                << size() << " faces" << endl;
+
+            labelList pointMap;
+            labelList faceMap;
+            MeshedSurface<face> filteredSurf
+            (
+                MeshedSurface<face>::subsetMesh
+                (
+                    keepFaces,
+                    pointMap,
+                    faceMap
+                )
+            );
+            MeshedSurface<face>::transfer(filteredSurf);
+
+            pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointMap)();
+            pointToFace = UIndirectList<label>(pointToFace, pointMap)();
+            pointFromDiag = UIndirectList<bool>(pointFromDiag, pointMap)();
+            meshCells_ = UIndirectList<label>(meshCells_, faceMap)();
         }
     }
 }
