@@ -2,6 +2,7 @@
 
 zfp_stream_set_accuracy(zfp, 1e-3)
 ----------------------------------
+!problem: small numbers get massive error!!!
 
 - each time step p                      : 320000
 - so over 10 timesteps                  : 3200000
@@ -24,9 +25,11 @@ zfp_stream_set_precision(zfp, 16)
 [icoFoam.C:48] p.byteSize() 320000
 [icoFoam.C:70] zfpsize 72872
 Compression 4.4
+but lots of difference (about 3 digits precision)
 
 zfp_stream_set_precision(zfp, 32)
 ---------------------------------
 [icoFoam.C:48] p.byteSize() 320000
 [icoFoam.C:70] zfpsize 152888
 Compression 2.1
+about 6 (or more?) digits precision

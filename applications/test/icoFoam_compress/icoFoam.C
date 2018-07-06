@@ -51,8 +51,8 @@ DebugVar(p.byteSize());
     /* allocate meta data for a compressed stream */
     zfp_stream* zfp = zfp_stream_open(nullptr);
     /* set compression mode and parameters  */
-    //zfp_stream_set_accuracy(zfp, 1e-3);
-    zfp_stream_set_precision(zfp, 32);
+    zfp_stream_set_accuracy(zfp, 1e-6);
+    //zfp_stream_set_precision(zfp, 32);
 
     /* allocate buffer for compressed data */
     size_t bufsize = zfp_stream_maximum_size(zfp, field);
@@ -91,8 +91,8 @@ void decompress(scalarField& p, List<char>& buffer)
     /* allocate meta data for a compressed stream */
     zfp_stream* zfp = zfp_stream_open(nullptr);
     /* set compression mode and parameters  */
-    //zfp_stream_set_accuracy(zfp, 1e-3);
-    zfp_stream_set_precision(zfp, 32);
+    zfp_stream_set_accuracy(zfp, 1e-6);
+    //zfp_stream_set_precision(zfp, 32);
 
     /* associate bit stream with allocated buffer */
     bitstream* stream = stream_open(buffer.begin(), buffer.byteSize());
