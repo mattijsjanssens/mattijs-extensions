@@ -806,6 +806,7 @@ void Foam::isoSurfaceTopo::triangulateOutside
     const bool filterDiag,
     const primitivePatch& pp,
     const boolList& pointFromDiag,
+    const labelList& pointToFace,
     const label cellID,
 
     DynamicList<face>& compactFaces,
@@ -851,16 +852,32 @@ void Foam::isoSurfaceTopo::triangulateOutside
                 forAll(f, i)
                 {
                     label pointi = mp[loop[i]];
-                    if
-                    (
-                        filterDiag
-                     && (
-                            pointFromDiag[pointi]
-                        //&& !protectedFace[pointToFace[pointi]]
-                        )
-                    )
+                    label prevPointi = mp[loop[loop.fcIndex(i)]];
+                    if (filterDiag && pointFromDiag[pointi])
                     {
-                        // Remove diagonal points (unless face is protected)
+                        if
+                        (
+                            pointFromDiag[prevPointi]
+                         && (pointToFace[pointi] != pointToFace[prevPointi])
+                        )
+                        {
+                            Pout<< "not filtering "
+                                << " at cell:" << cellID
+                                << " point:" << pointi
+                                << " at:" << mesh_.points()[pointi]
+                                << " since originating from "
+                                << pointToFace[pointi]
+                                << " and prev:" << prevPointi
+                                << " at:" << mesh_.points()[prevPointi]
+                                << " originating from "
+                                << pointToFace[prevPointi]
+                                << endl;
+                            f[fpi++] = pointi;
+                        }
+                        else
+                        {
+                            // Filter out diagonal point
+                        }
                     }
                     else
                     {
@@ -893,6 +910,7 @@ Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
     const bool filterDiag,
     const MeshedSurface<face>& s,
     const boolList& pointFromDiag,
+    const labelList& pointToFace,
     const labelList& start,                 // per cell the starting triangle
     DynamicList<label>& pointCompactMap,    // per returned point the original
     DynamicList<label>& compactCellIDs      // per returned tri the cellID
@@ -922,7 +940,7 @@ Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
                 filterDiag,
                 pp,
                 pointFromDiag,
-                //pointToFace,
+                pointToFace,
                 //protectedFace,
                 celli,
 
@@ -1050,6 +1068,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
 
     pointToVerts_.transfer(pointToVerts);
     meshCells_.transfer(cellLabels);
+    pointToFace_.transfer(pointToFace);
 
     tmp<pointField> allPoints
     (
@@ -1093,7 +1112,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
     // - generated faces and points are assigned to *this
     // - per point we know:
     //  - pointOnDiag: whether it is on a face-diagonal edge
-    //  - pointToFace: from what pyramid (cell+face) it was produced
+    //  - pointToFace_: from what pyramid (cell+face) it was produced
     //    (note that the pyramid faces are shared between multiple mesh faces)
     //  - pointToVerts_ : originating mesh vertex or cell centre
 
@@ -1116,6 +1135,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
                 removeDiagPoints,
                 *this,
                 pointFromDiag,
+                pointToFace_,
                 startTri,
                 pointCompactMap,
                 compactCellIDs
@@ -1123,7 +1143,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         );
 
         pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointCompactMap)();
-        pointToFace = UIndirectList<label>(pointToFace, pointCompactMap)();
+        pointToFace_ = UIndirectList<label>(pointToFace_, pointCompactMap)();
         pointFromDiag = UIndirectList<bool>(pointFromDiag, pointCompactMap)();
         meshCells_.transfer(compactCellIDs);
 
@@ -1233,7 +1253,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
             MeshedSurface<face>::transfer(filteredSurf);
 
             pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointMap)();
-            pointToFace = UIndirectList<label>(pointToFace, pointMap)();
+            pointToFace_ = UIndirectList<label>(pointToFace_, pointMap)();
             pointFromDiag = UIndirectList<bool>(pointFromDiag, pointMap)();
             meshCells_ = UIndirectList<label>(meshCells_, faceMap)();
         }

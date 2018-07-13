@@ -1153,7 +1153,7 @@ int main(int argc, char *argv[])
         //}
         //isoValue = 0.51*(average(cellValues)+average(pointValues));
 
-        isoValue = 10;
+        isoValue = 100;
         volScalarField Q
         (
             IOobject
