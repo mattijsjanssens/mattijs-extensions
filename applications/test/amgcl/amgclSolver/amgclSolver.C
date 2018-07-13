@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -43,12 +43,17 @@ License
 
 #include <boost/multi_array.hpp>
 
+#include <amgcl/amg.hpp>
 #include <amgcl/make_solver.hpp>
-#include <amgcl/runtime.hpp>
-#include <amgcl/mpi/direct_solver.hpp>
+#include <amgcl/solver/runtime.hpp>
+//#include <amgcl/mpi/direct_solver.hpp>
+#include <amgcl/coarsening/smoothed_aggregation.hpp>
 #include <amgcl/mpi/subdomain_deflation.hpp>
+#include <amgcl/relaxation/spai0.hpp>
 #include <amgcl/adapter/crs_tuple.hpp>
 #include <amgcl/adapter/zero_copy.hpp>
+#include <amgcl/solver/bicgstab.hpp>
+#include <amgcl/solver/skyline_lu.hpp>
 #include <amgcl/profiler.hpp>
 
 #include "amgclSolver.H"
@@ -459,78 +464,79 @@ Foam::solverPerformance Foam::amgclSolver::solve
 
         size_t iters;
         double resid;
-        if (Pstream::parRun())
-        {
-            //amgcl::runtime::coarsening::type coarsening =
-            //    amgcl::runtime::coarsening::smoothed_aggregation;
-            //amgcl::runtime::relaxation::type relaxation =
-            //    amgcl::runtime::relaxation::spai0;
-            //amgcl::runtime::solver::type iterative_solver =
-            //    amgcl::runtime::solver::bicgstabl;
-            //amgcl::runtime::mpi::dsolver::type direct_solver =
-            //    amgcl::runtime::mpi::dsolver::skyline_lu;
-            //
-            //
-            //boost::property_tree::ptree prm;
-            //prm.put("isolver.type", iterative_solver);
-            //prm.put("dsolver.type", direct_solver);
-            //prm.put("solver.tol", tolerance_);
-            //prm.put("isolver.tol", tolerance_);
-            //
-            //boost::function<double(ptrdiff_t,unsigned)> dv;
-            //unsigned ndv;
-            //
-            //// Use constant deflation for now
-            //{
-            //    dv = constant_deflation();
-            //    ndv = 1;
-            //}
-            //prm.put("num_def_vec", ndv);
-            //prm.put("def_vec", &dv);
-            //
-            //prm.put("local.coarsening.type", coarsening);
-            //prm.put("local.relax.type", relaxation);
-            //    typedef
-            //        amgcl::mpi::subdomain_deflation
-            //        <
-            //            amgcl::runtime::amg<Backend>,
-            //            amgcl::runtime::iterative_solver,
-            //            amgcl::runtime::mpi::direct_solver<double>
-            //        > Solver;
-
-            typedef amgcl::mpi::subdomain_deflation
-            <
-                // Use AMG as preconditioner:
-                amgcl::amg
-                <
-                    Backend,
-                    amgcl::coarsening::smoothed_aggregation,
-                    amgcl::relaxation::spai0
-                >,
-                // Iterative solver
-                amgcl::solver::bicgstab,
-                // Direct solver
-                amgcl::mpi::skyline_lu<double>
-            > Solver;
-
-            Solver::params prm;
-            prm.isolver.tol = tol;
-            prm.num_def_vec = 1;
-            prm.def_vec = constant_deflation();
-
-            amgcl::mpi::communicator world(MPI_COMM_WORLD);
-
-            Solver solve(world, boost::tie(n, ptr_, col, val), prm);
-
-            if (debug)
-            {
-                Pout<< "Constructed AMG solver in "
-                    << solverTime.cpuTimeIncrement() << endl;
-            }
-
-            boost::tie(iters, resid) = solve(rhs, solution);
-        }
-        else
+//         if (Pstream::parRun())
+//         {
+//             //amgcl::runtime::coarsening::type coarsening =
+//             //    amgcl::runtime::coarsening::smoothed_aggregation;
+//             //amgcl::runtime::relaxation::type relaxation =
+//             //    amgcl::runtime::relaxation::spai0;
+//             //amgcl::runtime::solver::type iterative_solver =
+//             //    amgcl::runtime::solver::bicgstabl;
+//             //amgcl::runtime::mpi::dsolver::type direct_solver =
+//             //    amgcl::runtime::mpi::dsolver::skyline_lu;
+//             //
+//             //
+//             //boost::property_tree::ptree prm;
+//             //prm.put("isolver.type", iterative_solver);
+//             //prm.put("dsolver.type", direct_solver);
+//             //prm.put("solver.tol", tolerance_);
+//             //prm.put("isolver.tol", tolerance_);
+//             //
+//             //boost::function<double(ptrdiff_t,unsigned)> dv;
+//             //unsigned ndv;
+//             //
+//             //// Use constant deflation for now
+//             //{
+//             //    dv = constant_deflation();
+//             //    ndv = 1;
+//             //}
+//             //prm.put("num_def_vec", ndv);
+//             //prm.put("def_vec", &dv);
+//             //
+//             //prm.put("local.coarsening.type", coarsening);
+//             //prm.put("local.relax.type", relaxation);
+//             //    typedef
+//             //        amgcl::mpi::subdomain_deflation
+//             //        <
+//             //            amgcl::runtime::amg<Backend>,
+//             //            amgcl::runtime::iterative_solver,
+//             //            amgcl::runtime::mpi::direct_solver<double>
+//             //        > Solver;
+//
+//             typedef amgcl::mpi::subdomain_deflation
+//             <
+//                 // Use AMG as preconditioner:
+//                 amgcl::amg
+//                 <
+//                     Backend,
+//                     amgcl::coarsening::smoothed_aggregation,
+//                     amgcl::relaxation::spai0
+//                 >,
+//                 // Iterative solver
+//                 amgcl::solver::bicgstab,
+//                 // Direct solver
+//                 amgcl::solver::skyline_lu<double>
+//             > Solver;
+//
+//             Solver::params prm;
+//             prm.isolver.tol = tol;
+//             prm.num_def_vec = 1;
+//             prm.def_vec = constant_deflation();
+//             Backend::params bprm;
+//
+//             amgcl::mpi::communicator world(MPI_COMM_WORLD);
+//
+//             Solver solve(world, std::tie(n, ptr_, col, val), prm, bprm);
+//
+//             if (debug)
+//             {
+//                 Pout<< "Constructed AMG solver in "
+//                     << solverTime.cpuTimeIncrement() << endl;
+//             }
+//
+//             std::tie(iters, resid) = solve(rhs, solution);
+//         }
+//         else
         {
             typedef amgcl::make_solver
             <
@@ -547,8 +553,9 @@ Foam::solverPerformance Foam::amgclSolver::solve
 
             Solver::params prm;
             prm.solver.tol = tol;
+            Backend::params bprm;
 
-            Solver solve(boost::tie(n, ptr_, col, val), prm);
+            Solver solve(std::tie(n, ptr_, col, val), prm, bprm);
 
             if (debug)
             {
@@ -556,7 +563,7 @@ Foam::solverPerformance Foam::amgclSolver::solve
                     << solverTime.cpuTimeIncrement() << endl;
             }
 
-            boost::tie(iters, resid) = solve(rhs, solution);
+            std::tie(iters, resid) = solve(rhs, solution);
         }
 
         if (debug)
@@ -592,7 +599,7 @@ Foam::solverPerformance Foam::amgclSolver::solve
             amgcl::backend::spmv
             (
                 -1,
-                boost::tie(n, ptr_, col, val),
+                std::tie(n, ptr_, col, val),
                 solution,
                 1,
                 rhs
