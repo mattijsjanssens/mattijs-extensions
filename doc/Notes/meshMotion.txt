@@ -1,0 +1,11 @@
+1D motion:
+- this is only applicable for if the boundary conditions are 1D
+- if they are not, i.e. do not span the whole domain
+- then the problem is actually 2D/3D
+- and an 3D elliptic solver (displacementComponentLaplacian!)
+  will still produce a 2D/3D solution.
+- no amount of patchType override, pointLocation bcs will fix this.
+- only if you choose a 1D interpolation solver (displacementInterpolation)
+  will it work.
+- and this means that you have to 'extend' the specification of the
+  partial boundaries to be fully 1D.
