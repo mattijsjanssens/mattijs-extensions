@@ -326,6 +326,14 @@ bool Foam::fileOperations::autoParallelFileOperation::read
 
                 // Read procAddressing files (from runTime). Deduct base
                 // mesh sizes.
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoParallelFileOperation::read :"
+                        << " reading reconstruction map from:"
+                        << runTime.findInstance(fvMesh::meshSubDir, "faces")
+                        << endl;
+                }
                 autoPtr<mapDistributePolyMesh> distMapPtr
                 (
                     unallocatedFvMeshTools::readReconstructMap
@@ -344,6 +352,17 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                 );
                 const mapDistributePolyMesh& distMap = distMapPtr();
                 // Parent database
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoParallelFileOperation::read :"
+                        << " read distMap:"
+                        << distMap.cellMap().constructSize()
+                        << " constructing parent time:"
+                        << runTime.controlDict().name()
+                        << " from " << runTime.globalCaseName()
+                        << endl;
+                }
                 Time baseRunTime
                 (
                     runTime.controlDict(),
@@ -356,6 +375,13 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                 baseRunTime.setTime(runTime);
 
                 // Parent mesh
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoParallelFileOperation::read :"
+                        << " reading parent mesh:" << fvMesh::defaultRegion
+                        << endl;
+                }
                 autoPtr<unallocatedFvMesh> baseMeshPtr
                 (
                     unallocatedFvMeshTools::newMesh
@@ -371,6 +397,12 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                     )
                 );
                 unallocatedFvMesh& baseMesh = baseMeshPtr();
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoParallelFileOperation::read :"
+                        << " read parent mesh:" << baseMesh.info() << endl;
+                }
 
 
                 // Local mesh
@@ -397,6 +429,13 @@ bool Foam::fileOperations::autoParallelFileOperation::read
 
                 OStringStream os(IOstream::BINARY);
 
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoParallelFileOperation::read :"
+                        << " decompose and writing:" << baseIO.objectPath()
+                        << endl;
+                }
                 if
                 (
                     typeReconstructor().decompose
@@ -415,9 +454,24 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                     // Read field from stream
                     ok = io.readData(is);
                     io.close();
+
+                    if (debug)
+                    {
+                        Pout<< indent
+                            << "autoParallelFileOperation::read :"
+                            << " sucessfully decomposed " << io.objectPath()
+                            << endl;
+                    }
                 }
                 else
                 {
+                    if (debug)
+                    {
+                        Pout<< indent
+                            << "autoParallelFileOperation::read :"
+                            << " ** failed decomposing " << io.objectPath()
+                            << endl;
+                    }
                     return false;
                 }
             }
@@ -465,16 +519,132 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
 
     if (Pstream::parRun())
     {
-//XXX
-/*
+        if (debug)
+        {
+            Pout<< indent
+                << "autoParallelFileOperation::writeObject :"
+                << " Searching for reconstructor for type:" << io.type()
+                << " of object: " << io.objectPath() << endl;
+        }
+
         autoPtr<streamReconstructor> typeReconstructor
         (
-            streamReconstructor::New(type)
+            streamReconstructor::New(io.type())
         );
 
         if (typeReconstructor.valid())
         {
-            typeReconstructor.reconstruct
+            const Time& runTime = io.time();
+
+            // Read procAddressing files (from runTime). Deduct base
+            // mesh sizes.
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::writeObject :"
+                    << " reading reconstruction map from:"
+                    << runTime.findInstance(fvMesh::meshSubDir, "faces")
+                    << endl;
+            }
+            autoPtr<mapDistributePolyMesh> distMapPtr
+            (
+                unallocatedFvMeshTools::readReconstructMap
+                (
+                    IOobject
+                    (
+                        "dummy",
+                        runTime.findInstance(fvMesh::meshSubDir, "faces"),
+                        fvMesh::meshSubDir,
+                        runTime,
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE,
+                        false
+                    )
+                )
+            );
+            const mapDistributePolyMesh& distMap = distMapPtr();
+            // Parent database
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::writeObject :"
+                    << " read distMap:" << distMap.cellMap().constructSize()
+                    << " constructing parent time:"
+                    << runTime.controlDict().name()
+                    << " from " << runTime.globalCaseName()
+                    << endl;
+            }
+            Time baseRunTime
+            (
+                runTime.controlDict(),
+                runTime.rootPath(),
+                runTime.globalCaseName(),
+                runTime.system(),
+                runTime.constant(),
+                false                   // enableFunctionObjects
+            );
+            baseRunTime.setTime(runTime);
+
+            // Parent mesh
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::writeObject :"
+                    << " reading parent mesh:" << fvMesh::defaultRegion
+                    << endl;
+            }
+            autoPtr<unallocatedFvMesh> baseMeshPtr
+            (
+                unallocatedFvMeshTools::newMesh
+                (
+                    IOobject
+                    (
+                        fvMesh::defaultRegion,      // name of mesh
+                        baseRunTime.timeName(),
+                        baseRunTime,
+                        IOobject::MUST_READ
+                    ),
+                    distMap.cellMap().constructSize()
+                )
+            );
+            unallocatedFvMesh& baseMesh = baseMeshPtr();
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::writeObject :"
+                    << " read parent mesh:" << baseMesh.info() << endl;
+            }
+
+
+            // Local mesh
+            #include "createUnallocatedMesh.H"
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::writeObject :"
+                    << " read processor mesh:" << mesh.info() << endl;
+            }
+
+
+            // Mapping engine from mesh to baseMesh
+            const parUnallocatedFvFieldReconstructor reconstructor
+            (
+                baseMesh,
+                mesh,
+                distMap
+            );
+
+
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::writeObject :"
+                    << " reconstructing and writing:" << io.name()
+                    << " with reconstructor for type:" << io.type()
+                    << endl;
+            }
+
+            typeReconstructor().reconstruct
             (
                 reconstructor,
                 io,
@@ -482,72 +652,6 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
                 ver,
                 cmp
             );
-*/
-//XXX
-
-
-        if
-        (
-            io.type() == volScalarField::typeName
-         || io.type() == volVectorField::typeName
-         || io.type() == volSphericalTensorField::typeName
-         || io.type() == volSymmTensorField::typeName
-         || io.type() == volTensorField::typeName
-         || io.type() == surfaceScalarField::typeName
-        )
-        {
-            if (!valid)
-            {
-                return ok;
-            }
-
-            if (io.type() == volScalarField::typeName)
-            {
-                return reconstructAndWrite<volScalarField>(io, fmt, ver, cmp);
-            }
-            else if (io.type() == volVectorField::typeName)
-            {
-                return reconstructAndWrite<volVectorField>(io, fmt, ver, cmp);
-            }
-            else if (io.type() == volSphericalTensorField::typeName)
-            {
-                return reconstructAndWrite<volSphericalTensorField>
-                (
-                    io,
-                    fmt,
-                    ver,
-                    cmp
-                );
-            }
-            else if (io.type() == volSymmTensorField::typeName)
-            {
-                return reconstructAndWrite<volSymmTensorField>
-                (
-                    io,
-                    fmt,
-                    ver,
-                    cmp
-                );
-            }
-            else if (io.type() == volTensorField::typeName)
-            {
-                return reconstructAndWrite<volTensorField>(io, fmt, ver, cmp);
-            }
-            else if (io.type() == surfaceScalarField::typeName)
-            {
-                return reconstructAndWrite2<surfaceScalarField>
-                (
-                    io,
-                    fmt,
-                    ver,
-                    cmp
-                );
-            }
-            else
-            {
-                FatalErrorInFunction << "Problem" << exit(FatalError);
-                return false;
-            }
         }
         else if
         (

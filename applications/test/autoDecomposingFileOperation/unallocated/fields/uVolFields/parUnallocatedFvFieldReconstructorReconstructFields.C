@@ -121,13 +121,11 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
 
     forAll(bfld, patchI)
     {
-        DebugVar(bfld[patchI].patch().name());
-
         if (patchFaceMaps_.set(patchI))
         {
-            Pout<< "** mapping patch " << bfld[patchI].patch().name()
-                << " patchField type:" << bfld[patchI].type()
-                << " of field " << fld.name() << endl;
+            //Pout<< "** mapping patch " << bfld[patchI].patch().name()
+            //    << " patchField type:" << bfld[patchI].type()
+            //   << " of field " << fld.name() << endl;
 
             // Clone local patch field
             patchFields.set(patchI, bfld[patchI].clone());
@@ -157,7 +155,11 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
         {
             const fvPatch& basePatch = baseMesh_.boundary()[patchI];
 
+            //Pout<< "** Mapping basePatch patch " << basePatch.name() << endl;
+
             const typename GeoField::Patch& pfld = patchFields[patchI];
+
+            //Pout<< "** Mapping procfield " << pfld << endl;
 
             labelList dummyMap(identity(pfld.size()));
             directFvPatchFieldMapper dummyMapper(dummyMap);
@@ -173,6 +175,8 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
                     dummyMapper
                 )
             );
+
+            //Pout<< "** basePatchField:" << basePatchFields[patchI] << endl;
         }
     }
 
@@ -266,13 +270,11 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvSurfaceField
 
     forAll(bfld, patchI)
     {
-        DebugVar(bfld[patchI].patch().name());
-
         if (patchFaceMaps_.set(patchI))
         {
-            Pout<< "** mapping patch " << bfld[patchI].patch().name()
-                << " patchField type:" << bfld[patchI].type()
-                << " of field " << fld.name() << endl;
+            //Pout<< "** mapping patch " << bfld[patchI].patch().name()
+            //    << " patchField type:" << bfld[patchI].type()
+            //    << " of field " << fld.name() << endl;
 
             // Clone local patch field
             patchFields.set(patchI, bfld[patchI].clone());
@@ -380,7 +382,7 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
     }
 
 
-    // Create the internalField by remote mapping
+    // Create the internalFielld by remote mapping
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // Create reverse mapper
@@ -397,6 +399,7 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
         mapper
     );
 
+
     // Create the patchFields by remote mapping
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // Note: patchFields still on baseMesh, not procMesh
@@ -410,8 +413,6 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
 
     forAll(bfld, patchI)
     {
-        DebugVar(bfld[patchI].patch().name());
-
         if (patchFaceMaps_.set(patchI))
         {
             Pout<< "** mapping patch " << bfld[patchI].patch().name()
@@ -488,8 +489,6 @@ Pout<< "** synthesising field of type " << procPatch.type()
 //                     const unallocatedGenericFvPatch
 //                 >(procPatch).actualTypeName();
 //             }
-DebugVar(patchType);
-
 
             procPatchFields.set
             (

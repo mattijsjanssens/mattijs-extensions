@@ -98,7 +98,7 @@ public:
 
     // Member Functions
 
-        //- Read, reconstruct and stream
+        //- (on master) Read all processor's field, reconstruct and stream
         virtual bool reconstruct
         (
             const fvMesh& mesh,
@@ -122,7 +122,7 @@ public:
             return false;
         }
 
-        //- Reconstruct and write
+        //- Parallel reconstruct and (on master) write
         virtual bool reconstruct
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,

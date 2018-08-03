@@ -74,6 +74,16 @@ public:
             const IOobject& io,
             Ostream& os
         ) const;
+
+        //- Reconstruct and write
+        virtual bool reconstruct
+        (
+            const parUnallocatedFvFieldReconstructor& reconstructor,
+            const regIOobject& thisIO,
+            IOstream::streamFormat fmt,
+            IOstream::versionNumber ver,
+            IOstream::compressionType cmp
+        ) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
