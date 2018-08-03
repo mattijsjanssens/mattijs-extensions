@@ -72,7 +72,8 @@ void Foam::uFieldReconstructor::readProcMeshes
 {
     if (debug)
     {
-        Pout<< "uFieldReconstructor: reading *ProcAddressing from"
+        Pout<< indent
+            << "uFieldReconstructor: reading *ProcAddressing from"
             << " instance " << instance
             << " path " << procDatabases_[0].path()
             << endl;
@@ -162,7 +163,8 @@ void Foam::uFieldReconstructor::readProcMeshes
         );
         if (debug)
         {
-            Pout<< "Read mesh for processor " << proci << ':' << nl
+            Pout<< indent
+                << "Read mesh for processor " << proci << ':' << nl
                 << incrIndent << procMeshes_[proci].info() << decrIndent
                 << endl;
         }
@@ -182,7 +184,8 @@ void Foam::uFieldReconstructor::readProcMeshes
     );
     if (debug)
     {
-        Pout<< "Read baseMesh:" << nl
+        Pout<< indent
+            << "Read baseMesh:" << nl
             << incrIndent << baseMeshPtr_().info() << decrIndent << endl;
     }
 
@@ -220,7 +223,8 @@ Foam::uFieldReconstructor::uFieldReconstructor(const objectRegistry& obr)
     label nProcs = fileHandler().nProcs(obr.time().path(), word::null);
     if (debug)
     {
-        Pout<< "uFieldReconstructor: detected nProcs:" << nProcs
+        Pout<< indent
+            << "uFieldReconstructor: detected nProcs:" << nProcs
             << " from:" << obr.time().path() << endl;
     }
 
@@ -262,7 +266,8 @@ const Foam::uFieldReconstructor& Foam::uFieldReconstructor::New
     {
         if (meshObject::debug)
         {
-            Pout<< "MeshObject::New(const " << polyMesh::typeName
+            Pout<< indent
+                << "MeshObject::New(const " << polyMesh::typeName
                 << "&) : constructing " << uFieldReconstructor::typeName
                 << " for region " << obr.name() << endl;
         }

@@ -112,6 +112,41 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 
 
 template<class Type>
+bool Foam::surfaceFieldStreamReconstructor<Type>::decompose
+(
+    const parUnallocatedFvFieldReconstructor& reconstructor,
+    const unallocatedFvMesh& baseMesh,
+    const IOobject& baseIO,
+
+    const unallocatedFvMesh& thisMesh,
+    const IOobject& thisIO,
+    Ostream& os
+) const
+{
+    typedef GeometricField
+    <
+        Type,
+        unallocatedFvsPatchField,
+        unallocatedSurfaceMesh
+    > GeoField;
+
+    // Read base field
+    const GeoField baseFld(baseIO, baseMesh);
+
+    // Decompose
+    tmp<GeoField> tfld
+    (
+        reconstructor.decomposeFvSurfaceField(baseFld)
+    );
+
+    // Stream
+    os << tfld();
+
+    return os.good();
+}
+
+
+template<class Type>
 bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 (
     const parUnallocatedFvFieldReconstructor& reconstructor,

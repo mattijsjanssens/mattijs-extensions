@@ -115,9 +115,9 @@ public:
         template<class GeoField>
         tmp<GeoField> decomposeFvVolumeField(const GeoField& fld) const;
 
-//        //- Reconstruct surface field
-//        template<class GeoField>
-//        tmp<GeoField> decomposeFvSurfaceField(const GeoField& fld) const;
+        //- Decompose surface field
+        template<class GeoField>
+        tmp<GeoField> decomposeFvSurfaceField(const GeoField& fld) const;
 };
 
 

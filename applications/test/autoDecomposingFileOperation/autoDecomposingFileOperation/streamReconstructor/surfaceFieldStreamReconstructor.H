@@ -75,6 +75,18 @@ public:
             Ostream& os
         ) const;
 
+        //- Read, (in parallel) decompose and stream
+        virtual bool decompose
+        (
+            const parUnallocatedFvFieldReconstructor& reconstructor,
+            const unallocatedFvMesh& baseMesh,
+            const IOobject& baseIO,
+
+            const unallocatedFvMesh& thisMesh,
+            const IOobject& thisIO,
+            Ostream& os
+        ) const;
+
         //- Reconstruct and write
         virtual bool reconstruct
         (

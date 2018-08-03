@@ -106,7 +106,7 @@ public:
             Ostream& os
         ) const = 0;
 
-        //- Read, decompose and stream
+        //- Read, (in parallel) decompose and stream
         virtual bool decompose
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
@@ -116,11 +116,7 @@ public:
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
             Ostream& os
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        ) const = 0;
 
         //- Parallel reconstruct and (on master) write
         virtual bool reconstruct
@@ -130,11 +126,7 @@ public:
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        ) const = 0;
 };
 
 

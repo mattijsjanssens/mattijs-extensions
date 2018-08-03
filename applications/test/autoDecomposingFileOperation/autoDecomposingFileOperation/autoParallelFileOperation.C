@@ -26,20 +26,14 @@ License
 #include "autoParallelFileOperation.H"
 #include "Time.H"
 #include "fvMesh.H"
-//#include "fvFieldDecomposer.H"
 #include "addToRunTimeSelectionTable.H"
-//#include "processorMeshes.H"
-//#include "fvFieldReconstructor.H"
-
 #include "mapDistributePolyMesh.H"
 #include "unallocatedFvMesh.H"
 #include "unallocatedFvMeshTools.H"
 #include "parUnallocatedFvFieldReconstructor.H"
 #include "uVolFields.H"
 #include "unallocatedFvMeshObject.H"
-
 #include "streamReconstructor.H"
-#include "parUnallocatedFvFieldReconstructor.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -119,13 +113,16 @@ Foam::fileOperations::autoParallelFileOperation::baseMesh
 {
     if (!baseMeshPtr_.valid())
     {
-        Info<< "Reading decomposition addressing" << nl << endl;
+        procFacesInstance_ = runTime.findInstance(fvMesh::meshSubDir, "faces");
+
+        Info<< "Reading decomposition addressing from " << procFacesInstance_
+            << nl << endl;
         distMapPtr_ = unallocatedFvMeshTools::readReconstructMap
         (
             IOobject
             (
                 "dummy",
-                runTime.findInstance(fvMesh::meshSubDir, "faces"),
+                procFacesInstance_,
                 fvMesh::meshSubDir,
                 runTime,
                 IOobject::MUST_READ,
@@ -134,21 +131,45 @@ Foam::fileOperations::autoParallelFileOperation::baseMesh
             )
         );
 
-        Info<< "Creating base mesh for time = "
-            << runTime.timeName() << nl << endl;
+
+        const Time& baseTime = baseRunTime(runTime);
+
+        Info<< "Reading base mesh for time = "
+            << baseTime.timeName() << nl << endl;
         baseMeshPtr_ = unallocatedFvMeshTools::newMesh
         (
             IOobject
             (
                 fvMesh::defaultRegion,      // name of mesh
-                baseRunTime(runTime).timeName(),
-                baseRunTime(runTime),
+                baseTime.timeName(),
+                baseTime,
                 IOobject::MUST_READ
             ),
             distMapPtr_().cellMap().constructSize()
         );
     }
     return baseMeshPtr_();
+}
+
+
+const Foam::unallocatedFvMesh&
+Foam::fileOperations::autoParallelFileOperation::mesh(const Time& runTime) const
+{
+    if (!meshPtr_.valid())
+    {
+        Info<< "Reading current mesh" << nl << endl;
+        meshPtr_ = Foam::unallocatedFvMeshTools::newMesh
+        (
+            Foam::IOobject
+            (
+                Foam::fvMesh::defaultRegion,
+                runTime.timeName(),
+                runTime,
+                Foam::IOobject::MUST_READ
+            )
+        );
+    }
+    return meshPtr_();
 }
 
 
@@ -233,9 +254,17 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
 {
     if (debug)
     {
-        Pout<< "autoParallelFileOperation::filePath :"
+        Pout<< indent
+            << "autoParallelFileOperation::filePath :"
             << " objectPath:" << io.objectPath()
             << " checkGlobal:" << checkGlobal << endl;
+
+
+        //const word& name = io.name();
+        //if (name.size() > 2 && name(name.size()-2, 2) == "_0")
+        //{
+        //    error::printStack(Pout);
+        //}
     }
 
     // Try uncollated searching
@@ -261,12 +290,127 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
 
     if (debug)
     {
-        Pout<< "autoParallelFileOperation::filePath :"
+        Pout<< indent
+            << "autoParallelFileOperation::filePath :"
             << " Returning from file searching:" << endl
             << "    objectPath:" << io.objectPath() << endl
             << "    filePath  :" << objPath << endl << endl;
     }
     return objPath;
+}
+
+
+Foam::instantList Foam::fileOperations::autoParallelFileOperation::findTimes
+(
+    const fileName& dir,
+    const word& constantName
+) const
+{
+    instantList times;
+    if (!Pstream::parRun())
+    {
+        times = uncollatedFileOperation::findTimes(dir, constantName);
+    }
+    else
+    {
+        if (debug)
+        {
+            Pout<< indent
+                << "autoParallelFileOperation::findTimes :"
+                << " Searching in parent " << dir/".."
+                << endl;
+        }
+        times = uncollatedFileOperation::findTimes(dir/"..", constantName);
+    }
+
+    if (debug)
+    {
+        Pout<< indent
+            << "autoParallelFileOperation::findTimes :"
+            << " Returning from time searching:" << endl << indent
+            << "    dir   :" << dir << endl << indent
+            << "    times :" << times << endl << endl;
+    }
+    return times;
+}
+
+
+Foam::fileNameList
+Foam::fileOperations::autoParallelFileOperation::readObjects
+(
+    const objectRegistry& db,
+    const fileName& instance,
+    const fileName& local,
+    word& newInstance
+) const
+{
+    fileNameList objects;
+
+    if (!Pstream::parRun())
+    {
+        objects = uncollatedFileOperation::readObjects
+        (
+            db,
+            instance,
+            local,
+            newInstance
+        );
+    }
+    else
+    {
+        // tbd: lagrangian. dbDir="", local = "lagrangian/KinematicCloud"
+        fileName path
+        (
+            filePath
+            (
+                db.rootPath()
+               /db.time().globalCaseName()
+               /instance
+               /db.dbDir()
+               /local
+            )
+        );
+
+        if (Foam::isDir(path))
+        {
+            newInstance = instance;
+            objects = Foam::readDir(path, fileName::FILE);
+
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::readObjects :"
+                    << " Returning parent directory searching:"
+                    << endl << indent
+                    << "    path     :" << path << endl << indent
+                    << "    objects  :" << objects << endl << endl;
+            }
+
+            return objects;
+        }
+        else
+        {
+            objects = uncollatedFileOperation::readObjects
+            (
+                db,
+                instance,
+                local,
+                newInstance
+            );
+        }
+    }
+
+    if (debug)
+    {
+        Pout<< indent
+            << "autoParallelFileOperation::readObjects :"
+            << " Returning from directory searching:" << endl << indent
+            << "    path     :" << db.path(instance, db.dbDir()/local)
+            << endl << indent
+            << "    objects  :" << objects << endl << indent
+            << "    newInst  :" << newInstance << endl << endl;
+    }
+    return objects;
 }
 
 
@@ -286,7 +430,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
         {
             Pout<< indent
                 << "autoParallelFileOperation::read :"
-                << " Searching for reconstructor for type:" << type
+                << " Searching for handler for type:" << type
                 << " of object: " << io.objectPath() << endl;
         }
         autoPtr<streamReconstructor> typeReconstructor
@@ -315,104 +459,32 @@ bool Foam::fileOperations::autoParallelFileOperation::read
 
             if (debug)
             {
-                Pout<< "io.objectPath   :" << io.objectPath() << endl;
-                Pout<< "filePath        :" << objPath << endl;
-                Pout<< "parentObjectPath:" << parentObjectPath << endl;
+                Pout<< indent
+                    << "io.objectPath   :" << io.objectPath() << nl
+                    << indent
+                    << "filePath        :" << objPath << nl
+                    << indent
+                    << "parentObjectPath:" << parentObjectPath << endl;
             }
 
             if (io.objectPath() != objPath && objPath == parentObjectPath)
             {
                 const Time& runTime = io.time();
 
-                // Read procAddressing files (from runTime). Deduct base
-                // mesh sizes.
-                if (debug)
-                {
-                    Pout<< indent
-                        << "autoParallelFileOperation::read :"
-                        << " reading reconstruction map from:"
-                        << runTime.findInstance(fvMesh::meshSubDir, "faces")
-                        << endl;
-                }
-                autoPtr<mapDistributePolyMesh> distMapPtr
-                (
-                    unallocatedFvMeshTools::readReconstructMap
-                    (
-                        IOobject
-                        (
-                            "dummy",
-                            runTime.findInstance(fvMesh::meshSubDir, "faces"),
-                            fvMesh::meshSubDir,
-                            runTime,
-                            IOobject::MUST_READ,
-                            IOobject::NO_WRITE,
-                            false
-                        )
-                    )
-                );
-                const mapDistributePolyMesh& distMap = distMapPtr();
-                // Parent database
-                if (debug)
-                {
-                    Pout<< indent
-                        << "autoParallelFileOperation::read :"
-                        << " read distMap:"
-                        << distMap.cellMap().constructSize()
-                        << " constructing parent time:"
-                        << runTime.controlDict().name()
-                        << " from " << runTime.globalCaseName()
-                        << endl;
-                }
-                Time baseRunTime
-                (
-                    runTime.controlDict(),
-                    runTime.rootPath(),
-                    runTime.globalCaseName(),
-                    runTime.system(),
-                    runTime.constant(),
-                    false                   // enableFunctionObjects
-                );
-                baseRunTime.setTime(runTime);
+                Pout<< incrIndent;
 
-                // Parent mesh
-                if (debug)
-                {
-                    Pout<< indent
-                        << "autoParallelFileOperation::read :"
-                        << " reading parent mesh:" << fvMesh::defaultRegion
-                        << endl;
-                }
-                autoPtr<unallocatedFvMesh> baseMeshPtr
-                (
-                    unallocatedFvMeshTools::newMesh
-                    (
-                        IOobject
-                        (
-                            fvMesh::defaultRegion,      // name of mesh
-                            baseRunTime.timeName(),
-                            baseRunTime,
-                            IOobject::MUST_READ
-                        ),
-                        distMap.cellMap().constructSize()
-                    )
-                );
-                unallocatedFvMesh& baseMesh = baseMeshPtr();
-                if (debug)
-                {
-                    Pout<< indent
-                        << "autoParallelFileOperation::read :"
-                        << " read parent mesh:" << baseMesh.info() << endl;
-                }
-
-
-                // Local mesh
-                #include "createUnallocatedMesh.H"
+                // Read local mesh
+                const unallocatedFvMesh& procMesh = mesh(runTime);
+                // Read undecomposed mesh. Read procAddressing files
+                // (from runTime).
+                const unallocatedFvMesh& baseUMesh = baseMesh(runTime);
+                const mapDistributePolyMesh& distMap = distMapPtr_();
 
                 // Mapping engine from mesh to baseMesh
                 const parUnallocatedFvFieldReconstructor reconstructor
                 (
-                    baseMesh,
-                    mesh,
+                    baseUMesh,
+                    procMesh,
                     distMap
                 );
 
@@ -421,7 +493,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                     io.name(),
                     io.instance(),
                     io.local(),
-                    baseMesh.thisDb(),
+                    baseUMesh.thisDb(),
                     IOobject::MUST_READ,
                     IOobject::NO_WRITE,
                     false
@@ -431,23 +503,24 @@ bool Foam::fileOperations::autoParallelFileOperation::read
 
                 if (debug)
                 {
-                    Pout<< indent
-                        << "autoParallelFileOperation::read :"
+                    Pout<< "autoParallelFileOperation::read :"
                         << " decompose and writing:" << baseIO.objectPath()
                         << endl;
                 }
-                if
+
+                bool ok = typeReconstructor().decompose
                 (
-                    typeReconstructor().decompose
-                    (
-                        reconstructor,
-                        baseMesh,
-                        baseIO,
-                        mesh,
-                        io,
-                        os
-                    )
-                )
+                    reconstructor,
+                    baseUMesh,
+                    baseIO,
+                    procMesh,
+                    io,
+                    os
+                );
+
+                Pout<< decrIndent;
+
+                if (ok)
                 {
                     IStringStream is(os.str(), IOstream::BINARY);
 
@@ -523,7 +596,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
         {
             Pout<< indent
                 << "autoParallelFileOperation::writeObject :"
-                << " Searching for reconstructor for type:" << io.type()
+                << " Searching for handler for type:" << io.type()
                 << " of object: " << io.objectPath() << endl;
         }
 
@@ -536,113 +609,33 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
         {
             const Time& runTime = io.time();
 
-            // Read procAddressing files (from runTime). Deduct base
-            // mesh sizes.
-            if (debug)
-            {
-                Pout<< indent
-                    << "autoParallelFileOperation::writeObject :"
-                    << " reading reconstruction map from:"
-                    << runTime.findInstance(fvMesh::meshSubDir, "faces")
-                    << endl;
-            }
-            autoPtr<mapDistributePolyMesh> distMapPtr
-            (
-                unallocatedFvMeshTools::readReconstructMap
-                (
-                    IOobject
-                    (
-                        "dummy",
-                        runTime.findInstance(fvMesh::meshSubDir, "faces"),
-                        fvMesh::meshSubDir,
-                        runTime,
-                        IOobject::MUST_READ,
-                        IOobject::NO_WRITE,
-                        false
-                    )
-                )
-            );
-            const mapDistributePolyMesh& distMap = distMapPtr();
-            // Parent database
-            if (debug)
-            {
-                Pout<< indent
-                    << "autoParallelFileOperation::writeObject :"
-                    << " read distMap:" << distMap.cellMap().constructSize()
-                    << " constructing parent time:"
-                    << runTime.controlDict().name()
-                    << " from " << runTime.globalCaseName()
-                    << endl;
-            }
-            Time baseRunTime
-            (
-                runTime.controlDict(),
-                runTime.rootPath(),
-                runTime.globalCaseName(),
-                runTime.system(),
-                runTime.constant(),
-                false                   // enableFunctionObjects
-            );
-            baseRunTime.setTime(runTime);
+            Pout<< incrIndent;
 
-            // Parent mesh
-            if (debug)
-            {
-                Pout<< indent
-                    << "autoParallelFileOperation::writeObject :"
-                    << " reading parent mesh:" << fvMesh::defaultRegion
-                    << endl;
-            }
-            autoPtr<unallocatedFvMesh> baseMeshPtr
-            (
-                unallocatedFvMeshTools::newMesh
-                (
-                    IOobject
-                    (
-                        fvMesh::defaultRegion,      // name of mesh
-                        baseRunTime.timeName(),
-                        baseRunTime,
-                        IOobject::MUST_READ
-                    ),
-                    distMap.cellMap().constructSize()
-                )
-            );
-            unallocatedFvMesh& baseMesh = baseMeshPtr();
-            if (debug)
-            {
-                Pout<< indent
-                    << "autoParallelFileOperation::writeObject :"
-                    << " read parent mesh:" << baseMesh.info() << endl;
-            }
-
-
-            // Local mesh
-            #include "createUnallocatedMesh.H"
-            if (debug)
-            {
-                Pout<< indent
-                    << "autoParallelFileOperation::writeObject :"
-                    << " read processor mesh:" << mesh.info() << endl;
-            }
-
+            // Read local mesh
+            const unallocatedFvMesh& procMesh = mesh(runTime);
+            // Read undecomposed mesh. Read procAddressing files
+            // (from runTime).
+            const unallocatedFvMesh& baseUMesh = baseMesh(runTime);
+            const mapDistributePolyMesh& distMap = distMapPtr_();
 
             // Mapping engine from mesh to baseMesh
             const parUnallocatedFvFieldReconstructor reconstructor
             (
-                baseMesh,
-                mesh,
+                baseUMesh,
+                procMesh,
                 distMap
             );
-
 
             if (debug)
             {
                 Pout<< indent
                     << "autoParallelFileOperation::writeObject :"
                     << " reconstructing and writing:" << io.name()
-                    << " with reconstructor for type:" << io.type()
+                    << " with handler for type:" << io.type()
                     << endl;
             }
+
+            Pout<< decrIndent;
 
             typeReconstructor().reconstruct
             (
@@ -659,7 +652,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
          && io.local() == "uniform"
         )
         {
-            Pout<< "** uniform:" << io.objectPath() << endl;
+            Pout<< indent << "** uniform:" << io.objectPath() << endl;
             if (valid)
             {
                 // Copy of fileOperation::writeObject but with parent path
@@ -730,7 +723,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
     }
     else
     {
-Pout<< "** non-par:" << io.objectPath() << endl;
+        Pout<< indent << "** non-par:" << io.objectPath() << endl;
 
         ok = uncollatedFileOperation::writeObject
         (

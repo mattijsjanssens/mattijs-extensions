@@ -21,6 +21,7 @@ OptimisationSwitches
 {
     //fileHandler autoDecomposing;
     fileHandler autoReconstructing;
+    //fileHandler autoParallel;
 }
 
 
@@ -31,13 +32,12 @@ DebugSwitches
     //masterCollatingOFstream2 1;
     //decomposedBlockData2 1;
     //masterUncollated    1;
-    autoDecomposing 1;
-    autoReconstructing 1;
-//    dlLibraryTable  1;
-    //OSspecific  1;
-
-    unallocatedFvPatchScalarField 1;
-
+    //autoDecomposing 1;
+    //autoReconstructing 1;
+    autoParallel 1;
+    //unallocatedFvPatchScalarField 1;
+    //unallocatedFvPatchVectorField 1;
+    //unallocatedFvPatchField 1;
 }
 
 application     icoFoam;
