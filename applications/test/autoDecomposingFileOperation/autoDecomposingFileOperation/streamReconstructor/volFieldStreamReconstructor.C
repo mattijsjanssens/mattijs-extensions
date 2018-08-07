@@ -55,6 +55,8 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
     forAll(procFields, proci)
     {
         const unallocatedFvMesh& procMesh = procMeshes[proci];
+
+        Pout<< incrIndent;
         procFields.set
         (
             proci,
@@ -72,6 +74,7 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
                 procMesh
             )
         );
+        Pout<< decrIndent;
     }
 
     // Fix filtering of empty nonuniform entries
@@ -101,7 +104,9 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
         )
     );
 
+    Pout<< incrIndent;
     os << tfld();
+    Pout<< decrIndent;
 
     return os.good();
 }
@@ -132,7 +137,9 @@ bool Foam::volFieldStreamReconstructor<Type>::decompose
     );
 
     // Stream
+    Pout<< incrIndent;
     os << tfld();
+    Pout<< decrIndent;
 
     return os.good();
 }
@@ -148,8 +155,6 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
     IOstream::compressionType cmp
 ) const
 {
-    Pout<< "** reconstructing:" << thisIO.objectPath() << endl;
-
     typedef GeometricField<Type, fvPatchField, volMesh> GeoField;
 
     const GeoField& fld = dynamic_cast<const GeoField&>(thisIO);
@@ -169,10 +174,7 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
     const UGeoField uProcFld(fld, uMesh, dictionary(is));
 
     // Map local field onto baseMesh
-    tmp<UGeoField> tfld
-    (
-        reconstructor.reconstructFvVolumeField(uProcFld)
-    );
+    tmp<UGeoField> tfld(reconstructor.reconstructFvVolumeField(uProcFld));
 
     // Write master field to parent
     bool state = true;
@@ -183,7 +185,9 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
         {
             //Pout<< "**Writign " << tfld().objectPath() << endl;
             //state = tfld().write();
+            Pout<< incrIndent;
             state = tfld().writeObject(fmt, ver, cmp, true);
+            Pout<< decrIndent;
         }
         Pstream::parRun() = oldParRun;
     }

@@ -98,7 +98,7 @@ public:
 
     // Member Functions
 
-        //- Read, reconstruct and stream
+        //- (on master) Read all processor's field, reconstruct and stream
         virtual bool reconstruct
         (
             const fvMesh& mesh,
@@ -106,7 +106,7 @@ public:
             Ostream& os
         ) const = 0;
 
-        //- Read, decompose and stream
+        //- Read, (in parallel) decompose and stream
         virtual bool decompose
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
@@ -116,13 +116,9 @@ public:
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
             Ostream& os
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        ) const = 0;
 
-        //- Reconstruct and write
+        //- Parallel reconstruct and (on master) write
         virtual bool reconstruct
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
@@ -130,11 +126,7 @@ public:
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        ) const = 0;
 };
 
 

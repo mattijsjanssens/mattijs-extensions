@@ -22,20 +22,20 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::internalFieldStreamReconstructor
+    Foam::dynamicPatchSplitFvMesh
 
 Description
+    A fvMesh with built-in refinement.
 
 SourceFiles
-    internalFieldStreamReconstructor.C
-    internalFieldStreamReconstructors.C
+    dynamicPatchSplitFvMesh.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef internalFieldStreamReconstructor_H
-#define internalFieldStreamReconstructor_H
+#ifndef dynamicPatchSplitFvMesh_H
+#define dynamicPatchSplitFvMesh_H
 
-#include "streamReconstructor.H"
+#include "dynamicFvMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -43,78 +43,47 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-              Class internalFieldStreamReconstructor Declaration
+                     Class dynamicPatchSplitFvMesh Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class Type>
-class internalFieldStreamReconstructor
+class dynamicPatchSplitFvMesh
 :
-    public streamReconstructor
+    public dynamicFvMesh
 {
+private:
+
+        //- Disallow default bitwise copy construct
+        dynamicPatchSplitFvMesh(const dynamicPatchSplitFvMesh&);
+
+        //- Disallow default bitwise assignment
+        void operator=(const dynamicPatchSplitFvMesh&);
+
 public:
+
+    //- Runtime type information
+    TypeName("dynamicPatchSplitFvMesh");
+
 
     // Constructors
 
-        //- Construct from components
-        internalFieldStreamReconstructor()
-        {}
+        //- Construct from IOobject
+        explicit dynamicPatchSplitFvMesh(const IOobject& io);
 
 
     //- Destructor
-    virtual ~internalFieldStreamReconstructor()
-    {}
+    virtual ~dynamicPatchSplitFvMesh();
 
 
     // Member Functions
 
-        //- Reconstruct and stream
-        virtual bool reconstruct
-        (
-            const fvMesh& mesh,
-            const IOobject& io,
-            Ostream& os
-        ) const;
-
-        //- Read, (in parallel) decompose and stream
-        virtual bool decompose
-        (
-            const parUnallocatedFvFieldReconstructor& reconstructor,
-            const unallocatedFvMesh& baseMesh,
-            const IOobject& baseIO,
-
-            const unallocatedFvMesh& thisMesh,
-            const IOobject& thisIO,
-            Ostream& os
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
-
-        //- Parallel reconstruct and (on master) write
-        virtual bool reconstruct
-        (
-            const parUnallocatedFvFieldReconstructor& reconstructor,
-            const regIOobject& thisIO,
-            IOstream::streamFormat fmt,
-            IOstream::versionNumber ver,
-            IOstream::compressionType cmp
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        //- Update the mesh for both mesh motion and topology change
+        virtual bool update();
 };
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-    #include "internalFieldStreamReconstructor.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

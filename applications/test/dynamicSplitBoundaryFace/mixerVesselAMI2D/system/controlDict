@@ -15,32 +15,17 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-libs    ("libautoDecomposingFileOperation.so");
-
-OptimisationSwitches
-{
-    //fileHandler autoDecomposing;
-    fileHandler autoReconstructing;
-    //fileHandler autoParallel;
-}
+libs            ("libdynamicPatchSplit.so");
 
 
 DebugSwitches
 {
-    //collated  1;
-    //OFstreamCollator 1;
-    //masterCollatingOFstream2 1;
-    //decomposedBlockData2 1;
-    //masterUncollated    1;
-    //autoDecomposing 1;
-    //autoReconstructing 1;
-    autoParallel 1;
-    //unallocatedFvPatchScalarField 1;
-    //unallocatedFvPatchVectorField 1;
-    //unallocatedFvPatchField 1;
+    //sweptFaceAreaWeightAMI  2;
+    polyTopoChange          2;
+    //cyclic                  1;
 }
 
-application     icoFoam;
+application     moveDynamicMesh;    //pimpleFoam;
 
 startFrom       startTime;
 
@@ -48,12 +33,14 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.5;
+endTime         1e-2;
 
-deltaT          0.005;
+deltaT          1e-3;
 
+//writeControl    adjustableRunTime;
+//writeInterval   0.1;
 writeControl    timeStep;
-writeInterval   20;
+writeInterval   1;
 
 purgeWrite      0;
 
@@ -69,5 +56,8 @@ timePrecision   6;
 
 runTimeModifiable true;
 
+adjustTimeStep  yes;
+
+maxCo           0.5;
 
 // ************************************************************************* //

@@ -30,6 +30,8 @@ License
 #include "unallocatedGenericFvsPatchField.H"
 #include "unallocatedFvFieldReconstructor.H"
 #include "uFieldReconstructor.H"
+#include "parUnallocatedFvFieldReconstructor.H"
+#include "unallocatedFvMeshObject.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -106,6 +108,99 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
     os << tfld();
 
     return os.good();
+}
+
+
+template<class Type>
+bool Foam::surfaceFieldStreamReconstructor<Type>::decompose
+(
+    const parUnallocatedFvFieldReconstructor& reconstructor,
+    const unallocatedFvMesh& baseMesh,
+    const IOobject& baseIO,
+
+    const unallocatedFvMesh& thisMesh,
+    const IOobject& thisIO,
+    Ostream& os
+) const
+{
+    typedef GeometricField
+    <
+        Type,
+        unallocatedFvsPatchField,
+        unallocatedSurfaceMesh
+    > GeoField;
+
+    // Read base field
+    const GeoField baseFld(baseIO, baseMesh);
+
+    // Decompose
+    tmp<GeoField> tfld
+    (
+        reconstructor.decomposeFvSurfaceField(baseFld)
+    );
+
+    // Stream
+    os << tfld();
+
+    return os.good();
+}
+
+
+template<class Type>
+bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
+(
+    const parUnallocatedFvFieldReconstructor& reconstructor,
+    const regIOobject& thisIO,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    Pout<< "** reconstructing:" << thisIO.objectPath() << endl;
+
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> GeoField;
+
+    const GeoField& fld = dynamic_cast<const GeoField&>(thisIO);
+    const unallocatedFvMesh& uMesh = unallocatedFvMeshObject::New(fld.mesh());
+
+    // We have a slight problem: fld is real field on real mesh (fvMesh),
+    // but the reconstructor is on an unallocated mesh. We cannot currently
+    // reconstruct from a real mesh onto an unallocated mesh.
+    // As a workaround convert the fld to its unallocated version
+
+    OStringStream os(IOstream::BINARY);
+    os  << fld;
+    IStringStream is(os.str(), IOstream::BINARY);
+
+    typedef GeometricField
+    <
+        Type,
+        unallocatedFvsPatchField,
+        unallocatedSurfaceMesh
+    > UGeoField;
+    const UGeoField uProcFld(fld, uMesh, dictionary(is));
+
+    // Map local field onto baseMesh
+    tmp<UGeoField> tfld
+    (
+        reconstructor.reconstructFvSurfaceField(uProcFld)
+    );
+
+    // Write master field to parent
+    bool state = true;
+    if (Pstream::master())
+    {
+        const bool oldParRun = Pstream::parRun();
+        Pstream::parRun() = false;
+        {
+            //Pout<< "**Writign " << tfld().objectPath() << endl;
+            //state = tfld().write();
+            state = tfld().writeObject(fmt, ver, cmp, true);
+        }
+        Pstream::parRun() = oldParRun;
+    }
+
+    return state;
 }
 
 

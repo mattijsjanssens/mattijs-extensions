@@ -27,7 +27,7 @@ Class
 Description
     FieldMapper with direct mapping from remote quantities.
 
-    Use  distributedUnallocatedDirectFieldMapper if map does not need to be
+    Use distributedUnallocatedDirectFieldMapper if map does not need to be
     stored.
 
 \*---------------------------------------------------------------------------*/
@@ -51,7 +51,7 @@ class distributedDirectFieldMapper
 :
     public FieldMapper
 {
-    const labelList directAddressing_;
+    const labelUList& directAddressing_;
 
     mapDistributeBase distMap_;
 
@@ -61,7 +61,8 @@ public:
 
     // Constructors
 
-        //- Construct given addressing
+        //- Construct given addressing. If constructSize is -1 it will
+        //  use the distMap as is, otherwise will construct the reverse map.
         distributedDirectFieldMapper
         (
             const labelUList& directAddressing,

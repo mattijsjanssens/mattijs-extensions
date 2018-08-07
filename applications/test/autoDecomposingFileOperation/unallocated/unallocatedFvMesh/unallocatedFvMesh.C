@@ -91,8 +91,8 @@ Foam::unallocatedFvMesh::~unallocatedFvMesh()
 {
     if (debug)
     {
-        Pout<< "~unallocatedFvMesh::unallocatedFvMesh()"
-            << endl;
+        Pout<< indent
+            << "~unallocatedFvMesh::unallocatedFvMesh()" << endl;
     }
 }
 

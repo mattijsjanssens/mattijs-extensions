@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -43,12 +43,17 @@ License
 
 #include <boost/multi_array.hpp>
 
+#include <amgcl/amg.hpp>
 #include <amgcl/make_solver.hpp>
-#include <amgcl/runtime.hpp>
-#include <amgcl/mpi/direct_solver.hpp>
+#include <amgcl/solver/runtime.hpp>
+//#include <amgcl/mpi/direct_solver.hpp>
+#include <amgcl/coarsening/smoothed_aggregation.hpp>
 #include <amgcl/mpi/subdomain_deflation.hpp>
+#include <amgcl/relaxation/spai0.hpp>
 #include <amgcl/adapter/crs_tuple.hpp>
 #include <amgcl/adapter/zero_copy.hpp>
+#include <amgcl/solver/bicgstab.hpp>
+#include <amgcl/solver/skyline_lu.hpp>
 #include <amgcl/profiler.hpp>
 
 #include "amgclSolver.H"
@@ -510,25 +515,28 @@ Foam::solverPerformance Foam::amgclSolver::solve
                 // Iterative solver
                 amgcl::solver::bicgstab,
                 // Direct solver
-                amgcl::mpi::skyline_lu<double>
+                amgcl::solver::skyline_lu<double>
             > Solver;
 
             Solver::params prm;
             prm.isolver.tol = tol;
             prm.num_def_vec = 1;
             prm.def_vec = constant_deflation();
+            Backend::params bprm;
 
             amgcl::mpi::communicator world(MPI_COMM_WORLD);
 
-            Solver solve(world, boost::tie(n, ptr_, col, val), prm);
+            ptrdiff_t chunk(n);
 
-            if (debug)
-            {
-                Pout<< "Constructed AMG solver in "
-                    << solverTime.cpuTimeIncrement() << endl;
-            }
-
-            boost::tie(iters, resid) = solve(rhs, solution);
+//            Solver solve(world, std::tie(chunk, ptr_, col, val), prm, bprm);
+//
+//             if (debug)
+//             {
+//                 Pout<< "Constructed AMG solver in "
+//                     << solverTime.cpuTimeIncrement() << endl;
+//             }
+// 
+//             std::tie(iters, resid) = solve(rhs, solution);
         }
         else
         {
@@ -547,8 +555,9 @@ Foam::solverPerformance Foam::amgclSolver::solve
 
             Solver::params prm;
             prm.solver.tol = tol;
+            Backend::params bprm;
 
-            Solver solve(boost::tie(n, ptr_, col, val), prm);
+            Solver solve(std::tie(n, ptr_, col, val), prm, bprm);
 
             if (debug)
             {
@@ -556,7 +565,7 @@ Foam::solverPerformance Foam::amgclSolver::solve
                     << solverTime.cpuTimeIncrement() << endl;
             }
 
-            boost::tie(iters, resid) = solve(rhs, solution);
+            std::tie(iters, resid) = solve(rhs, solution);
         }
 
         if (debug)
@@ -592,7 +601,7 @@ Foam::solverPerformance Foam::amgclSolver::solve
             amgcl::backend::spmv
             (
                 -1,
-                boost::tie(n, ptr_, col, val),
+                std::tie(n, ptr_, col, val),
                 solution,
                 1,
                 rhs

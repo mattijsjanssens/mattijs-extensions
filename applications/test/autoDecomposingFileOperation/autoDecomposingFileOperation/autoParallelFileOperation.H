@@ -54,6 +54,9 @@ class autoParallelFileOperation
 {
     // Parallel on-the-fly reconstruction
 
+        //- Proc faces instance (where procAddressing gets read from)
+        mutable word procFacesInstance_;
+
         //- Undecomposed database
         mutable autoPtr<Time> baseRunTimePtr_;
 
@@ -62,6 +65,9 @@ class autoParallelFileOperation
 
         //- Undecomposed case (basic info only; no addressing)
         mutable autoPtr<unallocatedFvMesh> baseMeshPtr_;
+
+        //- Processor mesh (basic info only; no addressing)
+        mutable autoPtr<unallocatedFvMesh> meshPtr_;
 
         //- Reconstruction engine
         mutable autoPtr<parUnallocatedFvFieldReconstructor> reconstructorPtr_;
@@ -74,6 +80,9 @@ class autoParallelFileOperation
 
         //- Return the base mesh (demand loaded)
         const unallocatedFvMesh& baseMesh(const Time&) const;
+
+        //- Return the current (decomposed) mesh (demand loaded)
+        const unallocatedFvMesh& mesh(const Time&) const;
 
         //- Reconstruct and write
         template<class GeoField>
@@ -125,7 +134,10 @@ public:
 
     // Member Functions
 
-        // (reg)IOobject functinality
+        // fileOperation functinality
+
+            //- Reuse file-based filePath
+            using fileOperation::filePath;
 
             //- Search for an object. checkGlobal : also check undecomposed case
             //  This differs from uncollated in searching for parent
@@ -135,6 +147,18 @@ public:
                 const bool checkGlobal,
                 const IOobject&,
                 const word& typeName
+            ) const;
+
+            //- Get sorted list of times
+            virtual instantList findTimes(const fileName&, const word&) const;
+
+            //- Search directory for objects. Used in IOobjectList.
+            virtual fileNameList readObjects
+            (
+                const objectRegistry& db,
+                const fileName& instance,
+                const fileName& local,
+                word& newInstance
             ) const;
 
             //- Top-level read

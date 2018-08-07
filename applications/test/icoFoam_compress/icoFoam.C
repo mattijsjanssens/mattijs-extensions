@@ -35,6 +35,82 @@ Description
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+size_t compress(const scalarField& p, List<char>& buffer)
+{
+    zfp_type type = zfp_type_double;
+    zfp_field* field = zfp_field_1d
+    (
+        reinterpret_cast<void*>(const_cast<scalarField&>(p).begin()),
+        type,
+        p.size()
+    );
+
+DebugVar(p.byteSize());
+
+
+    /* allocate meta data for a compressed stream */
+    zfp_stream* zfp = zfp_stream_open(nullptr);
+    /* set compression mode and parameters  */
+    zfp_stream_set_accuracy(zfp, 1e-6);
+    //zfp_stream_set_precision(zfp, 32);
+
+    /* allocate buffer for compressed data */
+    size_t bufsize = zfp_stream_maximum_size(zfp, field);
+DebugVar(bufsize);
+    buffer.setSize(bufsize);
+
+    /* associate bit stream with allocated buffer */
+    bitstream* stream = stream_open(buffer.begin(), bufsize);
+    zfp_stream_set_bit_stream(zfp, stream);
+    zfp_stream_rewind(zfp);
+
+    /* compress */
+    size_t zfpsize = zfp_compress(zfp, field);
+    buffer.setSize(zfpsize);
+DebugVar(zfpsize);
+
+    /* clean up */
+    zfp_field_free(field);
+    zfp_stream_close(zfp);
+    stream_close(stream);
+
+    return zfpsize;
+}
+
+
+void decompress(scalarField& p, List<char>& buffer)
+{
+    zfp_type type = zfp_type_double;
+    zfp_field* field = zfp_field_1d
+    (
+        reinterpret_cast<void*>(p.begin()),
+        type,
+        p.size()
+    );
+
+    /* allocate meta data for a compressed stream */
+    zfp_stream* zfp = zfp_stream_open(nullptr);
+    /* set compression mode and parameters  */
+    zfp_stream_set_accuracy(zfp, 1e-6);
+    //zfp_stream_set_precision(zfp, 32);
+
+    /* associate bit stream with allocated buffer */
+    bitstream* stream = stream_open(buffer.begin(), buffer.byteSize());
+    zfp_stream_set_bit_stream(zfp, stream);
+    zfp_stream_rewind(zfp);
+    if (!zfp_decompress(zfp, field))
+    {
+        FatalErrorInFunction << "Failed decompressing " << buffer.byteSize()
+            << " buffer" << exit(FatalError);
+    }
+
+    /* clean up */
+    zfp_field_free(field);
+    zfp_stream_close(zfp);
+    stream_close(stream);
+}
+
+
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
@@ -120,9 +196,21 @@ int main(int argc, char *argv[])
 
         if (runTime.outputTime())
         {
-
 DebugVar(pDatai);
 DebugVar(pData.byteSize());
+            {
+                List<char> buf;
+                compress(p.internalField(), buf);
+                //DebugVar(buf);
+                scalarField newP(p.internalField().size(), -123);
+                decompress(newP, buf);
+                forAll(newP, celli)
+                {
+                    Pout<< newP[celli] << '\t' << p[celli] << nl;
+                }
+            }
+
+
             if (pDatai == 10)
             {
                 /* allocate meta data for the 2D array a[ny][nx] */

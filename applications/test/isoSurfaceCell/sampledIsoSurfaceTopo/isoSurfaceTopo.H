@@ -88,6 +88,9 @@ class isoSurfaceTopo
         //- For every face the original cell in mesh
         labelList meshCells_;
 
+        //- For every point the originating face in mesh
+        labelList pointToFace_;
+
 
     // Private Member Functions
 
@@ -162,8 +165,7 @@ class isoSurfaceTopo
                 const bool filterDiag,
                 const PrimitivePatch<face, SubList, const pointField&>& pp,
                 const boolList& pointFromDiag,
-                //const labelList& pointToFace,
-                //const boolList& protectedFace,
+                const labelList& pointToFace,
                 const label cellID,
 
                 DynamicList<face>& compactFaces,
@@ -175,8 +177,7 @@ class isoSurfaceTopo
                 const bool filterDiag,
                 const MeshedSurface<face>& s,
                 const boolList& pointFromDiag,
-                //const labelList& pointToFace,
-                //const boolList& protectedFace,
+                const labelList& pointToFace,
                 const labelList& start,              // per cell:starting tri
                 DynamicList<label>& pointCompactMap, // per point the original
                 DynamicList<label>& compactCellIDs   // per face the cellID
@@ -198,7 +199,8 @@ public:
             const scalarField& cellValues,
             const scalarField& pointValues,
             const scalar iso,
-            const bool regularise
+            const bool regularise,
+            const bool removeDiagPoints = true
         );
 
 
@@ -208,6 +210,12 @@ public:
         const labelList& meshCells() const
         {
             return meshCells_;
+        }
+
+        //- For every point originating face (pyramid) in mesh
+        const labelList& pointToFace() const
+        {
+            return pointToFace_;
         }
 
         //- Per point: originating mesh vertex/cc. See encoding above·
