@@ -34,6 +34,7 @@ License
 #include "uVolFields.H"
 #include "unallocatedFvMeshObject.H"
 #include "streamReconstructor.H"
+#include "unthreadedInitialise.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -47,6 +48,15 @@ namespace fileOperations
         fileOperation,
         autoParallelFileOperation,
         word
+    );
+
+    // Mark as not needing threaded mpi
+    addNamedToRunTimeSelectionTable
+    (
+        fileOperationInitialise,
+        unthreadedInitialise,
+        word,
+        autoParallel
     );
 
     class installFileOp
@@ -86,6 +96,9 @@ const Foam::Time& Foam::fileOperations::autoParallelFileOperation::baseRunTime
 {
     if (!baseRunTimePtr_.valid())
     {
+        // Install default file handler
+        storeFileHandler defaultOp;
+
         Info<< "Creating base time\n" << endl;
         baseRunTimePtr_.reset
         (
@@ -99,8 +112,14 @@ const Foam::Time& Foam::fileOperations::autoParallelFileOperation::baseRunTime
                 false                   // enableFunctionObjects
             )
         );
+
+        // Use whatever we read
+        const_cast<Time&>(runTime).setTime(baseRunTimePtr_());
     }
-    baseRunTimePtr_().setTime(runTime);
+//    else
+//    {
+//        baseRunTimePtr_().setTime(runTime);
+//    }
     return baseRunTimePtr_();
 }
 
@@ -113,6 +132,9 @@ Foam::fileOperations::autoParallelFileOperation::baseMesh
 {
     if (!baseMeshPtr_.valid())
     {
+        // Install default file handler
+        storeFileHandler defaultOp;
+
         procFacesInstance_ = runTime.findInstance(fvMesh::meshSubDir, "faces");
 
         Info<< "Reading decomposition addressing from " << procFacesInstance_
@@ -157,6 +179,9 @@ Foam::fileOperations::autoParallelFileOperation::mesh(const Time& runTime) const
 {
     if (!meshPtr_.valid())
     {
+        // Install default file handler
+        storeFileHandler defaultOp;
+
         Info<< "Reading current mesh" << nl << endl;
         meshPtr_ = Foam::unallocatedFvMeshTools::newMesh
         (
@@ -258,13 +283,6 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
             << "autoParallelFileOperation::filePath :"
             << " objectPath:" << io.objectPath()
             << " checkGlobal:" << checkGlobal << endl;
-
-
-        //const word& name = io.name();
-        //if (name.size() > 2 && name(name.size()-2, 2) == "_0")
-        //{
-        //    error::printStack(Pout);
-        //}
     }
 
     // Try uncollated searching
@@ -329,9 +347,38 @@ Foam::instantList Foam::fileOperations::autoParallelFileOperation::findTimes
             << "autoParallelFileOperation::findTimes :"
             << " Returning from time searching:" << endl << indent
             << "    dir   :" << dir << endl << indent
-            << "    times :" << times << endl << endl;
+            << "    times :";
+        if (times.size() >= 2)
+        {
+            Pout<< times[0].name() << " .. " << times.last().name();
+        }
+        else
+        {
+            Pout<< times;
+        }
+        Pout<< endl << endl;
     }
     return times;
+}
+
+
+void Foam::fileOperations::autoParallelFileOperation::setTime
+(
+    const Time& runTime
+) const
+{
+    if (Pstream::parRun() && runTime.processorCase())
+    {
+        if (debug)
+        {
+            Pout<< indent
+                << "autoParallelFileOperation::setTime :"
+                << " Setting base time to " << runTime.timeName()
+                << endl;
+        }
+        const Time& baseTime = baseRunTime(runTime);
+        const_cast<Time&>(baseTime).setTime(runTime);
+    }
 }
 
 
@@ -471,6 +518,9 @@ bool Foam::fileOperations::autoParallelFileOperation::read
             {
                 const Time& runTime = io.time();
 
+                // Install default file handler
+                storeFileHandler defaultOp;
+
                 Pout<< incrIndent;
 
                 // Read local mesh
@@ -507,7 +557,6 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                         << " decompose and writing:" << baseIO.objectPath()
                         << endl;
                 }
-
                 bool ok = typeReconstructor().decompose
                 (
                     reconstructor,
@@ -515,6 +564,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                     baseIO,
                     procMesh,
                     io,
+                    false,              // no face flips. Tbd.
                     os
                 );
 
@@ -611,6 +661,9 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
 
             Pout<< incrIndent;
 
+            // Install default file handler
+            storeFileHandler defaultOp;
+
             // Read local mesh
             const unallocatedFvMesh& procMesh = mesh(runTime);
             // Read undecomposed mesh. Read procAddressing files
@@ -641,6 +694,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
             (
                 reconstructor,
                 io,
+                false,          // no face flips. Tbd.
                 fmt,
                 ver,
                 cmp
@@ -652,7 +706,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
          && io.local() == "uniform"
         )
         {
-            Pout<< indent << "** uniform:" << io.objectPath() << endl;
+            //Pout<< indent << "** uniform:" << io.objectPath() << endl;
             if (valid)
             {
                 // Copy of fileOperation::writeObject but with parent path
@@ -723,8 +777,6 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
     }
     else
     {
-        Pout<< indent << "** non-par:" << io.objectPath() << endl;
-
         ok = uncollatedFileOperation::writeObject
         (
             io,

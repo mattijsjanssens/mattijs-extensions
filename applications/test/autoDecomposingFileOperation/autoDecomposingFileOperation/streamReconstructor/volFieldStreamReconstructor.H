@@ -72,6 +72,7 @@ public:
         (
             const fvMesh& mesh,
             const IOobject& io,
+            const bool isOriented,
             Ostream& os
         ) const;
 
@@ -84,6 +85,7 @@ public:
 
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
+            const bool isOriented,
             Ostream& os
         ) const;
 
@@ -91,6 +93,7 @@ public:
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
             const regIOobject& thisIO,
+            const bool isOriented,
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp

@@ -40,6 +40,7 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 (
     const fvMesh& mesh,
     const IOobject& io,
+    const bool,
     Ostream& os
 ) const
 {
@@ -120,6 +121,7 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::decompose
 
     const unallocatedFvMesh& thisMesh,
     const IOobject& thisIO,
+    const bool,
     Ostream& os
 ) const
 {
@@ -151,13 +153,12 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 (
     const parUnallocatedFvFieldReconstructor& reconstructor,
     const regIOobject& thisIO,
+    const bool,
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
     IOstream::compressionType cmp
 ) const
 {
-    Pout<< "** reconstructing:" << thisIO.objectPath() << endl;
-
     typedef GeometricField<Type, fvsPatchField, surfaceMesh> GeoField;
 
     const GeoField& fld = dynamic_cast<const GeoField&>(thisIO);

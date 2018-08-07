@@ -40,6 +40,7 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
 (
     const fvMesh& mesh,
     const IOobject& io,
+    const bool,
     Ostream& os
 ) const
 {
@@ -121,6 +122,7 @@ bool Foam::volFieldStreamReconstructor<Type>::decompose
 
     const unallocatedFvMesh& thisMesh,
     const IOobject& thisIO,
+    const bool,
     Ostream& os
 ) const
 {
@@ -150,6 +152,7 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
 (
     const parUnallocatedFvFieldReconstructor& reconstructor,
     const regIOobject& thisIO,
+    const bool,
     IOstream::streamFormat fmt,
     IOstream::versionNumber ver,
     IOstream::compressionType cmp
@@ -184,7 +187,6 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
         Pstream::parRun() = false;
         {
             //Pout<< "**Writign " << tfld().objectPath() << endl;
-            //state = tfld().write();
             Pout<< incrIndent;
             state = tfld().writeObject(fmt, ver, cmp, true);
             Pout<< decrIndent;

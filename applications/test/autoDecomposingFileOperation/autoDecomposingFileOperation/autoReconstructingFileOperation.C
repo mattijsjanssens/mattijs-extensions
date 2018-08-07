@@ -530,7 +530,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
             const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
 
             OStringStream os(IOstream::BINARY);
-            if (!reconstructor().reconstruct(mesh, io, os))
+            if (!reconstructor().reconstruct(mesh, io, false, os))
             {
                 return false;
             }

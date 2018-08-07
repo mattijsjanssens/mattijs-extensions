@@ -103,6 +103,7 @@ public:
         (
             const fvMesh& mesh,
             const IOobject& io,
+            const bool isOriented,      // apply flip (if available)
             Ostream& os
         ) const = 0;
 
@@ -115,6 +116,7 @@ public:
 
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
+            const bool isOriented,      // apply flip (if available)
             Ostream& os
         ) const = 0;
 
@@ -123,6 +125,7 @@ public:
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
             const regIOobject& thisIO,
+            const bool isOriented,      // apply flip (if available)
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp

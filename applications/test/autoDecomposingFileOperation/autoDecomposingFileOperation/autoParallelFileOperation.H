@@ -30,6 +30,7 @@ Class
 #define fileOperations_autoParallelFileOperation_H
 
 #include "uncollatedFileOperation.H"
+#include "IOstreams.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,6 +53,39 @@ class autoParallelFileOperation
 :
     public uncollatedFileOperation
 {
+public:
+
+    class storeFileHandler
+    {
+        autoPtr<fileOperation> currentPtr_;
+
+        public:
+
+            storeFileHandler()
+            :
+                currentPtr_(fileOperation::fileHandlerPtr_.ptr())
+            {
+                (void)fileHandler();
+                //if (currentPtr_().type() != fileHandler().type())
+                //{
+                //    Pout<< "** saved fileHandler:" << currentPtr_().type()
+                //        << "  restored:" << fileHandler().type() << endl;
+                //}
+            }
+
+            ~storeFileHandler()
+            {
+                //if (currentPtr_().type() != fileHandler().type())
+                //{
+                //    Pout<< "** restoring save fileHandler:"
+                //        << currentPtr_().type() << endl;
+                //}
+                fileHandler(currentPtr_);
+            }
+    };
+
+
+
     // Parallel on-the-fly reconstruction
 
         //- Proc faces instance (where procAddressing gets read from)
@@ -83,37 +117,6 @@ class autoParallelFileOperation
 
         //- Return the current (decomposed) mesh (demand loaded)
         const unallocatedFvMesh& mesh(const Time&) const;
-
-        //- Reconstruct and write
-        template<class GeoField>
-        bool reconstructAndWrite
-        (
-            const unallocatedFvMesh& uMesh,
-            const GeoField& procFld,
-            IOstream::streamFormat fmt,
-            IOstream::versionNumber ver,
-            IOstream::compressionType cmp
-        ) const;
-
-        //- Reconstruct and write
-        template<class GeoField>
-        bool reconstructAndWrite
-        (
-            const regIOobject& io,
-            IOstream::streamFormat fmt,
-            IOstream::versionNumber ver,
-            IOstream::compressionType cmp
-        ) const;
-
-        //- Reconstruct and write a surface field
-        template<class GeoField>
-        bool reconstructAndWrite2
-        (
-            const regIOobject& io,
-            IOstream::streamFormat fmt,
-            IOstream::versionNumber ver,
-            IOstream::compressionType cmp
-        ) const;
 
 
 public:
@@ -152,6 +155,9 @@ public:
             //- Get sorted list of times
             virtual instantList findTimes(const fileName&, const word&) const;
 
+            //- Callback for time change
+            virtual void setTime(const Time&) const;
+
             //- Search directory for objects. Used in IOobjectList.
             virtual fileNameList readObjects
             (
@@ -186,12 +192,6 @@ public:
 
 } // End namespace fileOperations
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-    #include "autoParallelFileOperationTemplates.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

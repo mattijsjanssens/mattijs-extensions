@@ -38,6 +38,7 @@ bool Foam::internalFieldStreamReconstructor<Type>::reconstruct
 (
     const fvMesh& mesh,
     const IOobject& io,
+    const bool,
     Ostream& os
 ) const
 {

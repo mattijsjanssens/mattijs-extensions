@@ -30,6 +30,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "processorMeshes.H"
 #include "fvFieldReconstructor.H"
+#include "unthreadedInitialise.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -43,6 +44,15 @@ namespace fileOperations
         fileOperation,
         autoDecomposingFileOperation,
         word
+    );
+
+    // Mark as not needing threaded mpi
+    addNamedToRunTimeSelectionTable
+    (
+        fileOperationInitialise,
+        unthreadedInitialise,
+        word,
+        autoDecomposing
     );
 
     class installFileOp
