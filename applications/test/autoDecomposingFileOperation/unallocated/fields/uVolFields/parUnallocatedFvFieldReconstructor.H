@@ -116,8 +116,13 @@ public:
         tmp<GeoField> decomposeFvVolumeField(const GeoField& fld) const;
 
         //- Decompose surface field
-        template<class GeoField>
-        tmp<GeoField> decomposeFvSurfaceField(const GeoField& fld) const;
+        //template<class GeoField>
+        template<class Type, template<class> class PatchField, class GeoMesh>
+        tmp<GeometricField<Type, PatchField, GeoMesh>>
+        decomposeFvSurfaceField
+        (
+            const GeometricField<Type, PatchField, GeoMesh>& fld
+        ) const;
 };
 
 

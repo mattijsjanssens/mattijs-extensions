@@ -47,7 +47,9 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
     const wordList& patchTypes,
     const labelList& patchSizes,
     const labelList& patchStarts,
+    const labelListList& basePatchAddressing,
     const List<wordList>& basePatchGroups,
+    const PtrList<dictionary>& patchDicts,
     const globalMeshData& globalData
 )
 :
@@ -70,6 +72,8 @@ Foam::unallocatedFvMesh::unallocatedFvMesh
                 patchTypes[patchi],
                 patchSizes[patchi],
                 patchStarts[patchi],
+                basePatchAddressing[patchi],
+                patchDicts[patchi],
                 patchi,
                 *reinterpret_cast<const fvBoundaryMesh*>(0),// unused reference
                 basePatchGroups[patchi]

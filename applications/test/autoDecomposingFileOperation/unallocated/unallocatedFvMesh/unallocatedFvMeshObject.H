@@ -56,7 +56,9 @@ class unallocatedFvMeshObject
         static wordList patchTypes(const fvMesh&);
         static labelList patchSizes(const fvMesh&);
         static labelList patchStarts(const fvMesh&);
+        static labelListList patchAddressing(const fvMesh&);
         static List<wordList> patchGroups(const fvMesh&);
+        static PtrList<dictionary> patchDicts(const fvMesh&);
 
 
 public:

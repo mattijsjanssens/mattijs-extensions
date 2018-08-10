@@ -384,6 +384,10 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
     // Create the internalField by remote mapping
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    // This is a bit overkill - all processors have the full undecomposed
+    // field so there is no need for remote access ... However at some
+    // point maybe only master reads.
+
     // Create reverse mapper
     distributedDirectFieldMapper mapper
     (
@@ -479,9 +483,11 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
         {
             const fvPatch& procPatch = procMesh_.boundary()[patchI];
 
-//Pout<< indent
-//    << "** synthesising field of type " << procPatch.type()
-//    << " on " << procPatch.name() << endl;
+Pout<< indent
+    << "** synthesising field of type " << procPatch.type()
+    << " on " << procPatch.name() << endl;
+
+//DebugVar(procPatch.faceCells());
 
             word patchType(procPatch.type());
 //             if (isA<unallocatedGenericFvPatch>(procPatch))
@@ -528,17 +534,21 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
         )
     );
 }
-template<class GeoField>
-Foam::tmp<GeoField>
+
+
+template<class Type, template<class> class PatchField, class GeoMesh>
+Foam::tmp<Foam::GeometricField<Type, PatchField, GeoMesh>>
 Foam::parUnallocatedFvFieldReconstructor::decomposeFvSurfaceField
 (
-    const GeoField& fld
+    const GeometricField<Type, PatchField, GeoMesh>& fld
 ) const
 {
-    if (fld.size() != baseMesh_.nInternalFaces())
+    typedef GeometricField<Type, PatchField, GeoMesh> GeoField;
+
+    if (fld.size() != GeoMesh::size(baseMesh_))
     {
         FatalErrorInFunction<< "Size:" << fld.size()
-            << " base size:" << baseMesh_.nInternalFaces() << exit(FatalError);
+            << " base size:" << GeoMesh::size(baseMesh_) << exit(FatalError);
     }
 
 
@@ -561,7 +571,7 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvSurfaceField
         mapper
     );
     // Shrink back to internal faces only
-    internalField.setSize(procMesh_.nInternalFaces());
+    internalField.setSize(GeoMesh::size(procMesh_));//.nInternalFaces());
 
 
     // Create the patchFields by remote mapping
@@ -644,17 +654,18 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvSurfaceField
         {
             const fvPatch& procPatch = procMesh_.boundary()[patchI];
 
-//Pout<< indent
-//    << "** synthesising field of type " << procPatch.type()
-//    << " on " << procPatch.name() << endl;
+Pout<< indent
+    << "** synthesising field of type " << procPatch.type()
+    << " on " << procPatch.name() << endl;
 
             word patchType(procPatch.type());
 //             if (isA<unallocatedGenericFvPatch>(procPatch))
 //             {
 //                 patchType = refCast
 //                 <
-//                     const unallocatedGenericFvPatch
-//                 >(procPatch).actualTypeName();
+//                      const unallocatedGenericFvPatch
+//                  >(procPatch).actualTypeName();
+// DebugVar(patchType);
 //             }
 
             procPatchFields.set

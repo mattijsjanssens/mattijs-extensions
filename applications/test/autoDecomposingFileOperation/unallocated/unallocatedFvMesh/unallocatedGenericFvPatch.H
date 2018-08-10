@@ -25,7 +25,11 @@ Class
     Foam::unallocatedGenericFvPatch
 
 Description
-    Version of genericFvPatch without storage
+    Version of genericFvPatch without storage.
+
+    Also used for all constraint patches. Uses dictionary to store the
+    patch-specific information since (currently) only processor patches
+    need any additional info. To be revisited.
 
 SourceFiles
     unallocatedGenericFvPatch.C
@@ -55,6 +59,8 @@ class unallocatedGenericFvPatch
     const word actualTypeName_;
     const label size_;
     const label start_;
+    const labelList faceCells_;
+    const dictionary dict_;
 
 
 public:
@@ -78,6 +84,8 @@ public:
             const word& actualTypeName,
             const label size,
             const label start,
+            const labelList& faceCells,
+            const dictionary& dict,
             const label index,
             const fvBoundaryMesh& bm,
             const wordList& inGroups = wordList()
@@ -87,7 +95,9 @@ public:
             patchIdentifier(name, index, word::null, inGroups),
             actualTypeName_(actualTypeName),
             size_(size),
-            start_(start)
+            start_(start),
+            faceCells_(faceCells),
+            dict_(dict)
         {}
 
 
@@ -120,6 +130,18 @@ public:
 //             {
 //                 return actualTypeName_;
 //             }
+
+            //- Return faceCells
+            virtual const labelUList& faceCells() const
+            {
+                return faceCells_;
+            }
+
+            //- Return dictionary
+            virtual const dictionary& dict() const
+            {
+                return dict_;
+            }
 
             //- Return label of face in patch from global face label
             inline label whichFace(const label l) const

@@ -97,6 +97,21 @@ Foam::labelList Foam::unallocatedFvMeshObject::patchStarts
 }
 
 
+Foam::labelListList Foam::unallocatedFvMeshObject::patchAddressing
+(
+    const fvMesh& mesh
+)
+{
+    const fvBoundaryMesh& bm = mesh.boundary();
+    labelListList addr(bm.size());
+    forAll(bm, i)
+    {
+        addr[i] = bm[i].faceCells();
+    }
+    return addr;
+}
+
+
 Foam::List<Foam::wordList> Foam::unallocatedFvMeshObject::patchGroups
 (
     const fvMesh& mesh
@@ -109,6 +124,25 @@ Foam::List<Foam::wordList> Foam::unallocatedFvMeshObject::patchGroups
         groups[i] = bm[i].patch().inGroups();
     }
     return groups;
+}
+
+
+Foam::PtrList<Foam::dictionary> Foam::unallocatedFvMeshObject::patchDicts
+(
+    const fvMesh& mesh
+)
+{
+    const fvBoundaryMesh& bm = mesh.boundary();
+
+    PtrList<dictionary> dicts(bm.size());
+    forAll(bm, i)
+    {
+        OStringStream os;
+        bm[i].patch().write(os);
+        IStringStream is(os.str());
+        dicts.set(i, new dictionary(is));
+    }
+    return dicts;
 }
 
 
@@ -126,7 +160,9 @@ Foam::unallocatedFvMeshObject::unallocatedFvMeshObject(const fvMesh& mesh)
         patchTypes(mesh),
         patchSizes(mesh),
         patchStarts(mesh),
+        patchAddressing(mesh),
         patchGroups(mesh),
+        patchDicts(mesh),
         mesh.globalData()
     )
 {}

@@ -24,6 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "parUnallocatedFvFieldReconstructor.H"
+#include "globalIndex.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -31,6 +32,49 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 {
     const unallocatedFvBoundaryMesh& fvb = procMesh_.boundary();
 
+    // 1. Swap global cells for processor patches
+    const globalIndex globalCells(procMesh_.nCells());
+
+    labelListList remoteGlobalCells;
+    {
+        labelListList myGlobalCells(Pstream::nProcs());
+        forAll(fvb, patchI)
+        {
+            const unallocatedGenericFvPatch& pp = fvb[patchI];
+            if (pp.type() == processorFvPatch::typeName)
+            {
+                // Use the dictionary to lookup info. Saves having full
+                // virtual mechanism ...
+                label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
+
+                const labelUList& fc = pp.faceCells();
+                labelList& globalFc = myGlobalCells[nbrProci];
+                globalFc.setSize(fc.size());
+                forAll(fc, i)
+                {
+                    globalFc[i] = globalCells.toGlobal(fc[i]);
+                }
+            }
+        }
+
+        labelList myGlobalSizes(myGlobalCells.size());
+        forAll(myGlobalCells, proci)
+        {
+            myGlobalSizes[proci] = myGlobalCells[proci].size();
+        }
+
+        Pstream::exchange<labelList, label>
+        (
+            myGlobalCells,
+            myGlobalSizes,
+            remoteGlobalCells
+        );
+    }
+
+
+    // 2. Build face maps :
+    //      - normal patches: boundary face to boundary face
+    //      - proc patches  : cell to boundary face
     patchFaceMaps_.setSize(fvb.size());
     forAll(fvb, patchI)
     {
@@ -69,6 +113,26 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
                 UPstream::msgType()
             );
             //Pout<< "patchMap:" << patchFaceMaps_[patchI] << endl;
+        }
+        else if (fvb[patchI].type() == processorFvPatch::typeName)
+        {
+            const unallocatedGenericFvPatch& pp = fvb[patchI];
+
+            // Use the dictionary to lookup info. Saves having full
+            // virtual mechanism ...
+            label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
+
+            List<Map<label>> compactMap;
+            patchFaceMaps_.set
+            (
+                patchI,
+                new mapDistributeBase
+                (
+                    globalCells,
+                    remoteGlobalCells[nbrProci],
+                    compactMap
+                )
+            );
         }
     }
 }
