@@ -31,6 +31,7 @@ Class
 
 #include "uncollatedFileOperation.H"
 #include "IOstreams.H"
+#include "collatedFileOperation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -55,38 +56,97 @@ class autoParallelFileOperation
 {
 public:
 
+//    class storeFileHandler
+//    {
+//        autoPtr<fileOperation> currentPtr_;
+//
+//        public:
+//
+//            storeFileHandler(const word& type)
+//            :
+//                currentPtr_(nullptr)
+//            {
+//                if (type != fileOperation::fileHandlerPtr_().type())
+//                {
+//                    currentPtr_ = fileOperation::fileHandlerPtr_.ptr();
+//
+//                    Pout<< "** current fileHandler:" << currentPtr_().type()
+//                        << "  new fileHandler:" << type << endl;
+//
+//                    autoPtr<fileOperation> newHandler
+//                    (
+//                        fileOperation::New(type, true)
+//                    );
+//                    (void)fileHandler(newHandler);
+//                }
+//            }
+//
+//            ~storeFileHandler()
+//            {
+//                if (currentPtr_.valid())
+//                {
+//                    Pout<< "** restoring saved fileHandler:"
+//                        << currentPtr_().type() << endl;
+//                    fileHandler(currentPtr_);
+//                }
+//            }
+//    };
     class storeFileHandler
     {
-        autoPtr<fileOperation> currentPtr_;
+        autoPtr<fileOperation>& basicHandler_;
 
         public:
 
-            storeFileHandler()
+            storeFileHandler(autoPtr<fileOperation>& basicHandler)
             :
-                currentPtr_(fileOperation::fileHandlerPtr_.ptr())
+                basicHandler_(basicHandler)
             {
-                (void)fileHandler();
-                //if (currentPtr_().type() != fileHandler().type())
-                //{
-                //    Pout<< "** saved fileHandler:" << currentPtr_().type()
-                //        << "  restored:" << fileHandler().type() << endl;
-                //}
+                if
+                (
+                    basicHandler().type()
+                 != fileOperation::fileHandlerPtr_().type()
+                )
+                {
+                    fileOperation* p = fileOperation::fileHandlerPtr_.ptr();
+
+                    Pout<< "** saved fileHandler:" << p->type()
+                        << "  new fileHandler:" << basicHandler().type()
+                        << endl;
+
+                    (void)fileHandler(basicHandler_);
+
+                    basicHandler_.set(p);
+                }
             }
 
             ~storeFileHandler()
             {
-                //if (currentPtr_().type() != fileHandler().type())
-                //{
-                //    Pout<< "** restoring save fileHandler:"
-                //        << currentPtr_().type() << endl;
-                //}
-                fileHandler(currentPtr_);
+                if
+                (
+                    basicHandler_().type()
+                 != fileOperation::fileHandlerPtr_().type()
+                )
+                {
+                    Pout<< "** restoring saved fileHandler:"
+                        << basicHandler_().type() << endl;
+
+                    fileOperation* p = basicHandler_.ptr();
+                    basicHandler_.set(fileOperation::fileHandlerPtr_.ptr());
+                    autoPtr<fileOperation> restore(p);
+                    (void)fileHandler(restore);
+                }
             }
     };
 
 
 
     // Parallel on-the-fly reconstruction
+
+//        //- Current file handler
+//        const word handler_;
+
+        //- Current file handler
+        mutable autoPtr<fileOperation> basicFileHandler_;
 
         //- Proc faces instance (where procAddressing gets read from)
         mutable word procFacesInstance_;
@@ -139,8 +199,9 @@ public:
 
         // fileOperation functinality
 
-            //- Reuse file-based filePath
-            using fileOperation::filePath;
+            //- Search for a file or directory. Use IOobject version in
+            //  preference
+            virtual fileName filePath(const fileName&) const;
 
             //- Search for an object. checkGlobal : also check undecomposed case
             //  This differs from uncollated in searching for parent
@@ -185,6 +246,28 @@ public:
                 IOstream::compressionType compression=IOstream::UNCOMPRESSED,
                 const bool valid = true
             ) const;
+};
+
+
+/*---------------------------------------------------------------------------*\
+             Class autoParallelFileOperationInitialise Declaration
+\*---------------------------------------------------------------------------*/
+
+class autoParallelFileOperationInitialise
+:
+    public collatedFileOperationInitialise
+{
+public:
+
+    // Constructors
+
+        //- Construct from components
+        autoParallelFileOperationInitialise(int& argc, char**& argv);
+
+
+    //- Destructor
+    virtual ~autoParallelFileOperationInitialise()
+    {}
 };
 
 

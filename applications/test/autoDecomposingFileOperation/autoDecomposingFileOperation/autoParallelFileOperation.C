@@ -54,7 +54,7 @@ namespace fileOperations
     addNamedToRunTimeSelectionTable
     (
         fileOperationInitialise,
-        unthreadedInitialise,
+        autoParallelFileOperationInitialise,
         word,
         autoParallel
     );
@@ -97,7 +97,7 @@ const Foam::Time& Foam::fileOperations::autoParallelFileOperation::baseRunTime
     if (!baseRunTimePtr_.valid())
     {
         // Install default file handler
-        storeFileHandler defaultOp;
+        storeFileHandler defaultOp(basicFileHandler_);
 
         Info<< "Creating base time\n" << endl;
         baseRunTimePtr_.reset
@@ -116,10 +116,6 @@ const Foam::Time& Foam::fileOperations::autoParallelFileOperation::baseRunTime
         // Use whatever we read
         const_cast<Time&>(runTime).setTime(baseRunTimePtr_());
     }
-//    else
-//    {
-//        baseRunTimePtr_().setTime(runTime);
-//    }
     return baseRunTimePtr_();
 }
 
@@ -133,7 +129,7 @@ Foam::fileOperations::autoParallelFileOperation::baseMesh
     if (!baseMeshPtr_.valid())
     {
         // Install default file handler
-        storeFileHandler defaultOp;
+        storeFileHandler defaultOp(basicFileHandler_);
 
         procFacesInstance_ = runTime.findInstance(fvMesh::meshSubDir, "faces");
 
@@ -180,7 +176,7 @@ Foam::fileOperations::autoParallelFileOperation::mesh(const Time& runTime) const
     if (!meshPtr_.valid())
     {
         // Install default file handler
-        storeFileHandler defaultOp;
+        storeFileHandler defaultOp(basicFileHandler_);
 
         Info<< "Reading current mesh" << nl << endl;
         meshPtr_ = Foam::unallocatedFvMeshTools::newMesh
@@ -198,26 +194,6 @@ Foam::fileOperations::autoParallelFileOperation::mesh(const Time& runTime) const
 }
 
 
-// const Foam::parUnallocatedFvFieldReconstructor&
-// Foam::fileOperations::autoParallelFileOperation::reconstructor
-// (
-//     const unallocatedFvMesh& mesh
-// ) const
-// {
-//     if (!reconstructorPtr_.valid())
-//     {
-//         Info<< "Creating reconstructor" << nl << endl;
-//         reconstructorPtr_ = new parUnallocatedFvFieldReconstructor
-//         (
-//             baseMesh(),
-//             mesh,
-//             distMapPtr_()
-//         );
-//     }
-//     return reconstructorPtr_();
-// }
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fileOperations::autoParallelFileOperation::
@@ -227,11 +203,44 @@ autoParallelFileOperation
 )
 :
     uncollatedFileOperation(false)
+//    handler_
+//    (
+//        getEnv("FOAM_BASICFILEHANDLER").size()
+//      ? word(getEnv("FOAM_BASICFILEHANDLER"))
+//      : (
+//            fileHandlerPtr_.valid()
+//          ? fileHandlerPtr_().type()
+//          : fileOperation::defaultFileHandler
+//        )
+//    )
 {
+    // Determine the fall-back handler
+    word handlerType(getEnv("FOAM_FILEHANDLER"));
+    if (handlerType == type())
+    {
+        handlerType = word::null;
+    }
+    //HashTable<string>::const_iterator iter = options_.find("fileHandler");
+    //if (iter != options_.end() && iter() != type())
+    //{
+    //    handlerType = iter();
+    //}
+    if (handlerType.empty())
+    {
+        handlerType = fileOperation::defaultFileHandler;
+    }
+    basicFileHandler_ = fileOperation::New
+    (
+        handlerType,
+        true
+    );
+
+
     if (verbose)
     {
         Info<< "I/O    : " << typeName << nl
-            << "         (reconstructs on-the-fly in parallel operation)"
+            << "         (reconstructs on-the-fly in parallel operation)" << nl
+            << "         Underlying I/O through " << basicFileHandler_().type()
             << endl;
     }
 
@@ -261,6 +270,36 @@ autoParallelFileOperation
 }
 
 
+Foam::fileOperations::autoParallelFileOperationInitialise::
+autoParallelFileOperationInitialise(int& argc, char**& argv)
+:
+    collatedFileOperationInitialise(argc, argv)
+{
+//    // Filter out any of my arguments
+//    const string s("-basicFileHandler");
+//
+//    int index = -1;
+//    for (int i=1; i<argc-1; i++)
+//    {
+//        if (argv[i] == s)
+//        {
+//            index = i;
+//            setEnv("FOAM_BASICFILEHANDLER", argv[i+1], true);
+//            break;
+//        }
+//    }
+//
+//    if (index != -1)
+//    {
+//        for (int i=index+2; i<argc; i++)
+//        {
+//            argv[i-2] = argv[i];
+//        }
+//        argc -= 2;
+//    }
+}
+
+
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
 Foam::fileOperations::autoParallelFileOperation::
@@ -269,6 +308,41 @@ Foam::fileOperations::autoParallelFileOperation::
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
+(
+    const fileName& fName
+) const
+{
+    fileName pathDir;
+    {
+        // Install default file handler
+        storeFileHandler defaultOp(basicFileHandler_);
+
+    Pout<< "** checking " << fName << " using " << fileHandler().type()
+        << endl;
+
+        pathDir = fileHandler().filePath(fName);
+
+    Pout<< "** checking " << fName << " using " << fileHandler().type()
+        << " pathDir:" << pathDir << endl;
+
+
+    }
+
+    if (Pstream::parRun() && pathDir.empty())
+    {
+        if (Pstream::master())
+        {
+            FatalErrorInFunction
+                << "Cannot open case directory "
+                << fName << " Please run 'decomposePar'" << exit(FatalError);
+        }
+    }
+
+    return pathDir;
+}
+
 
 Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
 (
@@ -331,14 +405,43 @@ Foam::instantList Foam::fileOperations::autoParallelFileOperation::findTimes
     }
     else
     {
-        if (debug)
+        // Leading directory
+        fileName path;
+        // Name of processors directory
+        fileName procDir;
+        // Any directory inside procDir
+        fileName local;
+
+        label start, size, maxNProcs;
+        label proci = splitProcessorPath
+        (
+            dir,
+            path,
+            procDir,
+            local,
+
+            start,
+            size,
+            maxNProcs
+        );
+
+        if (proci != -1 && local.size() == 0)
         {
-            Pout<< indent
-                << "autoParallelFileOperation::findTimes :"
-                << " Searching in parent " << dir/".."
-                << endl;
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoParallelFileOperation::findTimes :"
+                    << " Searching in parent " << path
+                    << endl;
+            }
+            times = uncollatedFileOperation::findTimes(path, constantName);
         }
-        times = uncollatedFileOperation::findTimes(dir/"..", constantName);
+        else
+        {
+            FatalErrorInFunction << " path:" << path << " proci:" << proci
+                << exit(FatalError);
+            times = uncollatedFileOperation::findTimes(dir, constantName);
+        }
     }
 
     if (debug)
@@ -519,7 +622,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                 const Time& runTime = io.time();
 
                 // Install default file handler
-                storeFileHandler defaultOp;
+                storeFileHandler defaultOp(basicFileHandler_);
 
                 Pout<< incrIndent;
 
@@ -662,7 +765,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
             Pout<< incrIndent;
 
             // Install default file handler
-            storeFileHandler defaultOp;
+            storeFileHandler defaultOp(basicFileHandler_);
 
             // Read local mesh
             const unallocatedFvMesh& procMesh = mesh(runTime);
