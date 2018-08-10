@@ -130,13 +130,11 @@ bool Foam::volFieldStreamReconstructor<Type>::decompose
         GeoField;
 
     // Read base field
+    Info<< "Reading " << baseIO.objectPath() << endl;
     const GeoField baseFld(baseIO, baseMesh);
 
     // Decompose
-    tmp<GeoField> tfld
-    (
-        reconstructor.decomposeFvVolumeField(baseFld)
-    );
+    tmp<GeoField> tfld(reconstructor.decomposeFvVolumeField(baseFld));
 
     // Stream
     Pout<< incrIndent;
@@ -186,7 +184,7 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
         const bool oldParRun = Pstream::parRun();
         Pstream::parRun() = false;
         {
-            //Pout<< "**Writign " << tfld().objectPath() << endl;
+            Info<< "Writing " << tfld().objectPath() << endl;
             Pout<< incrIndent;
             state = tfld().writeObject(fmt, ver, cmp, true);
             Pout<< decrIndent;

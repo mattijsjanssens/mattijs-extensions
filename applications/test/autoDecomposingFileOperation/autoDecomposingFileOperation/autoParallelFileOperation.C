@@ -54,7 +54,8 @@ namespace fileOperations
     addNamedToRunTimeSelectionTable
     (
         fileOperationInitialise,
-        autoParallelFileOperationInitialise,
+        //autoParallelFileOperationInitialise,
+        collatedFileOperationInitialise,
         word,
         autoParallel
     );
@@ -96,7 +97,7 @@ const Foam::Time& Foam::fileOperations::autoParallelFileOperation::baseRunTime
 {
     if (!baseRunTimePtr_.valid())
     {
-        // Install default file handler
+        // Install basic file handler
         storeFileHandler defaultOp(basicFileHandler_);
 
         Info<< "Creating base time\n" << endl;
@@ -128,7 +129,7 @@ Foam::fileOperations::autoParallelFileOperation::baseMesh
 {
     if (!baseMeshPtr_.valid())
     {
-        // Install default file handler
+        // Install basic file handler
         storeFileHandler defaultOp(basicFileHandler_);
 
         procFacesInstance_ = runTime.findInstance(fvMesh::meshSubDir, "faces");
@@ -175,7 +176,7 @@ Foam::fileOperations::autoParallelFileOperation::mesh(const Time& runTime) const
 {
     if (!meshPtr_.valid())
     {
-        // Install default file handler
+        // Install basic file handler
         storeFileHandler defaultOp(basicFileHandler_);
 
         Info<< "Reading current mesh" << nl << endl;
@@ -203,44 +204,23 @@ autoParallelFileOperation
 )
 :
     uncollatedFileOperation(false)
-//    handler_
-//    (
-//        getEnv("FOAM_BASICFILEHANDLER").size()
-//      ? word(getEnv("FOAM_BASICFILEHANDLER"))
-//      : (
-//            fileHandlerPtr_.valid()
-//          ? fileHandlerPtr_().type()
-//          : fileOperation::defaultFileHandler
-//        )
-//    )
 {
-    // Determine the fall-back handler
+    // Determine the underlying file handler
     word handlerType(getEnv("FOAM_FILEHANDLER"));
     if (handlerType == type())
     {
         handlerType = word::null;
     }
-    //HashTable<string>::const_iterator iter = options_.find("fileHandler");
-    //if (iter != options_.end() && iter() != type())
-    //{
-    //    handlerType = iter();
-    //}
     if (handlerType.empty())
     {
         handlerType = fileOperation::defaultFileHandler;
     }
-    basicFileHandler_ = fileOperation::New
-    (
-        handlerType,
-        true
-    );
-
 
     if (verbose)
     {
         Info<< "I/O    : " << typeName << nl
             << "         (reconstructs on-the-fly in parallel operation)" << nl
-            << "         Underlying I/O through " << basicFileHandler_().type()
+            << "         Underlying I/O through " << handlerType
             << endl;
     }
 
@@ -267,37 +247,17 @@ autoParallelFileOperation
         }
         regIOobject::fileModificationChecking = regIOobject::inotify;
     }
+
+    // Construct basic file handler
+    basicFileHandler_ = fileOperation::New(handlerType, true);
 }
 
 
-Foam::fileOperations::autoParallelFileOperationInitialise::
-autoParallelFileOperationInitialise(int& argc, char**& argv)
-:
-    collatedFileOperationInitialise(argc, argv)
-{
-//    // Filter out any of my arguments
-//    const string s("-basicFileHandler");
-//
-//    int index = -1;
-//    for (int i=1; i<argc-1; i++)
-//    {
-//        if (argv[i] == s)
-//        {
-//            index = i;
-//            setEnv("FOAM_BASICFILEHANDLER", argv[i+1], true);
-//            break;
-//        }
-//    }
-//
-//    if (index != -1)
-//    {
-//        for (int i=index+2; i<argc; i++)
-//        {
-//            argv[i-2] = argv[i];
-//        }
-//        argc -= 2;
-//    }
-}
+// Foam::fileOperations::autoParallelFileOperationInitialise::
+// autoParallelFileOperationInitialise(int& argc, char**& argv)
+// :
+//     collatedFileOperationInitialise(argc, argv)
+// {}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
@@ -314,31 +274,52 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
     const fileName& fName
 ) const
 {
+    static bool firstCall = true;
+
     fileName pathDir;
+
     {
-        // Install default file handler
+        // Install basic file handler
         storeFileHandler defaultOp(basicFileHandler_);
-
-    Pout<< "** checking " << fName << " using " << fileHandler().type()
-        << endl;
-
         pathDir = fileHandler().filePath(fName);
-
-    Pout<< "** checking " << fName << " using " << fileHandler().type()
-        << " pathDir:" << pathDir << endl;
-
-
+        if (debug)
+        {
+            Pout<< indent
+                << "autoParallelFileOperation::filePath :"
+                << " fName:" << fName
+                << " pathDir:" << pathDir << endl;
+        }
     }
 
-    if (Pstream::parRun() && pathDir.empty())
+    if (Pstream::parRun() && pathDir.empty() && firstCall)
     {
         if (Pstream::master())
         {
-            FatalErrorInFunction
+            WarningInFunction
                 << "Cannot open case directory "
-                << fName << " Please run 'decomposePar'" << exit(FatalError);
+                << fName << nl
+                << "    Running decomposePar" << nl << nl << endl;
+            if (system("decomposePar"))
+            {
+                FatalErrorInFunction
+                    << "Failed executing 'decomposePar'"
+                    << exit(FatalError);
+            }
+        }
+
+        // Re-check
+        storeFileHandler defaultOp(basicFileHandler_);
+        pathDir = fileHandler().filePath(fName);
+        if (debug)
+        {
+            Pout<< indent
+                << "autoParallelFileOperation::filePath :"
+                << " fName:" << fName
+                << " rechecked pathDir:" << pathDir << endl;
         }
     }
+
+    firstCall = false;
 
     return pathDir;
 }
@@ -368,11 +349,15 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
     );
 
     // If not found and parallel check parent
-    if (objPath.empty() && checkGlobal && io.time().processorCase())
+    if (objPath.empty() && io.time().processorCase()) // && checkGlobal)
     {
         fileName parentObjectPath =
             io.rootPath()/io.time().globalCaseName()
            /io.instance()/io.db().dbDir()/io.local()/io.name();
+
+DebugVar(io.objectPath());
+DebugVar(parentObjectPath);
+
 
         if (isFile(parentObjectPath))
         {
@@ -438,8 +423,10 @@ Foam::instantList Foam::fileOperations::autoParallelFileOperation::findTimes
         }
         else
         {
-            FatalErrorInFunction << " path:" << path << " proci:" << proci
-                << exit(FatalError);
+            // No processor* ending so already adapted path.
+            //FatalErrorInFunction
+            //    << " dir:" << dir << " path:" << path << " proci:" << proci
+            //    << exit(FatalError);
             times = uncollatedFileOperation::findTimes(dir, constantName);
         }
     }
@@ -581,6 +568,8 @@ bool Foam::fileOperations::autoParallelFileOperation::read
             Pout<< indent
                 << "autoParallelFileOperation::read :"
                 << " Searching for handler for type:" << type
+                << " global:" << io.globalObject()
+                << " masterOnly:" << masterOnly
                 << " of object: " << io.objectPath() << endl;
         }
         autoPtr<streamReconstructor> typeReconstructor
@@ -600,7 +589,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
 
 
             // Find file, check in parent directory
-            fileName objPath = filePath(true, io, type);
+            fileName objPath = filePath(oldGlobal, io, type);
 
             // Check if the file comes from the parent path
             fileName parentObjectPath =
@@ -621,7 +610,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
             {
                 const Time& runTime = io.time();
 
-                // Install default file handler
+                // Install basic file handler
                 storeFileHandler defaultOp(basicFileHandler_);
 
                 Pout<< incrIndent;
@@ -764,7 +753,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
 
             Pout<< incrIndent;
 
-            // Install default file handler
+            // Install basic file handler
             storeFileHandler defaultOp(basicFileHandler_);
 
             // Read local mesh
@@ -809,7 +798,6 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
          && io.local() == "uniform"
         )
         {
-            //Pout<< indent << "** uniform:" << io.objectPath() << endl;
             if (valid)
             {
                 // Copy of fileOperation::writeObject but with parent path

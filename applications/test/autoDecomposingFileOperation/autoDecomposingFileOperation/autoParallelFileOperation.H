@@ -56,41 +56,6 @@ class autoParallelFileOperation
 {
 public:
 
-//    class storeFileHandler
-//    {
-//        autoPtr<fileOperation> currentPtr_;
-//
-//        public:
-//
-//            storeFileHandler(const word& type)
-//            :
-//                currentPtr_(nullptr)
-//            {
-//                if (type != fileOperation::fileHandlerPtr_().type())
-//                {
-//                    currentPtr_ = fileOperation::fileHandlerPtr_.ptr();
-//
-//                    Pout<< "** current fileHandler:" << currentPtr_().type()
-//                        << "  new fileHandler:" << type << endl;
-//
-//                    autoPtr<fileOperation> newHandler
-//                    (
-//                        fileOperation::New(type, true)
-//                    );
-//                    (void)fileHandler(newHandler);
-//                }
-//            }
-//
-//            ~storeFileHandler()
-//            {
-//                if (currentPtr_.valid())
-//                {
-//                    Pout<< "** restoring saved fileHandler:"
-//                        << currentPtr_().type() << endl;
-//                    fileHandler(currentPtr_);
-//                }
-//            }
-//    };
     class storeFileHandler
     {
         autoPtr<fileOperation>& basicHandler_;
@@ -109,9 +74,12 @@ public:
                 {
                     fileOperation* p = fileOperation::fileHandlerPtr_.ptr();
 
-                    Pout<< "** saved fileHandler:" << p->type()
-                        << "  new fileHandler:" << basicHandler().type()
-                        << endl;
+                    if (autoParallelFileOperation::debug)
+                    {
+                        Pout<< "Saving fileHandler:" << p->type()
+                            << " installing fileHandler:"
+                            << basicHandler().type() << endl;
+                    }
 
                     (void)fileHandler(basicHandler_);
 
@@ -127,8 +95,11 @@ public:
                  != fileOperation::fileHandlerPtr_().type()
                 )
                 {
-                    Pout<< "** restoring saved fileHandler:"
-                        << basicHandler_().type() << endl;
+                    if (autoParallelFileOperation::debug)
+                    {
+                        Pout<< "Restoring saved fileHandler:"
+                            << basicHandler_().type() << endl;
+                    }
 
                     fileOperation* p = basicHandler_.ptr();
                     basicHandler_.set(fileOperation::fileHandlerPtr_.ptr());
@@ -141,9 +112,6 @@ public:
 
 
     // Parallel on-the-fly reconstruction
-
-//        //- Current file handler
-//        const word handler_;
 
         //- Current file handler
         mutable autoPtr<fileOperation> basicFileHandler_;
@@ -201,6 +169,7 @@ public:
 
             //- Search for a file or directory. Use IOobject version in
             //  preference
+            //using fileOperation::filePath;
             virtual fileName filePath(const fileName&) const;
 
             //- Search for an object. checkGlobal : also check undecomposed case
@@ -253,22 +222,22 @@ public:
              Class autoParallelFileOperationInitialise Declaration
 \*---------------------------------------------------------------------------*/
 
-class autoParallelFileOperationInitialise
-:
-    public collatedFileOperationInitialise
-{
-public:
-
-    // Constructors
-
-        //- Construct from components
-        autoParallelFileOperationInitialise(int& argc, char**& argv);
-
-
-    //- Destructor
-    virtual ~autoParallelFileOperationInitialise()
-    {}
-};
+// class autoParallelFileOperationInitialise
+// :
+//     public collatedFileOperationInitialise
+// {
+// public:
+//
+//     // Constructors
+//
+//         //- Construct from components
+//         autoParallelFileOperationInitialise(int& argc, char**& argv);
+//
+//
+//     //- Destructor
+//     virtual ~autoParallelFileOperationInitialise()
+//     {}
+// };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
