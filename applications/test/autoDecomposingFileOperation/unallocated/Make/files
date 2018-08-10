@@ -9,7 +9,6 @@ unallocatedFvMesh/unallocatedFvMeshObject.C
 fields/unallocatedFvPatchFields/unallocatedEmptyFvPatchFields.C
 fields/unallocatedFvPatchFields/unallocatedFvPatchFields.C
 fields/unallocatedFvPatchFields/unallocatedGenericFvPatchFields.C
-
 fields/unallocatedFvPatchFields/unallocatedProcessorFvPatchFields.C
 
 fields/unallocatedFvPatchFields/distributedDirectFieldMapper.C
@@ -28,6 +27,7 @@ fields/uSurfaceFields/uSurfaceFields.C
 fields/unallocatedFvsPatchFields/unallocatedFvsPatchFields.C
 fields/unallocatedFvsPatchFields/unallocatedGenericFvsPatchFields.C
 fields/unallocatedFvsPatchFields/unallocatedEmptyFvsPatchFields.C
+fields/unallocatedFvsPatchFields/unallocatedProcessorFvsPatchFields.C
 
 
 LIB = $(FOAM_USER_LIBBIN)/libunallocated
