@@ -221,6 +221,7 @@ void Foam::unallocatedFvPatchField<Type>::write(Ostream& os) const
         os.writeKeyword("patchType") << patchType_
             << token::END_STATEMENT << nl;
     }
+//    this->writeEntry("value", os);
 }
 
 

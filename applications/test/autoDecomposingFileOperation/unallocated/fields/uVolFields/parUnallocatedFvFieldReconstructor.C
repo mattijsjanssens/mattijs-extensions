@@ -112,27 +112,60 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
                 oldToNewConstruct,
                 UPstream::msgType()
             );
-            //Pout<< "patchMap:" << patchFaceMaps_[patchI] << endl;
+            Pout<< "patch:" << basePatch.name()
+                << " patchMap:" << patchFaceMaps_[patchI] << endl;
         }
         else if (fvb[patchI].type() == processorFvPatch::typeName)
         {
-            const unallocatedGenericFvPatch& pp = fvb[patchI];
+            //const unallocatedGenericFvPatch& pp = fvb[patchI];
 
             // Use the dictionary to lookup info. Saves having full
             // virtual mechanism ...
-            label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
+            //label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
 
-            List<Map<label>> compactMap;
+            //List<Map<label>> compactMap;
+            //patchFaceMaps_.set
+            //(
+            //    patchI,
+            //    new mapDistributeBase
+            //    (
+            //        globalCells,
+            //        remoteGlobalCells[nbrProci],
+            //        compactMap
+            //    )
+            //);
+
+            // Mark all used elements (i.e. destination patch faces)
+            boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
+
+            const unallocatedGenericFvPatch& procPatch =
+                procMesh_.boundary()[patchI];
+
+            forAll(procPatch, i)
+            {
+                faceIsUsed[procPatch.start()+i] = true;
+            }
+
+            // Copy face map
             patchFaceMaps_.set
             (
                 patchI,
-                new mapDistributeBase
-                (
-                    globalCells,
-                    remoteGlobalCells[nbrProci],
-                    compactMap
-                )
+                new mapDistributeBase(distMap_.faceMap())
             );
+
+            // Compact out unused elements
+            labelList oldToNewSub;
+            labelList oldToNewConstruct;
+            patchFaceMaps_[patchI].compact
+            (
+                faceIsUsed,
+                procMesh_.nFaces(),      // maximum index of subMap
+                oldToNewSub,
+                oldToNewConstruct,
+                UPstream::msgType()
+            );
+            Pout<< "PROC patch:" << procPatch.name()
+                << " patchMap:" << patchFaceMaps_[patchI] << endl;
         }
     }
 }

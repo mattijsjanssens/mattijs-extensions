@@ -123,9 +123,10 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
     {
         if (patchFaceMaps_.set(patchI))
         {
-            //Pout<< "** mapping patch " << bfld[patchI].patch().name()
-            //    << " patchField type:" << bfld[patchI].type()
-            //   << " of field " << fld.name() << endl;
+            Pout<< "reconstructFvVolumeField: mapping patch "
+                << bfld[patchI].patch().name()
+                << " patchField type:" << bfld[patchI].type()
+               << " of field " << fld.name() << endl;
 
             // Clone local patch field
             patchFields.set(patchI, bfld[patchI].clone());
@@ -155,7 +156,8 @@ Foam::parUnallocatedFvFieldReconstructor::reconstructFvVolumeField
         {
             const fvPatch& basePatch = baseMesh_.boundary()[patchI];
 
-            //Pout<< "** Mapping basePatch patch " << basePatch.name() << endl;
+            Pout<< "reconstructFvVolumeField: Mapping basePatch patch "
+                << basePatch.name() << endl;
 
             const typename GeoField::Patch& pfld = patchFields[patchI];
 
@@ -414,14 +416,18 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
 
     const typename GeoField::Boundary& bfld = fld.boundaryField();
 
+DebugVar(bfld);
+
+
     forAll(bfld, patchI)
     {
         if (patchFaceMaps_.set(patchI))
         {
-            //Pout<< indent
-            //    << "** mapping patch " << bfld[patchI].patch().name()
-            //    << " patchField type:" << bfld[patchI].type()
-            //    << " of field " << fld.name() << endl;
+            Pout<< indent
+                << "decomposeFvVolumeField: mapping base patch "
+                << bfld[patchI].patch().name()
+                << " patchField type:" << bfld[patchI].type()
+                << " of field " << fld.name() << endl;
 
             // Clone local patch field
             patchFields.set(patchI, bfld[patchI].clone());
@@ -458,6 +464,11 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
 
             const typename GeoField::Patch& pfld = patchFields[patchI];
 
+            Pout
+                << "** cloning " << pfld.patch().name()
+                << " patchField type:" << pfld.type()
+                << " of field " << fld.name() << endl;
+
             labelList dummyMap(identity(pfld.size()));
             directFvPatchFieldMapper dummyMapper(dummyMap);
 
@@ -475,39 +486,73 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
         }
     }
 
-    // Add some empty patches on remaining patches (tbd.probably processor
-    // patches)
+    // Add processor patches on remaining patches
+    typedef typename GeoField::value_type Type;
+
+    List<Field<Type>> localValues(Pstream::nProcs());
+    labelList localSizes(Pstream::nProcs(), 0);
+    List<Field<Type>> remoteValues(Pstream::nProcs());
+    
     forAll(procPatchFields, patchI)
     {
         if (!procPatchFields.set(patchI))
         {
-            const fvPatch& procPatch = procMesh_.boundary()[patchI];
+            const unallocatedGenericFvPatch& pp = procMesh_.boundary()[patchI];
+            if (pp.type() == processorFvPatch::typeName)
+            {
+                // Use the dictionary to lookup nbr
+                label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
+                localValues[nbrProci] = Field<Type>
+                (
+                    fld.internalField(),
+                    pp.faceCells()
+                );
+                localSizes[nbrProci] = pp.size();
+            }
+        }
+    }
+
+    Pstream::exchange<Field<Type>, Type>
+    (
+        localValues,
+        localSizes,
+        remoteValues
+    );
+
+    forAll(procPatchFields, patchI)
+    {
+        if (!procPatchFields.set(patchI))
+        {
+            const unallocatedGenericFvPatch& pp = procMesh_.boundary()[patchI];
+            if (pp.type() == processorFvPatch::typeName)
+            {
+                label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
 
 Pout<< indent
-    << "** synthesising field of type " << procPatch.type()
-    << " on " << procPatch.name() << endl;
+    << "** synthesising field of type " << pp.type()
+    << " on " << pp.name() << endl;
 
-//DebugVar(procPatch.faceCells());
-
-            word patchType(procPatch.type());
-//             if (isA<unallocatedGenericFvPatch>(procPatch))
-//             {
-//                 patchType = refCast
-//                 <
-//                     const unallocatedGenericFvPatch
-//                 >(procPatch).actualTypeName();
-//             }
-
-            procPatchFields.set
-            (
-                patchI,
-                GeoField::Patch::New
+                procPatchFields.set
                 (
-                    patchType,
-                    procPatch,
-                    GeoField::Internal::null()
-                )
-            );
+                    patchI,
+                    GeoField::Patch::New
+                    (
+                        pp.type(),
+                        pp,
+                        GeoField::Internal::null()
+                    )
+                );
+
+                procPatchFields[patchI] = remoteValues[nbrProci];
+
+Pout<< indent
+    << "** synthesised field:" << procPatchFields[patchI]
+    << " on " << pp.name()
+    << " remote:" << remoteValues[nbrProci]
+    << " local:" << localValues[nbrProci]
+    << endl;
+
+            }
         }
     }
 
@@ -589,10 +634,10 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvSurfaceField
     {
         if (patchFaceMaps_.set(patchI))
         {
-            //Pout<< indent
-            //    << "** mapping patch " << bfld[patchI].patch().name()
-            //    << " patchField type:" << bfld[patchI].type()
-            //    << " of field " << fld.name() << endl;
+            Pout<< indent
+                << "** mapping patch " << bfld[patchI].patch().name()
+                << " patchField type:" << bfld[patchI].type()
+                << " of field " << fld.name() << endl;
 
             // Clone local patch field
             patchFields.set(patchI, bfld[patchI].clone());
@@ -652,32 +697,46 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvSurfaceField
     {
         if (!procPatchFields.set(patchI))
         {
-            const fvPatch& procPatch = procMesh_.boundary()[patchI];
+            const unallocatedGenericFvPatch& pp = procMesh_.boundary()[patchI];
+            if (pp.type() == processorFvPatch::typeName)
+            {
+                //label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
 
 Pout<< indent
-    << "** synthesising field of type " << procPatch.type()
-    << " on " << procPatch.name() << endl;
+    << "** synthesising field of type " << pp.type()
+    << " on " << pp.name() << endl;
 
-            word patchType(procPatch.type());
-//             if (isA<unallocatedGenericFvPatch>(procPatch))
+            word patchType(pp.type());
+//             if (isA<unallocatedGenericFvPatch>(pp))
 //             {
 //                 patchType = refCast
 //                 <
 //                      const unallocatedGenericFvPatch
-//                  >(procPatch).actualTypeName();
+//                  >(pp).actualTypeName();
 // DebugVar(patchType);
 //             }
 
-            procPatchFields.set
-            (
-                patchI,
-                GeoField::Patch::New
+                procPatchFields.set
                 (
-                    patchType,
-                    procPatch,
-                    GeoField::Internal::null()
-                )
-            );
+                    patchI,
+                    GeoField::Patch::New
+                    (
+                        patchType,
+                        pp,
+                        GeoField::Internal::null()
+                    )
+                );
+
+                // Now map the data from the internal face values
+                distributedDirectFvPatchFieldMapper mapper
+                (
+                    labelUList::null(),
+                    patchFaceMaps_[patchI],
+                    pp.size()
+                );
+                procPatchFields[patchI] = fld.internalField();
+                procPatchFields[patchI].autoMap(mapper);
+            }
         }
     }
 

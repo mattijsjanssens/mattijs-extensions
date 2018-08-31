@@ -86,4 +86,12 @@ Foam::unallocatedProcessorFvPatchField<Type>::unallocatedProcessorFvPatchField
 {}
 
 
+template<class Type>
+void Foam::unallocatedProcessorFvPatchField<Type>::write(Ostream& os) const
+{
+    unallocatedFvPatchField<Type>::write(os);
+    this->writeEntry("value", os);
+}
+
+
 // ************************************************************************* //
