@@ -59,7 +59,7 @@ solvers
         relTol          0;
     }
 
-    cellDisplacementFinal
+    "(cellDisplacement|cellDisplacementy)Final"
     {
         solver          PCG;
         preconditioner  DIC;

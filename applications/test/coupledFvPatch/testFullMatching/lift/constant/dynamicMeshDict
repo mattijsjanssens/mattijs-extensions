@@ -20,9 +20,12 @@ dynamicFvMesh   dynamicMotionSolverFvMesh;
 motionSolverLibs ("libfvMotionSolvers.so");
 
 //motionSolver    displacementLaplacian;
-//diffusivity     uniform 1;
+motionSolver    displacementComponentLaplacian;
+component       y;
+diffusivity     uniform 1;
+//applyPointLocation  false;
 
-motionSolver            displacementInterpolation;
-interpolationTables     ((top top)(bottom bottom));
+//motionSolver            displacementInterpolation;
+//interpolationTables     ((top top)(bottom bottom));
 
 // ************************************************************************* //

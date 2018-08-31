@@ -15,10 +15,12 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//DebugSwitches
-//{
+DebugSwitches
+{
 //    globalIndexAndTransform 1;
-//}
+    polyMesh    1;
+    displacementLaplacian   1;
+}
 //
 application     pimpleFoam;
 
@@ -26,7 +28,7 @@ startFrom       startTime;
 
 startTime       0;
 
-stopAt          endTime;
+stopAt          writeNow;   //endTime;
 
 endTime         0.1;
 

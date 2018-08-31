@@ -7,7 +7,7 @@ cd ${0%/*} || exit 1    # Run from this directory
 runApplication blockMesh
 runApplication topoSet
 runApplication subsetMesh -patch lift -overwrite c0
-runApplication topoSet
+runApplication -s moveDynamicMesh topoSet
 cp -r 0.orig 0
 
 #------------------------------------------------------------------------------
