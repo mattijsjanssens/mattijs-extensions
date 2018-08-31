@@ -386,10 +386,6 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
             io.rootPath()/io.time().globalCaseName()
            /io.instance()/io.db().dbDir()/io.local()/io.name();
 
-DebugVar(io.objectPath());
-DebugVar(parentObjectPath);
-
-
         if (isFile(parentObjectPath))
         {
             objPath = parentObjectPath;
