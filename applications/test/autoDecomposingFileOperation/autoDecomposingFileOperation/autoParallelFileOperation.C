@@ -34,7 +34,6 @@ License
 #include "uVolFields.H"
 #include "unallocatedFvMeshObject.H"
 #include "streamReconstructor.H"
-//#include "unthreadedInitialise.H"
 #include "collatedFileOperation.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
@@ -55,7 +54,6 @@ namespace fileOperations
     addNamedToRunTimeSelectionTable
     (
         fileOperationInitialise,
-        //autoParallelFileOperationInitialise,
         collatedFileOperationInitialise,
         word,
         autoParallel
@@ -77,6 +75,7 @@ namespace fileOperations
 
         ~installFileOp()
         {
+            // Uninstall me as a file handler
             if (fileHandler().type() == autoParallelFileOperation::typeName)
             {
                 autoPtr<fileOperation> handler(nullptr);

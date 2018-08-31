@@ -31,7 +31,6 @@ Class
 
 #include "uncollatedFileOperation.H"
 #include "IOstreams.H"
-//#include "collatedFileOperation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
