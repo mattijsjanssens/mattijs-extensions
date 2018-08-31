@@ -69,8 +69,11 @@ class parUnallocatedFvFieldReconstructor
         //- Distribution map reference
         const mapDistributePolyMesh& distMap_;
 
-        //- Patch mappers (constructed from distMap)
-        PtrList<mapDistributeBase> patchFaceMaps_;
+        //- Patch reconstruction mappers (constructed from distMap)
+        PtrList<mapDistributeBase> patchReconFaceMaps_;
+
+        //- Patch decompose mappers (constructed from distMap)
+        PtrList<mapDistributeBase> patchDecompFaceMaps_;
 
 
     // Private Member Functions
@@ -123,6 +126,14 @@ public:
         (
             const GeometricField<Type, PatchField, GeoMesh>& fld
         ) const;
+
+        //- Helper: create flat version of field
+        template<class Type, template<class> class PatchField, class GeoMesh>
+        static void flatten
+        (
+            Field<Type>& flatFld,
+            const GeometricField<Type, PatchField, GeoMesh>& fld
+        );
 };
 
 

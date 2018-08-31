@@ -32,53 +32,170 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 {
     const unallocatedFvBoundaryMesh& fvb = procMesh_.boundary();
 
-    // 1. Swap global cells for processor patches
-    const globalIndex globalCells(procMesh_.nCells());
+//     // 1. Swap global cells for processor patches
+//     const globalIndex globalCells(procMesh_.nCells());
+//
+//     labelListList remoteGlobalCells;
+//     {
+//         labelListList myGlobalCells(Pstream::nProcs());
+//         forAll(fvb, patchI)
+//         {
+//             const unallocatedGenericFvPatch& pp = fvb[patchI];
+//             if (pp.type() == processorFvPatch::typeName)
+//             {
+//                 // Use the dictionary to lookup info. Saves having full
+//                 // virtual mechanism ...
+//                 label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
+//
+//                 const labelUList& fc = pp.faceCells();
+//                 labelList& globalFc = myGlobalCells[nbrProci];
+//                 globalFc.setSize(fc.size());
+//                 forAll(fc, i)
+//                 {
+//                     globalFc[i] = globalCells.toGlobal(fc[i]);
+//                 }
+//             }
+//         }
+//
+//         labelList myGlobalSizes(myGlobalCells.size());
+//         forAll(myGlobalCells, proci)
+//         {
+//             myGlobalSizes[proci] = myGlobalCells[proci].size();
+//         }
+//
+//         Pstream::exchange<labelList, label>
+//         (
+//             myGlobalCells,
+//             myGlobalSizes,
+//             remoteGlobalCells
+//         );
+//     }
+//
+//     // Push master faces to proc meshes
+//     labelList usedMasterFaces(identity(baseMesh_.nFaces()));
+//
+//     // Get the master faces I am using
+//distMap_.faceMap().reverseDistribute(procMesh_.nFaces(), usedMasterFaces);
+//
+//     // Find out to which processor each face needs to be sent. Note: not
+//     // very efficient. Problem comes from single internal face becoming
+//     // two processor faces on different processors. To be looked at.
+//
+//     const globalIndex globalProcFaces(procMesh_.nFaces());
+//
+//     labelList remoteMinProcFace(procMesh_.nFaces(), labelMax);
+//     labelList remoteMaxProcFace(procMesh_.nFaces(), -1);
+//     {
+//         forAll(fvb, patchI)
+//         {
+//             if (fvb[patchI].type() == processorFvPatch::typeName)
+//             {
+//                 forAll(fvb[patchI], i)
+//                 {
+//                     label facei = fvb[patchI].start()+i;
+//                     label globalFacei = globalProcFaces.toGlobal(facei);
+//                     remoteMinProcFace[facei] = globalFacei;
+//                     remoteMaxProcFace[facei] = globalFacei;
+//                 }
+//             }
+//         }
+//         mapDistributeBase::distribute
+//         (
+//             Pstream::commsTypes::nonBlocking,
+//             List<labelPair>(),
+//             distMap_.faceMap().constructSize(),
+//             distMap_.faceMap().subMap(),
+//             distMap_.faceMap().subHasFlip(),
+//             distMap_.faceMap().constructMap(),
+//             distMap_.faceMap().constructHasFlip(),
+//             remoteMinProcFace,
+//             minEqOp<label>(),
+//             flipOp(),
+//             labelMax
+//         );
+//         mapDistributeBase::distribute
+//         (
+//             Pstream::commsTypes::nonBlocking,
+//             List<labelPair>(),
+//             distMap_.faceMap().constructSize(),
+//             distMap_.faceMap().subMap(),
+//             distMap_.faceMap().subHasFlip(),
+//             distMap_.faceMap().constructMap(),
+//             distMap_.faceMap().constructHasFlip(),
+//             remoteMaxProcFace,
+//             maxEqOp<label>(),
+//             flipOp(),
+//             -1
+//         );
+//     }
+//
+//     labelListList sendFaces(Pstream::nProcs());
+//     for (label proci = 0; proci < Pstream::nProcs(); proci++)
+//     {
+//         DynamicList<label> sendToProc;
+//         forAll(remoteMinProcFace, baseFacei)
+//         {
+//             label procFacei = remoteMinProcFace[baseFacei];
+//             if (globalProcFaces.isLocal(proci, procFacei))
+//             {
+//                 Pout<< "Found min face:"
+//                     << globalProcFaces.toLocal(proci, procFacei)
+//                     << " from processor:" << proci << endl;
+//                 sendToProc.append(baseFacei);
+//             }
+//         }
+//         forAll(remoteMaxProcFace, baseFacei)
+//         {
+//             label procFacei = remoteMaxProcFace[baseFacei];
+//             if (globalProcFaces.isLocal(proci, procFacei))
+//             {
+//                 Pout<< "Found max face:"
+//                     << globalProcFaces.toLocal(proci, procFacei)
+//                     << " from processor:" << proci << endl;
+//                 sendToProc.append(baseFacei);
+//             }
+//         }
+//         sendFaces[proci].transfer(sendToProc);
+//     }
 
-    labelListList remoteGlobalCells;
-    {
-        labelListList myGlobalCells(Pstream::nProcs());
-        forAll(fvb, patchI)
-        {
-            const unallocatedGenericFvPatch& pp = fvb[patchI];
-            if (pp.type() == processorFvPatch::typeName)
-            {
-                // Use the dictionary to lookup info. Saves having full
-                // virtual mechanism ...
-                label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
 
-                const labelUList& fc = pp.faceCells();
-                labelList& globalFc = myGlobalCells[nbrProci];
-                globalFc.setSize(fc.size());
-                forAll(fc, i)
-                {
-                    globalFc[i] = globalCells.toGlobal(fc[i]);
-                }
-            }
-        }
 
-        labelList myGlobalSizes(myGlobalCells.size());
-        forAll(myGlobalCells, proci)
-        {
-            myGlobalSizes[proci] = myGlobalCells[proci].size();
-        }
-
-        Pstream::exchange<labelList, label>
-        (
-            myGlobalCells,
-            myGlobalSizes,
-            remoteGlobalCells
-        );
-    }
+//     labelListList remoteProcPatch(Pstream::nProcs());
+//     forAll(remoteProcPatch, proci)
+//     {
+//         labelList& procPatchFaces = remoteProcPatch[proci];
+//
+//         // Default: return -1
+//         procPatchFaces.setSize(procMesh_.nFaces(), -1);
+//
+//         // But on my processor return global face number
+//         if (proci == Pstream::myProcNo())
+//         {
+//             forAll(fvb, patchI)
+//             {
+//                 if (fvb[patchI].type() == processorFvPatch::typeName)
+//                 {
+//                     forAll(fvb, i)
+//                     {
+//                         label facei = fvb.start()+i;
+//                         procPatchFaces[facei] =
+//                             globalProcFaces.toGlobal(facei);
+//                     }
+//                 }
+//             }
+//         }
+//         distMap_.faceMap().distribute(procPatchFaces);
+//     }
+//
 
 
     // 2. Build face maps :
     //      - normal patches: boundary face to boundary face
-    //      - proc patches  : cell to boundary face
-    patchFaceMaps_.setSize(fvb.size());
+    //      - proc patches  : for reconstruction: decomposed back to original
+    patchReconFaceMaps_.setSize(baseMesh_.boundary().size());
+    patchDecompFaceMaps_.setSize(baseMesh_.boundary().size());
     forAll(fvb, patchI)
     {
-        //if (!isA<processorFvPatch>(fvb[patchI]))
         if (patchI < baseMesh_.boundary().size())
         {
             // Create map for patch faces only
@@ -89,22 +206,29 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
             const unallocatedGenericFvPatch& basePatch =
                 baseMesh_.boundary()[patchI];
 
+            Pout<< "reconstruct map patch:" << basePatch.name()
+                << " constructSize:" << distMap_.faceMap().constructSize()
+                << " patch size:" << basePatch.size()
+                << " patch start:" << basePatch.start()
+                << endl;
+
             forAll(basePatch, i)
             {
                 faceIsUsed[basePatch.start()+i] = true;
             }
 
             // Copy face map
-            patchFaceMaps_.set
+            patchReconFaceMaps_.set
             (
                 patchI,
                 new mapDistributeBase(distMap_.faceMap())
             );
 
             // Compact out unused elements
+            mapDistributeBase& map = patchReconFaceMaps_[patchI];
             labelList oldToNewSub;
             labelList oldToNewConstruct;
-            patchFaceMaps_[patchI].compact
+            map.compact
             (
                 faceIsUsed,
                 procMesh_.nFaces(),      // maximum index of subMap
@@ -112,61 +236,60 @@ void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
                 oldToNewConstruct,
                 UPstream::msgType()
             );
-            Pout<< "patch:" << basePatch.name()
-                << " patchMap:" << patchFaceMaps_[patchI] << endl;
-        }
-        else if (fvb[patchI].type() == processorFvPatch::typeName)
-        {
-            //const unallocatedGenericFvPatch& pp = fvb[patchI];
 
-            // Use the dictionary to lookup info. Saves having full
-            // virtual mechanism ...
-            //label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
-
-            //List<Map<label>> compactMap;
-            //patchFaceMaps_.set
-            //(
-            //    patchI,
-            //    new mapDistributeBase
-            //    (
-            //        globalCells,
-            //        remoteGlobalCells[nbrProci],
-            //        compactMap
-            //    )
-            //);
-
-            // Mark all used elements (i.e. destination patch faces)
-            boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
-
-            const unallocatedGenericFvPatch& procPatch =
-                procMesh_.boundary()[patchI];
-
-            forAll(procPatch, i)
-            {
-                faceIsUsed[procPatch.start()+i] = true;
-            }
-
-            // Copy face map
-            patchFaceMaps_.set
+            // Create reverse map : from undecomposed patch to proc patch
+            patchDecompFaceMaps_.set
             (
                 patchI,
-                new mapDistributeBase(distMap_.faceMap())
+                new mapDistributeBase
+                (
+                    procMesh_.boundary()[patchI].size(),
+                    xferCopy(map.constructMap()),
+                    xferCopy(map.subMap()),
+                    map.constructHasFlip(),
+                    map.subHasFlip()
+                )
             );
-
-            // Compact out unused elements
-            labelList oldToNewSub;
-            labelList oldToNewConstruct;
-            patchFaceMaps_[patchI].compact
-            (
-                faceIsUsed,
-                procMesh_.nFaces(),      // maximum index of subMap
-                oldToNewSub,
-                oldToNewConstruct,
-                UPstream::msgType()
-            );
-            Pout<< "PROC patch:" << procPatch.name()
-                << " patchMap:" << patchFaceMaps_[patchI] << endl;
         }
+//         else if (fvb[patchI].type() == processorFvPatch::typeName)
+//         {
+//             // Mark all used elements (i.e. destination patch faces)
+//             boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
+//
+//             const unallocatedGenericFvPatch& procPatch =
+//                 procMesh_.boundary()[patchI];
+//
+//             Pout<< "reconstruct map patch:" << procPatch.name()
+//                 << " constructSize:" << distMap_.faceMap().constructSize()
+//                 << " patch size:" << procPatch.size()
+//                 << " patch start:" << procPatch.start()
+//                 << endl;
+//             forAll(procPatch, i)
+//             {
+//                 faceIsUsed[procPatch.start()+i] = true;
+//             }
+//
+//             // Copy face map
+//             patchDecompFaceMaps_.set
+//             (
+//                 patchI,
+//                 new mapDistributeBase(distMap_.faceMap())
+//             );
+//
+//             // Compact out unused elements
+//             labelList oldToNewSub;
+//             labelList oldToNewConstruct;
+//             patchDecompFaceMaps_[patchI].compact
+//             (
+//                 faceIsUsed,
+//                 procMesh_.nFaces(),      // maximum index of subMap
+//                 oldToNewSub,
+//                 oldToNewConstruct,
+//                 UPstream::msgType()
+//             );
+//             //Pout<< "PROC patch:" << procPatch.name()
+//             //    << " patchMap:" << patchDecompFaceMaps_[patchI] << endl;
+//         }
     }
 }
 
