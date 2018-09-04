@@ -55,6 +55,8 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 
     const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 
+    Info<< "Reconstructing " << io.objectPath() << endl;
+
     // Read field on proc meshes
     PtrList<GeoField> procFields(procMeshes.size());
     forAll(procFields, proci)
@@ -68,7 +70,8 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
                 IOobject
                 (
                     io.name(),
-                    procMesh.time().timeName(),
+                    io.instance(),
+                    io.local(),
                     procMesh.thisDb(),
                     IOobject::MUST_READ,
                     IOobject::NO_WRITE,
@@ -96,7 +99,8 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
             IOobject
             (
                 io.name(),
-                baseMesh.time().timeName(),
+                io.instance(),
+                io.local(),
                 baseMesh.thisDb(),
                 IOobject::NO_READ,
                 IOobject::AUTO_WRITE,
@@ -106,7 +110,9 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
         )
     );
 
+    Pout<< incrIndent;
     os << tfld();
+    Pout<< decrIndent;
 
     return os.good();
 }
@@ -133,6 +139,7 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::decompose
     > GeoField;
 
     // Read base field
+    Info<< "Reading " << baseIO.objectPath() << endl;
     const GeoField baseFld(baseIO, baseMesh);
 
     // Decompose
@@ -145,7 +152,9 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::decompose
 DebugVar(tfld());
 
     // Stream
+    Pout<< incrIndent;
     os << tfld();
+    Pout<< decrIndent;
 
     return os.good();
 }
@@ -197,9 +206,10 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
         const bool oldParRun = Pstream::parRun();
         Pstream::parRun() = false;
         {
-            //Pout<< "**Writign " << tfld().objectPath() << endl;
-            //state = tfld().write();
+            Info<< "Writing " << tfld().objectPath() << endl;
+            Pout<< incrIndent;
             state = tfld().writeObject(fmt, ver, cmp, true);
+            Pout<< decrIndent;
         }
         Pstream::parRun() = oldParRun;
     }

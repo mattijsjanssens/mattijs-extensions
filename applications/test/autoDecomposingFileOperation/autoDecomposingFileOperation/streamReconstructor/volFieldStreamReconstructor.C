@@ -51,6 +51,8 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
 
     const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 
+    Info<< "Reconstructing " << io.objectPath() << endl;
+
     // Read field on proc meshes
     PtrList<GeoField> procFields(procMeshes.size());
     forAll(procFields, proci)
@@ -66,7 +68,8 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
                 IOobject
                 (
                     io.name(),
-                    procMesh.time().timeName(),
+                    io.instance(),
+                    io.local(),
                     procMesh.thisDb(),
                     IOobject::MUST_READ,
                     IOobject::NO_WRITE,
@@ -95,7 +98,8 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
             IOobject
             (
                 io.name(),
-                baseMesh.time().timeName(),
+                io.instance(),
+                io.local(),
                 baseMesh.thisDb(),
                 IOobject::NO_READ,
                 IOobject::AUTO_WRITE,
