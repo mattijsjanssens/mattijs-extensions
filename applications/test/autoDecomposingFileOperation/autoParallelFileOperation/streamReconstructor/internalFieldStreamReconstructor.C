@@ -61,7 +61,8 @@ bool Foam::internalFieldStreamReconstructor<Type>::reconstruct
                 IOobject
                 (
                     io.name(),
-                    procMesh.time().timeName(),
+                    io.instance(),
+                    io.local(),
                     procMesh.thisDb(),
                     IOobject::MUST_READ,
                     IOobject::NO_WRITE,
@@ -89,7 +90,8 @@ bool Foam::internalFieldStreamReconstructor<Type>::reconstruct
 //             IOobject
 //             (
 //                 io.name(),
-//                 baseMesh.time().timeName(),
+//                 io.instance(),
+//                 io.local(),
 //                 baseMesh.thisDb(),
 //                 IOobject::NO_READ,
 //                 IOobject::AUTO_WRITE,

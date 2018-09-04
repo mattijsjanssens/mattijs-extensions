@@ -148,9 +148,6 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::decompose
         reconstructor.decomposeFvSurfaceField(baseFld)
     );
 
-
-DebugVar(tfld());
-
     // Stream
     Pout<< incrIndent;
     os << tfld();

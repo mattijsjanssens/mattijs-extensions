@@ -416,9 +416,6 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
 
     const typename GeoField::Boundary& bfld = fld.boundaryField();
 
-DebugVar(bfld);
-
-
     forAll(bfld, patchI)
     {
         if (patchFaceMaps_.set(patchI))
