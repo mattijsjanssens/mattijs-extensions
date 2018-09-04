@@ -80,8 +80,9 @@ public:
                             << basicHandler().type() << endl;
                     }
 
+                    //p->flush();
                     (void)fileHandler(basicHandler_);
-
+                    //fileHandler().flush();
                     basicHandler_.set(p);
                 }
             }
@@ -101,9 +102,11 @@ public:
                     }
 
                     fileOperation* p = basicHandler_.ptr();
+                    //p->flush();
                     basicHandler_.set(fileOperation::fileHandlerPtr_.ptr());
                     autoPtr<fileOperation> restore(p);
                     (void)fileHandler(restore);
+                    //fileHandler().flush();
                 }
             }
     };

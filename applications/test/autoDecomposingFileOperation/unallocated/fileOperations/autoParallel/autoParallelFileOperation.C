@@ -59,31 +59,36 @@ namespace fileOperations
         autoParallel
     );
 
-    class installFileOp
+    class autoParallelInstall
     {
     public:
 
-        installFileOp()
-        {
-            // Install autoDecomposing as fileHandler
-            //autoPtr<fileOperation> handler
-            //(
-            //    new autoParallelFileOperation(true)
-            //);
-            //Foam::fileHandler(handler);
-        }
+        autoParallelInstall()
+        {}
 
-        ~installFileOp()
+        ~autoParallelInstall()
         {
             // Uninstall me as a file handler
-            if (fileHandler().type() == autoParallelFileOperation::typeName)
+            if
+            (
+                fileOperation::fileHandlerPtr_.valid()
+             && (
+                    fileOperation::fileHandlerPtr_().type()
+                 == autoParallelFileOperation::typeName
+                )
+            )
             {
-                autoPtr<fileOperation> handler(nullptr);
+                // Install 'simple' file handler to avoid e.g. communicator
+                // allocation
+                autoPtr<fileOperation> handler
+                (
+                    new uncollatedFileOperation(false)
+                );
                 Foam::fileHandler(handler);
             }
         }
     };
-    installFileOp installAutoParallel_;
+    autoParallelInstall autoParallelInstallObject_;
 }
 }
 

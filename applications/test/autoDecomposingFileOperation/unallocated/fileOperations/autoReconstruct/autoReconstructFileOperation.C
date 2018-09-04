@@ -55,27 +55,36 @@ namespace fileOperations
     );
 
 
-    class installFileOp
+    class autoReconstructInstall
     {
     public:
 
-        installFileOp()
+        autoReconstructInstall()
         {}
 
-        ~installFileOp()
+        ~autoReconstructInstall()
         {
+            // Uninstall me as a file handler
             if
             (
-                fileHandler().type()
-             == autoReconstructFileOperation::typeName
+                fileOperation::fileHandlerPtr_.valid()
+             && (
+                    fileOperation::fileHandlerPtr_().type()
+                 == autoReconstructFileOperation::typeName
+                )
             )
             {
-                autoPtr<fileOperation> handler(nullptr);
+                // Install 'simple' file handler to avoid e.g. communicator
+                // allocation
+                autoPtr<fileOperation> handler
+                (
+                    new uncollatedFileOperation(false)
+                );
                 Foam::fileHandler(handler);
             }
         }
     };
-    installFileOp installFileOp_;
+    autoReconstructInstall autoReconstructInstallObject_;
 }
 }
 
