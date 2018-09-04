@@ -34,7 +34,7 @@ License
 #include "uVolFields.H"
 #include "unallocatedFvMeshObject.H"
 #include "streamReconstructor.H"
-#include "unthreadedInitialise.H"
+#include "collatedFileOperation.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -54,7 +54,6 @@ namespace fileOperations
     addNamedToRunTimeSelectionTable
     (
         fileOperationInitialise,
-        //autoParallelFileOperationInitialise,
         collatedFileOperationInitialise,
         word,
         autoParallel
@@ -76,6 +75,7 @@ namespace fileOperations
 
         ~installFileOp()
         {
+            // Uninstall me as a file handler
             if (fileHandler().type() == autoParallelFileOperation::typeName)
             {
                 autoPtr<fileOperation> handler(nullptr);
@@ -168,6 +168,37 @@ Foam::fileOperations::autoParallelFileOperation::baseMesh
         );
     }
     return baseMeshPtr_();
+}
+
+
+const Foam::parUnallocatedFvFieldReconstructor&
+Foam::fileOperations::autoParallelFileOperation::reconstructor
+(
+    const Time& runTime
+) const
+{
+    if (!reconstructorPtr_.valid())
+    {
+        // Read local mesh
+        const unallocatedFvMesh& procMesh = mesh(runTime);
+        // Read undecomposed mesh. Read procAddressing files
+        // (from runTime).
+        const unallocatedFvMesh& baseUMesh = baseMesh(runTime);
+        const mapDistributePolyMesh& distMap = distMapPtr_();
+
+        Info<< "Constructing mappers from decomposed to base mesh" << nl
+            << endl;
+        reconstructorPtr_.reset
+        (
+            new parUnallocatedFvFieldReconstructor
+            (
+                baseUMesh,
+                procMesh,
+                distMap
+            )
+        );
+    }
+    return reconstructorPtr_();
 }
 
 
@@ -354,10 +385,6 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
         fileName parentObjectPath =
             io.rootPath()/io.time().globalCaseName()
            /io.instance()/io.db().dbDir()/io.local()/io.name();
-
-DebugVar(io.objectPath());
-DebugVar(parentObjectPath);
-
 
         if (isFile(parentObjectPath))
         {
@@ -620,15 +647,9 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                 // Read undecomposed mesh. Read procAddressing files
                 // (from runTime).
                 const unallocatedFvMesh& baseUMesh = baseMesh(runTime);
-                const mapDistributePolyMesh& distMap = distMapPtr_();
-
                 // Mapping engine from mesh to baseMesh
-                const parUnallocatedFvFieldReconstructor reconstructor
-                (
-                    baseUMesh,
-                    procMesh,
-                    distMap
-                );
+                const parUnallocatedFvFieldReconstructor& mapper
+                     = reconstructor(runTime);
 
                 IOobject baseIO
                 (
@@ -651,7 +672,7 @@ bool Foam::fileOperations::autoParallelFileOperation::read
                 }
                 bool ok = typeReconstructor().decompose
                 (
-                    reconstructor,
+                    mapper,
                     baseUMesh,
                     baseIO,
                     procMesh,
@@ -672,10 +693,15 @@ bool Foam::fileOperations::autoParallelFileOperation::read
 
                     if (debug)
                     {
+                        const word oldName(io.name());
+                        io.rename(oldName + '_' + typeName_());
+                        io.write();
                         Pout<< indent
                             << "autoParallelFileOperation::read :"
                             << " sucessfully decomposed " << io.objectPath()
+                            << " into " << io.objectPath()
                             << endl;
+                        io.rename(oldName);
                     }
                 }
                 else
@@ -756,20 +782,9 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
             // Install basic file handler
             storeFileHandler defaultOp(basicFileHandler_);
 
-            // Read local mesh
-            const unallocatedFvMesh& procMesh = mesh(runTime);
-            // Read undecomposed mesh. Read procAddressing files
-            // (from runTime).
-            const unallocatedFvMesh& baseUMesh = baseMesh(runTime);
-            const mapDistributePolyMesh& distMap = distMapPtr_();
-
-            // Mapping engine from mesh to baseMesh
-            const parUnallocatedFvFieldReconstructor reconstructor
-            (
-                baseUMesh,
-                procMesh,
-                distMap
-            );
+            // Mapping engine from mesh to baseMesh (demand loads various)
+            const parUnallocatedFvFieldReconstructor& mapper
+                 = reconstructor(runTime);
 
             if (debug)
             {
@@ -784,7 +799,7 @@ bool Foam::fileOperations::autoParallelFileOperation::writeObject
 
             typeReconstructor().reconstruct
             (
-                reconstructor,
+                mapper,
                 io,
                 false,          // no face flips. Tbd.
                 fmt,

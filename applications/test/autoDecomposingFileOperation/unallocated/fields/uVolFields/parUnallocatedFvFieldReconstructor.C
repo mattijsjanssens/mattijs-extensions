@@ -30,143 +30,57 @@ License
 
 void Foam::parUnallocatedFvFieldReconstructor::createPatchFaceMaps()
 {
-    const unallocatedFvBoundaryMesh& fvb = procMesh_.boundary();
-
-    // 1. Swap global cells for processor patches
-    const globalIndex globalCells(procMesh_.nCells());
-
-    labelListList remoteGlobalCells;
+    // Build face maps : decomposed boundary face to undecomposed boundary
+    //                   face.
+    // Note that processor patches get handled differently
+    patchReconFaceMaps_.setSize(baseMesh_.boundary().size());
+    patchDecompFaceMaps_.setSize(baseMesh_.boundary().size());
+    forAll(baseMesh_.boundary(), patchI)
     {
-        labelListList myGlobalCells(Pstream::nProcs());
-        forAll(fvb, patchI)
-        {
-            const unallocatedGenericFvPatch& pp = fvb[patchI];
-            if (pp.type() == processorFvPatch::typeName)
-            {
-                // Use the dictionary to lookup info. Saves having full
-                // virtual mechanism ...
-                label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
+        // Mark all used elements (i.e. destination patch faces)
+        boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
 
-                const labelUList& fc = pp.faceCells();
-                labelList& globalFc = myGlobalCells[nbrProci];
-                globalFc.setSize(fc.size());
-                forAll(fc, i)
-                {
-                    globalFc[i] = globalCells.toGlobal(fc[i]);
-                }
-            }
+        const unallocatedGenericFvPatch& basePatch =
+            baseMesh_.boundary()[patchI];
+
+        forAll(basePatch, i)
+        {
+            faceIsUsed[basePatch.start()+i] = true;
         }
 
-        labelList myGlobalSizes(myGlobalCells.size());
-        forAll(myGlobalCells, proci)
-        {
-            myGlobalSizes[proci] = myGlobalCells[proci].size();
-        }
-
-        Pstream::exchange<labelList, label>
+        // Copy face map
+        patchReconFaceMaps_.set
         (
-            myGlobalCells,
-            myGlobalSizes,
-            remoteGlobalCells
+            patchI,
+            new mapDistributeBase(distMap_.faceMap())
         );
-    }
 
+        // Compact out unused elements
+        mapDistributeBase& map = patchReconFaceMaps_[patchI];
+        labelList oldToNewSub;
+        labelList oldToNewConstruct;
+        map.compact
+        (
+            faceIsUsed,
+            procMesh_.nFaces(),      // maximum index of subMap
+            oldToNewSub,
+            oldToNewConstruct,
+            UPstream::msgType()
+        );
 
-    // 2. Build face maps :
-    //      - normal patches: boundary face to boundary face
-    //      - proc patches  : cell to boundary face
-    patchFaceMaps_.setSize(fvb.size());
-    forAll(fvb, patchI)
-    {
-        //if (!isA<processorFvPatch>(fvb[patchI]))
-        if (patchI < baseMesh_.boundary().size())
-        {
-            // Create map for patch faces only
-
-            // Mark all used elements (i.e. destination patch faces)
-            boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
-
-            const unallocatedGenericFvPatch& basePatch =
-                baseMesh_.boundary()[patchI];
-
-            forAll(basePatch, i)
-            {
-                faceIsUsed[basePatch.start()+i] = true;
-            }
-
-            // Copy face map
-            patchFaceMaps_.set
+        // Create reverse map : from undecomposed patch to proc patch
+        patchDecompFaceMaps_.set
+        (
+            patchI,
+            new mapDistributeBase
             (
-                patchI,
-                new mapDistributeBase(distMap_.faceMap())
-            );
-
-            // Compact out unused elements
-            labelList oldToNewSub;
-            labelList oldToNewConstruct;
-            patchFaceMaps_[patchI].compact
-            (
-                faceIsUsed,
-                procMesh_.nFaces(),      // maximum index of subMap
-                oldToNewSub,
-                oldToNewConstruct,
-                UPstream::msgType()
-            );
-            Pout<< "patch:" << basePatch.name()
-                << " patchMap:" << patchFaceMaps_[patchI] << endl;
-        }
-        else if (fvb[patchI].type() == processorFvPatch::typeName)
-        {
-            //const unallocatedGenericFvPatch& pp = fvb[patchI];
-
-            // Use the dictionary to lookup info. Saves having full
-            // virtual mechanism ...
-            //label nbrProci = readLabel(pp.dict().lookup("neighbProcNo"));
-
-            //List<Map<label>> compactMap;
-            //patchFaceMaps_.set
-            //(
-            //    patchI,
-            //    new mapDistributeBase
-            //    (
-            //        globalCells,
-            //        remoteGlobalCells[nbrProci],
-            //        compactMap
-            //    )
-            //);
-
-            // Mark all used elements (i.e. destination patch faces)
-            boolList faceIsUsed(distMap_.faceMap().constructSize(), false);
-
-            const unallocatedGenericFvPatch& procPatch =
-                procMesh_.boundary()[patchI];
-
-            forAll(procPatch, i)
-            {
-                faceIsUsed[procPatch.start()+i] = true;
-            }
-
-            // Copy face map
-            patchFaceMaps_.set
-            (
-                patchI,
-                new mapDistributeBase(distMap_.faceMap())
-            );
-
-            // Compact out unused elements
-            labelList oldToNewSub;
-            labelList oldToNewConstruct;
-            patchFaceMaps_[patchI].compact
-            (
-                faceIsUsed,
-                procMesh_.nFaces(),      // maximum index of subMap
-                oldToNewSub,
-                oldToNewConstruct,
-                UPstream::msgType()
-            );
-            Pout<< "PROC patch:" << procPatch.name()
-                << " patchMap:" << patchFaceMaps_[patchI] << endl;
-        }
+                procMesh_.boundary()[patchI].size(),
+                xferCopy(map.constructMap()),
+                xferCopy(map.subMap()),
+                map.constructHasFlip(),
+                map.subHasFlip()
+            )
+        );
     }
 }
 

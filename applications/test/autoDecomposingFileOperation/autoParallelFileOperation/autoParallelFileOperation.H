@@ -31,7 +31,6 @@ Class
 
 #include "uncollatedFileOperation.H"
 #include "IOstreams.H"
-#include "collatedFileOperation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -145,6 +144,12 @@ public:
 
         //- Return the current (decomposed) mesh (demand loaded)
         const unallocatedFvMesh& mesh(const Time&) const;
+
+        //- Return the mapping from proc to base mesh (demand loaded)
+        const parUnallocatedFvFieldReconstructor& reconstructor
+        (
+            const Time&
+        ) const;
 
 
 public:
