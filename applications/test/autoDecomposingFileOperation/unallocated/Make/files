@@ -1,33 +1,49 @@
 /*- Unallocated mesh handling */
-unallocatedFvMesh/unallocatedFvMesh.C
-unallocatedFvMesh/unallocatedFvBoundaryMesh.C
-unallocatedFvMesh/unallocatedGenericFvPatch.C
-unallocatedFvMesh/unallocatedFvMeshTools.C
-unallocatedFvMesh/unallocatedFvMeshObject.C
+u = unallocated
+
+$(u)/unallocatedFvMesh/unallocatedFvMesh.C
+$(u)/unallocatedFvMesh/unallocatedFvBoundaryMesh.C
+$(u)/unallocatedFvMesh/unallocatedGenericFvPatch.C
+$(u)/unallocatedFvMesh/unallocatedFvMeshTools.C
+$(u)/unallocatedFvMesh/unallocatedFvMeshObject.C
 
 /* PatchFields on unallocated mesh */
-fields/unallocatedFvPatchFields/unallocatedEmptyFvPatchFields.C
-fields/unallocatedFvPatchFields/unallocatedFvPatchFields.C
-fields/unallocatedFvPatchFields/unallocatedGenericFvPatchFields.C
-fields/unallocatedFvPatchFields/unallocatedProcessorFvPatchFields.C
+$(u)/fields/unallocatedFvPatchFields/unallocatedEmptyFvPatchFields.C
+$(u)/fields/unallocatedFvPatchFields/unallocatedFvPatchFields.C
+$(u)/fields/unallocatedFvPatchFields/unallocatedGenericFvPatchFields.C
+$(u)/fields/unallocatedFvPatchFields/unallocatedProcessorFvPatchFields.C
 
-fields/unallocatedFvPatchFields/distributedDirectFieldMapper.C
-fields/unallocatedFvPatchFields/distributedDirectFvPatchFieldMapper.C
+$(u)/fields/unallocatedFvPatchFields/distributedDirectFieldMapper.C
+$(u)/fields/unallocatedFvPatchFields/distributedDirectFvPatchFieldMapper.C
 
-fields/unallocatedFvPatchFields/genericPatchFieldBase.C
+$(u)/fields/unallocatedFvPatchFields/genericPatchFieldBase.C
 
 /* GeometricFields on unallocated mesh */
-fields/uVolFields/uVolFields.C
-fields/uVolFields/unallocatedFvFieldReconstructor.C
-fields/uVolFields/parUnallocatedFvFieldReconstructor.C
-fields/uVolFields/uFieldReconstructor.C
+$(u)/fields/uVolFields/uVolFields.C
+$(u)/fields/uVolFields/unallocatedFvFieldReconstructor.C
+$(u)/fields/uVolFields/parUnallocatedFvFieldReconstructor.C
+$(u)/fields/uVolFields/uFieldReconstructor.C
 
-fields/uSurfaceFields/uSurfaceFields.C
+$(u)/fields/uSurfaceFields/uSurfaceFields.C
 
-fields/unallocatedFvsPatchFields/unallocatedFvsPatchFields.C
-fields/unallocatedFvsPatchFields/unallocatedGenericFvsPatchFields.C
-fields/unallocatedFvsPatchFields/unallocatedEmptyFvsPatchFields.C
-fields/unallocatedFvsPatchFields/unallocatedProcessorFvsPatchFields.C
+$(u)/fields/unallocatedFvsPatchFields/unallocatedFvsPatchFields.C
+$(u)/fields/unallocatedFvsPatchFields/unallocatedGenericFvsPatchFields.C
+$(u)/fields/unallocatedFvsPatchFields/unallocatedEmptyFvsPatchFields.C
+$(u)/fields/unallocatedFvsPatchFields/unallocatedProcessorFvsPatchFields.C
+
+
+
+
+/*- autoParallel/autoReconstruct file handlers */
+f = fileOperations
+
+$(f)/autoReconstruct/autoReconstructFileOperation.C
+$(f)/autoParallel/streamReconstructor/streamReconstructor.C
+$(f)/autoParallel/streamReconstructor/streamReconstructorNew.C
+$(f)/autoParallel/streamReconstructor/volFieldStreamReconstructors.C
+$(f)/autoParallel/streamReconstructor/internalFieldStreamReconstructors.C
+$(f)/autoParallel/streamReconstructor/surfaceFieldStreamReconstructors.C
+$(f)/autoParallel/autoParallelFileOperation.C
 
 
 LIB = $(FOAM_USER_LIBBIN)/libunallocated

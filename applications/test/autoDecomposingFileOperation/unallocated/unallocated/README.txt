@@ -8,5 +8,3 @@ and mesh properties:
 - all patches get read as a unallocatedGenericFvPatch
 (with type 'unallocatedGeneric')
 - including e.g. empty or processor patches!
-
-- so now construct-from-patch will complain

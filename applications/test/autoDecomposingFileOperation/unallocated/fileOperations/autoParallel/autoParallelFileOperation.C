@@ -538,7 +538,7 @@ Foam::fileOperations::autoParallelFileOperation::readObjects
         if (Foam::isDir(path))
         {
             newInstance = instance;
-            objects = Foam::readDir(path, fileName::FILE);
+            objects = Foam::readDir(path, fileType::file);
 
             if (debug)
             {
