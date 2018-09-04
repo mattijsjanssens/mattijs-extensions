@@ -22,14 +22,14 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fileOperations::autoReconstructingFileOperation
+    Foam::fileOperations::autoReconstructFileOperation
 
 Description
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fileOperations_autoReconstructingFileOperation_H
-#define fileOperations_autoReconstructingFileOperation_H
+#ifndef fileOperations_autoReconstructFileOperation_H
+#define fileOperations_autoReconstructFileOperation_H
 
 #include "uncollatedFileOperation.H"
 #include "HashPtrTable.H"
@@ -46,10 +46,10 @@ namespace fileOperations
 {
 
 /*---------------------------------------------------------------------------*\
-                Class autoReconstructingFileOperation Declaration
+                Class autoReconstructFileOperation Declaration
 \*---------------------------------------------------------------------------*/
 
-class autoReconstructingFileOperation
+class autoReconstructFileOperation
 :
     public uncollatedFileOperation
 {
@@ -64,39 +64,21 @@ class autoReconstructingFileOperation
         //- Check for equivalent object inside processor0/
         bool haveProcPath(const IOobject& io, fileName&) const;
 
-//         //- Reconstruct volume field and stream
-//         template<class Type>
-//         static Ostream& writeReconstructedFvVolumeField
-//         (
-//             const fvMesh& mesh,
-//             const IOobject& io,
-//             Ostream& os
-//         );
-//
-//         //- Reconstruct surface field and stream
-//         template<class Type>
-//         static Ostream& writeReconstructedFvSurfaceField
-//         (
-//             const fvMesh& mesh,
-//             const IOobject& io,
-//             Ostream& os
-//         );
-//
-//
+
 public:
 
         //- Runtime type information
-        TypeName("autoReconstructing");
+        TypeName("autoReconstruct");
 
 
     // Constructors
 
         //- Construct null
-        autoReconstructingFileOperation(const bool verbose);
+        autoReconstructFileOperation(const bool verbose);
 
 
     //- Destructor
-    virtual ~autoReconstructingFileOperation();
+    virtual ~autoReconstructFileOperation();
 
 
     // Member Functions

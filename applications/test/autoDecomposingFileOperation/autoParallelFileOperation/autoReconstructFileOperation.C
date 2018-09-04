@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "autoReconstructingFileOperation.H"
+#include "autoReconstructFileOperation.H"
 #include "Time.H"
 #include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
@@ -37,11 +37,11 @@ namespace Foam
 {
 namespace fileOperations
 {
-    defineTypeNameAndDebug(autoReconstructingFileOperation, 0);
+    defineTypeNameAndDebug(autoReconstructFileOperation, 0);
     addRemovableToRunTimeSelectionTable
     (
         fileOperation,
-        autoReconstructingFileOperation,
+        autoReconstructFileOperation,
         word
     );
 
@@ -51,7 +51,7 @@ namespace fileOperations
         fileOperationInitialise,
         unthreadedInitialise,
         word,
-        autoReconstructing
+        autoReconstruct
     );
 
 
@@ -67,7 +67,7 @@ namespace fileOperations
             if
             (
                 fileHandler().type()
-             == autoReconstructingFileOperation::typeName
+             == autoReconstructFileOperation::typeName
             )
             {
                 autoPtr<fileOperation> handler(nullptr);
@@ -82,7 +82,7 @@ namespace fileOperations
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-bool Foam::fileOperations::autoReconstructingFileOperation::haveProcPath
+bool Foam::fileOperations::autoReconstructFileOperation::haveProcPath
 (
     const IOobject& io,
     fileName& procObjectPath
@@ -122,8 +122,8 @@ bool Foam::fileOperations::autoReconstructingFileOperation::haveProcPath
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fileOperations::autoReconstructingFileOperation::
-autoReconstructingFileOperation
+Foam::fileOperations::autoReconstructFileOperation::
+autoReconstructFileOperation
 (
     const bool verbose
 )
@@ -163,14 +163,14 @@ autoReconstructingFileOperation
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::fileOperations::autoReconstructingFileOperation::
-~autoReconstructingFileOperation()
+Foam::fileOperations::autoReconstructFileOperation::
+~autoReconstructFileOperation()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
+Foam::fileName Foam::fileOperations::autoReconstructFileOperation::filePath
 (
     const bool checkGlobal,
     const IOobject& io,
@@ -180,7 +180,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
     if (debug)
     {
         Pout<< indent
-            << "autoReconstructingFileOperation::filePath :"
+            << "autoReconstructFileOperation::filePath :"
             << " objectPath:" << io.objectPath()
             << " typeName:" << typeName
             << " checkGlobal:" << checkGlobal << endl;
@@ -211,7 +211,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
         if (debug)
         {
             Pout<< indent
-                << "autoReconstructingFileOperation::filePath :"
+                << "autoReconstructFileOperation::filePath :"
                 << " Returning from processor searching:" << endl << indent
                 << "    objectPath:" << io.objectPath() << " type:" << typeName
                 << endl << indent
@@ -233,7 +233,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
     if (debug)
     {
         Pout<< indent
-            << "autoReconstructingFileOperation::filePath :"
+            << "autoReconstructFileOperation::filePath :"
             << " Returning from file searching:" << endl << indent
             << "    objectPath:" << io.objectPath() << " type:" << typeName
             << endl << indent
@@ -243,7 +243,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::filePath
 }
 
 
-Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::dirPath
+Foam::fileName Foam::fileOperations::autoReconstructFileOperation::dirPath
 (
     const bool checkGlobal,
     const IOobject& io
@@ -269,7 +269,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::dirPath
     if (debug)
     {
         Pout<< indent
-            << "autoReconstructingFileOperation::dirPath :"
+            << "autoReconstructFileOperation::dirPath :"
             << " Returning from directory searching:" << endl << indent
             << "    objectPath:" << io.objectPath() << endl << indent
             << "    filePath  :" << objPath << endl << endl;
@@ -279,7 +279,7 @@ Foam::fileName Foam::fileOperations::autoReconstructingFileOperation::dirPath
 
 
 Foam::fileNameList
-Foam::fileOperations::autoReconstructingFileOperation::readObjects
+Foam::fileOperations::autoReconstructFileOperation::readObjects
 (
     const objectRegistry& db,
     const fileName& instance,
@@ -305,7 +305,7 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
             if (debug)
             {
                 Pout<< indent
-                    << "autoReconstructingFileOperation::readObjects :"
+                    << "autoReconstructFileOperation::readObjects :"
                     << " Returning processor directory searching:"
                     << endl << indent
                     << "    path     :" << path << endl << indent
@@ -341,7 +341,7 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
     if (debug)
     {
         Pout<< indent
-            << "autoReconstructingFileOperation::readObjects :"
+            << "autoReconstructFileOperation::readObjects :"
             << " Returning from directory searching:" << endl << indent
             << "    path     :" << db.path(instance, db.dbDir()/local)
             << endl << indent
@@ -353,7 +353,7 @@ Foam::fileOperations::autoReconstructingFileOperation::readObjects
 
 
 Foam::instantList
-Foam::fileOperations::autoReconstructingFileOperation::findTimes
+Foam::fileOperations::autoReconstructFileOperation::findTimes
 (
     const fileName& dir,
     const word& constantName
@@ -418,7 +418,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
     if (debug)
     {
         Pout<< indent
-            << "autoReconstructingFileOperation::findTimes :"
+            << "autoReconstructFileOperation::findTimes :"
             << " Returning from time searching:" << endl << indent
             << "    dir   :" << dir << endl << indent
             << "    times :" << times << endl << endl;
@@ -427,7 +427,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 }
 
 
-// bool Foam::fileOperations::autoReconstructingFileOperation::readHeader
+// bool Foam::fileOperations::autoReconstructFileOperation::readHeader
 // (
 //     IOobject& io,
 //     const fileName& fName,
@@ -437,7 +437,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 //     if (debug)
 //     {
 //         Pout<< indent
-//             << "autoReconstructingFileOperation::readHeader :"
+//             << "autoReconstructFileOperation::readHeader :"
 //             << " Reading:" << typeName << " from: " << fName << endl;
 //     }
 //     bool ok = uncollatedFileOperation::readHeader(io, fName, typeName);
@@ -445,7 +445,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 //     if (debug)
 //     {
 //         Pout<< indent
-//             << "autoReconstructingFileOperation::readHeader :" << endl
+//             << "autoReconstructFileOperation::readHeader :" << endl
 //             << indent
 //             << "    fName :" << fName << endl << indent
 //             << "    ok    :" << ok << endl << endl;
@@ -456,7 +456,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 //
 //
 // Foam::autoPtr<Foam::ISstream>
-// Foam::fileOperations::autoReconstructingFileOperation::readStream
+// Foam::fileOperations::autoReconstructFileOperation::readStream
 // (
 //     regIOobject& io,
 //     const fileName& fName,
@@ -478,7 +478,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 //     if (debug)
 //     {
 //         Pout<< indent
-//             << "autoReconstructingFileOperation::readStream :"
+//             << "autoReconstructFileOperation::readStream :"
 //             << endl << indent
 //             << "    fName :" << fName << endl << indent
 //             << "    isPtr :" << isPtr.valid() << endl << endl;
@@ -487,7 +487,7 @@ Foam::fileOperations::autoReconstructingFileOperation::findTimes
 // }
 
 
-bool Foam::fileOperations::autoReconstructingFileOperation::read
+bool Foam::fileOperations::autoReconstructFileOperation::read
 (
     regIOobject& io,
     const bool masterOnly,
@@ -498,7 +498,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
     if (debug)
     {
         Pout<< indent
-            << "autoReconstructingFileOperation::read :"
+            << "autoReconstructFileOperation::read :"
             << " Reading:" << type << " from: " << io.objectPath() << endl;
     }
 
@@ -508,7 +508,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
         if (debug)
         {
             Pout<< indent
-                << "autoReconstructingFileOperation::read :"
+                << "autoReconstructFileOperation::read :"
                 << " Searching for reconstructor for type:" << type
                 << " of object: " << io.objectPath() << endl;
         }
@@ -522,7 +522,7 @@ bool Foam::fileOperations::autoReconstructingFileOperation::read
             if (debug)
             {
                 Pout<< indent
-                    << "autoReconstructingFileOperation::read :"
+                    << "autoReconstructFileOperation::read :"
                     << " Found reconstructor for type:" << type
                     << " of object: " << io.objectPath() << endl;
             }
