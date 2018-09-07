@@ -35,6 +35,8 @@ License
 #include "unallocatedFvMeshObject.H"
 #include "streamReconstructor.H"
 #include "collatedFileOperation.H"
+#include "OFstream.H"
+#include "decomposedBlockData.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -335,6 +337,29 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
                 << "Cannot open case directory "
                 << fName << nl
                 << "    Running decomposePar" << nl << nl << endl;
+
+            const bool oldParRun = Pstream::parRun();
+            Pstream::parRun() = false;
+            if (!Foam::exists("./system/decomposeParDict"))
+            {
+                OFstream os("./system/decomposeParDict", IOstream::ASCII);
+                decomposedBlockData::writeHeader
+                (
+                    os,
+                    IOstream::currentVersion,
+                    IOstream::ASCII,
+                    "dictionary",
+                    "",
+                    "",
+                    "decomposeParDict"
+                );
+                dictionary d;
+                d.add("numberOfSubdomains", Pstream::nProcs());
+                d.add("method", "scotch");
+                d.write(os);
+            }
+            Pstream::parRun() = oldParRun;
+
             if (system("decomposePar"))
             {
                 FatalErrorInFunction
