@@ -291,13 +291,6 @@ autoParallelFileOperation
 }
 
 
-// Foam::fileOperations::autoParallelFileOperationInitialise::
-// autoParallelFileOperationInitialise(int& argc, char**& argv)
-// :
-//     collatedFileOperationInitialise(argc, argv)
-// {}
-
-
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
 Foam::fileOperations::autoParallelFileOperation::
@@ -340,9 +333,26 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
 
             const bool oldParRun = Pstream::parRun();
             Pstream::parRun() = false;
-            if (!Foam::exists("./system/decomposeParDict"))
+
+            if (!Foam::isDir("./system"))
             {
-                OFstream os("./system/decomposeParDict", IOstream::ASCII);
+                FatalErrorInFunction
+                    << "Cannot find ./system directory."
+                    << " Please run application in case directory."
+                    << exit(FatalError);
+            }
+
+            const fileName decompDictName("./system/decomposeParDict");
+            bool synthesised = false;
+
+            if (!Foam::exists(decompDictName))
+            {
+                WarningInFunction
+                    << "Cannot open " << decompDictName << nl
+                    << "    Synthesising temporary decomposeParDict"
+                    << nl << nl << endl;
+
+                OFstream os(decompDictName, IOstream::ASCII);
                 decomposedBlockData::writeHeader
                 (
                     os,
@@ -356,15 +366,26 @@ Foam::fileName Foam::fileOperations::autoParallelFileOperation::filePath
                 dictionary d;
                 d.add("numberOfSubdomains", Pstream::nProcs());
                 d.add("method", "scotch");
-                d.write(os);
+                d.write(os, false);
+                IOobject::writeEndDivider(os);
+
+                if (os.good())
+                {
+                    synthesised = true;
+                }
             }
             Pstream::parRun() = oldParRun;
 
-            if (system("decomposePar"))
+            if (system("decomposePar -noFields"))
             {
                 FatalErrorInFunction
                     << "Failed executing 'decomposePar'"
                     << exit(FatalError);
+            }
+
+            if (synthesised)
+            {
+                Foam::rm(decompDictName);
             }
         }
 
