@@ -98,6 +98,15 @@ public:
                 const word& typeName
             ) const;
 
+            ////- Read a directory and return the entries as a string list
+            //virtual fileNameList readDir
+            //(
+            //    const fileName&,
+            //    const fileType = fileType::file,
+            //    const bool filterVariants = true,
+            //    const bool followLink = true
+            //) const;
+
             //- Search for a directory. checkGlobal : also check undecomposed
             //  case
             virtual fileName dirPath

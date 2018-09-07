@@ -119,7 +119,7 @@ bool Foam::fileOperations::autoReconstructFileOperation::haveProcPath
                /io.local()
                /io.name()
             );
-            if (exists(procObjectPath))
+            if (procObjectPath.size())
             {
                 return true;
             }
@@ -250,6 +250,169 @@ Foam::fileName Foam::fileOperations::autoReconstructFileOperation::filePath
     }
     return objPath;
 }
+
+
+//Foam::fileNameList Foam::fileOperations::autoReconstructFileOperation::readDir
+//(
+//    const fileName& dir,
+//    const fileType fType,
+//    const bool filter,
+//    const bool followLink
+//) const
+//{
+//    if (Pstream::parRun())
+//    {
+//        return uncollatedFileOperation::readDir
+//        (
+//            dir,
+//            fType,
+//            filter,
+//            followLink
+//        );
+//    }
+//
+//    std::string::size_type pos = dir.find("processor");
+//    if (pos == 0 || (pos > 0 && dir[pos-1] == '/'))
+//    {
+//        return uncollatedFileOperation::readDir
+//        (
+//            dir,
+//            fType,
+//            filter,
+//            followLink
+//        );
+//    }
+//
+//
+////     // Force caching of processor directories. This makes sure
+////     // that follow-on
+////     // readDir does not need to do directory reading again
+////     (void)lookupProcessorsPath(dir/"processor0");
+//
+//    Pout<< indent
+//        << "autoReconstructFileOperation::readDir :"
+//        << " dir:" << dir
+//        << " fileType:" << label(fType)
+//        << endl;
+//
+//    fileNameList contents;
+//
+//    // See if we have dir/processor0 (or dir/processorsXXX)
+//    fileName procDir(filePath(dir/"processor0"));
+//    if (procDir.size())
+//    {
+//        contents = uncollatedFileOperation::readDir
+//        (
+//            procDir,
+//            fType,
+//            filter,
+//            followLink
+//        );
+//
+//        if (debug)
+//        {
+//            Pout<< indent
+//                << "autoReconstructFileOperation::readDir :"
+//                << " Returning from (processor) directory searching:"
+//                << endl << indent
+//                << "    procDir  :" << procDir
+//                << endl << indent
+//                << "    contents :" << contents << endl << endl;
+//        }
+//    }
+//    else
+//    {
+//        contents = uncollatedFileOperation::readDir
+//        (
+//            procDir,
+//            fType,
+//            filter,
+//            followLink
+//        );
+//        if (debug)
+//        {
+//            Pout<< indent
+//                << "autoReconstructFileOperation::readDir :"
+//                << " Returning from directory searching:"
+//                << endl << indent
+//                << "    dir      :" << dir
+//                << endl << indent
+//                << "    contents :" << contents << endl << endl;
+//        }
+//    }
+//
+//
+////     fileNameList contents
+//     (
+//         uncollatedFileOperation::readDir
+//         (
+//             dir,
+//             fileType::directory,
+//             filter,
+//             followLink
+//         )
+//     );
+//     Pout<< indent
+//         << "autoReconstructFileOperation::readDir :"
+//         << " contents:" << contents << endl;
+//
+//     fileName procDir;
+//     forAll(contents, i)
+//     {
+//         const fileName& dirN = contents[i];
+//
+//         std::string::size_type pos = dirN.find("processor");
+//         if (pos == 0)
+//         {
+//             procDir = dirN;
+//             break;
+//         }
+//         else if (pos > 0 && dirN[pos-1] == '/')
+//         {
+//             procDir = dirN;
+//             break;
+//         }
+//     }
+//
+// DebugVar(procDir);
+//
+//     if (procDir.empty())
+//     {
+//         if (fType != fileType::directory)
+//         {
+//             // Re-do
+//             contents = uncollatedFileOperation::readDir
+//             (
+//                 dir,
+//                 fType,
+//                 filter,
+//                 followLink
+//             );
+//         }
+//     }
+//     else
+//     {
+// DebugVar(dir/procDir);
+//         contents = uncollatedFileOperation::readDir
+//         (
+//             dir/procDir,
+//             fType,
+//             filter,
+//             followLink
+//         );
+//     }
+//
+//     if (debug)
+//     {
+//         Pout<< indent
+//             << "autoReconstructFileOperation::readDir :"
+//             << " Returning from directory searching:" << endl << indent
+//             << "    dir      :" << dir << " fType:" << label(fType)
+//             << endl << indent
+//             << "    contents :" << contents << endl << endl;
+//     }
+//    return contents;
+//}
 
 
 Foam::fileName Foam::fileOperations::autoReconstructFileOperation::dirPath
