@@ -25,7 +25,8 @@ Class
     Foam::fileOperations::regionUncollatedFileOperation
 
 Description
-    fileOperation that assumes file operations are local.
+    Version of uncollated fileOperation that tries to load dictionaries
+    as a subdictionary in the parent directory.
 
 \*---------------------------------------------------------------------------*/
 
@@ -33,16 +34,11 @@ Description
 #define fileOperations_regionUncollatedFileOperation_H
 
 #include "uncollatedFileOperation.H"
-#include "labelIOList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
-// Forward declaration of classes
-class fvMesh;
-class fvFieldDecomposer;
 
 namespace fileOperations
 {
@@ -109,12 +105,6 @@ public:
 
 } // End namespace fileOperations
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-//
-//#ifdef NoRepository
-//    #include "regionUncollatedFileOperationTemplates.C"
-//#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

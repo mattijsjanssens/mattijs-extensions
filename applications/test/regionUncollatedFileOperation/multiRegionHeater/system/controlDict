@@ -22,10 +22,10 @@ OptimisationSwitches
     fileHandler         regionUncollated;
 }
 
-DebugSwitches
-{
-    regionUncollated    1;
-}
+//DebugSwitches
+//{
+//    regionUncollated    1;
+//}
 
 application     chtMultiRegionFoam;
 

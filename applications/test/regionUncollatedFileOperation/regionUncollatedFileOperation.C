@@ -45,11 +45,11 @@ namespace fileOperations
         word
     );
 
-    class installFileOp
+    class regionUncollatedInstall
     {
     public:
 
-        installFileOp()
+        regionUncollatedInstall()
         {
             // Install autoDecomposing as fileHandler
             //autoPtr<fileOperation> handler
@@ -59,21 +59,24 @@ namespace fileOperations
             //Foam::fileHandler(handler);
         }
 
-        ~installFileOp()
+        ~regionUncollatedInstall()
         {
             if (fileHandler().type() == regionUncollatedFileOperation::typeName)
             {
-                autoPtr<fileOperation> handler(nullptr);
+                // Install 'simple' file handler to avoid e.g. communicator
+                // allocation
+                autoPtr<fileOperation> handler
+                (
+                    new uncollatedFileOperation(false)
+                );
                 Foam::fileHandler(handler);
             }
         }
     };
-    installFileOp installFileOp_;
+    regionUncollatedInstall regionUncollatedInstallObject_;
 }
 }
 
-
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -84,7 +87,9 @@ regionUncollatedFileOperation(const bool verbose)
 {
     if (verbose)
     {
-        Info<< "I/O    : " << typeName << endl;
+        Info<< "I/O    : " << typeName << nl
+            << "         (reads dictionaries from parent directory)" << nl
+            << endl;
     }
 }
 
@@ -314,29 +319,53 @@ bool Foam::fileOperations::regionUncollatedFileOperation::read
             regionName = parentIO.local().name();
             const_cast<fileName&>(parentIO.local()) = parentIO.local().path();
 
-            //if (debug)
-            //{
-            //    Pout<< "Trying parent-of-local:" << io.local()
-            //        << " region:" << regionName
-            //        << " objPath:" << parentIO.objectPath() << endl;
-            //}
+            if (debug)
+            {
+                Pout<< "Trying parent-of-local:" << io.local()
+                    << " region:" << regionName
+                    << " objPath:" << parentIO.objectPath() << endl;
+            }
         }
-        else if
-        (
-           &io.db()
-         != dynamic_cast<const objectRegistry*>(&io.time())
-        )
+        else
         {
-            // Use the parent of the database
-            parentIOPtr.reset(new IOobject(io, io.db().parent()));
-            regionName = io.db().name();
+            // Check if instance has complete path
+            const fileName parentDir(io.instance().path());
+            if (parentDir != "." && parentDir != io.instance())
+            {
+                // Modifiy the local field
+                parentIOPtr.reset(new IOobject(io));
+                IOobject& parentIO = parentIOPtr();
+                regionName = parentIO.instance().name();
+                const_cast<fileName&>(parentIO.instance()) = parentDir;
 
-            //if (debug)
-            //{
-            //    Pout<< "Trying parent-of-database objPath:"
-            //        << " region:" << regionName
-            //        << " objPath:" << parentIOPtr().objectPath() << endl;
-            //}
+                if (debug)
+                {
+                    Pout<< "Trying parent-of-instance:" << io.instance()
+                        << " region:" << regionName
+                        << " objPath:" << parentIO.objectPath() << endl;
+                }
+            }
+            else if
+            (
+                &io.db()
+             != dynamic_cast<const objectRegistry*>(&io.time())
+            )
+            {
+                // Use the parent of the database
+                parentIOPtr.reset(new IOobject(io, io.db().parent()));
+                const IOobject& parentIO = parentIOPtr();
+                regionName = io.db().name();
+
+                if (debug)
+                {
+                    Pout<< "Trying parent-of-database objPath:"
+                        << " region:" << regionName
+                        << " objPath:" << parentIO.objectPath() << nl
+                        << "    db():" << io.db().path() << nl
+                        << "    parentIOdb():" << parentIO.path() << nl
+                        << endl;
+                }
+            }
         }
 
 
