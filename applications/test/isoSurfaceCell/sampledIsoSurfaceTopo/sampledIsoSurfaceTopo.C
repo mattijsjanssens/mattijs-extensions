@@ -127,7 +127,8 @@ bool Foam::sampledIsoSurfaceTopo::updateGeometry() const
                 cellFld.primitiveField(),
                 pointFld().primitiveField(),
                 isoVals_[isoi],
-                regularise_
+                regularise_,
+                false               // keep diagonal points
             )
         );
     }
