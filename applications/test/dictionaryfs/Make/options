@@ -1,0 +1,7 @@
+EXE_INC = \
+    -D_FILE_OFFSET_BITS=64 \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume
