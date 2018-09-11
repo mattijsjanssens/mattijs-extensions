@@ -20,10 +20,73 @@ dynamicFvMesh   dynamicMotionSolverFvMesh;
 motionSolverLibs ("libfvMotionSolvers.so");
 
 //motionSolver    displacementLaplacian;
-motionSolver    displacementComponentLaplacian;
-component       y;
-diffusivity     uniform 1;
+//motionSolver    displacementComponentLaplacian;
+//component       y;
+//diffusivity     uniform 1;
 //applyPointLocation  false;
+
+motionSolver    displacementLayeredMotion;
+regions
+{
+    leftTop
+    {
+        interpolationScheme linear;
+        boundaryField
+        {
+            top
+            {
+                type    fixedValue;
+                value   uniform (0 0 0);
+            }
+            leftTopMiddle
+            {
+                type    uniformFollow;
+                patch   lift;
+                //value   uniform (0 0 0);
+            }
+        }
+    }
+    leftMiddle
+    {
+        interpolationScheme linear;
+        boundaryField
+        {
+            leftTopMiddle
+            {
+                //type    fixedValue;
+                //value   uniform (0 0 0);
+                type    uniformFollow;
+                patch   lift;
+            }
+            leftMiddleBottom
+            {
+                //type    fixedValue;
+                //value   uniform (0 0 0);
+                type    uniformFollow;
+                patch   lift;
+            }
+        }
+    }
+    leftBottom
+    {
+        interpolationScheme linear;
+        boundaryField
+        {
+            leftMiddleBottom
+            {
+                //type    fixedValue;
+                //value   uniform (0 0 0);
+                type    uniformFollow;
+                patch   lift;
+            }
+            bottom
+            {
+                type    fixedValue;
+                value   uniform (0 0 0);
+            }
+        }
+    }
+}
 
 //motionSolver            displacementInterpolation;
 //interpolationTables     ((top top)(bottom bottom));

@@ -18,8 +18,8 @@ FoamFile
 DebugSwitches
 {
 //    globalIndexAndTransform 1;
-    polyMesh    1;
-    displacementLaplacian   1;
+//    polyMesh    1;
+//    displacementLaplacian   1;
 }
 //
 application     pimpleFoam;
@@ -28,7 +28,7 @@ startFrom       startTime;
 
 startTime       0;
 
-stopAt          writeNow;   //endTime;
+stopAt          endTime;
 
 endTime         0.1;
 

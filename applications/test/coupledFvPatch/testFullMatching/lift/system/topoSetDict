@@ -23,7 +23,7 @@ actions
         source  boxToCell;
         sourceInfo
         {
-            box (0.2 4 -100)(0.9 4.7 100);
+            box (0.2 3 -100)(0.9 3.7 100);
         }
     }
     {
@@ -32,6 +32,7 @@ actions
         action  invert;
     }
 
+    // top
     {
         name    topFaces;
         type    faceSet;
@@ -39,7 +40,7 @@ actions
         source  boxToFace;
         sourceInfo
         {
-            box (-100 4.799 -100)(1 4.801 100);
+            box (-100 4.999 -100)(1 5.001 100);
         }
     }
     {
@@ -53,6 +54,7 @@ actions
         }
     }
 
+    // bottom
     {
         name    bottomFaces;
         type    faceSet;
@@ -60,7 +62,7 @@ actions
         source  boxToFace;
         sourceInfo
         {
-            box (-100 3.899 -100)(1 3.901 100);
+            box (-100 -100 -100)(1 1e-5 100);
         }
     }
     {
@@ -71,6 +73,163 @@ actions
         sourceInfo
         {
             faceSet bottomFaces;
+        }
+    }
+
+    // leftTop
+    {
+        name    leftTopCells;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            box (-100 4 -100)(1 100 100);
+        }
+    }
+    {
+        name    leftTop;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+            set leftTopCells;
+        }
+    }
+
+    // leftMiddle
+    {
+        name    leftMiddleCells;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            box (-100 2.7 -100)(1 4 100);
+        }
+    }
+    {
+        name    leftMiddle;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+            set leftMiddleCells;
+        }
+    }
+
+    // leftBottom
+    {
+        name    leftBottomCells;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            box (-100 -100 -100)(1 2.7 100);
+        }
+    }
+    {
+        name    leftBottom;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+            set leftBottomCells;
+        }
+    }
+
+
+    // Faces inbetween leftTop-leftMiddle
+    {
+        name    leftTopMiddleFaces;
+        type    faceSet;
+        action  new;
+        source  cellToFace;
+        sourceInfo
+        {
+            set leftTopCells;
+            option all;
+        }
+    }
+    {
+        name    leftTopMiddleFaces;
+        type    faceSet;
+        action  subset;
+        source  cellToFace;
+        sourceInfo
+        {
+            set leftMiddleCells;
+            option all;
+        }
+    }
+    {
+        name    leftTopMiddle;
+        type    faceZoneSet;
+        action  new;
+        source  setToFaceZone;
+        sourceInfo
+        {
+            faceSet leftTopMiddleFaces;
+        }
+    }
+
+    // Faces inbetween leftMiddle-leftBottom
+    {
+        name    leftMiddleBottomFaces;
+        type    faceSet;
+        action  new;
+        source  cellToFace;
+        sourceInfo
+        {
+            set leftMiddleCells;
+            option all;
+        }
+    }
+    {
+        name    leftMiddleBottomFaces;
+        type    faceSet;
+        action  subset;
+        source  cellToFace;
+        sourceInfo
+        {
+            set leftBottomCells;
+            option all;
+        }
+    }
+    {
+        name    leftMiddleBottom;
+        type    faceZoneSet;
+        action  new;
+        source  setToFaceZone;
+        sourceInfo
+        {
+            faceSet leftMiddleBottomFaces;
+        }
+    }
+
+    // right
+    {
+        name    rightCells;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            box (1 -100 -100)(100 100 100);
+        }
+    }
+    {
+        name    right;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+            set rightCells;
         }
     }
 
