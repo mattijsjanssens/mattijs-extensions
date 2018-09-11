@@ -30,6 +30,7 @@ License
 #include "uFieldReconstructor.H"
 #include "unthreadedInitialise.H"
 #include "streamReconstructor.H"
+#include "cloud.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -125,6 +126,56 @@ bool Foam::fileOperations::autoReconstructFileOperation::haveProcPath
             }
         }
         return false;
+    }
+}
+
+
+Foam::fileName
+Foam::fileOperations::autoReconstructFileOperation::equivalentLagrangian
+(
+    const fileName& dir
+) const
+{
+    std::string::size_type pos = dir.find(cloud::prefix);
+    if (pos == string::npos)
+    {
+        return dir;
+    }
+    else
+    {
+        const wordList components(dir.components());
+        label index = findIndex(components, cloud::prefix);
+DebugVar(dir);
+DebugVar(index);
+        if (index == -1 || index < 1)
+        {
+            return dir;
+        }
+        else
+        {
+            // Reconstruct path
+            fileName procDir;
+            if (dir[0] == '/')
+            {
+                procDir = '/';
+            }
+            forAll(components, i)
+            {
+                if (i != 0)
+                {
+                    procDir += '/';
+                }
+                if (i == index-1)
+                {
+                    procDir += "processor0/";
+                }
+                procDir += components[i];
+            }
+
+            Pout<< "was:" << dir << " now:" << procDir << endl;
+
+            return procDir;
+        }
     }
 }
 
@@ -252,36 +303,120 @@ Foam::fileName Foam::fileOperations::autoReconstructFileOperation::filePath
 }
 
 
-//Foam::fileNameList Foam::fileOperations::autoReconstructFileOperation::readDir
-//(
-//    const fileName& dir,
-//    const fileType fType,
-//    const bool filter,
-//    const bool followLink
-//) const
-//{
-//    if (Pstream::parRun())
+Foam::fileNameList Foam::fileOperations::autoReconstructFileOperation::readDir
+(
+    const fileName& dir,
+    const fileType fType,
+    const bool filter,
+    const bool followLink
+) const
+{
+    if (Pstream::parRun())
+    {
+        return uncollatedFileOperation::readDir
+        (
+            dir,
+            fType,
+            filter,
+            followLink
+        );
+    }
+
+    const fileName procDir(filePath(equivalentLagrangian(dir)));
+    if (procDir.size())
+    {
+        const fileNameList contents
+        (
+            uncollatedFileOperation::readDir
+            (
+                procDir,
+                fType,
+                filter,
+                followLink
+            )
+        );
+
+        if (debug)
+        {
+            Pout<< indent
+                << "autoReconstructFileOperation::readDir :"
+                << " Returning from lagrangian directory searching:"
+                << endl << indent
+                << "    dir      :" << dir << endl << indent
+                << "    procDir  :" << procDir << endl << indent
+                << "    contents :" << contents << endl << endl;
+        }
+        return contents;
+    }
+    else
+    {
+        return uncollatedFileOperation::readDir
+        (
+            dir,
+            fType,
+            filter,
+            followLink
+        );
+    }
+
+//    fileNameList contents;
+//    if (dir.name() == cloud::prefix)
 //    {
-//        return uncollatedFileOperation::readDir
+//        // Get equivalent processor directory
+//
+//        fileName pathAndInstance(dir.path());
+//        fileName instance(pathAndInstance.name());
+//        fileName procDir
 //        (
-//            dir,
-//            fType,
-//            filter,
-//            followLink
+//            filePath
+//            (
+//                pathAndInstance.path()/"processor0"/instance/cloud::prefix
+//            )
 //        );
+//        if (procDir.size())
+//        {
+//            contents = uncollatedFileOperation::readDir
+//            (
+//                procDir,
+//                fType,
+//                filter,
+//                followLink
+//            );
+//
+//            if (debug)
+//            {
+//                Pout<< indent
+//                    << "autoReconstructFileOperation::readDir :"
+//                    << " Returning from lagrangian directory searching:"
+//                    << endl << indent
+//                    << "    procDir  :" << procDir
+//                    << endl << indent
+//                    << "    contents :" << contents << endl << endl;
+//            }
+//            return contents;
+//        }
 //    }
 //
-//    std::string::size_type pos = dir.find("processor");
-//    if (pos == 0 || (pos > 0 && dir[pos-1] == '/'))
+//    contents = uncollatedFileOperation::readDir
+//    (
+//        dir,
+//        fType,
+//        filter,
+//        followLink
+//    );
+//
+//    if (debug)
 //    {
-//        return uncollatedFileOperation::readDir
-//        (
-//            dir,
-//            fType,
-//            filter,
-//            followLink
-//        );
+//        Pout<< indent
+//            << "autoReconstructFileOperation::readDir :"
+//            << " Returning from directory searching:"
+//            << endl << indent
+//            << "    dir      :" << dir
+//            << endl << indent
+//            << "    contents :" << contents << endl << endl;
 //    }
+
+
 //
 //
 ////     // Force caching of processor directories. This makes sure
@@ -412,7 +547,7 @@ Foam::fileName Foam::fileOperations::autoReconstructFileOperation::filePath
 //             << "    contents :" << contents << endl << endl;
 //     }
 //    return contents;
-//}
+}
 
 
 Foam::fileName Foam::fileOperations::autoReconstructFileOperation::dirPath
@@ -469,7 +604,7 @@ Foam::fileOperations::autoReconstructFileOperation::readObjects
             filePath(db.path("processor0"/instance, db.dbDir()/local))
         );
 
-        if (Foam::isDir(path))
+        if (path.size())    //Foam::isDir(path))
         {
             newInstance = instance;
             objects = Foam::readDir(path, fileType::file);
@@ -536,7 +671,7 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
     if (!Pstream::parRun())
     {
         fileName procDir(filePath(dir/"processor0"));
-        if (exists(procDir))
+        if (procDir.size()) //exists(procDir))
         {
             instantList procTimes = uncollatedFileOperation::findTimes
             (

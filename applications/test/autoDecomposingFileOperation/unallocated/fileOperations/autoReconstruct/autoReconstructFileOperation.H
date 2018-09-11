@@ -64,6 +64,9 @@ class autoReconstructFileOperation
         //- Check for equivalent object inside processor0/
         bool haveProcPath(const IOobject& io, fileName&) const;
 
+        //- Rewrite lagrangian to processor directory
+        fileName equivalentLagrangian(const fileName& dir) const;
+
 
 public:
 
@@ -98,14 +101,14 @@ public:
                 const word& typeName
             ) const;
 
-            ////- Read a directory and return the entries as a string list
-            //virtual fileNameList readDir
-            //(
-            //    const fileName&,
-            //    const fileType = fileType::file,
-            //    const bool filterVariants = true,
-            //    const bool followLink = true
-            //) const;
+            //- Read a directory and return the entries as a string list
+            virtual fileNameList readDir
+            (
+                const fileName&,
+                const fileType = fileType::file,
+                const bool filterVariants = true,
+                const bool followLink = true
+            ) const;
 
             //- Search for a directory. checkGlobal : also check undecomposed
             //  case
