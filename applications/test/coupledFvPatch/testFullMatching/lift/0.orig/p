@@ -23,7 +23,7 @@ boundaryField
 {
     left1
     {
-        type            zeroGradient;
+        type            fixedFluxPressure;
     }
     right1
     {
@@ -32,7 +32,7 @@ boundaryField
     }
     walls1
     {
-        type            zeroGradient;
+        type            fixedFluxPressure;
     }
     left2
     {
@@ -41,17 +41,15 @@ boundaryField
     }
     right2
     {
-        type            uniformFixedValue;
-        uniformValue    constant 0;
-        value           uniform 0;
+        type            fixedFluxPressure;
     }
     walls2
     {
-        type            zeroGradient;
+        type            fixedFluxPressure;
     }
     lift
     {
-        type            zeroGradient;
+        type            fixedFluxPressure;
     }
     frontAndBack
     {

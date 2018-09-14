@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,23 +21,61 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::cyclicRepeatAMIGAMGInterface
+
+Description
+    GAMG agglomerated repeat AMI interface.
+
+SourceFiles
+    cyclicRepeatAMIGAMGInterface.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
+#ifndef cyclicRepeatAMIGAMGInterface_H
+#define cyclicRepeatAMIGAMGInterface_H
 
-#include "cyclicAMIFvPatchField.H"
-#include "fieldTypes.H"
+#include "cyclicAMIGAMGInterface.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                  Class cyclicRepeatAMIGAMGInterface Declaration
+\*---------------------------------------------------------------------------*/
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
+class cyclicRepeatAMIGAMGInterface
+:
+    public cyclicAMIGAMGInterface
+{
+public:
+
+    //- Runtime type information
+    TypeName("cyclicRepeatAMI");
+
+
+    // Constructors
+
+        //- Construct from fine level interface,
+        //  local and neighbour restrict addressing
+        cyclicRepeatAMIGAMGInterface
+        (
+            const label index,
+            const lduInterfacePtrsList& coarseInterfaces,
+            const lduInterface& fineInterface,
+            const labelField& restrictAddressing,
+            const labelField& neighbourRestrictAddressing,
+            const label fineLevelIndex,
+            const label coarseComm
+        );
+
+
+    //- Destructor
+    virtual ~cyclicRepeatAMIGAMGInterface();
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

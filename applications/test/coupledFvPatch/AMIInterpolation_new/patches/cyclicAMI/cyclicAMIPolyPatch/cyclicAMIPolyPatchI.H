@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
+   \\    /   O peration     | Website:  https://openfoam.org
     \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
@@ -23,28 +23,37 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
-
-#include "cyclicAMIFvPatchField.H"
-#include "fieldTypes.H"
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
+inline const Foam::word& Foam::cyclicAMIPolyPatch::neighbPatchName() const
 {
+    if (nbrPatchName_.empty())
+    {
+        // Try and use patchGroup to find samplePatch and sampleRegion
+        label patchID = coupleGroup_.findOtherPatchID(*this);
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+        nbrPatchName_ = boundaryMesh()[patchID].name();
+    }
+    return nbrPatchName_;
+}
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+inline const Foam::vector& Foam::cyclicAMIPolyPatch::rotationAxis() const
+{
+    return rotationAxis_;
+}
 
-} // End namespace Foam
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+inline const Foam::point& Foam::cyclicAMIPolyPatch::rotationCentre() const
+{
+    return rotationCentre_;
+}
 
-#endif
+
+inline const Foam::vector& Foam::cyclicAMIPolyPatch::separationVector() const
+{
+    return separationVector_;
+}
+
 
 // ************************************************************************* //

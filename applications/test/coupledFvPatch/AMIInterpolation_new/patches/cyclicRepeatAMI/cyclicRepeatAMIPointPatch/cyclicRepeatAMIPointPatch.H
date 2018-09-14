@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,23 +21,56 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::cyclicRepeatAMIPointPatch
+
+Description
+    Repeat AMI point patch - place holder only
+
+SourceFiles
+    cyclicRepeatAMIPointPatch.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
+#ifndef cyclicRepeatAMIPointPatch_H
+#define cyclicRepeatAMIPointPatch_H
 
-#include "cyclicAMIFvPatchField.H"
-#include "fieldTypes.H"
+#include "cyclicAMIPointPatch.H"
+#include "cyclicRepeatAMIPolyPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                      Class cyclicRepeatAMIPointPatch Declaration
+\*---------------------------------------------------------------------------*/
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
+class cyclicRepeatAMIPointPatch
+:
+    public cyclicAMIPointPatch
+{
+public:
+
+    //- Runtime type information
+    TypeName(cyclicRepeatAMIPolyPatch::typeName_());
+
+
+    // Constructors
+
+        //- Construct from components
+        cyclicRepeatAMIPointPatch
+        (
+            const polyPatch& patch,
+            const pointBoundaryMesh& bm
+        );
+
+
+    //- Destructor
+    virtual ~cyclicRepeatAMIPointPatch();
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

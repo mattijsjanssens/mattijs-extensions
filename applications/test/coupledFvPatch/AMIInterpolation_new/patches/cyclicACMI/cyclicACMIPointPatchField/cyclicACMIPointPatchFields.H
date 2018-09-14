@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2013-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,10 +23,10 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
+#ifndef cyclicACMIPointPatchFields_H
+#define cyclicACMIPointPatchFields_H
 
-#include "cyclicAMIFvPatchField.H"
+#include "cyclicACMIPointPatchField.H"
 #include "fieldTypes.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -36,8 +36,7 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
+makePointPatchFieldTypedefs(cyclicACMI);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

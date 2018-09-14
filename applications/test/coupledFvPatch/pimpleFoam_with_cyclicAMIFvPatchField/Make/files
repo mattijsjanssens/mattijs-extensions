@@ -20,6 +20,19 @@ $(AMIGAMG)/interfaceFields/cyclicACMIGAMGInterfaceField/cyclicACMIGAMGInterfaceF
 $(AMIGAMG)/interfaces/cyclicRepeatAMIGAMGInterface/cyclicRepeatAMIGAMGInterface.C
 $(AMIGAMG)/interfaceFields/cyclicRepeatAMIGAMGInterfaceField/cyclicRepeatAMIGAMGInterfaceField.C
 
+AMIMethod=$(AMI)/AMIInterpolation/AMIMethod
+$(AMIMethod)/AMIMethod/AMIMethod.C
+$(AMIMethod)/AMIMethod/AMIMethodNew.C
+/*
+$(AMIMethod)/directAMI/directAMI.C
+*/
+$(AMIMethod)/faceAreaWeightAMI/faceAreaWeightAMI.C
+/*
+$(AMIMethod)/mapNearestAMI/mapNearestAMI.C
+$(AMIMethod)/partialFaceAreaWeightAMI/partialFaceAreaWeightAMI.C
+$(AMIMethod)/sweptFaceAreaWeightAMI/sweptFaceAreaWeightAMI.C
+*/
+
 AMICycPatches=$(AMI)/patches/cyclicAMI
 $(AMICycPatches)/cyclicAMILduInterfaceField/cyclicAMILduInterface.C
 $(AMICycPatches)/cyclicAMILduInterfaceField/cyclicAMILduInterfaceField.C
@@ -41,6 +54,6 @@ $(AMIOverlapPatches)/cyclicRepeatAMIPolyPatch/cyclicRepeatAMIPolyPatch.C
 $(AMIOverlapPatches)/cyclicRepeatAMIPointPatch/cyclicRepeatAMIPointPatch.C
 $(AMIOverlapPatches)/cyclicRepeatAMIPointPatchField/cyclicRepeatAMIPointPatchFields.C
 
-Test-coupledFvPatch.C
+pimpleFoam.C
 
-EXE = $(FOAM_USER_APPBIN)/Test-coupledFvPatch
+EXE = $(FOAM_USER_APPBIN)/pimpleFoam_with_cyclicAMIFvPatchField

@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2013-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,23 +21,64 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::cyclicACMIGAMGInterfaceField
+
+Description
+    GAMG agglomerated cyclic interface for Arbitrarily Coupled Mesh Interface
+    (ACMI) fields.
+
+SourceFiles
+    cyclicACMIGAMGInterfaceField.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
+#ifndef cyclicACMIGAMGInterfaceField_H
+#define cyclicACMIGAMGInterfaceField_H
 
-#include "cyclicAMIFvPatchField.H"
-#include "fieldTypes.H"
+#include "cyclicAMIGAMGInterfaceField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                 Class cyclicACMIGAMGInterfaceField Declaration
+\*---------------------------------------------------------------------------*/
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
+class cyclicACMIGAMGInterfaceField
+:
+    public cyclicAMIGAMGInterfaceField
+{
+public:
+
+    //- Runtime type information
+    TypeName("cyclicACMI");
+
+
+    // Constructors
+
+        //- Construct from GAMG interface and fine level interface field
+        cyclicACMIGAMGInterfaceField
+        (
+            const GAMGInterface& GAMGCp,
+            const lduInterfaceField& fineInterfaceField
+        );
+
+        //- Construct from GAMG interface and fine level interface field
+        cyclicACMIGAMGInterfaceField
+        (
+            const GAMGInterface& GAMGCp,
+            const bool doTransform,
+            const int rank
+        );
+
+
+    //- Destructor
+    virtual ~cyclicACMIGAMGInterfaceField();
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

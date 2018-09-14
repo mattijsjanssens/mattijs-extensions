@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2013-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,23 +21,53 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::cyclicACMILduInterfaceField
+
+Description
+    Abstract base class for cyclic ACMI coupled interfaces
+
+SourceFiles
+    cyclicACMILduInterfaceField.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
+#ifndef cyclicACMILduInterfaceField_H
+#define cyclicACMILduInterfaceField_H
 
-#include "cyclicAMIFvPatchField.H"
-#include "fieldTypes.H"
+#include "cyclicAMILduInterfaceField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                 Class cyclicACMILduInterfaceField Declaration
+\*---------------------------------------------------------------------------*/
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
+class cyclicACMILduInterfaceField
+:
+    public cyclicAMILduInterfaceField
+{
+
+public:
+
+    //- Runtime type information
+    TypeName("cyclicACMILduInterfaceField");
+
+
+    // Constructors
+
+        //- Construct null
+        cyclicACMILduInterfaceField()
+        {}
+
+
+    //- Destructor
+    virtual ~cyclicACMILduInterfaceField();
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

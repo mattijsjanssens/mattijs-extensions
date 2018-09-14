@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
+   \\    /   O peration     | Website:  https://openfoam.org
     \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
@@ -23,28 +23,57 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef cyclicAMIFvPatchFields_H
-#define cyclicAMIFvPatchFields_H
-
-#include "cyclicAMIFvPatchField.H"
-#include "fieldTypes.H"
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
+template<class Type>
+Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
+(
+    const Field<Type>& fld,
+    const UList<Type>& defaultValues
+) const
 {
+    const cyclicAMIPolyPatch& nei = neighbPatch();
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+    tmp<Field<Type>> result(new Field<Type>(size(), Zero));
 
-makePatchTypeFieldTypedefs(cyclicAMI);
-//makePatchTypeFieldTypedef(scalar, cyclicAMI);
+    if (owner())
+    {
+        forAll(AMIs(), i)
+        {
+            result.ref() +=
+                AMIs()[i].interpolateToSource
+                (
+                    AMITransforms()[i].invTransform(fld),
+                    defaultValues
+                );
+        }
+    }
+    else
+    {
+        forAll(nei.AMIs(), i)
+        {
+            result.ref() +=
+                nei.AMIs()[i].interpolateToTarget
+                (
+                    nei.AMITransforms()[i].transform(fld),
+                    defaultValues
+                );
+        }
+    }
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+    return result;
+}
 
-} // End namespace Foam
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+template<class Type>
+Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
+(
+    const tmp<Field<Type>>& tFld,
+    const UList<Type>& defaultValues
+) const
+{
+    return interpolate(tFld(), defaultValues);
+}
 
-#endif
 
 // ************************************************************************* //

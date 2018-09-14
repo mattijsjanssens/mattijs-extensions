@@ -1,6 +1,6 @@
 EXE_INC = \
     -g -DFULLDEBUG -O0 \
-    -IlnInclude \
+    -IAMIInterpolation_new/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude
 

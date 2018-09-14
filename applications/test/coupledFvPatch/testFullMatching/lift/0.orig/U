@@ -41,7 +41,7 @@ boundaryField
     }
     right2
     {
-        type            zeroGradient;
+        type            noSlip;
     }
     walls2
     {

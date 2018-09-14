@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
+   \\    /   O peration     | Website:  https://openfoam.org
     \\  /    A nd           | Copyright (C) 2017-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
@@ -27,23 +27,27 @@ License
 #include "cut.H"
 #include "linearEqn.H"
 #include "quadraticEqn.H"
+#include "unitConversion.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-template<class SourcePatch, class TargetPatch>
-const Foam::scalar Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::
-minCutRatio_ = 10*small;
+namespace Foam
+{
+    defineTypeNameAndDebug(sweptFaceAreaWeightAMI, 0);
+    addToRunTimeSelectionTable(AMIMethod, sweptFaceAreaWeightAMI, components);
+}
 
-template<class SourcePatch, class TargetPatch>
-const Foam::scalar Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::
-maxDot_ = - cos(degToRad(89.9));
+const Foam::scalar Foam::sweptFaceAreaWeightAMI::minCutRatio_ = 10*small;
+
+const Foam::scalar Foam::sweptFaceAreaWeightAMI::maxDot_ =
+    - cos(degToRad(89.9));
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-template<class SourcePatch, class TargetPatch>
 template<unsigned Size>
-void Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::writeCutTrisVTK
+void Foam::sweptFaceAreaWeightAMI::writeCutTrisVTK
 (
     const cutTriList<Size>& tris,
     const word& name
@@ -75,8 +79,7 @@ void Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::writeCutTrisVTK
 }
 
 
-template<class SourcePatch, class TargetPatch>
-void Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::writeFaceOBJ
+void Foam::sweptFaceAreaWeightAMI::writeFaceOBJ
 (
     const face& f,
     const pointField& ps,
@@ -100,8 +103,7 @@ void Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::writeFaceOBJ
 }
 
 
-template<class SourcePatch, class TargetPatch>
-void Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::writeProjectionOBJ
+void Foam::sweptFaceAreaWeightAMI::writeProjectionOBJ
 (
     const label srcN,
     const FixedList<point, 4>& srcTri,
@@ -153,9 +155,7 @@ void Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::writeProjectionOBJ
 }
 
 
-template<class SourcePatch, class TargetPatch>
-Foam::label
-Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::getSourceProjection
+Foam::label Foam::sweptFaceAreaWeightAMI::getSourceProjection
 (
     FixedList<point, 4>& srcTri,
     FixedList<point, 4>& srcNrm,
@@ -271,8 +271,7 @@ Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::getSourceProjection
 }
 
 
-template<class SourcePatch, class TargetPatch>
-Foam::plane Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::getCutPlane
+Foam::plane Foam::sweptFaceAreaWeightAMI::getCutPlane
 (
     const point& p0,
     const point& p1,
@@ -355,9 +354,7 @@ Foam::plane Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::getCutPlane
 
 // * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
 
-template<class SourcePatch, class TargetPatch>
-Foam::Tuple2<Foam::scalar, Foam::point>
-Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
+Foam::scalar Foam::sweptFaceAreaWeightAMI::interArea
 (
     const label srcFacei,
     const label tgtFacei
@@ -563,10 +560,11 @@ Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
     if (debugPrint)
     {
         const scalar standardAreaMag =
-            faceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
+            faceAreaWeightAMI::interArea
             (
                 srcFacei,
                 tgtFacei
+            );
             ).first();
 
         Info<<"standard=" << standardAreaMag << ", swept=" << areaMag
@@ -581,17 +579,13 @@ Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::interArea
 }
 
 
-template<class SourcePatch, class TargetPatch>
-Foam::scalar
-Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::minWeight() const
+Foam::scalar Foam::sweptFaceAreaWeightAMI::minWeight() const
 {
     return small;
 }
 
 
-template<class SourcePatch, class TargetPatch>
-Foam::scalar
-Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::maxWalkAngle() const
+Foam::scalar Foam::sweptFaceAreaWeightAMI::maxWalkAngle() const
 {
     return degToRad(180);
 }
@@ -599,10 +593,7 @@ Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::maxWalkAngle() const
 
 // * * * * * * * * * * * * * * * * Destructor * * * * * * * * * * * * * * * //
 
-template<class SourcePatch, class TargetPatch>
-Foam::sweptFaceAreaWeightAMI<SourcePatch, TargetPatch>::~sweptFaceAreaWeightAMI
-(
-)
+Foam::sweptFaceAreaWeightAMI::~sweptFaceAreaWeightAMI()
 {}
 
 
