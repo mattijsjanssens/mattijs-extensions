@@ -1,5 +1,7 @@
 cyclicAMIFvPatch.C
 cyclicAMIFvPatchFields.C
+cyclicAMIFvPatchScalarField.C
+
 cyclicAMIFvsPatchFields.C
 /*
 cyclicAMIGAMGInterface.C

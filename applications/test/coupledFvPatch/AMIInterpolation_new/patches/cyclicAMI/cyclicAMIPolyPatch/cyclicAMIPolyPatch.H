@@ -394,13 +394,13 @@ public:
                 ) const;
 
 //XXXX
-                //- Interpolate field
+                //- Interpolate field with extrapolation
                 template<class Type>
                 tmp<Field<Type>> interpolate
                 (
                     const Field<Type>& fld,
                     const Field<typename outerProduct<vector, Type>::type>&,
-                    const UList<Type>& defaultValues = UList<Type>()
+                    const UList<Type>& defaultValues
                 ) const;
 //XXXX
 

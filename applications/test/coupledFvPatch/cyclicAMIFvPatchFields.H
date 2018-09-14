@@ -26,6 +26,7 @@ License
 #ifndef cyclicAMIFvPatchFields_H
 #define cyclicAMIFvPatchFields_H
 
+#include "cyclicAMIFvPatchScalarField.H"
 #include "cyclicAMIFvPatchField.H"
 #include "fieldTypes.H"
 

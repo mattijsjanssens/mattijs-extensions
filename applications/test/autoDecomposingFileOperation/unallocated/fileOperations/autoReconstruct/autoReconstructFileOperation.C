@@ -86,6 +86,59 @@ namespace fileOperations
         }
     };
     autoReconstructInstall autoReconstructInstallObject_;
+
+
+    //- Less function class used in sorting instants
+    class lessOrConstant
+    {
+        const UList<instant>& times_;
+
+    public:
+
+        lessOrConstant(const UList<instant>& times)
+        :
+            times_(times)
+        {}
+
+        bool operator()(const label a, const label b) const
+        {
+            const instant& ia = times_[a];
+            const instant& ib = times_[b];
+
+            if (ia.name() == "constant")
+            {
+                return true;
+            }
+            else if (ib.name() == "constant")
+            {
+                return false;
+            }
+            else
+            {
+                return ia.value() < ib.value();
+            }
+        }
+
+        bool equal(const label a, const label b) const
+        {
+            const instant& ia = times_[a];
+            const instant& ib = times_[b];
+
+            if (ia.name() == "constant")
+            {
+                return (ib.name() == "constant");
+            }
+            else if (ib.name() == "constant")
+            {
+                return false;
+            }
+            else
+            {
+                return ia.value() == ib.value();
+            }
+        }
+    };
+
 }
 }
 
@@ -254,6 +307,12 @@ Foam::fileName Foam::fileOperations::autoReconstructFileOperation::filePath
 
     fileName objPath;
     fileName procPath;
+
+    if (debug)
+    {
+        DebugVar(haveProcPath(io, procPath));
+    }
+
 
     // Cached field file?
     HashPtrTable<fileNameList, fileName>::const_iterator tmFnd =
@@ -666,7 +725,9 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
     const word& constantName
 ) const
 {
-    instantList times(uncollatedFileOperation::findTimes(dir, constantName));
+    // Q: do we also include non-parallel directories?
+
+    instantList times;//(uncollatedFileOperation::findTimes(dir, constantName));
 
     if (!Pstream::parRun())
     {
@@ -678,50 +739,37 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
                 procDir,
                 constantName
             );
-            bool procHasConstant =
-            (
-                procTimes.size() > 0
-             && procTimes[0].name() == constantName
-            );
+            times.append(procTimes);
 
-            if (procHasConstant)
+            // Replicate uniqueOrder but with special handling of "constant"
+            // (is not same as '0')
+            const lessOrConstant compareOp(times);
+            labelList order;
+            sortedOrder(times, order, compareOp);
+            if (order.size() > 1)
             {
-                SubList<instant> realTimes(procTimes, procTimes.size()-1, 1);
-                times.append(realTimes);
-            }
-            else
-            {
-                times.append(procTimes);
-            }
-
-            bool hasConstant =
-            (
-                times.size() > 0
-             && times[0].name() == constantName
-            );
-            if (hasConstant)
-            {
-                SubList<instant> realTimes(times, times.size()-1, 1);
-                labelList order;
-                uniqueOrder(realTimes, order);
-
-                instantList newTimes(order.size()+1);
-                newTimes[0] = times[0];
-                forAll(order, i)
+                label n = 0;
+                for (label i = 0; i < order.size() - 1; ++i)
                 {
-                    newTimes[i+1] = realTimes[order[i]];
+                    if (!compareOp.equal(order[i], order[i+1]))
+                    {
+                        order[n++] = order[i];
+                    }
                 }
-                times.transfer(newTimes);
+                order[n++] = order[order.size()-1];
+                order.setSize(n);
             }
-            else
-            {
-                labelList order;
-                uniqueOrder(times, order);
-                times = UIndirectList<instant>(times, order)();
-            }
+            times = UIndirectList<instant>(times, order)();
+        }
+        else
+        {
+             times = uncollatedFileOperation::findTimes(dir, constantName);
         }
     }
-
+    else
+    {
+         times = uncollatedFileOperation::findTimes(dir, constantName);
+    }
     if (debug)
     {
         Pout<< indent

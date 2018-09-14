@@ -198,7 +198,7 @@ public:
             (
                 const Field<Type>& fld,
                 const Field<typename outerProduct<vector, Type>::type>& grad,
-                const UList<Type>& defaultValues = UList<Type>()
+                const UList<Type>& defaultValues    // = UList<Type>()
             ) const
             {
                 return cyclicAMIPolyPatch_.interpolate

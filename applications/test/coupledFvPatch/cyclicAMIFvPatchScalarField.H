@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,22 +23,32 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "cyclicAMIFvPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "volFields.H"
+#ifndef cyclicAMIFvPatchScalarField_H
+#define cyclicAMIFvPatchScalarField_H
+
+#include "cyclicAMIFvPatchField.H"
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+template<>
+Foam::tmp<Foam::Field<Foam::scalar>>
+Foam::cyclicAMIFvPatchField<Foam::scalar>::patchNeighbourField() const;
+
+template<>
+void Foam::cyclicAMIFvPatchField<Foam::scalar>::updateInterfaceMatrix
+(
+    scalarField& result,
+    const scalarField& psiInternal,
+    const scalarField& coeffs,
+    const direction cmpt,
+    const Pstream::commsTypes
+) const;
+
+template<>
+void Foam::cyclicAMIFvPatchField<Foam::scalar>::write(Ostream& os) const;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
-{
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-makePatchFields(cyclicAMI);
-//makeTemplatePatchTypeField(scalar, cyclicAMI);
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
+#endif
 
 // ************************************************************************* //
