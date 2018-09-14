@@ -11,7 +11,6 @@ runApplication blockMesh
 runApplication decomposePar
 runParallel $application
 
-FOAM_LIBS="\(\"$FOAM_USER_LIBBIN/libautoDecomposingFileOperation.so\"\)" paraFoam
-
+paraFoam -reconstruct
 
 #------------------------------------------------------------------------------

@@ -15,18 +15,13 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-libs    ("libautoDecomposingFileOperation.so");
-
-OptimisationSwitches
-{
-    fileHandler autoReconstructing;
-}
+libs    ("libunallocated.so");
 
 DebugSwitches
 {
-    autoReconstructing 1;
+    collated            1;
+    masterUncollated    1;
 }
-
 
 application     icoUncoupledKinematicParcelFoam;
 
