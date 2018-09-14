@@ -425,17 +425,42 @@ void Foam::AMIInterpolation::interpolateToSource
                 const scalarList& weights = srcWeights_[facei];
                 const List<point>& centroids = srcCentroids_[facei];
 
+                if
+                (
+                    centroids.size() != weights.size()
+                 || centroids.size() != faces.size()
+                )
+                {
+                    FatalErrorInFunction
+                        << "Sizes : faces:" << faces
+                        << " weights:" << weights
+                        << " centroids:" << centroids
+                        << exit(FatalError);
+                }
+
+                Pout<< "interpolateToSource : Result on face:" << facei
+                    << " results from" << nl;
+
                 forAll(faces, i)
                 {
                     const label sloti = faces[i];
                     const vector d(centroids[i]-fc[sloti]);
                     const Type corr(gradFld[sloti]&(centroids[i]-fc[sloti]));
+
+                    Pout<< "    sourceface:" << faces[i]
+                        << " at:" << fc[sloti]
+                        << " source fld:" << fld[sloti]
+                        << " overlapWeight:" << weights[i]
+                        << " overlapCentroid:" << centroids[i]
+                        << " correction:" << corr << endl;
+
                     const Type t(fld[sloti]+corr);
 
                     cop(result[facei], facei, t, weights[i]);
                 }
             }
         }
+        DebugVar(result);
     }
 }
 template<class Type, class CombineOp>
@@ -529,7 +554,20 @@ void Foam::AMIInterpolation::interpolateToTarget
                 const scalarList& weights = tgtWeights_[facei];
                 const List<point>& centroids = tgtCentroids_[facei];
 
-                Pout<< "Result on face:" << facei
+                if
+                (
+                    centroids.size() != weights.size()
+                 || centroids.size() != faces.size()
+                )
+                {
+                    FatalErrorInFunction
+                        << "Sizes : faces:" << faces
+                        << " weights:" << weights
+                        << " centroids:" << centroids
+                        << exit(FatalError);
+                }
+
+                Pout<< "interpolateToTarget : Result on face:" << facei
                     << " results from" << nl;
 
                 forAll(faces, i)
@@ -538,15 +576,17 @@ void Foam::AMIInterpolation::interpolateToTarget
                     const vector d(centroids[i]-fc[sloti]);
                     const Type corr(gradFld[sloti]&(centroids[i]-fc[sloti]));
 
-                    Pout<< "    w:" << weights[i]
-                        << " sourceface:" << faces[i]
-                        << " centroid:" << centroids[i]
+                    Pout<< " sourceface:" << faces[i]
+                        << " at:" << fc[sloti]
                         << " source fld:" << fld[sloti]
+                        << " overlapWeight:" << weights[i]
+                        << " overlapCentroid:" << centroids[i]
                         << " correction:" << corr << endl;
                     //cop(result[facei], facei, fld[faces[i]], weights[i]);
 
                     const Type t(fld[sloti]+corr);
-                    result[facei] += weights[i]*t;
+                    //result[facei] += weights[i]*t;
+                    cop(result[facei], facei, t, weights[i]);
                 }
             }
         }
