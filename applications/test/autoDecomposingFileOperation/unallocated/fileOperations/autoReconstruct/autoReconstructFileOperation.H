@@ -67,6 +67,9 @@ class autoReconstructFileOperation
         //- Rewrite lagrangian to processor directory
         fileName equivalentLagrangian(const fileName& dir) const;
 
+        //- Helper to write container elements without spaces
+        template<class T>
+        static Ostream& write(Ostream&, const T&);
 
 public:
 
@@ -130,6 +133,16 @@ public:
                 word& newInstance
             ) const;
 
+            //- Reads header for regIOobject and returns an ISstream
+            //  to read the contents.
+            virtual autoPtr<ISstream> readStream
+            (
+                regIOobject&,
+                const fileName&,
+                const word& typeName,
+                const bool valid = true
+            ) const;
+
             //- Top-level read
             virtual bool read
             (
@@ -145,6 +158,12 @@ public:
 
 } // End namespace fileOperations
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "autoReconstructFileOperationTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

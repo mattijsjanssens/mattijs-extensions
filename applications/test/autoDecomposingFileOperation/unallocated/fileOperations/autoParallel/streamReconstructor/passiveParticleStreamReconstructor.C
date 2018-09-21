@@ -1,0 +1,103 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "passiveParticleStreamReconstructor.H"
+// #include "uVolFields.H"
+// #include "unallocatedFvMesh.H"
+// #include "unallocatedVolMesh.H"
+// #include "unallocatedGenericFvPatchField.H"
+// #include "unallocatedFvFieldReconstructor.H"
+// #include "uFieldReconstructor.H"
+// #include "parUnallocatedFvFieldReconstructor.H"
+// #include "unallocatedFvMeshObject.H"
+#include "passiveParticleCloud.H"
+#include "addToRunTimeSelectionTable.H"
+
+namespace Foam
+{
+    defineTypeName(passiveParticleStreamReconstructor);
+    addToRunTimeSelectionTable
+    (
+        streamReconstructor,
+        passiveParticleStreamReconstructor,
+        word
+    );
+}
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::passiveParticleStreamReconstructor::reconstruct
+(
+    //const fvMesh& mesh,
+    const IOobject& io,
+    const bool,
+    Ostream& os
+) const
+{
+    Pout<< "*** LAGRANGIAN Reconstructing " << io.objectPath() << endl;
+
+
+
+
+    Pout<< "** Reconstructed " << io.objectPath() << endl;
+    return os.good();
+}
+
+
+bool Foam::passiveParticleStreamReconstructor::decompose
+(
+    const parUnallocatedFvFieldReconstructor& reconstructor,
+    const unallocatedFvMesh& baseMesh,
+    const IOobject& baseIO,
+
+    const unallocatedFvMesh& thisMesh,
+    const IOobject& thisIO,
+    const bool,
+    Ostream& os
+) const
+{
+    Pout<< "*** LAGRANGIAN DEcomposing " << baseIO.objectPath() << endl;
+    Pout<< "** LAGRANGIAN Decomposed " << baseIO.objectPath() << endl;
+    return os.good();
+}
+
+
+bool Foam::passiveParticleStreamReconstructor::reconstruct
+(
+    const parUnallocatedFvFieldReconstructor& reconstructor,
+    const regIOobject& thisIO,
+    const bool,
+    IOstream::streamFormat fmt,
+    IOstream::versionNumber ver,
+    IOstream::compressionType cmp
+) const
+{
+    Pout<< "*** LAGRANGIAN reconstructin " << thisIO.objectPath() << endl;
+    Pout<< "** LAGRANGIAN reconstruct " << thisIO.objectPath() << endl;
+    return true;
+}
+
+
+// ************************************************************************* //

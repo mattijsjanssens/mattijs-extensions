@@ -38,7 +38,6 @@ License
 template<class Type>
 bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
 (
-    const fvMesh& mesh,
     const IOobject& io,
     const bool,
     Ostream& os
@@ -51,7 +50,8 @@ bool Foam::surfaceFieldStreamReconstructor<Type>::reconstruct
         unallocatedSurfaceMesh
     > GeoField;
 
-    const uFieldReconstructor& reconstructor = uFieldReconstructor::New(mesh);
+    const uFieldReconstructor& reconstructor =
+        uFieldReconstructor::New(io.db());
 
     const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 

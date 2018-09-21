@@ -43,6 +43,7 @@ $(f)/autoParallel/streamReconstructor/streamReconstructorNew.C
 $(f)/autoParallel/streamReconstructor/volFieldStreamReconstructors.C
 $(f)/autoParallel/streamReconstructor/internalFieldStreamReconstructors.C
 $(f)/autoParallel/streamReconstructor/surfaceFieldStreamReconstructors.C
+$(f)/autoParallel/streamReconstructor/passiveParticleStreamReconstructor.C
 $(f)/autoParallel/autoParallelFileOperation.C
 
 

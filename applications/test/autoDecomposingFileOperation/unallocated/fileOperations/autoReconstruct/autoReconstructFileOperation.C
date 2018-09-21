@@ -31,6 +31,8 @@ License
 #include "unthreadedInitialise.H"
 #include "streamReconstructor.H"
 #include "cloud.H"
+#include "passiveParticleStreamReconstructor.H"
+#include "dummyISstream.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
 
@@ -198,8 +200,7 @@ Foam::fileOperations::autoReconstructFileOperation::equivalentLagrangian
     {
         const wordList components(dir.components());
         label index = findIndex(components, cloud::prefix);
-DebugVar(dir);
-DebugVar(index);
+
         if (index == -1 || index < 1)
         {
             return dir;
@@ -225,7 +226,7 @@ DebugVar(index);
                 procDir += components[i];
             }
 
-            Pout<< "was:" << dir << " now:" << procDir << endl;
+            //Pout<< "was:" << dir << " now:" << procDir << endl;
 
             return procDir;
         }
@@ -299,55 +300,62 @@ Foam::fileName Foam::fileOperations::autoReconstructFileOperation::filePath
             << " checkGlobal:" << checkGlobal << endl;
     }
 
-    // Field files: problem: picked up by IOobjectList does a readDir followed
+    // Here we want to make sure we detect any Field files in processor
+    // directories but all other files (dictionaries, mesh files) in the
+    // normal location.
+    // The problem is that e.g. IOobjectList does a readDir followed
     // by a typeHeaderOk checking with 'labelIOList' as typeName. So
-    // here we cannot use the wanted type (eg. volScalarField). Instead
-    // we store the objects inside readObjects and check if it is
-    // one of them.
+    // here we cannot checked for the wanted type (eg. volScalarField). Instead
+    // we cache the object names from a previous call to readObjects and
+    // check if it is one of them.
 
-    fileName objPath;
-    fileName procPath;
-
-    if (debug)
-    {
-        DebugVar(haveProcPath(io, procPath));
-    }
-
-
-    // Cached field file?
-    HashPtrTable<fileNameList, fileName>::const_iterator tmFnd =
-        procObjects_.find(io.time().timeName());
+     // Cached field file?
+     HashPtrTable<fileNameList, fileName>::const_iterator tmFnd =
+         procObjects_.find(io.path());
 
     if
     (
-        tmFnd != procObjects_.end()
-     && findIndex(*tmFnd(), io.name()) != -1
-     && haveProcPath(io, procPath)
+        !checkGlobal
+      && tmFnd != procObjects_.end()
+      && findIndex(*tmFnd(), io.name()) != -1
     )
     {
-        objPath = procPath;
-
         if (debug)
         {
             Pout<< indent
                 << "autoReconstructFileOperation::filePath :"
-                << " Returning from processor searching:" << endl << indent
-                << "    objectPath:" << io.objectPath() << " type:" << typeName
-                << endl << indent
-                << "    filePath  :" << objPath << endl << endl;
+                << " Found cached object" << endl << indent
+                << "    name      :" << io.name() << endl << indent
+                << "    at path   :" << io.path() << endl << endl;
         }
-        return objPath;
+
+        fileName procPath;
+        if (haveProcPath(io, procPath))
+        {
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoReconstructFileOperation::filePath :"
+                    << " Returning from processor searching:" << endl << indent
+                    << "    objectPath:" << io.objectPath()
+                    << " type:" << typeName
+                    << endl << indent
+                    << "    filePath  :" << procPath << endl << endl;
+            }
+            return procPath;
+        }
     }
-    else
-    {
-        // Try uncollated searching
-        objPath = uncollatedFileOperation::filePath
+
+    // Try uncollated searching
+    const fileName objPath
+    (
+        uncollatedFileOperation::filePath
         (
             checkGlobal,
             io,
             typeName
-        );
-    }
+        )
+    );
 
     if (debug)
     {
@@ -403,7 +411,9 @@ Foam::fileNameList Foam::fileOperations::autoReconstructFileOperation::readDir
                 << endl << indent
                 << "    dir      :" << dir << endl << indent
                 << "    procDir  :" << procDir << endl << indent
-                << "    contents :" << contents << endl << endl;
+                << "    contents :";
+            write(Pout, contents);
+            Pout<< contents << endl << endl;
         }
         return contents;
     }
@@ -663,6 +673,21 @@ Foam::fileOperations::autoReconstructFileOperation::readObjects
             filePath(db.path("processor0"/instance, db.dbDir()/local))
         );
 
+
+        if (debug)
+        {
+            Pout<< indent
+                << "autoReconstructFileOperation::readObjects :"
+                << endl << indent
+                << "    db       :" << db.path() << endl << indent
+                << "    instance :" << instance << endl << indent
+                << "    local    :" << local << endl << indent
+                << "    store    :" << db.path(instance, db.dbDir()/local)
+                << endl << indent
+                << "    path     :" << path << endl;
+        }
+
+
         if (path.size())    //Foam::isDir(path))
         {
             newInstance = instance;
@@ -674,11 +699,18 @@ Foam::fileOperations::autoReconstructFileOperation::readObjects
                     << "autoReconstructFileOperation::readObjects :"
                     << " Returning processor directory searching:"
                     << endl << indent
-                    << "    path     :" << path << endl << indent
-                    << "    objects  :" << objects << endl << endl;
+                    << "    store:" << db.path(instance, db.dbDir()/local)
+                    << endl << indent
+                    << "    objects  :";
+                write(Pout, objects);
+                Pout<< endl << endl;
             }
 
-            procObjects_.insert(instance, new fileNameList(objects));
+            procObjects_.insert
+            (
+                db.path(instance, db.dbDir()/local),
+                new fileNameList(objects)
+            );
 
             return objects;
         }
@@ -711,7 +743,9 @@ Foam::fileOperations::autoReconstructFileOperation::readObjects
             << " Returning from directory searching:" << endl << indent
             << "    path     :" << db.path(instance, db.dbDir()/local)
             << endl << indent
-            << "    objects  :" << objects << endl << indent
+            << "    objects  :";
+        write(Pout, objects);
+        Pout<< endl << indent
             << "    newInst  :" << newInstance << endl << endl;
     }
     return objects;
@@ -760,23 +794,46 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
                 order.setSize(n);
             }
             times = UIndirectList<instant>(times, order)();
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoReconstructFileOperation::findTimes :"
+                    << " Returning from processor time searching:" << endl
+                    << indent
+                    << "    procDir :" << dir << endl << indent
+                    << "    times   :";
+                write(Pout, times);
+                Pout<< endl << endl;
+            }
         }
         else
         {
-             times = uncollatedFileOperation::findTimes(dir, constantName);
+            times = uncollatedFileOperation::findTimes(dir, constantName);
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoReconstructFileOperation::findTimes :"
+                    << " Returning from time searching:" << endl << indent
+                    << "    dir   :" << dir << endl << indent
+                    << "    times :";
+                write(Pout, times);
+                Pout<< endl << endl;
+            }
         }
     }
     else
     {
-         times = uncollatedFileOperation::findTimes(dir, constantName);
-    }
-    if (debug)
-    {
-        Pout<< indent
-            << "autoReconstructFileOperation::findTimes :"
-            << " Returning from time searching:" << endl << indent
-            << "    dir   :" << dir << endl << indent
-            << "    times :" << times << endl << endl;
+        times = uncollatedFileOperation::findTimes(dir, constantName);
+        if (debug)
+        {
+            Pout<< indent
+                << "autoReconstructFileOperation::findTimes :"
+                << " Returning from time searching:" << endl << indent
+                << "    dir   :" << dir << endl << indent
+                << "    times :";
+            write(Pout, times);
+            Pout<< endl << endl;
+        }
     }
     return times;
 }
@@ -810,36 +867,73 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
 //
 //
 //
-// Foam::autoPtr<Foam::ISstream>
-// Foam::fileOperations::autoReconstructFileOperation::readStream
-// (
-//     regIOobject& io,
-//     const fileName& fName,
-//     const word& typeName,
-//     const bool valid
-// ) const
-// {
-//     autoPtr<ISstream> isPtr
-//     (
-//         uncollatedFileOperation::readStream
-//         (
-//             io,
-//             fName,
-//             typeName,
-//             valid
-//         )
-//     );
-//
-//     if (debug)
-//     {
-//         Pout<< indent
-//             << "autoReconstructFileOperation::readStream :"
-//             << endl << indent
-//             << "    fName :" << fName << endl << indent
-//             << "    isPtr :" << isPtr.valid() << endl << endl;
-//     }
-//     return isPtr;
-// }
+Foam::autoPtr<Foam::ISstream>
+Foam::fileOperations::autoReconstructFileOperation::readStream
+(
+    regIOobject& io,
+    const fileName& fName,
+    const word& type,
+    const bool valid
+) const
+{
+    if (debug)
+    {
+        Pout<< indent
+            << "autoReconstructFileOperation::readStream :"
+            << endl << indent
+            << "    io    :" << io.objectPath() << endl << indent
+            << "    fName :" << fName << endl << indent
+            << "    type  :" << type << endl << endl;
+    }
+
+    autoPtr<ISstream> isPtr;
+
+    if (!valid)
+    {
+        isPtr = autoPtr<ISstream>(new dummyISstream());
+        return isPtr;
+    }
+
+    autoPtr<streamReconstructor> reconstructor
+    (
+        streamReconstructor::New(type)
+    );
+
+    if (reconstructor.valid())
+    {
+        if (debug)
+        {
+            Pout<< indent
+                << "autoReconstructFileOperation::readStream :"
+                << " Found reconstructor for type:" << type
+                << " of object: " << io.objectPath() << endl;
+        }
+
+        OStringStream os(IOstream::BINARY);
+        if (!reconstructor().reconstruct(io, false, os))
+        {
+            //isPtr.reset(dummyISstream());
+        }
+        else
+        {
+            isPtr.reset(new IStringStream(os.str(), IOstream::BINARY));
+        }
+    }
+    else
+    {
+        isPtr = uncollatedFileOperation::readStream(io, fName, type, valid);
+    }
+
+    if (debug)
+    {
+        Pout<< indent
+            << "autoReconstructFileOperation::readStream :"
+            << endl << indent
+            << "    fName :" << fName << endl << indent
+            << "    isPtr :" << isPtr.valid() << endl << endl;
+    }
+    return isPtr;
+}
 
 
 bool Foam::fileOperations::autoReconstructFileOperation::read
@@ -882,10 +976,8 @@ bool Foam::fileOperations::autoReconstructFileOperation::read
                     << " of object: " << io.objectPath() << endl;
             }
 
-            const fvMesh& mesh = dynamic_cast<const fvMesh&>(io.db());
-
             OStringStream os(IOstream::BINARY);
-            if (!reconstructor().reconstruct(mesh, io, false, os))
+            if (!reconstructor().reconstruct(io, false, os))
             {
                 return false;
             }

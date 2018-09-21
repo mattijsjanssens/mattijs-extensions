@@ -70,7 +70,6 @@ public:
         //- Reconstruct and stream
         virtual bool reconstruct
         (
-            const fvMesh& mesh,
             const IOobject& io,
             const bool isOriented,      // apply flip (if available)
             Ostream& os

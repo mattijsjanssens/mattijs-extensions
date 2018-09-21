@@ -36,7 +36,6 @@ License
 template<class Type>
 bool Foam::internalFieldStreamReconstructor<Type>::reconstruct
 (
-    const fvMesh& mesh,
     const IOobject& io,
     const bool,
     Ostream& os
@@ -44,7 +43,8 @@ bool Foam::internalFieldStreamReconstructor<Type>::reconstruct
 {
     typedef DimensionedField<Type, unallocatedVolMesh> GeoField;
 
-    const uFieldReconstructor& reconstructor = uFieldReconstructor::New(mesh);
+    const uFieldReconstructor& reconstructor =
+        uFieldReconstructor::New(io.db());
 
     const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 

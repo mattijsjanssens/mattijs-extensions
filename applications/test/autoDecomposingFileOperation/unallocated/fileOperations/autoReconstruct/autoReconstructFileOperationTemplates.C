@@ -23,26 +23,26 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "streamReconstructor.H"
+#include "autoReconstructFileOperation.H"
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::autoPtr<Foam::streamReconstructor> Foam::streamReconstructor::New
+template<class T>
+Foam::Ostream& Foam::fileOperations::autoReconstructFileOperation::write
 (
-    const word& type
+    Ostream& os,
+    const T& lst
 )
 {
-    wordConstructorTable::iterator cstrIter =
-        wordConstructorTablePtr_->find(type);
-
-    if (cstrIter == wordConstructorTablePtr_->end())
+    forAll(lst, i)
     {
-        return autoPtr<streamReconstructor>(nullptr);
+        if (i != 0)
+        {
+            os << ' ';
+        }
+        os << lst[i];
     }
-    else
-    {
-        return autoPtr<streamReconstructor>(cstrIter()());
-    }
+    return os;
 }
 
 

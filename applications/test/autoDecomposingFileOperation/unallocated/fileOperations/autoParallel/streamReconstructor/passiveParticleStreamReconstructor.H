@@ -22,18 +22,18 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::internalFieldStreamReconstructor
+    Foam::passiveParticleStreamReconstructor
 
 Description
 
 SourceFiles
-    internalFieldStreamReconstructor.C
-    internalFieldStreamReconstructors.C
+    passiveParticleStreamReconstructor.C
+    passiveParticleStreamReconstructors.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef internalFieldStreamReconstructor_H
-#define internalFieldStreamReconstructor_H
+#ifndef passiveParticleStreamReconstructor_H
+#define passiveParticleStreamReconstructor_H
 
 #include "streamReconstructor.H"
 
@@ -43,25 +43,27 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-              Class internalFieldStreamReconstructor Declaration
+                 Class passiveParticleStreamReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class Type>
-class internalFieldStreamReconstructor
+class passiveParticleStreamReconstructor
 :
     public streamReconstructor
 {
 public:
 
+    // Declare name of the class (used in the run-time selection)
+    ClassNameNoDebug("Cloud<passiveParticle>");
+
     // Constructors
 
         //- Construct from components
-        internalFieldStreamReconstructor()
+        passiveParticleStreamReconstructor()
         {}
 
 
     //- Destructor
-    virtual ~internalFieldStreamReconstructor()
+    virtual ~passiveParticleStreamReconstructor()
     {}
 
 
@@ -70,12 +72,13 @@ public:
         //- Reconstruct and stream
         virtual bool reconstruct
         (
+            //const fvMesh& mesh,
             const IOobject& io,
-            const bool isOriented,      // apply flip (if available)
+            const bool isOriented,
             Ostream& os
         ) const;
 
-        //- Read, (in parallel) decompose and stream
+        //- Read, decompose and stream
         virtual bool decompose
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
@@ -84,28 +87,19 @@ public:
 
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
-            const bool isOriented,      // apply flip (if available)
+            const bool isOriented,
             Ostream& os
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        ) const;
 
-        //- Parallel reconstruct and (on master) write
         virtual bool reconstruct
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
             const regIOobject& thisIO,
-            const bool isOriented,      // apply flip (if available)
+            const bool isOriented,
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp
-        ) const
-        {
-            NotImplemented;
-            return false;
-        }
+        ) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -114,9 +108,9 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#ifdef NoRepository
-    #include "internalFieldStreamReconstructor.C"
-#endif
+//#ifdef NoRepository
+//    #include "passiveParticleStreamReconstructor.C"
+//#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
