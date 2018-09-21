@@ -43,10 +43,14 @@ int main(int argc, char *argv[])
 
     labelList a(identity(11));
 
-    Pout<< "a:" << (noNewlineOSstream(Pout) << a) << a << endl;
+    {
+        Pout<< "a:" << (noNewlineOSstream(Pout) << a);
+    }
 
-const noNewlineOSstream Pout2(Pout);
-Pout2 << "a:" << a << endl;
+    Pout<< "here" << endl;
+
+//const noNewlineOSstream Pout2(Pout);
+//Pout2 << "a:" << a << endl;
 
 
     Pout<< "End\n" << endl;

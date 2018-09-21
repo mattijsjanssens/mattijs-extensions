@@ -51,6 +51,9 @@ class noNewlineOSstream
 :
     public OSstream
 {
+    OSstream& os_;
+
+
 public:
 
     // Constructors
@@ -63,21 +66,199 @@ public:
             streamFormat format=ASCII,
             versionNumber version=currentVersion,
             compressionType compression=UNCOMPRESSED
-        );
+        )
+        :
+            OSstream(os.stdStream(), name, format, version, compression),
+            os_(os)
+        {}
 
 
     // Member functions
 
+        // Enquiry
+
+            //- Return the name of the stream
+            //  Useful for Fstream to return the filename
+            virtual const fileName& name() const
+            {
+                return os_.name();
+            }
+
+            //- Return non-const access to the name of the stream
+            //  Useful to alter the stream name
+            virtual fileName& name()
+            {
+                return os_.name();
+            }
+
+            //- Return flags of output stream
+            virtual ios_base::fmtflags flags() const
+            {
+                return os_.flags();
+            }
+
+
         // Write functions
 
+            //- Write next token to stream
+            virtual Ostream& write(const token& t)
+            {
+                return os_.write(t);
+            }
+
             //- Write character
-            virtual Ostream& write(const char);
+            virtual Ostream& write(const char c)
+            {
+                if (c == token::NL)
+                {
+                    return os_.write(' ');
+                }
+                else
+                {
+                    return os_.write(c);
+                }
+            }
+
+            //- Write character string
+            virtual Ostream& write(const char* s)
+            {
+                return os_.write(s);
+            }
+
+            //- Write word
+            virtual Ostream& write(const word& w)
+            {
+                return os_.write(w);
+            }
+
+            //- Write string
+            virtual Ostream& write(const string& s)
+            {
+                return os_.write(s);
+            }
+
+            //- Write std::string surrounded by quotes.
+            //  Optional write without quotes.
+            virtual Ostream& writeQuoted
+            (
+                const std::string& s,
+                const bool quoted=true
+            )
+            {
+                return os_.writeQuoted(s, quoted);
+            }
+
+            //- Write int32_t
+            virtual Ostream& write(const int32_t v)
+            {
+                return os_.write(v);
+            }
+
+            //- Write int64_t
+            virtual Ostream& write(const int64_t v)
+            {
+                return os_.write(v);
+            }
+
+            //- Write floatScalar
+            virtual Ostream& write(const floatScalar v)
+            {
+                return os_.write(v);
+            }
+
+            //- Write doubleScalar
+            virtual Ostream& write(const doubleScalar v)
+            {
+                return os_.write(v);
+            }
+
+            //- Write longDoubleScalar
+            virtual Ostream& write(const longDoubleScalar v)
+            {
+                return os_.write(v);
+            }
+
+            //- Write binary block
+            virtual Ostream& write(const char* s, std::streamsize sz)
+            {
+                return os_.write(s, sz);
+            }
+
+            //- Add indentation characters
+            virtual void indent()
+            {
+                os_.indent();
+            }
+
+
+        // Stream state functions
+
+            //- Set flags of output stream
+            virtual ios_base::fmtflags flags(const ios_base::fmtflags flags)
+            {
+                return os_.flags(flags);
+            }
+
+            //- Flush stream
+            virtual void flush()
+            {
+                os_.flush();
+            }
+
+            //- Add newline and flush stream
+            virtual void endl()
+            {
+                os_.endl();
+            }
+
+            //- Get width of output field
+            virtual int width() const
+            {
+                return os_.width();
+            }
+
+            //- Set width of output field (and return old width)
+            virtual int width(const int n)
+            {
+                return os_.width(n);
+            }
+
+            //- Get precision of output field
+            virtual int precision() const
+            {
+                return os_.precision();
+            }
+
+            //- Set precision of output field (and return old precision)
+            virtual int precision(const int n)
+            {
+                return os_.precision(n);
+            }
+
+
+        // STL stream
+
+            //- Access to underlying std::ostream
+            virtual ostream& stdStream()
+            {
+                return os_.stdStream();
+            }
+
+            //- Const access to underlying std::ostream
+            virtual const ostream& stdStream() const
+            {
+                return os_.stdStream();
+            }
 
 
         // Print
 
             //- Print description of IOstream to Ostream
-            virtual void print(Ostream&) const;
+            virtual void print(Ostream& os) const
+            {
+                os  << "noNewlineOSstream ";
+                OSstream::print(os);
+            }
 
 
     // Member operators
