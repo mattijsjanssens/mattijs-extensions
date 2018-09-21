@@ -29,7 +29,7 @@ License
 // #include "unallocatedVolMesh.H"
 // #include "unallocatedGenericFvPatchField.H"
 // #include "unallocatedFvFieldReconstructor.H"
-// #include "uFieldReconstructor.H"
+ #include "uFieldReconstructor.H"
 // #include "parUnallocatedFvFieldReconstructor.H"
 // #include "unallocatedFvMeshObject.H"
 #include "passiveParticleCloud.H"
@@ -58,6 +58,10 @@ bool Foam::passiveParticleStreamReconstructor::reconstruct
 {
     Pout<< "*** LAGRANGIAN Reconstructing " << io.objectPath() << endl;
 
+    const uFieldReconstructor& reconstructor =
+        uFieldReconstructor::New(io.db().parent());
+
+    const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 
 
 

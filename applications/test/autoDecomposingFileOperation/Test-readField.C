@@ -30,22 +30,26 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "mapDistributeBase.H"
-#include "unallocatedFvBoundaryMesh.H"
+//#include "unallocatedFvBoundaryMesh.H"
 #include "GeometricField.H"
 #include "argList.H"
 //#include "uSurfaceFields.H"
 #include "uVolFieldsFwd.H"
-#include "uSurfaceFieldsFwd.H"
+//#include "uSurfaceFieldsFwd.H"
 #include "unallocatedFvMesh.H"
 //#include "unallocatedVolMesh.H"
-#include "unallocatedSurfaceMesh.H"
-#include "unallocatedFvsPatchField.H"
+//#include "unallocatedSurfaceMesh.H"
+//#include "unallocatedFvsPatchField.H"
 #include "unallocatedGenericFvPatchField.H"
-#include "parUnallocatedFvFieldReconstructor.H"
+//#include "parUnallocatedFvFieldReconstructor.H"
 #include "unallocatedFvMeshTools.H"
-#include "unallocatedFvFieldReconstructor.H"
-#include "unallocatedGenericFvsPatchField.H"
-#include "uFieldReconstructor.H"
+//#include "unallocatedFvFieldReconstructor.H"
+//#include "unallocatedGenericFvsPatchField.H"
+//#include "uFieldReconstructor.H"
+//#include "unallocatedPointMesh.H"
+#include "Cloud.H"
+#include "passiveParticle.H"
+#include "unallocatedIOPosition.H"
 
 using namespace Foam;
 
@@ -56,27 +60,64 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
 
-
-    // Load local mesh and field
-    if (false)
+    // Load local Cloud positions
     {
-        #include "createUnallocatedMesh.H"
+        #include "createMesh.H"
 
-        uSurfaceScalarField ufld
+        // Construct empty cloud
+        IDLList<passiveParticle> dummyParticles;
+        Cloud<passiveParticle> cloud(mesh, "kinematicCloud", dummyParticles);
+
+        // Read particle positions into cloud
+        unallocatedIOPosition<Cloud<passiveParticle>> ioP
         (
             IOobject
             (
-                "phi",
-                mesh.time().timeName(),
-                mesh.thisDb(),
+                "positions2",
+                cloud.time().timeName(),
+                cloud,
                 IOobject::MUST_READ,
                 IOobject::NO_WRITE
             ),
-            mesh
+            cloud
         );
-        DebugVar(ufld);
+
+        bool valid = ioP.headerOk();
+        Istream& is = ioP.readStream("", valid);
+        if (valid)
+        {
+            ioP.readData(is, cloud);
+            ioP.close();
+        }
+
+        DebugVar(cloud.size());
+
+
+        return 0;
     }
 
+
+//     // Load local mesh and field
+//     if (true)
+//     {
+//         #include "createUnallocatedMesh.H"
+// 
+//         uSurfaceScalarField ufld
+//         (
+//             IOobject
+//             (
+//                 "phi",
+//                 mesh.time().timeName(),
+//                 mesh.thisDb(),
+//                 IOobject::MUST_READ,
+//                 IOobject::NO_WRITE
+//             ),
+//             mesh
+//         );
+//         DebugVar(ufld);
+//     }
+
+/*
     if (!Pstream::parRun())
     {
         // Reconstruct
@@ -267,6 +308,7 @@ DebugVar(p);
             DebugVar(tfld());
         }
     }
+*/
 
     return 0;
 }
