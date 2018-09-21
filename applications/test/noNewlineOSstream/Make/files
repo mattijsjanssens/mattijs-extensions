@@ -1,0 +1,4 @@
+noNewlineOSstream.C
+Test-noNewlineOSstream.C
+
+EXE = $(FOAM_USER_APPBIN)/Test-noNewlineOSstream
