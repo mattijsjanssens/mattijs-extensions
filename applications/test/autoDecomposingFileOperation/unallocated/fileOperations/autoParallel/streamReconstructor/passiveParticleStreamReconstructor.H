@@ -58,7 +58,7 @@ public:
     // Constructors
 
         //- Construct from components
-        passiveParticleStreamReconstructor()
+        passiveParticleStreamReconstructor(const word& cloudName)
         {}
 
 

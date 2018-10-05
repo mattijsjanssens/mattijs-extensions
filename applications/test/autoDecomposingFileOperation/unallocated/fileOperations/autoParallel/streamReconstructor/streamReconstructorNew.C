@@ -46,4 +46,24 @@ Foam::autoPtr<Foam::streamReconstructor> Foam::streamReconstructor::New
 }
 
 
+Foam::autoPtr<Foam::streamReconstructor> Foam::streamReconstructor::New
+(
+    const word& type,
+    const word& cloudName
+)
+{
+    cloudNameConstructorTable::iterator cstrIter =
+        cloudNameConstructorTablePtr_->find(type);
+
+    if (cstrIter == cloudNameConstructorTablePtr_->end())
+    {
+        return autoPtr<streamReconstructor>(nullptr);
+    }
+    else
+    {
+        return autoPtr<streamReconstructor>(cstrIter()(cloudName));
+    }
+}
+
+
 // ************************************************************************* //

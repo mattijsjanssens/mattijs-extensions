@@ -39,7 +39,7 @@ addNamedToRunTimeSelectionTable
 (
     streamReconstructor,
     labelFieldStreamReconstructor,
-    word,
+    cloudName,
     labelField
 );
 
@@ -48,7 +48,7 @@ addNamedToRunTimeSelectionTable
 (
     streamReconstructor,
     scalarFieldStreamReconstructor,
-    word,
+    cloudName,
     scalarField
 );
 
@@ -57,7 +57,7 @@ addNamedToRunTimeSelectionTable
 (
     streamReconstructor,
     vectorFieldStreamReconstructor,
-    word,
+    cloudName,
     vectorField
 );
 
@@ -67,7 +67,7 @@ addNamedToRunTimeSelectionTable
 (
     streamReconstructor,
     sphericalTensorFieldStreamReconstructor,
-    word,
+    cloudName,
     sphericalTensorField
 );
 
@@ -77,7 +77,7 @@ addNamedToRunTimeSelectionTable
 (
     streamReconstructor,
     symmTensorFieldStreamReconstructor,
-    word,
+    cloudName,
     symmTensorField
 );
 
@@ -86,7 +86,7 @@ addNamedToRunTimeSelectionTable
 (
     streamReconstructor,
     tensorFieldStreamReconstructor,
-    word,
+    cloudName,
     tensorField
 );
 

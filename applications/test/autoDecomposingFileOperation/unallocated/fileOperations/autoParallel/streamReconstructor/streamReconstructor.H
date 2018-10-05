@@ -76,6 +76,17 @@ public:
             ()
         );
 
+        declareRunTimeSelectionTable
+        (
+            autoPtr,
+            streamReconstructor,
+            cloudName,
+            (
+                const word& cloudName
+            ),
+            (cloudName)
+        );
+
 
     // Constructors
 
@@ -86,9 +97,17 @@ public:
 
     // Selectors
 
-        //- Return a pointer to a new patch created on freestore from
+        //- Return a pointer to a new reconstructor created on freestore from
         //  components
         static autoPtr<streamReconstructor> New(const word& type);
+
+        //- Return a pointer to a new cloud-field reconstructor created on
+        //  freestore from components
+        static autoPtr<streamReconstructor> New
+        (
+            const word& type,
+            const word& cloudName
+        );
 
 
     //- Destructor

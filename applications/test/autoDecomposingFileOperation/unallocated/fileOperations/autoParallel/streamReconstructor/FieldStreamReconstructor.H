@@ -59,7 +59,7 @@ public:
     // Constructors
 
         //- Construct from components
-        FieldStreamReconstructor()
+        FieldStreamReconstructor(const word& cloudName)
         {}
 
 

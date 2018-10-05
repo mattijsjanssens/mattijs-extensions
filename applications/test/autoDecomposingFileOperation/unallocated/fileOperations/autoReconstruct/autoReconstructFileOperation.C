@@ -887,6 +887,7 @@ Foam::fileOperations::autoReconstructFileOperation::readStream
             << "autoReconstructFileOperation::readStream :"
             << endl << indent
             << "    io    :" << io.objectPath() << endl << indent
+            << "    local    :" << io.local() << endl << indent
             << "    fName :" << fName << endl << indent
             << "    type  :" << type << endl << endl;
     }
@@ -967,6 +968,8 @@ bool Foam::fileOperations::autoReconstructFileOperation::read
         Pout<< indent
             << "autoReconstructFileOperation::read :"
             << " Reading:" << type << " from: " << io.objectPath() << endl;
+
+        Pout<< indent << "    local    :" << io.local() << endl;
     }
 
     fileName procPath;

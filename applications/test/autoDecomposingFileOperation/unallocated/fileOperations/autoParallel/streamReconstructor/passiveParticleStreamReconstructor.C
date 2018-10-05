@@ -35,7 +35,7 @@ namespace Foam
     (
         streamReconstructor,
         passiveParticleStreamReconstructor,
-        word
+        cloudName
     );
 }
 
