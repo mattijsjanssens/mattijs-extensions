@@ -27,11 +27,9 @@ License
 #include "Time.H"
 #include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
-#include "uFieldReconstructor.H"
 #include "unthreadedInitialise.H"
 #include "streamReconstructor.H"
 #include "cloud.H"
-#include "passiveParticleStreamReconstructor.H"
 #include "dummyISstream.H"
 
 /* * * * * * * * * * * * * * * Static Member Data  * * * * * * * * * * * * * */
@@ -272,6 +270,13 @@ autoReconstructFileOperation
         }
         regIOobject::fileModificationChecking = regIOobject::inotify;
     }
+
+    // Construct basic file handler
+    basicFileHandler_ = fileOperation::New
+    (
+        uncollatedFileOperation::typeName,
+        true
+    );
 }
 
 
@@ -910,7 +915,20 @@ Foam::fileOperations::autoReconstructFileOperation::readStream
         }
 
         OStringStream os(IOstream::BINARY);
-        if (!reconstructor().reconstruct(io, false, os))
+
+        // Save current file handler and install basic ('uncollated') one
+Pout<< "**INSTALLING BASIC**:" << basicFileHandler_().type() << endl;
+        autoPtr<fileOperation> orig(fileOperation::fileHandlerPtr_.ptr());
+        (void)fileHandler(basicFileHandler_);
+
+        bool ok = reconstructor().reconstruct(io, false, os);
+
+        // Restore current file handler
+Pout<< "**UNINSTALLING BASIC**:" << fileHandler().type() << endl;
+        basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
+        (void)fileHandler(orig);
+
+        if (!ok)
         {
             //isPtr.reset(dummyISstream());
         }
@@ -977,7 +995,20 @@ bool Foam::fileOperations::autoReconstructFileOperation::read
             }
 
             OStringStream os(IOstream::BINARY);
-            if (!reconstructor().reconstruct(io, false, os))
+
+            // Save current file handler and install basic ('uncollated') one
+Pout<< "**INSTALLING BASIC**:" << basicFileHandler_().type() << endl;
+            autoPtr<fileOperation> orig(fileOperation::fileHandlerPtr_.ptr());
+            (void)fileHandler(basicFileHandler_);
+
+            bool ok = reconstructor().reconstruct(io, false, os);
+
+            // Restore current file handler
+Pout<< "**UNINSTALLING BASIC**:" << fileHandler().type() << endl;
+            basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
+            (void)fileHandler(orig);
+
+            if (!ok)
             {
                 return false;
             }

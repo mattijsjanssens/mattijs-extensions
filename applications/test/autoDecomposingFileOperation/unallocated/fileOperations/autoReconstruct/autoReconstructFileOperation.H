@@ -55,6 +55,9 @@ class autoReconstructFileOperation
 {
     // Private Member Data
 
+        //- Current file handler
+        mutable autoPtr<fileOperation> basicFileHandler_;
+
         //- Caching of objects per time. Updated by readObjects
         mutable HashPtrTable<fileNameList, fileName> procObjects_;
 

@@ -47,9 +47,12 @@ Description
 //#include "unallocatedGenericFvsPatchField.H"
 //#include "uFieldReconstructor.H"
 //#include "unallocatedPointMesh.H"
-#include "Cloud.H"
-#include "passiveParticle.H"
+//#include "Cloud.H"
+//#include "passiveParticle.H"
 #include "unallocatedIOPosition.H"
+
+#include "cloud.H"
+
 
 using namespace Foam;
 
@@ -62,35 +65,27 @@ int main(int argc, char *argv[])
 
     // Load local Cloud positions
     {
-        #include "createMesh.H"
+        #include "createUnallocatedMesh.H"
 
         // Construct empty cloud
-        IDLList<passiveParticle> dummyParticles;
-        Cloud<passiveParticle> cloud(mesh, "kinematicCloud", dummyParticles);
+        cloud cld(mesh.thisDb(), "kinematicCloud");
 
-        // Read particle positions into cloud
-        unallocatedIOPosition<Cloud<passiveParticle>> ioP
+        // Read particle positions (empty if not present)
+        unallocatedIOPosition ioP
         (
             IOobject
             (
-                "positions2",
-                cloud.time().timeName(),
-                cloud,
-                IOobject::MUST_READ,
+                "positions",
+                cld.time().timeName(),
+                cld,
+                IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE
-            ),
-            cloud
+            )
         );
+        DebugVar(ioP);
 
-        bool valid = ioP.headerOk();
-        Istream& is = ioP.readStream("", valid);
-        if (valid)
-        {
-            ioP.readData(is, cloud);
-            ioP.close();
-        }
-
-        DebugVar(cloud.size());
+        ioP.rename("newPositions");
+        ioP.write();
 
 
         return 0;

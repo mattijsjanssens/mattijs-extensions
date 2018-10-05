@@ -112,6 +112,11 @@ public:
             return reconstructorPtr_();
         }
 
+        const PtrList<labelIOList>& cellProcAddressing() const
+        {
+            return cellProcAddressing_;
+        }
+
         virtual bool writeData(Foam::Ostream&) const
         {
             NotImplemented;

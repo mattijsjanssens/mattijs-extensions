@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -27,54 +27,42 @@ License
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-template<class CloudType>
-Foam::unallocatedIOPosition<CloudType>::unallocatedIOPosition
-(
-    const CloudType& c
-)
+Foam::unallocatedIOPosition::unallocatedIOPosition(const IOobject& io)
 :
-    regIOobject
+    regIOobject(io)
+{
+    // Check for MUST_READ_IF_MODIFIED
+    warnNoRereading<unallocatedIOPosition>();
+
+    if
     (
-        IOobject
         (
-            "positions",
-            c.time().timeName(),
-            c,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
+            io.readOpt() == IOobject::MUST_READ
+         || io.readOpt() == IOobject::MUST_READ_IF_MODIFIED
         )
-    ),
-    cloud_(c)
-{}
-
-
-template<class CloudType>
-Foam::unallocatedIOPosition<CloudType>::unallocatedIOPosition
-(
-    const IOobject& io,
-    const CloudType& c
-)
-:
-    regIOobject(io),
-    cloud_(c)
-{}
+     || (io.readOpt() == IOobject::READ_IF_PRESENT && headerOk())
+    )
+    {
+        // Make sure to not check header class name
+        readStream(word::null) >> *this;
+        close();
+    }
+}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-template<class CloudType>
-bool Foam::unallocatedIOPosition<CloudType>::write(const bool valid) const
+bool Foam::unallocatedIOPosition::write(const bool valid) const
 {
-    return regIOobject::write(cloud_.size());
+    return regIOobject::write(IDLList<basicParticle>::size());
 }
 
 
-template<class CloudType>
-bool Foam::unallocatedIOPosition<CloudType>::writeData(Ostream& os) const
+bool Foam::unallocatedIOPosition::writeData(Ostream& os) const
 {
-    os  << cloud_.size() << nl << token::BEGIN_LIST << nl;
+    os  << IDLList<basicParticle>::size() << nl << token::BEGIN_LIST << nl;
 
-    forAllConstIter(typename CloudType, cloud_, iter)
+    forAllConstIter(typename IDLList<basicParticle>, *this, iter)
     {
         iter().writePosition(os);
         os  << nl;
@@ -86,11 +74,8 @@ bool Foam::unallocatedIOPosition<CloudType>::writeData(Ostream& os) const
 }
 
 
-template<class CloudType>
-void Foam::unallocatedIOPosition<CloudType>::readData(Istream& is, CloudType& c)
+bool Foam::unallocatedIOPosition::readData(Istream& is)
 {
-    const polyMesh& mesh = c.pMesh();
-
     token firstToken(is);
 
     if (firstToken.isLabel())
@@ -100,19 +85,19 @@ void Foam::unallocatedIOPosition<CloudType>::readData(Istream& is, CloudType& c)
         // Read beginning of contents
         is.readBeginList
         (
-            "unallocatedIOPosition<CloudType>::readData(Istream&, CloudType&)"
+            "unallocatedIOPosition::readData(Istream&)"
         );
 
         for (label i=0; i<s; i++)
         {
             // Read position only
-            c.append(new typename CloudType::particleType(mesh, is, false));
+            append(new basicParticle(is, false));
         }
 
         // Read end of contents
         is.readEndList
         (
-            "unallocatedIOPosition<CloudType>::readData(Istream&, CloudType&)"
+            "unallocatedIOPosition::readData(Istream&)"
         );
     }
     else if (firstToken.isPunctuation())
@@ -138,7 +123,7 @@ void Foam::unallocatedIOPosition<CloudType>::readData(Istream& is, CloudType& c)
             is.putBack(lastToken);
 
             // Read position only
-            c.append(new typename CloudType::particleType(mesh, is, false));
+            append(new basicParticle(is, false));
             is  >> lastToken;
         }
     }
@@ -154,8 +139,10 @@ void Foam::unallocatedIOPosition<CloudType>::readData(Istream& is, CloudType& c)
     // Check state of IOstream
     is.check
     (
-        "void unallocatedIOPosition<CloudType>::readData(Istream&, CloudType&)"
+        "void unallocatedIOPosition::readData(Istream&)"
     );
+
+    return is.good();
 }
 
 

@@ -31,7 +31,8 @@ $(u)/fields/unallocatedFvsPatchFields/unallocatedGenericFvsPatchFields.C
 $(u)/fields/unallocatedFvsPatchFields/unallocatedEmptyFvsPatchFields.C
 $(u)/fields/unallocatedFvsPatchFields/unallocatedProcessorFvsPatchFields.C
 
-
+$(u)/lagrangian/basicParticle.C
+$(u)/lagrangian/unallocatedIOPosition.C
 
 
 /*- autoParallel/autoReconstruct file handlers */
@@ -44,6 +45,8 @@ $(f)/autoParallel/streamReconstructor/volFieldStreamReconstructors.C
 $(f)/autoParallel/streamReconstructor/internalFieldStreamReconstructors.C
 $(f)/autoParallel/streamReconstructor/surfaceFieldStreamReconstructors.C
 $(f)/autoParallel/streamReconstructor/passiveParticleStreamReconstructor.C
+$(f)/autoParallel/streamReconstructor/FieldStreamReconstructors.C
+
 $(f)/autoParallel/autoParallelFileOperation.C
 
 

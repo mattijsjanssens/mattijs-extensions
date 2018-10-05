@@ -36,7 +36,8 @@ SourceFiles
 #define unallocatedIOPosition_H
 
 #include "regIOobject.H"
-#include "Cloud.H"
+#include "basicParticle.H"
+#include "passiveParticleCloud.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -47,16 +48,13 @@ namespace Foam
                     Class unallocatedIOPosition Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class CloudType>
 class unallocatedIOPosition
 :
-    public regIOobject
+    public regIOobject,
+    public IDLList<basicParticle>
 {
 
     // Private data
-
-        //- Reference to the cloud
-        const CloudType& cloud_;
 
 
 public:
@@ -66,25 +64,19 @@ public:
         //- Runtime type name information. Use cloud type.
         virtual const word& type() const
         {
-            return Cloud<typename CloudType::particleType>::typeName;
+            return passiveParticleCloud::typeName;
         }
 
 
     // Constructors
 
-        //- Construct from cloud
-        unallocatedIOPosition(const CloudType&);
-
-        //- Construct from cloud and non-standard location
-        unallocatedIOPosition(const IOobject& io, const CloudType&);
+        //- Construct read
+        unallocatedIOPosition(const IOobject& io);
 
 
     // Member functions
 
-        //- Inherit readData from regIOobject
-        using regIOobject::readData;
-
-        virtual void readData(Istream&, CloudType&);
+        virtual bool readData(Istream&);
 
         virtual bool write(const bool valid = true) const;
 
@@ -95,12 +87,6 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-    #include "unallocatedIOPosition.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
