@@ -23,37 +23,45 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "FieldStreamReconstructor.H"
-#include "addToRunTimeSelectionTable.H"
+#include "passiveParticleStreamReconstructor.H"
 #include "uFieldReconstructor.H"
+#include "addToRunTimeSelectionTable.H"
 #include "unallocatedIOPosition.H"
-#include "IOField.H"
+
+namespace Foam
+{
+    defineTypeName(passiveParticleStreamReconstructor);
+    addToRunTimeSelectionTable
+    (
+        lagrangianStreamReconstructor,
+        passiveParticleStreamReconstructor,
+        cloudName
+    );
+}
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-template<class Type>
-bool Foam::FieldStreamReconstructor<Type>::reconstruct
+bool Foam::passiveParticleStreamReconstructor::reconstruct
 (
     const IOobject& io,
     const bool,
     Ostream& os
 ) const
 {
-    Pout<< "*** FieldStreamReconstructor : "
-        << io.objectPath() << endl;
-
     const uFieldReconstructor& reconstructor =
-        uFieldReconstructor::New(io.db());
+        uFieldReconstructor::New(io.db().parent().parent());
 
     const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 
+    Info<< "Reconstructing " << io.objectPath() << endl;
+
     // Read field on proc meshes
     PtrList<cloud> procClouds(procMeshes.size());
-    PtrList<IOField<Type>> procFields(procMeshes.size());
-
-    label n = 0;
+    PtrList<unallocatedIOPosition> procFields(procMeshes.size());
     forAll(procFields, proci)
     {
+        const unallocatedFvMesh& procMesh = procMeshes[proci];
+
         Pout<< incrIndent;
 
         // Construct empty cloud
@@ -62,7 +70,7 @@ bool Foam::FieldStreamReconstructor<Type>::reconstruct
             proci,
             new cloud
             (
-                procMeshes[proci].thisDb(),
+                procMesh.thisDb(),
                 "kinematicCloud"
             )
         );
@@ -70,25 +78,24 @@ bool Foam::FieldStreamReconstructor<Type>::reconstruct
         procFields.set
         (
             proci,
-            new IOField<Type>
+            new unallocatedIOPosition
             (
                 IOobject
                 (
                     io.name(),
                     io.instance(),
-                    //io.local(),
+                    io.local(),
                     procClouds[proci],
                     IOobject::MUST_READ,    //IOobject::READ_IF_PRESENT,
                     IOobject::NO_WRITE
                 )
             )
         );
-        n += procFields[proci].size();
 
         Pout<< decrIndent;
     }
 
-    IOField<Type> allField
+    unallocatedIOPosition particles
     (
         IOobject
         (
@@ -99,32 +106,26 @@ bool Foam::FieldStreamReconstructor<Type>::reconstruct
             IOobject::NO_READ,
             IOobject::NO_WRITE,
             false
-        ),
-        n
+        )
     );
-
-    n = 0;
     forAll(procFields, proci)
     {
-        const IOField<Type>& procField = procFields[proci];
+        const unallocatedIOPosition& procCloud = procFields[proci];
+        const labelList& cellMap = reconstructor.cellProcAddressing()[proci];
 
-        SubList<Type>(allField, procField.size(), n) = procField;
-
-        n += procField.size();
+        forAllConstIter(typename IDLList<basicParticle>, procCloud, iter)
+        {
+            const basicParticle& p = iter();
+            particles.append(new basicParticle(p, cellMap[p.cell()]));
+        }
     }
+    particles.writeData(os);
 
-DebugVar(allField);
-
-    os << allField;
-
-    Pout<< "** FieldStreamReconstructorReconstructed " << allField.size()
-        << " into " << io.objectPath() << endl;
     return os.good();
 }
 
 
-template<class Type>
-bool Foam::FieldStreamReconstructor<Type>::decompose
+bool Foam::passiveParticleStreamReconstructor::decompose
 (
     const parUnallocatedFvFieldReconstructor& reconstructor,
     const unallocatedFvMesh& baseMesh,
@@ -136,16 +137,13 @@ bool Foam::FieldStreamReconstructor<Type>::decompose
     Ostream& os
 ) const
 {
-    Pout<< "*** FieldStreamReconstructor DEcomposing "
-        << baseIO.objectPath() << endl;
-    Pout<< "** FieldStreamReconstructor Decomposed "
-        << baseIO.objectPath() << endl;
+    Pout<< "*** LAGRANGIAN DEcomposing " << baseIO.objectPath() << endl;
+    Pout<< "** LAGRANGIAN Decomposed " << baseIO.objectPath() << endl;
     return os.good();
 }
 
 
-template<class Type>
-bool Foam::FieldStreamReconstructor<Type>::reconstruct
+bool Foam::passiveParticleStreamReconstructor::reconstruct
 (
     const parUnallocatedFvFieldReconstructor& reconstructor,
     const regIOobject& thisIO,
@@ -155,10 +153,8 @@ bool Foam::FieldStreamReconstructor<Type>::reconstruct
     IOstream::compressionType cmp
 ) const
 {
-    Pout<< "*** FieldStreamReconstructor reconstructin "
-        << thisIO.objectPath() << endl;
-    Pout<< "** FieldStreamReconstructor reconstruct "
-        << thisIO.objectPath() << endl;
+    Pout<< "*** LAGRANGIAN reconstructin " << thisIO.objectPath() << endl;
+    Pout<< "** LAGRANGIAN reconstruct " << thisIO.objectPath() << endl;
     return true;
 }
 

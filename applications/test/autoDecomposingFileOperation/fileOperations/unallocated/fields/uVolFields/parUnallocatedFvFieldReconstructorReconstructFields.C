@@ -452,7 +452,7 @@ Foam::parUnallocatedFvFieldReconstructor::decomposeFvVolumeField
 
     List<Field<Type>> localValues(Pstream::nProcs());
     List<Field<Type>> remoteValues(Pstream::nProcs());
-    
+
     forAll(procPatchFields, patchI)
     {
         if (!procPatchFields.set(patchI))

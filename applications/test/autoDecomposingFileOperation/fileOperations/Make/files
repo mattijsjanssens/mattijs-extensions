@@ -57,4 +57,4 @@ $(reconstructor)/lagrangian/FieldStreamReconstructors.C
 $(f)/autoParallel/autoParallelFileOperation.C
 
 
-LIB = $(FOAM_USER_LIBBIN)/libunallocated
+LIB = $(FOAM_USER_LIBBIN)/libfileOperations
