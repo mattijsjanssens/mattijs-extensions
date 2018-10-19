@@ -70,6 +70,9 @@ class autoReconstructFileOperation
         //- Rewrite lagrangian to processor directory
         fileName equivalentLagrangian(const fileName& dir) const;
 
+        //- Return lagrangian cloud name or word::null
+        word detectLagrangian(const IOobject& io) const;
+
         //- Helper to write container elements without spaces
         template<class T>
         static Ostream& write(Ostream&, const T&);

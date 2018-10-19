@@ -23,26 +23,14 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "streamReconstructor.H"
+#include "lagrangianStreamReconstructor.H"
+#include "addToRunTimeSelectionTable.H"
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-Foam::autoPtr<Foam::streamReconstructor> Foam::streamReconstructor::New
-(
-    const word& type
-)
+namespace Foam
 {
-    wordConstructorTable::iterator cstrIter =
-        wordConstructorTablePtr_->find(type);
-
-    if (cstrIter == wordConstructorTablePtr_->end())
-    {
-        return autoPtr<streamReconstructor>(nullptr);
-    }
-    else
-    {
-        return autoPtr<streamReconstructor>(cstrIter()());
-    }
+    defineRunTimeSelectionTable(lagrangianStreamReconstructor, cloudName);
 }
 
 

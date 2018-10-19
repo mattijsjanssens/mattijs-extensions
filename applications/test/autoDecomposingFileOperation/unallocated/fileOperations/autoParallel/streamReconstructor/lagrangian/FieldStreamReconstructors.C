@@ -37,7 +37,7 @@ namespace Foam
 typedef FieldStreamReconstructor<label> labelFieldStreamReconstructor;
 addNamedToRunTimeSelectionTable
 (
-    streamReconstructor,
+    lagrangianStreamReconstructor,
     labelFieldStreamReconstructor,
     cloudName,
     labelField
@@ -46,7 +46,7 @@ addNamedToRunTimeSelectionTable
 typedef FieldStreamReconstructor<scalar> scalarFieldStreamReconstructor;
 addNamedToRunTimeSelectionTable
 (
-    streamReconstructor,
+    lagrangianStreamReconstructor,
     scalarFieldStreamReconstructor,
     cloudName,
     scalarField
@@ -55,7 +55,7 @@ addNamedToRunTimeSelectionTable
 typedef FieldStreamReconstructor<vector> vectorFieldStreamReconstructor;
 addNamedToRunTimeSelectionTable
 (
-    streamReconstructor,
+    lagrangianStreamReconstructor,
     vectorFieldStreamReconstructor,
     cloudName,
     vectorField
@@ -65,7 +65,7 @@ typedef FieldStreamReconstructor<sphericalTensor>
 sphericalTensorFieldStreamReconstructor;
 addNamedToRunTimeSelectionTable
 (
-    streamReconstructor,
+    lagrangianStreamReconstructor,
     sphericalTensorFieldStreamReconstructor,
     cloudName,
     sphericalTensorField
@@ -75,7 +75,7 @@ typedef FieldStreamReconstructor<symmTensor>
 symmTensorFieldStreamReconstructor;
 addNamedToRunTimeSelectionTable
 (
-    streamReconstructor,
+    lagrangianStreamReconstructor,
     symmTensorFieldStreamReconstructor,
     cloudName,
     symmTensorField
@@ -84,7 +84,7 @@ addNamedToRunTimeSelectionTable
 typedef FieldStreamReconstructor<tensor> tensorFieldStreamReconstructor;
 addNamedToRunTimeSelectionTable
 (
-    streamReconstructor,
+    lagrangianStreamReconstructor,
     tensorFieldStreamReconstructor,
     cloudName,
     tensorField

@@ -22,20 +22,20 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::passiveParticleStreamReconstructor
+    Foam::FieldStreamReconstructor
 
 Description
 
 SourceFiles
-    passiveParticleStreamReconstructor.C
-    passiveParticleStreamReconstructors.C
+    FieldStreamReconstructor.C
+    FieldStreamReconstructors.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef passiveParticleStreamReconstructor_H
-#define passiveParticleStreamReconstructor_H
+#ifndef FieldStreamReconstructor_H
+#define FieldStreamReconstructor_H
 
-#include "streamReconstructor.H"
+#include "lagrangianStreamReconstructor.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -43,27 +43,30 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                 Class passiveParticleStreamReconstructor Declaration
+                 Class FieldStreamReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
-class passiveParticleStreamReconstructor
+template<class Type>
+class FieldStreamReconstructor
 :
-    public streamReconstructor
+    public lagrangianStreamReconstructor
 {
 public:
 
     // Declare name of the class (used in the run-time selection)
-    ClassNameNoDebug("Cloud<passiveParticle>");
+    ClassNameNoDebug("scalarField");
 
     // Constructors
 
         //- Construct from components
-        passiveParticleStreamReconstructor(const word& cloudName)
+        FieldStreamReconstructor(const word& cloudName)
+        :
+            lagrangianStreamReconstructor()
         {}
 
 
     //- Destructor
-    virtual ~passiveParticleStreamReconstructor()
+    virtual ~FieldStreamReconstructor()
     {}
 
 
@@ -108,9 +111,9 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//#ifdef NoRepository
-//    #include "passiveParticleStreamReconstructor.C"
-//#endif
+#ifdef NoRepository
+    #include "FieldStreamReconstructor.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

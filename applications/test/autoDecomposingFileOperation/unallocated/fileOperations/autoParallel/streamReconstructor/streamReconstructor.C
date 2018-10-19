@@ -31,7 +31,6 @@ License
 namespace Foam
 {
     defineRunTimeSelectionTable(streamReconstructor, word);
-    defineRunTimeSelectionTable(streamReconstructor, cloudName);
 }
 
 

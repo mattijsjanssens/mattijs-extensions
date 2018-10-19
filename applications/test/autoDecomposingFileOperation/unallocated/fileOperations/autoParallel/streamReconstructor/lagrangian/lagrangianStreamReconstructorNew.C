@@ -23,25 +23,27 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "streamReconstructor.H"
+#include "lagrangianStreamReconstructor.H"
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-Foam::autoPtr<Foam::streamReconstructor> Foam::streamReconstructor::New
+Foam::autoPtr<Foam::lagrangianStreamReconstructor>
+Foam::lagrangianStreamReconstructor::New
 (
-    const word& type
+    const word& type,
+    const word& cloudName
 )
 {
-    wordConstructorTable::iterator cstrIter =
-        wordConstructorTablePtr_->find(type);
+    cloudNameConstructorTable::iterator cstrIter =
+        cloudNameConstructorTablePtr_->find(type);
 
-    if (cstrIter == wordConstructorTablePtr_->end())
+    if (cstrIter == cloudNameConstructorTablePtr_->end())
     {
-        return autoPtr<streamReconstructor>(nullptr);
+        return autoPtr<lagrangianStreamReconstructor>(nullptr);
     }
     else
     {
-        return autoPtr<streamReconstructor>(cstrIter()());
+        return autoPtr<lagrangianStreamReconstructor>(cstrIter()(cloudName));
     }
 }
 

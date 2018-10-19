@@ -22,18 +22,18 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::FieldStreamReconstructor
+    Foam::lagrangianStreamReconstructor
 
 Description
 
 SourceFiles
-    FieldStreamReconstructor.C
-    FieldStreamReconstructors.C
+    lagrangianStreamReconstructor.C
+    lagrangianStreamReconstructorNew.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef FieldStreamReconstructor_H
-#define FieldStreamReconstructor_H
+#ifndef lagrangianStreamReconstructor_H
+#define lagrangianStreamReconstructor_H
 
 #include "streamReconstructor.H"
 
@@ -43,43 +43,72 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                 Class FieldStreamReconstructor Declaration
+                Class lagrangianStreamReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class Type>
-class FieldStreamReconstructor
+class lagrangianStreamReconstructor
 :
     public streamReconstructor
 {
+    // Private Member Functions
+
+        //- Disallow default bitwise copy construct
+        lagrangianStreamReconstructor(const lagrangianStreamReconstructor&);
+
+        //- Disallow default bitwise assignment
+        void operator=(const lagrangianStreamReconstructor&);
+
+
 public:
 
-    // Declare name of the class (used in the run-time selection)
-    ClassNameNoDebug("scalarField");
+    // Declare run-time constructor selection tables
+
+        declareRunTimeSelectionTable
+        (
+            autoPtr,
+            lagrangianStreamReconstructor,
+            cloudName,
+            (
+                const word& cloudName
+            ),
+            (cloudName)
+        );
+
 
     // Constructors
 
-        //- Construct from components
-        FieldStreamReconstructor(const word& cloudName)
+        //- Construct null
+        lagrangianStreamReconstructor()
         {}
 
 
+    // Selectors
+
+        //- Return a pointer to a new cloud-field reconstructor created on
+        //  freestore from components
+        static autoPtr<lagrangianStreamReconstructor> New
+        (
+            const word& type,
+            const word& cloudName
+        );
+
+
     //- Destructor
-    virtual ~FieldStreamReconstructor()
+    virtual ~lagrangianStreamReconstructor()
     {}
 
 
     // Member Functions
 
-        //- Reconstruct and stream
+        //- (on master) Read all processor's field, reconstruct and stream
         virtual bool reconstruct
         (
-            //const fvMesh& mesh,
             const IOobject& io,
-            const bool isOriented,
+            const bool isOriented,      // apply flip (if available)
             Ostream& os
-        ) const;
+        ) const = 0;
 
-        //- Read, decompose and stream
+        //- Read, (in parallel) decompose and stream
         virtual bool decompose
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
@@ -88,30 +117,26 @@ public:
 
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
-            const bool isOriented,
+            const bool isOriented,      // apply flip (if available)
             Ostream& os
-        ) const;
+        ) const = 0;
 
+        //- Parallel reconstruct and (on master) write
         virtual bool reconstruct
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
             const regIOobject& thisIO,
-            const bool isOriented,
+            const bool isOriented,      // apply flip (if available)
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp
-        ) const;
+        ) const = 0;
 };
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-    #include "FieldStreamReconstructor.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

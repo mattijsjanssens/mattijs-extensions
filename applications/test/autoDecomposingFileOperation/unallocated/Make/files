@@ -39,13 +39,20 @@ $(u)/lagrangian/unallocatedIOPosition.C
 f = fileOperations
 
 $(f)/autoReconstruct/autoReconstructFileOperation.C
-$(f)/autoParallel/streamReconstructor/streamReconstructor.C
-$(f)/autoParallel/streamReconstructor/streamReconstructorNew.C
-$(f)/autoParallel/streamReconstructor/volFieldStreamReconstructors.C
-$(f)/autoParallel/streamReconstructor/internalFieldStreamReconstructors.C
-$(f)/autoParallel/streamReconstructor/surfaceFieldStreamReconstructors.C
-$(f)/autoParallel/streamReconstructor/passiveParticleStreamReconstructor.C
-$(f)/autoParallel/streamReconstructor/FieldStreamReconstructors.C
+
+reconstructor = $(f)/autoParallel/streamReconstructor
+
+
+$(reconstructor)/streamReconstructor.C
+$(reconstructor)/streamReconstructorNew.C
+$(reconstructor)/volFieldStreamReconstructors.C
+$(reconstructor)/internalFieldStreamReconstructors.C
+$(reconstructor)/surfaceFieldStreamReconstructors.C
+
+$(reconstructor)/lagrangian/lagrangianStreamReconstructor.C
+$(reconstructor)/lagrangian/lagrangianStreamReconstructorNew.C
+$(reconstructor)/lagrangian/passiveParticleStreamReconstructor.C
+$(reconstructor)/lagrangian/FieldStreamReconstructors.C
 
 $(f)/autoParallel/autoParallelFileOperation.C
 

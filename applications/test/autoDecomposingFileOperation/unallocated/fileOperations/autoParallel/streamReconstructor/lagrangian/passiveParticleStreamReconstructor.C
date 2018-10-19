@@ -33,7 +33,7 @@ namespace Foam
     defineTypeName(passiveParticleStreamReconstructor);
     addToRunTimeSelectionTable
     (
-        streamReconstructor,
+        lagrangianStreamReconstructor,
         passiveParticleStreamReconstructor,
         cloudName
     );

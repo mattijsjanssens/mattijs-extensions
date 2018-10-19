@@ -25,10 +25,10 @@ License
 
 #include "autoReconstructFileOperation.H"
 #include "Time.H"
-#include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
 #include "unthreadedInitialise.H"
 #include "streamReconstructor.H"
+#include "lagrangianStreamReconstructor.H"
 #include "cloud.H"
 #include "dummyISstream.H"
 
@@ -228,6 +228,25 @@ Foam::fileOperations::autoReconstructFileOperation::equivalentLagrangian
 
             return procDir;
         }
+    }
+}
+
+
+Foam::word Foam::fileOperations::autoReconstructFileOperation::detectLagrangian
+(
+    const IOobject& io
+) const
+{
+    const wordList elems(io.objectPath().components());
+
+    label index = findIndex(elems, cloud::prefix);
+    if (index != -1 && index < elems.size()-1)
+    {
+        return elems[index+1];
+    }
+    else
+    {
+        return word::null;
     }
 }
 
@@ -678,7 +697,6 @@ Foam::fileOperations::autoReconstructFileOperation::readObjects
             filePath(db.path("processor0"/instance, db.dbDir()/local))
         );
 
-
         if (debug)
         {
             Pout<< indent
@@ -844,34 +862,6 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
 }
 
 
-// bool Foam::fileOperations::autoReconstructFileOperation::readHeader
-// (
-//     IOobject& io,
-//     const fileName& fName,
-//     const word& typeName
-// ) const
-// {
-//     if (debug)
-//     {
-//         Pout<< indent
-//             << "autoReconstructFileOperation::readHeader :"
-//             << " Reading:" << typeName << " from: " << fName << endl;
-//     }
-//     bool ok = uncollatedFileOperation::readHeader(io, fName, typeName);
-//
-//     if (debug)
-//     {
-//         Pout<< indent
-//             << "autoReconstructFileOperation::readHeader :" << endl
-//             << indent
-//             << "    fName :" << fName << endl << indent
-//             << "    ok    :" << ok << endl << endl;
-//     }
-//     return ok;
-// }
-//
-//
-//
 Foam::autoPtr<Foam::ISstream>
 Foam::fileOperations::autoReconstructFileOperation::readStream
 (
@@ -887,7 +877,8 @@ Foam::fileOperations::autoReconstructFileOperation::readStream
             << "autoReconstructFileOperation::readStream :"
             << endl << indent
             << "    io    :" << io.objectPath() << endl << indent
-            << "    local    :" << io.local() << endl << indent
+            << "    io.db :" << io.db().type() << endl << indent
+            << "    local :" << io.local() << endl << indent
             << "    fName :" << fName << endl << indent
             << "    type  :" << type << endl << endl;
     }
@@ -900,47 +891,91 @@ Foam::fileOperations::autoReconstructFileOperation::readStream
         return isPtr;
     }
 
-    autoPtr<streamReconstructor> reconstructor
-    (
-        streamReconstructor::New(type)
-    );
+    const word cloudName(detectLagrangian(io));
 
-    if (reconstructor.valid())
+    if (cloudName.size())
     {
-        if (debug)
+        // Try lagrangian reconstructor
+        autoPtr<lagrangianStreamReconstructor> reconstructor
+        (
+            lagrangianStreamReconstructor::New(type, cloudName)
+        );
+
+        if (reconstructor.valid())
         {
-            Pout<< indent
-                << "autoReconstructFileOperation::readStream :"
-                << " Found reconstructor for type:" << type
-                << " of object: " << io.objectPath() << endl;
-        }
+            if (debug)
+            {
+                Pout<< indent
+                    << "**** autoReconstructFileOperation::readStream :"
+                    << " Found reconstructor for type:" << type
+                    << " db:" << io.db().type()
+                    << " of object: " << io.objectPath() << endl;
+            }
 
-        OStringStream os(IOstream::BINARY);
+            OStringStream os(IOstream::BINARY);
 
-        // Save current file handler and install basic ('uncollated') one
-Pout<< "**INSTALLING BASIC**:" << basicFileHandler_().type() << endl;
-        autoPtr<fileOperation> orig(fileOperation::fileHandlerPtr_.ptr());
-        (void)fileHandler(basicFileHandler_);
+            // Save current file handler and install basic ('uncollated') one
+            autoPtr<fileOperation> orig(fileOperation::fileHandlerPtr_.ptr());
+            (void)fileHandler(basicFileHandler_);
 
-        bool ok = reconstructor().reconstruct(io, false, os);
+            bool ok = reconstructor().reconstruct(io, false, os);
 
-        // Restore current file handler
-Pout<< "**UNINSTALLING BASIC**:" << fileHandler().type() << endl;
-        basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
-        (void)fileHandler(orig);
+            // Restore current file handler
+            basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
+            (void)fileHandler(orig);
 
-        if (!ok)
-        {
-            //isPtr.reset(dummyISstream());
+            if (ok)
+            {
+                isPtr.reset(new IStringStream(os.str(), IOstream::BINARY));
+            }
         }
         else
         {
-            isPtr.reset(new IStringStream(os.str(), IOstream::BINARY));
+            // No reconstructor for lagrangian type. Do what?
+            FatalIOErrorInFunction(io.objectPath())
+                << "No reconstructor for " << io.objectPath()
+                << " in cloud " << cloudName
+                << exit(FatalIOError);
         }
     }
     else
     {
-        isPtr = uncollatedFileOperation::readStream(io, fName, type, valid);
+        autoPtr<streamReconstructor> reconstructor
+        (
+            streamReconstructor::New(type)
+        );
+
+        if (reconstructor.valid())
+        {
+            if (debug)
+            {
+                Pout<< indent
+                    << "autoReconstructFileOperation::readStream :"
+                    << " Found reconstructor for type:" << type
+                    << " of object: " << io.objectPath() << endl;
+            }
+
+            OStringStream os(IOstream::BINARY);
+
+            // Save current file handler and install basic ('uncollated') one
+            autoPtr<fileOperation> orig(fileOperation::fileHandlerPtr_.ptr());
+            (void)fileHandler(basicFileHandler_);
+
+            bool ok = reconstructor().reconstruct(io, false, os);
+
+            // Restore current file handler
+            basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
+            (void)fileHandler(orig);
+
+            if (ok)
+            {
+                isPtr.reset(new IStringStream(os.str(), IOstream::BINARY));
+            }
+        }
+        else
+        {
+            isPtr = uncollatedFileOperation::readStream(io, fName, type, valid);
+        }
     }
 
     if (debug)
@@ -982,48 +1017,113 @@ bool Foam::fileOperations::autoReconstructFileOperation::read
                 << " Searching for reconstructor for type:" << type
                 << " of object: " << io.objectPath() << endl;
         }
-        autoPtr<streamReconstructor> reconstructor
-        (
-            streamReconstructor::New(type)
-        );
 
-        if (reconstructor.valid())
+        const word cloudName(detectLagrangian(io));
+
+        if (cloudName.size())
         {
-            if (debug)
+            // Try lagrangian reconstructor
+            autoPtr<lagrangianStreamReconstructor> reconstructor
+            (
+                lagrangianStreamReconstructor::New(type, cloudName)
+            );
+            if (reconstructor.valid())
             {
-                Pout<< indent
-                    << "autoReconstructFileOperation::read :"
-                    << " Found reconstructor for type:" << type
-                    << " of object: " << io.objectPath() << endl;
-            }
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoReconstructFileOperation::read :"
+                        << " Found reconstructor for type:" << type
+                        << " of object: " << io.objectPath() << endl;
+                }
 
-            OStringStream os(IOstream::BINARY);
+                OStringStream os(IOstream::BINARY);
 
-            // Save current file handler and install basic ('uncollated') one
-Pout<< "**INSTALLING BASIC**:" << basicFileHandler_().type() << endl;
-            autoPtr<fileOperation> orig(fileOperation::fileHandlerPtr_.ptr());
-            (void)fileHandler(basicFileHandler_);
+                // Save current file handler and install basic ('uncollated')
+                autoPtr<fileOperation> orig
+                (
+                    fileOperation::fileHandlerPtr_.ptr()
+                );
+                (void)fileHandler(basicFileHandler_);
 
-            bool ok = reconstructor().reconstruct(io, false, os);
+                bool ok = reconstructor().reconstruct(io, false, os);
 
-            // Restore current file handler
-Pout<< "**UNINSTALLING BASIC**:" << fileHandler().type() << endl;
-            basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
-            (void)fileHandler(orig);
+                // Restore current file handler
+                basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
+                (void)fileHandler(orig);
 
-            if (!ok)
-            {
-                return false;
+                if (!ok)
+                {
+                    return false;
+                }
+                else
+                {
+                    IStringStream is(os.str(), IOstream::BINARY);
+                    return io.readData(is);
+                }
             }
             else
             {
-                IStringStream is(os.str(), IOstream::BINARY);
-                return io.readData(is);
+                // No reconstructor for lagrangian type. Do what?
+                FatalIOErrorInFunction(io.objectPath())
+                    << "No reconstructor for " << io.objectPath()
+                    << " in cloud " << cloudName
+                    << exit(FatalIOError);
+                return false;
             }
         }
         else
         {
-            return uncollatedFileOperation::read(io, masterOnly, format, type);
+            autoPtr<streamReconstructor> reconstructor
+            (
+                streamReconstructor::New(type)
+            );
+
+            if (reconstructor.valid())
+            {
+                if (debug)
+                {
+                    Pout<< indent
+                        << "autoReconstructFileOperation::read :"
+                        << " Found reconstructor for type:" << type
+                        << " of object: " << io.objectPath() << endl;
+                }
+
+                OStringStream os(IOstream::BINARY);
+
+                // Save current file handler and install basic ('uncollated')
+                autoPtr<fileOperation> orig
+                (
+                    fileOperation::fileHandlerPtr_.ptr()
+                );
+                (void)fileHandler(basicFileHandler_);
+
+                bool ok = reconstructor().reconstruct(io, false, os);
+
+                // Restore current file handler
+                basicFileHandler_ = fileOperation::fileHandlerPtr_.ptr();
+                (void)fileHandler(orig);
+
+                if (!ok)
+                {
+                    return false;
+                }
+                else
+                {
+                    IStringStream is(os.str(), IOstream::BINARY);
+                    return io.readData(is);
+                }
+            }
+            else
+            {
+                return uncollatedFileOperation::read
+                (
+                    io,
+                    masterOnly,
+                    format,
+                    type
+                );
+            }
         }
     }
     else

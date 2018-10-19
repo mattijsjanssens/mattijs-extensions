@@ -22,91 +22,65 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::streamReconstructor
+    Foam::passiveParticleStreamReconstructor
 
 Description
 
 SourceFiles
-    streamReconstructor.C
-    streamReconstructorNew.C
+    passiveParticleStreamReconstructor.C
+    passiveParticleStreamReconstructors.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef streamReconstructor_H
-#define streamReconstructor_H
+#ifndef passiveParticleStreamReconstructor_H
+#define passiveParticleStreamReconstructor_H
 
-#include "fvMesh.H"
-#include "typeInfo.H"
-#include "runTimeSelectionTables.H"
+#include "lagrangianStreamReconstructor.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class unallocatedFvMesh;
-class parUnallocatedFvFieldReconstructor;
-
 /*---------------------------------------------------------------------------*\
-                     Class streamReconstructor Declaration
+                 Class passiveParticleStreamReconstructor Declaration
 \*---------------------------------------------------------------------------*/
 
-class streamReconstructor
+class passiveParticleStreamReconstructor
+:
+    public lagrangianStreamReconstructor
 {
-    // Private Member Functions
-
-        //- Disallow default bitwise copy construct
-        streamReconstructor(const streamReconstructor&);
-
-        //- Disallow default bitwise assignment
-        void operator=(const streamReconstructor&);
-
-
 public:
 
-    // Declare run-time constructor selection tables
-
-        declareRunTimeSelectionTable
-        (
-            autoPtr,
-            streamReconstructor,
-            word,
-            (
-            ),
-            ()
-        );
-
+    // Declare name of the class (used in the run-time selection)
+    ClassNameNoDebug("Cloud<passiveParticle>");
 
     // Constructors
 
-        //- Construct null
-        streamReconstructor()
+        //- Construct from components
+        passiveParticleStreamReconstructor(const word& cloudName)
+        :
+            lagrangianStreamReconstructor()
         {}
 
 
-    // Selectors
-
-        //- Return a pointer to a new reconstructor created on freestore from
-        //  components
-        static autoPtr<streamReconstructor> New(const word& type);
-
-
     //- Destructor
-    virtual ~streamReconstructor()
+    virtual ~passiveParticleStreamReconstructor()
     {}
 
 
     // Member Functions
 
-        //- (on master) Read all processor's field, reconstruct and stream
+        //- Reconstruct and stream
         virtual bool reconstruct
         (
+            //const fvMesh& mesh,
             const IOobject& io,
-            const bool isOriented,      // apply flip (if available)
+            const bool isOriented,
             Ostream& os
-        ) const = 0;
+        ) const;
 
-        //- Read, (in parallel) decompose and stream
+        //- Read, decompose and stream
         virtual bool decompose
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
@@ -115,22 +89,20 @@ public:
 
             const unallocatedFvMesh& thisMesh,
             const IOobject& thisIO,
-            const bool isOriented,      // apply flip (if available)
+            const bool isOriented,
             Ostream& os
-        ) const = 0;
+        ) const;
 
-        //- Parallel reconstruct and (on master) write
         virtual bool reconstruct
         (
             const parUnallocatedFvFieldReconstructor& reconstructor,
             const regIOobject& thisIO,
-            const bool isOriented,      // apply flip (if available)
+            const bool isOriented,
             IOstream::streamFormat fmt,
             IOstream::versionNumber ver,
             IOstream::compressionType cmp
-        ) const = 0;
+        ) const;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

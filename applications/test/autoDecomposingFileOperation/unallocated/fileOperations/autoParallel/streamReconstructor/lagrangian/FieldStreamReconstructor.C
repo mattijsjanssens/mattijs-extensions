@@ -29,17 +29,6 @@ License
 #include "unallocatedIOPosition.H"
 #include "IOField.H"
 
-// namespace Foam
-// {
-//     defineTypeName(fieldStreamReconstructor);
-//     addToRunTimeSelectionTable
-//     (
-//         streamReconstructor,
-//         FieldStreamReconstructor,
-//         word
-//     );
-// }
-
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
