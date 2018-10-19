@@ -931,11 +931,9 @@ Foam::fileOperations::autoReconstructFileOperation::readStream
         }
         else
         {
-            // No reconstructor for lagrangian type. Do what?
-            FatalIOErrorInFunction(io.objectPath())
-                << "No reconstructor for " << io.objectPath()
-                << " in cloud " << cloudName
-                << exit(FatalIOError);
+            // No reconstructor for lagrangian type. E.g.
+            // lagrangian/kinematicCloud/cloudProperties
+            isPtr = uncollatedFileOperation::readStream(io, fName, type, valid);
         }
     }
     else
@@ -1064,11 +1062,8 @@ bool Foam::fileOperations::autoReconstructFileOperation::read
             }
             else
             {
-                // No reconstructor for lagrangian type. Do what?
-                FatalIOErrorInFunction(io.objectPath())
-                    << "No reconstructor for " << io.objectPath()
-                    << " in cloud " << cloudName
-                    << exit(FatalIOError);
+                // No reconstructor for lagrangian type. E.g.
+                // lagrangian/kinematicCloud/cloudProperties
                 return false;
             }
         }

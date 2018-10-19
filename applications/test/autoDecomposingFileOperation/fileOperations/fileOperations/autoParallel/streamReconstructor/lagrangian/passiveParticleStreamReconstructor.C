@@ -48,8 +48,13 @@ bool Foam::passiveParticleStreamReconstructor::reconstruct
     Ostream& os
 ) const
 {
+    // io.db()                   = Cloud<passiveParticle>
+    // io.db().parent()          = polyMesh
+    // io.db().parent().parent() = Time
+
+    // Retrieve from polyMesh
     const uFieldReconstructor& reconstructor =
-        uFieldReconstructor::New(io.db().parent().parent());
+        uFieldReconstructor::New(io.db().parent());
 
     const PtrList<unallocatedFvMesh>& procMeshes = reconstructor.procMeshes();
 
@@ -108,15 +113,60 @@ bool Foam::passiveParticleStreamReconstructor::reconstruct
             false
         )
     );
+
+    const faceList* facesPtr = nullptr;
+    if (isA<polyMesh>(io.db().parent()))
+    {
+        facesPtr = &dynamic_cast<const polyMesh&>(io.db().parent()).faces();
+    }
+
     forAll(procFields, proci)
     {
         const unallocatedIOPosition& procCloud = procFields[proci];
         const labelList& cellMap = reconstructor.cellProcAddressing()[proci];
+        const labelList& faceMap = reconstructor.faceProcAddressing()[proci];
 
         forAllConstIter(typename IDLList<basicParticle>, procCloud, iter)
         {
             const basicParticle& p = iter();
-            particles.append(new basicParticle(p, cellMap[p.cell()]));
+
+            const label mappedCell = cellMap[p.cell()];
+
+            const label mapi = faceMap[p.tetFace()];
+
+            label mappedTetFace = -1;
+            label tetPti = p.tetPt();
+            if (mapi == 0)
+            {
+                FatalErrorInFunction << "problem" << exit(FatalError);
+            }
+            else if (mapi > 0)
+            {
+                mappedTetFace = mapi - 1;
+            }
+            else
+            {
+                mappedTetFace = -mapi - 1;
+
+                if (facesPtr)
+                {
+                    // Flipping face
+
+                    const face& f = (*facesPtr)[mappedTetFace];
+                    tetPti = f.size() - 1 - tetPti;
+                }
+            }
+
+            particles.append
+            (
+                new basicParticle
+                (
+                    p,
+                    mappedCell,
+                    mappedTetFace,
+                    tetPti
+                )
+            );
         }
     }
     particles.writeData(os);

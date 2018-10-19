@@ -117,6 +117,11 @@ public:
             return cellProcAddressing_;
         }
 
+        const PtrList<labelIOList>& faceProcAddressing() const
+        {
+            return faceProcAddressing_;
+        }
+
         virtual bool writeData(Foam::Ostream&) const
         {
             NotImplemented;

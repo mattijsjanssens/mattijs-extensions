@@ -88,12 +88,18 @@ Foam::basicParticle::basicParticle
 }
 
 
-Foam::basicParticle::basicParticle(const basicParticle& p, const label celli)
+Foam::basicParticle::basicParticle
+(
+    const basicParticle& p,
+    const label celli,
+    const label tetFacei,
+    const label tetPti
+)
 :
     coordinates_(p.coordinates_),
     celli_(celli),
-    tetFacei_(p.tetFacei_),
-    tetPti_(p.tetPti_),
+    tetFacei_(tetFacei),
+    tetPti_(tetPti),
     facei_(p.facei_),
     stepFraction_(p.stepFraction_),
     origProc_(p.origProc_),

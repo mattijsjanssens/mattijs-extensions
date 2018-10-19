@@ -109,8 +109,14 @@ public:
         //- Construct from Istream
         basicParticle(Istream&, bool readFields = true);
 
-        //- Construct copy with new cell label
-        basicParticle(const basicParticle&, const label celli);
+        //- Construct copy with new addressing
+        basicParticle
+        (
+            const basicParticle&,
+            const label celli,
+            const label tetFacei,
+            const label tetPti
+        );
 
 
     //- Destructor

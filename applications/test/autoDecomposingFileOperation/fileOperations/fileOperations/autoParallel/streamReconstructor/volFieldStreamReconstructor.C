@@ -46,6 +46,7 @@ bool Foam::volFieldStreamReconstructor<Type>::reconstruct
     typedef GeometricField<Type, unallocatedFvPatchField, unallocatedVolMesh>
         GeoField;
 
+    // Retrieve from polyMesh
     const uFieldReconstructor& reconstructor =
         uFieldReconstructor::New(io.db());
 
