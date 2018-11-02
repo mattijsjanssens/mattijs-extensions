@@ -784,6 +784,14 @@ Foam::fileOperations::autoReconstructFileOperation::findTimes
 {
     // Q: do we also include non-parallel directories?
 
+    if (debug)
+    {
+        Pout<< indent
+            << "autoReconstructFileOperation::findTimes :"
+            << " Searching for times:" << endl << indent
+            << "    dir   :" << dir << endl << indent;
+    }
+
     instantList times;//(uncollatedFileOperation::findTimes(dir, constantName));
 
     if (!Pstream::parRun())
