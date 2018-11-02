@@ -1,0 +1,13 @@
+- two neighbouring cells
+- iso surface has small polyp sticking into cells above
+- (but only using pyramid edges)
+- now when filtering all but real edges it will squeeze out the
+neck of the polyp and cause non-manifold edges.
+
+- the basic reason is that we're creating new edges and if
+'the other side' does the same it pinches off.
+
+prevention:
+- collect new face
+- check that all points are not co-planar? Can happen easily
+- check that uses at least three faces?
