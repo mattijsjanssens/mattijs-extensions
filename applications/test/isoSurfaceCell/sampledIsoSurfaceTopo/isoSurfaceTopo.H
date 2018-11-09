@@ -25,6 +25,8 @@ Class
     Foam::isoSurfaceTopo
 
 Description
+    Marching tet iso surface algorithm with optional filtering to keep only
+    points originating from mesh edges.
 
 SourceFiles
     isoSurfaceTopo.C
@@ -56,6 +58,19 @@ class isoSurfaceTopo
 :
     public MeshedSurface<face>
 {
+public:
+
+        enum filterType
+        {
+            NONE,       // no filtering
+            DIAGCELL,   // remove points from face-diagonal and pyramid
+                        // (vertex to cell-centre) edges
+            CELL        // only remove points from pyramid edges
+        };
+
+
+private:
+
     // Private data
 
         enum cellCutType
@@ -76,13 +91,7 @@ class isoSurfaceTopo
         //- Iso value
         const scalar iso_;
 
-        //- Whether cell might be cut
-        List<cellCutType> cellCutType_;
-
-        //- Estimated number of cut cells
-        label nCutCells_;
-
-        //- Per point: originating mesh vertex/cc. See encoding above·
+        //- Per point: originating mesh vertex/cc. See encoding above
         edgeList pointToVerts_;
 
         //- For every face the original cell in mesh
@@ -109,7 +118,11 @@ class isoSurfaceTopo
         ) const;
 
         //- Determine for all mesh whether cell is cut
-        void calcCutTypes(tetMatcher& tet);
+        label calcCutTypes
+        (
+            tetMatcher& tet,
+            List<cellCutType>& cellCutTypes
+        );
 
         //- Generate single point on edge
         label generatePoint
@@ -199,8 +212,7 @@ public:
             const scalarField& cellValues,
             const scalarField& pointValues,
             const scalar iso,
-            const bool regularise,
-            const bool removeDiagPoints = true
+            const filterType filter = DIAGCELL
         );
 
 
