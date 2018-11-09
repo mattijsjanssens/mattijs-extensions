@@ -1,13 +1,29 @@
-- two neighbouring cells
-- iso surface has small polyp sticking into cells above
-- (but only using pyramid edges)
-- now when filtering all but real edges it will squeeze out the
-neck of the polyp and cause non-manifold edges.
+- points originate from
+    - face edges
+    - face-diagonal edges
+    - pyramid edges
+- problem is the diagonal removal
+- since this creates a surface 'edge' between two face edges
+- usually this is no problem since these vertices are
+  on a single face (inbetween two cells)
+- but for some refinement patterns there might be another
+  face creating the same surface 'edge'
+- so:
+    - store the point-pair together with the face
+    - do not allow the same collapse on any other face.
 
-- the basic reason is that we're creating new edges and if
-'the other side' does the same it pinches off.
 
-prevention:
-- collect new face
-- check that all points are not co-planar? Can happen easily
-- check that uses at least three faces?
+
+#- two neighbouring cells
+#- iso surface has small polyp sticking into cells above
+#- (but only using pyramid edges)
+#- now when filtering all but real edges it will squeeze out the
+#neck of the polyp and cause non-manifold edges.
+#
+#- the basic reason is that we're creating new edges and if
+#'the other side' does the same it pinches off.
+#
+#prevention:
+#- collect new face
+#- check that all points are not co-planar? Can happen easily
+#- check that uses at least three faces?

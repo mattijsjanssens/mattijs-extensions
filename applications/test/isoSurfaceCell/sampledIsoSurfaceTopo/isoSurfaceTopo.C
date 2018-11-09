@@ -198,7 +198,7 @@ Foam::label Foam::isoSurfaceTopo::generatePoint
     const edge& vertices,
 
     DynamicList<edge>& pointToVerts,
-    DynamicList<label>& pointToFace,
+    DynamicList<labelList>& pointToFace,
     DynamicList<bool>& pointFromDiag,
     EdgeMap<label>& vertsToPoint
 ) const
@@ -206,6 +206,15 @@ Foam::label Foam::isoSurfaceTopo::generatePoint
     EdgeMap<label>::const_iterator edgeFnd = vertsToPoint.find(vertices);
     if (edgeFnd != vertsToPoint.end())
     {
+        label pointi = edgeFnd();
+        labelList& pFaces = pointToFace[pointi];
+
+//Pout<< "for vertices:" << vertices << " found already generated point "
+//    << pointi << " with faces:" << pFaces << " facei:" << facei << endl;
+        if (findIndex(pFaces, facei) == -1)
+        {
+            pFaces.append(facei);
+        }
         return edgeFnd();
     }
     else
@@ -214,7 +223,7 @@ Foam::label Foam::isoSurfaceTopo::generatePoint
         label pointi = pointToVerts.size();
 
         pointToVerts.append(vertices);
-        pointToFace.append(facei);
+        pointToFace.append(labelList(1, facei));
         pointFromDiag.append(edgeIsDiag);
         vertsToPoint.insert(vertices, pointi);
         return pointi;
@@ -231,7 +240,7 @@ void Foam::isoSurfaceTopo::generateTriPoints
     const FixedList<bool, 6>& edgeIsDiag,// per tet edge whether is face diag
 
     DynamicList<edge>& pointToVerts,
-    DynamicList<label>& pointToFace,
+    DynamicList<labelList>& pointToFace,
     DynamicList<bool>& pointFromDiag,
 
     EdgeMap<label>& vertsToPoint,
@@ -621,7 +630,7 @@ void Foam::isoSurfaceTopo::generateTriPoints
     const bool isTet,
 
     DynamicList<edge>& pointToVerts,
-    DynamicList<label>& pointToFace,
+    DynamicList<labelList>& pointToFace,
     DynamicList<bool>& pointFromDiag,
 
     EdgeMap<label>& vertsToPoint,
@@ -803,12 +812,128 @@ void Foam::isoSurfaceTopo::generateTriPoints
 }
 
 
+//XXXXXXXX
+Foam::label Foam::isoSurfaceTopo::findMeshEdge
+(
+    const boolList& pointFromDiag,
+    const primitivePatch& pp,
+    const labelList& loop,
+    const label startFp
+) const
+{
+    const labelList& mp = pp.meshPoints();
+
+    label fp = startFp;
+
+    forAll(loop, i)
+    {
+        label pointi = mp[loop[fp]];
+        if (!pointFromDiag[pointi])
+        {
+            return fp;
+        }
+
+        fp = loop.fcIndex(fp);
+    }
+    return -1;
+}
+void Foam::isoSurfaceTopo::filterFace
+(
+    const primitivePatch& pp,
+    const labelList& loop,
+    const boolList& pointFromDiag,
+    const labelListList& pointToFace,
+    face& f,
+    EdgeMap<label>& vertsToFace
+) const
+{
+    const labelList& mp = pp.meshPoints();
+
+    f.setSize(loop.size());
+    label fpi = 0;
+
+    // Search for mesh edge
+    label edgeFp = findMeshEdge(pointFromDiag, pp, loop, 0);
+
+    if (edgeFp == -1)
+    {
+        Pout<< "**TBD." << endl;
+        forAll(loop, fp)
+        {
+            label pointi = mp[loop[fp]];
+            f[fpi++] = pointi;
+        }
+    }
+    else
+    {
+        f[fpi++] = mp[loop[edgeFp]];
+
+        label fp = f.fcIndex(edgeFp);
+        for (label i = 0; i < loop.size()-1; i++)
+        {
+            const label pointi = mp[loop[fp]];
+            if (pointFromDiag[pointi])
+            {
+                label facei = pointToFace[pointi][0];
+
+                // Search forwards for next meshFp
+                label nextFp =
+                    findMeshEdge(pointFromDiag, pp, loop, f.fcIndex(fp));
+
+                const edge vertices
+                (
+                    mp[loop[edgeFp]],
+                    mp[loop[nextFp]]
+                );
+                EdgeMap<label>::const_iterator edgeFnd =
+                    vertsToFace.find(vertices);
+                if (edgeFnd != vertsToFace.end())
+                {
+                    if (edgeFnd() != facei)
+                    {
+                        // Protect i.e. keep point
+                        f[fpi++] = pointi;
+                    }
+                }
+                else
+                {
+                    // First occurence of vertex pair
+                    vertsToFace.insert(vertices, facei);
+                }
+            }
+            else
+            {
+                f[fpi++] = pointi;
+                edgeFp = fp;
+            }
+
+            fp = f.fcIndex(fp);
+        }
+
+        if (fpi > 2)
+        {
+            f.setSize(fpi);
+        }
+        else
+        {
+            // Keep original face
+            forAll(f, i)
+            {
+                label pointi = mp[loop[i]];
+                f[i] = pointi;
+            }
+        }
+    }
+}
+
+
+
 void Foam::isoSurfaceTopo::triangulateOutside
 (
     const bool filterDiag,
     const primitivePatch& pp,
     const boolList& pointFromDiag,
-    const labelList& pointToFace,
+    const labelListList& pointToFace,
     const label cellID,
 
     DynamicList<face>& compactFaces,
@@ -855,24 +980,57 @@ void Foam::isoSurfaceTopo::triangulateOutside
                     label pointi = mp[loop[i]];
                     if (filterDiag && pointFromDiag[pointi])
                     {
-                        label prevPointi = mp[loop[loop.fcIndex(i)]];
+Pout<< "point:" << pointi
+    << " at:" << pp.points()[pointi]
+    << " faces:" << pointToFace[pointi]
+    << endl;
+
+                        // Check that we have
+                        // edgepoint - diagpoint - edgepoint all on the same
+                        // face.
+                        const labelList& thisFaces = pointToFace[pointi];
+                        label prevPointi = mp[loop[loop.rcIndex(i)]];
+                        const labelList& prevFaces = pointToFace[prevPointi];
+                        label nextPointi = mp[loop[loop.fcIndex(i)]];
+                        const labelList& nextFaces = pointToFace[nextPointi];
+
+                        DynamicList<label> commonFaces;
+                        forAll(thisFaces, i)
+                        {
+                            label thisFacei = thisFaces[i];
+                            if
+                            (
+                                findIndex(prevFaces, thisFacei) != -1
+                             && findIndex(nextFaces, thisFacei) != -1
+                            )
+                            {
+                                commonFaces.append(thisFacei);
+                            }
+                        }
+
+Pout<< "point:" << pointi
+    << " at:" << pp.points()[pointi]
+    << " commonFaces:" << commonFaces
+    << endl;
+
+
                         if
                         (
                             pointFromDiag[prevPointi]
-                         && (pointToFace[pointi] != pointToFace[prevPointi])
+//                         && (pointToFace[pointi] != pointToFace[prevPointi])
                         )
                         {
-                            Pout<< "not filtering "
-                                << " at cell:" << cellID
-                                << " point:" << pointi
-                                << " at:" << mesh_.points()[pointi]
-                                << " since originating from "
-                                << pointToFace[pointi]
-                                << " and prev:" << prevPointi
-                                << " at:" << mesh_.points()[prevPointi]
-                                << " originating from "
-                                << pointToFace[prevPointi]
-                                << endl;
+                            // Pout<< "not filtering "
+                            //     << " at cell:" << cellID
+                            //     << " point:" << pointi
+                            //     << " at:" << mesh_.points()[pointi]
+                            //     << " since originating from "
+                            //     << pointToFace[pointi]
+                            //     << " and prev:" << prevPointi
+                            //     << " at:" << mesh_.points()[prevPointi]
+                            //     << " originating from "
+                            //     << pointToFace[prevPointi]
+                            //     << endl;
                             f[fpi++] = pointi;
                         }
                         else
@@ -911,7 +1069,7 @@ Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
     const bool filterDiag,
     const MeshedSurface<face>& s,
     const boolList& pointFromDiag,
-    const labelList& pointToFace,
+    const labelListList& pointToFace,
     const labelList& start,                 // per cell the starting triangle
     DynamicList<label>& pointCompactMap,    // per returned point the original
     DynamicList<label>& compactCellIDs      // per returned tri the cellID
@@ -1019,8 +1177,8 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
     //  - pointToVerts : from generated iso point to originating mesh verts
     DynamicList<edge> pointToVerts(10*nCutCells);
     //  - pointToFace : from generated iso point to originating mesh face
-    DynamicList<label> pointToFace(10*nCutCells);
-    //  - pointToFace : from generated iso point whether is on face diagonal
+    DynamicList<labelList> pointToFace(10*nCutCells);
+    //  - pointFromDiag : from generated iso point whether is on face diagonal
     DynamicList<bool> pointFromDiag(10*nCutCells);
 
     // Per cell: number of intersected edges:
@@ -1076,6 +1234,23 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
             mesh_.points()
         )
     );
+
+
+{
+    DynamicList<label> counts;
+    forAll(pointToFace_, pointi)
+    {
+        label nFaces = pointToFace_[pointi].size();
+
+        if (nFaces >= counts.size())
+        {
+            counts.setSize(nFaces+1, 0);
+        }
+        counts[nFaces]++;
+    }
+    DebugVar(counts);
+}
+
 
 
     // Assign to MeshedSurface
@@ -1143,7 +1318,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         );
 
         pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointCompactMap)();
-        pointToFace_ = UIndirectList<label>(pointToFace_, pointCompactMap)();
+        pointToFace_ = UIndirectList<labelList>(pointToFace_, pointCompactMap)();
         pointFromDiag = UIndirectList<bool>(pointFromDiag, pointCompactMap)();
         meshCells_.transfer(compactCellIDs);
 
@@ -1257,7 +1432,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
                 MeshedSurface<face>::transfer(filteredSurf);
 
                 pointToVerts_ = UIndirectList<edge>(pointToVerts_, pointMap)();
-                pointToFace_ = UIndirectList<label>(pointToFace_, pointMap)();
+                pointToFace_ = UIndirectList<labelList>(pointToFace_, pointMap)();
                 pointFromDiag = UIndirectList<bool>(pointFromDiag, pointMap)();
                 meshCells_ = UIndirectList<label>(meshCells_, faceMap)();
             }

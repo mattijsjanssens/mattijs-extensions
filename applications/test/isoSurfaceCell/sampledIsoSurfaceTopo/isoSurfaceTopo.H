@@ -98,7 +98,7 @@ private:
         labelList meshCells_;
 
         //- For every point the originating face in mesh
-        labelList pointToFace_;
+        labelListList pointToFace_;
 
 
     // Private Member Functions
@@ -132,7 +132,7 @@ private:
             const edge& vertices,
 
             DynamicList<edge>& pointToVerts,
-            DynamicList<label>& pointToFace,
+            DynamicList<labelList>& pointToFace,
             DynamicList<bool>& pointFromDiag,
             EdgeMap<label>& vertsToPoint
         ) const;
@@ -147,7 +147,7 @@ private:
             const FixedList<bool, 6>& edgeIsDiag,
 
             DynamicList<edge>& pointToVerts,
-            DynamicList<label>& pointToFace,
+            DynamicList<labelList>& pointToFace,
             DynamicList<bool>& pointFromDiag,
 
             EdgeMap<label>& vertsToPoint,
@@ -162,7 +162,7 @@ private:
             const bool isTet,
 
             DynamicList<edge>& pointToVerts,
-            DynamicList<label>& pointToFace,
+            DynamicList<labelList>& pointToFace,
             DynamicList<bool>& pointFromDiag,
 
             EdgeMap<label>& vertsToPoint,
@@ -178,7 +178,7 @@ private:
                 const bool filterDiag,
                 const PrimitivePatch<face, SubList, const pointField&>& pp,
                 const boolList& pointFromDiag,
-                const labelList& pointToFace,
+                const labelListList& pointToFace,
                 const label cellID,
 
                 DynamicList<face>& compactFaces,
@@ -190,7 +190,7 @@ private:
                 const bool filterDiag,
                 const MeshedSurface<face>& s,
                 const boolList& pointFromDiag,
-                const labelList& pointToFace,
+                const labelListList& pointToFace,
                 const labelList& start,              // per cell:starting tri
                 DynamicList<label>& pointCompactMap, // per point the original
                 DynamicList<label>& compactCellIDs   // per face the cellID
@@ -225,7 +225,7 @@ public:
         }
 
         //- For every point originating face (pyramid) in mesh
-        const labelList& pointToFace() const
+        const labelListList& pointToFace() const
         {
             return pointToFace_;
         }
