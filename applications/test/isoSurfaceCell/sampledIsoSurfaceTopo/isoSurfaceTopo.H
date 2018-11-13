@@ -173,6 +173,24 @@ private:
 
         // Simplification
 
+            label findMeshEdge
+            (
+                const boolList& pointFromDiag,
+                const primitivePatch& pp,
+                const labelList& loop,
+                const label startFp
+            ) const;
+            void filterFace
+            (
+                const primitivePatch& pp,
+                const labelList& loop,
+                const boolList& pointFromDiag,
+                const labelListList& pointToFace,
+                face& f,
+                EdgeMap<label>& vertsToFace
+            ) const;
+
+
             void triangulateOutside
             (
                 const bool filterDiag,
@@ -181,6 +199,7 @@ private:
                 const labelListList& pointToFace,
                 const label cellID,
 
+                EdgeMap<label>& vertsToFace,
                 DynamicList<face>& compactFaces,
                 DynamicList<label>& compactCellIDs
             ) const;
@@ -192,6 +211,7 @@ private:
                 const boolList& pointFromDiag,
                 const labelListList& pointToFace,
                 const labelList& start,              // per cell:starting tri
+                EdgeMap<label>& vertsToFace,
                 DynamicList<label>& pointCompactMap, // per point the original
                 DynamicList<label>& compactCellIDs   // per face the cellID
             ) const;
