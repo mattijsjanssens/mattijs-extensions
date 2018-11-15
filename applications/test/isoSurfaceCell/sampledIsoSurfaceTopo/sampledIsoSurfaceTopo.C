@@ -132,13 +132,13 @@ bool Foam::sampledIsoSurfaceTopo::updateGeometry() const
         );
     }
 
+
+    MeshedSurface<face>& mySurface = const_cast<sampledIsoSurfaceTopo&>(*this);
+
     if (isos.size() == 1)
     {
         // Straight transfer
-        const_cast<sampledIsoSurfaceTopo&>
-        (
-            *this
-        ).MeshedSurface<face>::transfer(isos[0]);
+        mySurface.transfer(isos[0]);
         meshCells_ = isos[0].meshCells();
     }
     else
@@ -203,22 +203,25 @@ bool Foam::sampledIsoSurfaceTopo::updateGeometry() const
         );
 
         // Transfer
-        const_cast<sampledIsoSurfaceTopo&>
-        (
-            *this
-        ).MeshedSurface<face>::reset
-        (
-            allPoints.xfer(),
-            allFaces.xfer(),
-            allZones.xfer()
-        );
+        mySurface.reset(allPoints.xfer(), allFaces.xfer(), allZones.xfer());
         meshCells_.transfer(allMeshCells);
     }
+
+    // triangulate uses remapFaces()
+    // - this is somewhat less efficient since it recopies the faces
+    // that we just created, but we probably don't want to do this
+    // too often anyhow.
+    if (triangulate_)
+    {
+        mySurface.triangulate();
+    }
+
     if (debug)
     {
         Pout<< "sampledIsoSurfaceTopo::updateGeometry() : constructed iso:"
             << nl
             << "    regularise     : " << regularise_ << nl
+            << "    triangulate    : " << triangulate_ << nl
             << "    isoField       : " << isoField_ << nl;
         if (isoVals_.size() == 1)
         {
@@ -255,6 +258,7 @@ Foam::sampledIsoSurfaceTopo::sampledIsoSurfaceTopo
       : scalarField(1, readScalar(dict.lookup("isoValue")))
     ),
     regularise_(dict.lookupOrDefault("regularise", true)),
+    triangulate_(dict.lookupOrDefault("triangulate", false)),
     zoneKey_(keyType::null),
     prevTimeIndex_(-1),
     meshCells_(0)

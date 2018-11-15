@@ -65,6 +65,9 @@ class sampledIsoSurfaceTopo
         //- Whether to coarsen
         const Switch regularise_;
 
+        //- Whether to triangulate
+        const Switch triangulate_;
+
         //- If restricted to zones, name of this zone or a regular expression
         keyType zoneKey_;
 

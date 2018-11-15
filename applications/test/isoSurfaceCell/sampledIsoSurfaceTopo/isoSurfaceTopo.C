@@ -838,6 +838,52 @@ Foam::label Foam::isoSurfaceTopo::findMeshEdge
 }
 
 
+void Foam::isoSurfaceTopo::detectFaceEdges
+(
+    const primitivePatch& pp,
+    const labelList& loop,
+    const boolList& pointFromDiag,
+    const labelListList& pointToFace,
+    EdgeMap<label>& vertsToFace
+) const
+{
+    const labelList& mp = pp.meshPoints();
+
+    // Search for mesh edge
+    label edgeFp = findMeshEdge(pointFromDiag, pp, loop, 0);
+
+    if (edgeFp != -1)
+    {
+        label fp = f.fcIndex(edgeFp);
+        for (label i = 0; i < loop.size()-1; i++)
+        {
+            const label pointi = mp[loop[fp]];
+            if (pointFromDiag[pointi])
+            {
+                label facei = pointToFace[pointi][0];
+
+                // Search forwards for next meshFp
+                label nextFp =
+                    findMeshEdge(pointFromDiag, pp, loop, f.fcIndex(fp));
+
+                const edge vertices
+                (
+                    mp[loop[edgeFp]],
+                    mp[loop[nextFp]]
+                );
+                vertsToFaceinsert(vertices, facei);
+            }
+            else
+            {
+                edgeFp = fp;
+            }
+
+            fp = f.fcIndex(fp);
+        }
+    }
+}
+
+
 void Foam::isoSurfaceTopo::filterFace
 (
     const primitivePatch& pp,
@@ -1238,7 +1284,62 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
         // face diagonals)
 
         // from generated edge (two vertices) back to originating face
-        EdgeMap<label> vertsToFace(nCutCells);
+        EdgeMap<label> vertsToFace;
+        // Build map from edge vertices to face
+        if (filter == DIAGCELL)
+        {
+            vertsToFace.resize(nCutCells);
+            const MeshedSurface<face>& s = *this;
+            const pointField& points = s.points();
+            for (label celli = 0; celli < startTri.size()-1; celli++)
+            {
+                // All triangles of the current cell
+                label nTris = startTri[celli+1]-startTri[celli];
+                if (nTris)
+                {
+                    const SubList<face> cellFaces(s, nTris, startTri[celli]);
+                    const primitivePatch pp(cellFaces, points);
+
+                    // Retriangulate the exterior loops
+                    const labelListList& edgeLoops = pp.edgeLoops();
+
+                    forAll(edgeLoops, loopi)
+                    {
+                        const labelList& loop = edgeLoops[loopi];
+                        if (loop.size() > 2)
+                        {
+                            detectFaceEdges
+                            (
+                                pp,
+                                loop,
+                                pointFromDiag,
+                                pointToFace,
+                                vertsToFace
+                            );
+                        }
+                    }
+                }
+            }
+
+            // Now vertsToFace holds pairs of surface points that will
+            // become an edge on a mesh face. Make sure any 
+XXXX Needs indexes of edges on face!!! so we can sync.
+
+
+        }
+
+
+    Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
+    (
+        const bool filterDiag,
+        const MeshedSurface<face>& s,
+        const boolList& pointFromDiag,
+        const labelListList& pointToFace,
+        const labelList& start,                 // per cell the starting triangle
+        EdgeMap<label>& vertsToFace,
+
+
+
         // back to original point
         DynamicList<label> pointCompactMap(points().size());
         // per returned tri the cellID
