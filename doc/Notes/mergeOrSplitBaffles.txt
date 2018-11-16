@@ -1,0 +1,12 @@
+20181116: Henry had problem with
+- createBaffles
+- mergeOrSplitBaffles -split
+- moveMesh
+since it was moving the incorrect points. Problem is already in the
+createBaffles where it was creating the AMI out of randomly oriented
+faceZone (used 'setToFaceZone' instead of 'setsToFaceZone')
+
+checkMesh will report:
+incorrect face normal when matching face XXX to YYY. This is logical
+since AMI is split into two halves - it cannot be expected to decide
+for itself which one to match to which one.
