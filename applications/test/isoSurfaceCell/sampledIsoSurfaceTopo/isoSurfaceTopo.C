@@ -28,6 +28,7 @@ License
 #include "tetMatcher.H"
 #include "tetPointRef.H"
 #include "DynamicField.H"
+#include "syncTools.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -812,6 +813,40 @@ void Foam::isoSurfaceTopo::generateTriPoints
 }
 
 
+Foam::label Foam::isoSurfaceTopo::findEdge
+(
+    const face& f,
+    const edge& e
+) const
+{
+    // Find the starting index of the edge in the face
+    label fp = findIndex(f, e[0]);
+
+    if (fp == -1)
+    {
+        return -1;
+    }
+
+    label nextFp = f.fcIndex(fp);
+    if (f[nextFp] == e[1])
+    {
+        return fp;
+    }
+    else
+    {
+        label prevFp = f.rcIndex(fp);
+        if (f[prevFp] == e[1])
+        {
+            return prevFp;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+}
+
+
 Foam::label Foam::isoSurfaceTopo::findMeshEdge
 (
     const boolList& pointFromDiag,
@@ -854,7 +889,7 @@ void Foam::isoSurfaceTopo::detectFaceEdges
 
     if (edgeFp != -1)
     {
-        label fp = f.fcIndex(edgeFp);
+        label fp = loop.fcIndex(edgeFp);
         for (label i = 0; i < loop.size()-1; i++)
         {
             const label pointi = mp[loop[fp]];
@@ -864,21 +899,21 @@ void Foam::isoSurfaceTopo::detectFaceEdges
 
                 // Search forwards for next meshFp
                 label nextFp =
-                    findMeshEdge(pointFromDiag, pp, loop, f.fcIndex(fp));
+                    findMeshEdge(pointFromDiag, pp, loop, loop.fcIndex(fp));
 
                 const edge vertices
                 (
                     mp[loop[edgeFp]],
                     mp[loop[nextFp]]
                 );
-                vertsToFaceinsert(vertices, facei);
+                vertsToFace.insert(vertices, facei);
             }
             else
             {
                 edgeFp = fp;
             }
 
-            fp = f.fcIndex(fp);
+            fp = loop.fcIndex(fp);
         }
     }
 }
@@ -891,7 +926,7 @@ void Foam::isoSurfaceTopo::filterFace
     const boolList& pointFromDiag,
     const labelListList& pointToFace,
     face& f,
-    EdgeMap<label>& vertsToFace
+    const EdgeMap<label>& vertsToFace
 ) const
 {
     const labelList& mp = pp.meshPoints();
@@ -904,7 +939,6 @@ void Foam::isoSurfaceTopo::filterFace
 
     if (edgeFp == -1)
     {
-        //Pout<< "**TBD." << endl;
         forAll(loop, fp)
         {
             label pointi = mp[loop[fp]];
@@ -927,19 +961,6 @@ void Foam::isoSurfaceTopo::filterFace
                 label nextFp =
                     findMeshEdge(pointFromDiag, pp, loop, f.fcIndex(fp));
 
-//Pout<< "On loop:" << loop
-//    << " fp:" << fp
-//    << " leftFp:" << edgeFp
-//    << " rightFp:" << nextFp
-//    << endl;
-//
-//Pout<< " leftReal:" << mp[loop[edgeFp]]
-//    << " at:" << pp.points()[mp[loop[edgeFp]]]
-//    << " mid:" << pointi << " at:" << pp.points()[pointi]
-//    << " rightReal:" << mp[loop[nextFp]]
-//    << " at:" << pp.points()[mp[loop[nextFp]]]
-//    << endl;
-
                 const edge vertices
                 (
                     mp[loop[edgeFp]],
@@ -951,24 +972,24 @@ void Foam::isoSurfaceTopo::filterFace
                 {
                     if (edgeFnd() != facei)
                     {
-                        //Pout<< "** face:" << facei
-                        //    << " would generate same edge:" << vertices
-                        //    << " at:" << vertices.line(pp.points())
-                        //    << " as face:" << edgeFnd() << endl;
+                        Pout<< "** face:" << facei
+                            << " would generate same edge:" << vertices
+                            << " at:" << vertices.line(pp.points())
+                            << " as face:" << edgeFnd() << endl;
 
                         // Protect i.e. keep point
                         f[fpi++] = pointi;
                     }
                 }
-                else
-                {
-                    // First occurence of vertex pair
-                    vertsToFace.insert(vertices, facei);
-                    //Pout<< "storing edge:" << vertices
-                    //    << " at:" << vertices.line(pp.points())
-                    //    << " generated from face:" << facei
-                    //    << endl;
-                }
+                //else
+                //{
+                //    // First occurence of vertex pair
+                //    vertsToFace.insert(vertices, facei);
+                //    Pout<< "storing edge:" << vertices
+                //        << " at:" << vertices.line(pp.points())
+                //        << " generated from face:" << facei
+                //        << endl;
+                //}
             }
             else
             {
@@ -1004,7 +1025,7 @@ void Foam::isoSurfaceTopo::triangulateOutside
     const labelListList& pointToFace,
     const label cellID,
 
-    EdgeMap<label>& vertsToFace,
+    const EdgeMap<label>& vertsToFace,
     DynamicList<face>& compactFaces,
     DynamicList<label>& compactCellIDs
 ) const
@@ -1050,7 +1071,7 @@ Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
     const boolList& pointFromDiag,
     const labelListList& pointToFace,
     const labelList& start,                 // per cell the starting triangle
-    EdgeMap<label>& vertsToFace,
+    const EdgeMap<label>& vertsToFace,
     DynamicList<label>& pointCompactMap,    // per returned point the original
     DynamicList<label>& compactCellIDs      // per returned tri the cellID
 ) const
@@ -1313,7 +1334,7 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
                                 pp,
                                 loop,
                                 pointFromDiag,
-                                pointToFace,
+                                pointToFace_,
                                 vertsToFace
                             );
                         }
@@ -1322,22 +1343,95 @@ Foam::isoSurfaceTopo::isoSurfaceTopo
             }
 
             // Now vertsToFace holds pairs of surface points that will
-            // become an edge on a mesh face. Make sure any 
-XXXX Needs indexes of edges on face!!! so we can sync.
+            // become an edge on a mesh face. Synchronise.
 
+            const PackedBoolList isCoupledFace
+            (
+                syncTools::getInternalOrCoupledFaces
+                (
+                    mesh_
+                )
+            );
 
+            const label nBnd = mesh_.nFaces()-mesh_.nInternalFaces();
+            labelList faceCuts0(nBnd, -1);
+            labelList faceCuts1(nBnd, -1);
+
+            forAllConstIter(EdgeMap<label>, vertsToFace, iter)
+            {
+                const label facei = iter();
+                if (facei >= mesh_.nInternalFaces() && isCoupledFace[facei])
+                {
+                    // Originating mesh data
+                    const face& f = mesh_.faces()[facei];
+                    const edge& e = iter.key();
+                    const edge& leftE = pointToVerts_[e[0]];
+                    const edge& rightE = pointToVerts_[e[1]];
+
+                    // Re-work cross-face cut into a pair of indices
+                    const label bFacei = facei-mesh_.nInternalFaces();
+                    faceCuts0[bFacei] = findEdge(f, leftE);
+                    faceCuts1[bFacei] = findEdge(f, rightE);
+                }
+            }
+            syncTools::swapBoundaryFaceList(mesh_, faceCuts0);
+            syncTools::swapBoundaryFaceList(mesh_, faceCuts1);
+
+Pout<< "** SWAP **" << endl;
+
+            // Revisit all boundary faces and check compatibility
+            forAllIter(EdgeMap<label>, vertsToFace, iter)
+            {
+                const label facei = iter();
+                if (facei >= mesh_.nInternalFaces() && isCoupledFace[facei])
+                {
+                    // Originating mesh data
+                    const face& f = mesh_.faces()[facei];
+                    const edge& e = iter.key();
+                    const edge& leftE = pointToVerts_[e[0]];
+                    const edge& rightE = pointToVerts_[e[1]];
+
+                    Pout<< "Cross-face cut from face " << facei
+                        << " verts:" << f
+                        << " coords:"
+                        << UIndirectList<point>(mesh_.points(), f)()
+                        << " leftE:" << leftE
+                        << " rightE:" << rightE
+                        << endl;
+
+                    // Re-work cross-face cut into a pair of indices
+                    const edge twoCuts
+                    (
+                        findEdge(f, leftE),
+                        findEdge(f, rightE)
+                    );
+
+                    // Compare against opposite side
+                    const label bFacei = facei-mesh_.nInternalFaces();
+                    const label coupled0 = f.size()-1-faceCuts0[bFacei];
+                    const label coupled1 = f.size()-1-faceCuts1[bFacei];
+
+                    Pout<< "Cross-face cut from face " << facei
+                        << " verts:" << f
+                        << " leftE:" << leftE
+                        << " leftEdgeStart:" << twoCuts[0]
+                        << " rightE:" << rightE
+                        << " rightEdgeStart:" << twoCuts[1]
+                        << endl;
+                    Pout<< "Opposite cut " << faceCuts0[bFacei]
+                        << ' ' << faceCuts1[bFacei]
+                        << " in local indices:" << coupled0
+                        << ' ' << coupled1
+                        << endl;
+
+                    if (edge(coupled0, coupled1) != twoCuts)
+                    {
+                        Pout<< "** diaabling cut on face:" << facei << endl;
+                        iter() = -1;
+                    }
+                }
+            }
         }
-
-
-    Foam::MeshedSurface<Foam::face> Foam::isoSurfaceTopo::removeInsidePoints
-    (
-        const bool filterDiag,
-        const MeshedSurface<face>& s,
-        const boolList& pointFromDiag,
-        const labelListList& pointToFace,
-        const labelList& start,                 // per cell the starting triangle
-        EdgeMap<label>& vertsToFace,
-
 
 
         // back to original point
