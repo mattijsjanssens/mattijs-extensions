@@ -35,35 +35,55 @@ Description
 #include "fvcGrad.H"
 #include "localMin.H"
 #include "localMax.H"
+#include "OBJstream.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-vector maxDistance
-(
-    const boundBox& myBb,
-    const boundBox& otherBb
-)
-{
-    // Check distance in x
-    vector maxDist(cmptMax(myBb.min()-otherBb.min()));
-    maxDist = cmptMax(maxDist, myBb.max()-otherBb.min());
-    maxDist = cmptMax(maxDist, myBb.max()-otherBb.max());
-    maxDist = cmptMax(maxDist, myBb.min()-otherBb.max());
+//vector maxDistance
+//(
+//    const boundBox& myBb,
+//    const boundBox& otherBb
+//)
+//{
+//    // Check distance in x
+//    vector maxDist(cmptMax(myBb.min()-otherBb.min()));
+//    maxDist = cmptMax(maxDist, myBb.max()-otherBb.min());
+//    maxDist = cmptMax(maxDist, myBb.max()-otherBb.max());
+//    maxDist = cmptMax(maxDist, myBb.min()-otherBb.max());
+//
+//    return maxDist;
+//}
 
-    return maxDist;
+
+point furthest(const boundBox& bb, const point& pt)
+{
+    point far;
+    for (direction dir = 0; dir < pTraits<point>::nComponents; dir++)
+    {
+        const scalar s = pt[dir];
+        const scalar min = bb.min()[dir];
+        const scalar max = bb.max()[dir];
+
+        far[dir] = (mag(s-min) > mag(s-max) ? min : max);
+    }
+    return far;
 }
 
 
 bool isCloser
 (
-    const boundBox& procBb,
-    const boundBox& otherBb,
-    boundBox& myBb
+    const boundBox& localBb,
+    const point& localNearest,
+    const point& otherNearest
 )
 {
-    
+    // Get point on bb furthest away
+    const point localFar(furthest(localBb, localNearest));
+    const point otherFar(furthest(localBb, otherNearest));
+
+    return (magSqr(otherFar-otherNearest) < magSqr(localFar-localNearest));
 }
 
 
@@ -75,6 +95,9 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     runTime.functionObjects().off();
     #include "createMesh.H"
+
+    const boundBox localBb(mesh.points(), false);
+
 
     const polyBoundaryMesh& pbm = mesh.boundaryMesh();
 
@@ -92,10 +115,13 @@ int main(int argc, char *argv[])
 
     // Check my local size of patches
     bool havePatch = false;
-    forAllConstIter(patchSet, iter)
+    point nearestWallPoint(vector::uniform(GREAT));
+    forAllConstIter(labelHashSet, patchSet, iter)
     {
-        if (pbm[iter.key()].size())
+        const polyPatch& pp = pbm[iter.key()];
+        if (pp.size())
         {
+            nearestWallPoint = pp.points()[pp[0][0]];
             havePatch = true;
             break;
         }
@@ -103,15 +129,9 @@ int main(int argc, char *argv[])
 
 DebugVar(havePatch);
 
-    boundBox nearestPoint(point::uniform(GREAT), point::uniform(-GREAT));
-    if (havePatch)
-    {
-        nearestPoint = boundBox(mesh.points(), false);
-    }
-
     const labelList& neighbourProcs = mesh.globalData()[Pstream::myProcNo()];
-    List<boundBox> sendBufs(neighbourProcs.size());
-    List<boundBox> recvBufs(neighbourProcs.size());
+    pointField sendBufs(neighbourProcs.size());
+    pointField recvBufs(neighbourProcs.size());
 
     while (true)
     {
@@ -124,39 +144,39 @@ DebugVar(havePatch);
                 (
                     UPstream::commsTypes::nonBlocking,
                     neighbourProcs[i],
-                    reinterpret_cast<char*>(recvBufs[i].begin()),
-                    sizeof(boundBox)
+                    reinterpret_cast<char*>(&recvBufs[i]),
+                    sizeof(point)
                 );
             }
-            sendBufs = nearestPoint;
+            sendBufs = nearestWallPoint;
             forAll(neighbourProcs, i)
             {
                 UOPstream::write
                 (
                     UPstream::commsTypes::nonBlocking,
                     neighbourProcs[i],
-                    reinterpret_cast<const char*>(sendBufs[i].begin()),
-                    sizeof(boundBox)
+                    reinterpret_cast<const char*>(&sendBufs[i]),
+                    sizeof(point)
                 );
             }
             Pstream::waitRequests(startOfRequests);
         }
 
-        Pout<< "My data:" << nearestPoint << nl
+        Pout<< "My data:" << nearestWallPoint << nl
             << "Received:" << recvBufs << endl;
 
         // Check if any processor is nearer
         bool changed = false;
         forAll(recvBufs, i)
         {
-            // Check if boundBox from neighbour processor is guaranteed nearer
-            if (isCloser(nearestPoint, recvBufs[i]))
+            // Check if wallPoint from neighbour processor is guaranteed nearer
+            if (isCloser(localBb, nearestWallPoint, recvBufs[i]))
             {
-                Pout<< "BB from processor:" << neighbourProcs[i]
-                    << " bb:" << recvBufs[i]
-                    << " is closer than:" << nearestPoint
+                Pout<< "Data from processor:" << neighbourProcs[i]
+                    << " point:" << recvBufs[i]
+                    << " is closer than:" << nearestWallPoint
                     << endl;
-                nearestPoint = recvBufs[i];
+                nearestWallPoint = recvBufs[i];
                 changed = true;
             }
         }
@@ -169,146 +189,63 @@ DebugVar(havePatch);
 
 
 
+    pointField allNearest(Pstream::nProcs());
+    allNearest[Pstream::myProcNo()] = nearestWallPoint;
+    Pstream::gatherList(allNearest);
 
-
-
-
-    // Load the wall distance field
-    Info<< "Reading field alpha.water\n" << endl;
-    volScalarField yWall
-    (
-        IOobject
-        (
-            "yWall",
-            runTime.timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh
-    );
-
-
-    // Find locations where the gradient is too low.
-    volScalarField magGrad("magGrad", mag(fvc::grad(yWall)));
-    magGrad.write();
-
-    surfaceScalarField maxYWall(localMax<scalar>(mesh).interpolate(yWall));
-
-    surfaceScalarField maxGrad
-    (
-        "maxGrad",
-        localMax<scalar>(mesh).interpolate(magGrad)
-    );
-    surfaceScalarField minGrad
-    (
-        "minGrad",
-        localMin<scalar>(mesh).interpolate(magGrad)
-    );
-
-    // Start of changes
-    DynamicList<label> seedFaces(mesh.nFaces());
-    DynamicList<wallPointData<scalar>> seedData(mesh.nFaces());
-
-    // Field on cells and faces.
-    List<wallPointData<scalar>> cellData(mesh.nCells());
-    List<wallPointData<scalar>> faceData(mesh.nFaces());
-
-    // Start of changes
-    forAll(maxGrad, facei)
+    List<boundBox> allBb(Pstream::nProcs());
+    allBb[Pstream::myProcNo()] = localBb;
+    Pstream::gatherList(allBb);
+    if (Pstream::master())
     {
-        if (maxGrad[facei] > 0.5 && minGrad[facei] < 0.5)
+        OBJstream str("nearest.obj");
+        forAll(allBb, proci)
         {
-            seedFaces.append(facei);
-            seedData.append
-            (
-                wallPointData<scalar>
-                (
-                    mesh.Cf()[facei],
-                    maxYWall[facei],
-                    0.0
-                )
-            );
-        }
-    }
-    forAll(maxGrad.boundaryField(), patchi)
-    {
-        const fvsPatchScalarField& pMax = maxGrad.boundaryField()[patchi];
-        const fvsPatchScalarField& pMin = minGrad.boundaryField()[patchi];
-        const fvsPatchScalarField& pYWall = maxYWall.boundaryField()[patchi];
-        forAll(pMax, i)
-        {
-            if (pMax[i] > 0.5 && pMin[i] < 0.5)
-            {
-                label facei = pMax.patch().start()+i;
-                seedFaces.append(facei);
-                seedData.append
-                (
-                    wallPointData<scalar>
-                    (
-                        mesh.Cf().boundaryField()[patchi][i],
-                        pYWall[i],
-                        0
-                    )
-                );
-            }
+            str.write(linePointRef(allBb[proci].midpoint(), allNearest[proci]));
         }
     }
 
-DebugVar(seedFaces);
-
-
-    // Propagate information inwards
-    FaceCellWave<wallPointData<scalar>> deltaCalc
-    (
-        mesh,
-        seedFaces,
-        seedData,
-        faceData,
-        cellData,
-        mesh.globalData().nTotalCells()+1
-    );
-
-    volScalarField fld
-    (
-        IOobject
-        (
-            "interfaceHeight",
-            mesh.time().timeName(),
-            mesh,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE,
-            false
-        ),
-        mesh,
-        dimensionedScalar("large", dimless, mesh.globalData().nTotalCells()+1)
-    );
-    forAll(cellData, celli)
-    {
-        if (cellData[celli].valid(deltaCalc.data()))
-        {
-            fld[celli] = cellData[celli].data();
-        }
-    }
-    forAll(fld.boundaryFieldRef(), patchi)
-    {
-        fvPatchScalarField& fvp = fld.boundaryFieldRef()[patchi];
-        scalarField patchVals(fvp.size(), 0.0);
-
-        forAll(patchVals, i)
-        {
-            label facei = fvp.patch().start()+i;
-            if (faceData[facei].valid(deltaCalc.data()))
-            {
-                patchVals[i] = faceData[facei].data();
-            }
-        }
-
-        fvp == patchVals;
-    }
-
-    Info<< "Writing " << fld.name() << " with interfaceHeight" << endl;
-    fld.write();
+//
+//    volScalarField fld
+//    (
+//        IOobject
+//        (
+//            "interfaceHeight",
+//            mesh.time().timeName(),
+//            mesh,
+//            IOobject::NO_READ,
+//            IOobject::AUTO_WRITE,
+//            false
+//        ),
+//        mesh,
+//        dimensionedScalar("large", dimless, mesh.globalData().nTotalCells()+1)
+//    );
+//    forAll(cellData, celli)
+//    {
+//        if (cellData[celli].valid(deltaCalc.data()))
+//        {
+//            fld[celli] = cellData[celli].data();
+//        }
+//    }
+//    forAll(fld.boundaryFieldRef(), patchi)
+//    {
+//        fvPatchScalarField& fvp = fld.boundaryFieldRef()[patchi];
+//        scalarField patchVals(fvp.size(), 0.0);
+//
+//        forAll(patchVals, i)
+//        {
+//            label facei = fvp.patch().start()+i;
+//            if (faceData[facei].valid(deltaCalc.data()))
+//            {
+//                patchVals[i] = faceData[facei].data();
+//            }
+//        }
+//
+//        fvp == patchVals;
+//    }
+//
+//    Info<< "Writing " << fld.name() << " with interfaceHeight" << endl;
+//    fld.write();
 
     Info<< "End\n" << endl;
 
