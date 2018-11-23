@@ -1,0 +1,37 @@
+snappyHexMesh.C
+triSurfaceMesh.C
+subsetTriSurfaceMesh.C
+
+
+shm = snappyHexMesh
+$(shm)/snappyHexMeshDriver/snappyLayerDriver.C
+/* snappyHexMeshDriver/snappyLayerDriverShrink.C */
+$(shm)/snappyHexMeshDriver/snappySnapDriver.C
+$(shm)/snappyHexMeshDriver/snappySnapDriverFeature.C
+$(shm)/snappyHexMeshDriver/snappyRefineDriver.C
+
+$(shm)/snappyHexMeshDriver/layerParameters/layerParameters.C
+$(shm)/snappyHexMeshDriver/refinementParameters/refinementParameters.C
+$(shm)/snappyHexMeshDriver/snapParameters/snapParameters.C
+$(shm)/snappyHexMeshDriver/pointData/pointData.C
+
+$(shm)/meshRefinement/meshRefinementBaffles.C
+$(shm)/meshRefinement/meshRefinement.C
+$(shm)/meshRefinement/meshRefinementMerge.C
+$(shm)/meshRefinement/meshRefinementProblemCells.C
+$(shm)/meshRefinement/meshRefinementRefine.C
+$(shm)/meshRefinement/patchFaceOrientation.C
+
+$(shm)/refinementFeatures/refinementFeatures.C
+$(shm)/refinementSurfaces/surfaceZonesInfo.C
+$(shm)/refinementSurfaces/refinementSurfaces.C
+$(shm)/shellSurfaces/shellSurfaces.C
+$(shm)/trackedParticle/trackedParticle.C
+$(shm)/trackedParticle/trackedParticleCloud.C
+
+$(shm)/externalDisplacementMeshMover/displacementMeshMoverMotionSolver.C
+$(shm)/externalDisplacementMeshMover/externalDisplacementMeshMover.C
+$(shm)/externalDisplacementMeshMover/medialAxisMeshMover.C
+$(shm)/externalDisplacementMeshMover/zeroFixedValue/zeroFixedValuePointPatchFields.C
+
+EXE = $(FOAM_USER_APPBIN)/snappyHexMesh_with_proximity
