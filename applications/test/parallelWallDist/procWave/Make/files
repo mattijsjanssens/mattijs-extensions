@@ -1,0 +1,4 @@
+procWavePatchDistMethod.C
+segregatedMeshWavePatchDistMethod.C
+
+LIB = $(FOAM_LIBBIN)/libprocWave
