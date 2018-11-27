@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
     const label bufferSize = 1000000000;
     OFstreamWriter controller(bufferSize);
 
+    OFstreamWriter::debug = 1;
+
     threadedOFstream os(controller, "bigList", IOstream::BINARY);
     os << bigList;
 

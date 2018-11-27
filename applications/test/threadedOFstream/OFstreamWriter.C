@@ -76,12 +76,13 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
     {
         writeData* ptr = nullptr;
 
-        lockMutex(handler.mutex_);
-        if (handler.objects_.size())
         {
-            ptr = handler.objects_.pop();
+            std::lock_guard<std::mutex> guard(handler.mutex_);
+            if (handler.objects_.size())
+            {
+                ptr = handler.objects_.pop();
+            }
         }
-        unlockMutex(handler.mutex_);
 
         if (!ptr)
         {
@@ -115,9 +116,10 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
         Pout<< "OFstreamWriter : Exiting write thread " << endl;
     }
 
-    lockMutex(handler.mutex_);
-    handler.threadRunning_ = false;
-    unlockMutex(handler.mutex_);
+    {
+        std::lock_guard<std::mutex> guard(handler.mutex_);
+        handler.threadRunning_ = false;
+    }
 
     return nullptr;
 }
@@ -128,18 +130,6 @@ void* Foam::OFstreamWriter::writeAll(void *threadarg)
 Foam::OFstreamWriter::OFstreamWriter(const off_t maxBufferSize)
 :
     maxBufferSize_(maxBufferSize),
-    mutex_
-    (
-        maxBufferSize_ > 0
-      ? allocateMutex()
-      : -1
-    ),
-    thread_
-    (
-        maxBufferSize_ > 0
-      ? allocateThread()
-      : -1
-    ),
     threadRunning_(false)
 {}
 
@@ -148,21 +138,14 @@ Foam::OFstreamWriter::OFstreamWriter(const off_t maxBufferSize)
 
 Foam::OFstreamWriter::~OFstreamWriter()
 {
-    if (threadRunning_)
+    if (thread_.valid())
     {
         if (debug)
         {
-            Pout<< "OFstreamWriter : Waiting for write thread" << endl;
+            Pout<< "~OFstreamWriter : Waiting for write thread" << endl;
         }
-        joinThread(thread_);
-    }
-    if (thread_ != -1)
-    {
-        freeThread(thread_);
-    }
-    if (mutex_ != -1)
-    {
-        freeMutex(mutex_);
+        thread_().join();
+        thread_.clear();
     }
 }
 
@@ -186,12 +169,13 @@ bool Foam::OFstreamWriter::write
             // Count files to be written
             off_t totalSize = 0;
 
-            lockMutex(mutex_);
-            forAllConstIter(FIFOStack<writeData*>, objects_, iter)
             {
-                totalSize += iter()->data_.size();
+                std::lock_guard<std::mutex> guard(mutex_);
+                forAllConstIter(FIFOStack<writeData*>, objects_, iter)
+                {
+                    totalSize += iter()->data_.size();
+                }
             }
-            unlockMutex(mutex_);
 
             if
             (
@@ -204,33 +188,50 @@ bool Foam::OFstreamWriter::write
 
             if (debug)
             {
-                lockMutex(mutex_);
+                std::lock_guard<std::mutex> guard(mutex_);
                 Pout<< "OFstreamWriter : Waiting for buffer space."
                     << " Currently in use:" << totalSize
                     << " limit:" << maxBufferSize_
                     << " files:" << objects_.size()
                     << endl;
-                unlockMutex(mutex_);
             }
 
             sleep(5);
         }
 
-        lockMutex(mutex_);
-        objects_.push(new writeData(fName, data, fmt, ver, cmp, append));
-        unlockMutex(mutex_);
+        autoPtr<writeData> fileAndDataPtr
+        (
+            new writeData(fName, data, fmt, ver, cmp, append)
+        );
 
-        lockMutex(mutex_);
-        if (!threadRunning_)
         {
-            createThread(thread_, writeAll, this);
-            if (debug)
+            std::lock_guard<std::mutex> guard(mutex_);
+
+            // Append to thread buffer
+            objects_.push(fileAndDataPtr.ptr());
+
+            // Start thread if not running
+            if (!threadRunning_)
             {
-                Pout<< "OFstreamWriter : Started write thread " << endl;
+                if (thread_.valid())
+                {
+                    if (debug)
+                    {
+                        Pout<< "OFstreamWriter : Waiting for write thread"
+                            << endl;
+                    }
+                    thread_().join();
+                }
+
+                if (debug)
+                {
+                    Pout<< "OFstreamWriter : Starting write thread"
+                        << endl;
+                }
+                thread_.reset(new std::thread(writeAll, this));
+                threadRunning_ = true;
             }
-            threadRunning_ = true;
         }
-        unlockMutex(mutex_);
 
         return true;
     }
