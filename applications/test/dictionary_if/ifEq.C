@@ -45,65 +45,32 @@ namespace functionEntries
         dictionaryIstream,
         ifEq
     );
-
-    addNamedToMemberFunctionSelectionTable
-    (
-        functionEntry,
-        ifEq,
-        execute,
-        primitiveEntryIstream,
-        ifEq
-    );
 }
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-bool Foam::functionEntries::ifEq::execute
-(
-    const dictionary& parentDict,
-    primitiveEntry& entry,
-    Istream& is
-)
+void Foam::functionEntries::ifEq::readToken(token& t, Istream& is)
 {
-    Info
-        << "Using #ifEq at line " << is.lineNumber()
-        << " in file " <<  parentDict.name() << endl;
-
-    const word bla1(is);
-    const word bla2(is);
-
-//    if (bla1 == bla2)
-//    {
-//        while
-//        (
-//            !is.eof()
-//         && entry::New(*this, is)
-//        )
-//        {}
-//
-//
-//
-//    // get code dictionary
-//    // must reference parent for stringOps::expand to work nicely
-//    dictionary codeDict("#ifEq", parentDict, is);
-//
-////    streamingFunctionType function = getFunction(parentDict, codeDict);
-////
-////    // use function to write stream
-////    OStringStream os(is.format());
-////    (*function)(os, parentDict);
-////
-////    // get the entry from this stream
-////    IStringStream resultStream(os.str());
-////    entry.read(parentDict, resultStream);
-
-    return true;
+    // Skip dummy tokens - avoids entry::getKeyword consuming #else, #endif
+    do
+    {
+        if
+        (
+            is.read(t).bad()
+         || is.eof()
+         || !t.good()
+        )
+        {
+            return;
+        }
+    }
+    while (t == token::END_STATEMENT);
 }
 
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 bool Foam::functionEntries::ifEq::execute
 (
@@ -111,39 +78,87 @@ bool Foam::functionEntries::ifEq::execute
     Istream& is
 )
 {
-    Info
-        << "Using #ifEq at line " << is.lineNumber()
-        << " in file " <<  parentDict.name() << endl;
+    const token cond1(is);
+    const token cond2(is);
 
-    const word bla1(is);
-DebugVar(bla1);
-    const word bla2(is);
-DebugVar(bla2);
-
-    //const dictionary currentState(parentDict);
-
-    if (bla1 == bla2)
+    if (cond1 == cond2)
     {
+        const label start = is.lineNumber();
+
+        Info
+            << "Starting #" << typeName << " at line " << start
+            << " in file " <<  parentDict.name() << endl;
+
         while (!is.eof())
         {
-            autoPtr<entry> ePtr = entry::New(is);
-DebugVar(is.info());
-            if (ePtr.valid())
+            token t;
+            readToken(t, is);
+            if (t.isWord() && t.wordToken() == "#else")
             {
-                if (ePtr().isStream())
+                const label line = is.lineNumber();
+
+                // Now skip until #endif
+                while (!is.eof())
                 {
-                    token t(ePtr().stream());
-Pout<< "Have stream:" << t << endl;
-                    if (t.isWord() && t.wordToken() == "#else")
+                    token t;
+                    readToken(t, is);
+                    if (t.isWord() && t.wordToken() == "#endif")
                     {
-                        return true;
+                        Info
+                            << "Skipped #else from line " << line
+                            << " to " << is.lineNumber()
+                            << " in file " <<  parentDict.name() << endl;
+                        break;
                     }
                 }
-                else
-                {
-Pout<< "Have dictionary:" << ePtr().dict() << endl;
-                }
-                parentDict.add(ePtr());
+                break;
+            }
+            is.putBack(t);
+
+            bool ok = entry::New(parentDict, is);
+            if (!ok)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        // Fast-forward to #else
+        while (!is.eof())
+        {
+            token t;
+            readToken(t, is);
+            if (t.isWord() && t.wordToken() == "#else")
+            {
+                break;
+            }
+        }
+
+        const label line = is.lineNumber();
+        Info
+            << "Starting #else at line " << line
+            << " in file " <<  parentDict.name() << endl;
+
+        // Parse until #endif
+        while (!is.eof())
+        {
+            token t;
+            readToken(t, is);
+            if (t.isWord() && t.wordToken() == "#endif")
+            {
+                Info
+                    << "Finished #else from line " << line
+                    << " to " << is.lineNumber()
+                    << " in file " <<  parentDict.name() << endl;
+                break;
+            }
+            is.putBack(t);
+
+            bool ok = entry::New(parentDict, is);
+            if (!ok)
+            {
+                break;
             }
         }
     }

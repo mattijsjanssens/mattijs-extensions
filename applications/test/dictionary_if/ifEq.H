@@ -56,12 +56,9 @@ class ifEq
 :
     public functionEntry
 {
-
-        //- Interpreter function type
-        typedef void (*streamingFunctionType)(Ostream&, const dictionary&);
-
-
     // Private Member Functions
+
+        static void readToken(token& t, Istream& is);
 
         //- No copy construct
         ifEq(const ifEq&) = delete;
@@ -81,13 +78,13 @@ public:
         //- Execute the functionEntry in a sub-dict context
         static bool execute(dictionary& parentDict, Istream& is);
 
-        //- Execute the functionEntry in a primitiveEntry context
-        static bool execute
-        (
-            const dictionary& parentDict,
-            primitiveEntry& entry,
-            Istream& is
-        );
+//         //- Execute the functionEntry in a primitiveEntry context
+//         static bool execute
+//         (
+//             const dictionary& parentDict,
+//             primitiveEntry& entry,
+//             Istream& is
+//         );
 };
 
 

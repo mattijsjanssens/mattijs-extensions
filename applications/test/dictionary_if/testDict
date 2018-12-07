@@ -1,17 +1,20 @@
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-AAA cdcc;
+a 10;
+b 10;
 
-#ifEq DDD DDD
-
-INSIDEIF true;
-
+BEFORE if;
+#ifEq $a $b
+    INSIDEIF true;
 #else
 
 INSIDEELSE true;
+;;
 
 #endif
 
+;;
 AFTERENDIF true;
+;;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
