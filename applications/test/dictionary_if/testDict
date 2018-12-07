@@ -1,20 +1,22 @@
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-a 10;
-b 10;
+a #calc "0.123";
 
-BEFORE if;
-#ifEq $a $b
+//a 0.123;
+b 1.23e-1;
+c cVal;
+
+#if $a $b
     INSIDEIF true;
+//    #if $c "cVal"
+//        INSIDEIF2 0;
+//    #endif
 #else
-
-INSIDEELSE true;
-;;
-
+    INSIDEELSE true;
+    #if $c "cVal"
+        INSIDEIF3 0;
+    #endif
 #endif
-
-;;
 AFTERENDIF true;
-;;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

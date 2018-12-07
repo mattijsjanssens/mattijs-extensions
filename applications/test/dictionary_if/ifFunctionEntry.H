@@ -31,8 +31,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef ifEq_H
-#define ifEq_H
+#ifndef ifFunctionEntry_H
+#define ifFunctionEntry_H
 
 #include "functionEntry.H"
 
@@ -40,51 +40,53 @@ SourceFiles
 
 namespace Foam
 {
-class dlLibraryTable;
-
 namespace functionEntries
 {
 
-// Forward declaration of friend classes
-class calcEntry;
-
 /*---------------------------------------------------------------------------*\
-                         Class ifEq Declaration
+                       Class ifFunctionEntry Declaration
 \*---------------------------------------------------------------------------*/
 
-class ifEq
+class ifFunctionEntry
 :
     public functionEntry
 {
     // Private Member Functions
 
+        //- Read tokens. Skip dummy tokens
         static void readToken(token& t, Istream& is);
 
+        //- In-place expand a string
+        static void expand
+        (
+            const dictionary& dict,
+            string& keyword
+        );
+
+        //- In-place expand a string or word token
+        static void expand
+        (
+            const dictionary& dict,
+            token& t
+        );
+
         //- No copy construct
-        ifEq(const ifEq&) = delete;
+        ifFunctionEntry(const ifFunctionEntry&) = delete;
 
         //- No copy assignment
-        void operator=(const ifEq&) = delete;
+        void operator=(const ifFunctionEntry&) = delete;
 
 
 public:
 
     //- Runtime type information
-    ClassName("ifEq");
+    ClassName("if");
 
 
     // Member Functions
 
         //- Execute the functionEntry in a sub-dict context
         static bool execute(dictionary& parentDict, Istream& is);
-
-//         //- Execute the functionEntry in a primitiveEntry context
-//         static bool execute
-//         (
-//             const dictionary& parentDict,
-//             primitiveEntry& entry,
-//             Istream& is
-//         );
 };
 
 
