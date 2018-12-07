@@ -41,6 +41,7 @@ https://www.boost.org/doc/libs/1_47_0/libs/conversion/lexical_cast.htm#tuning
 
 \*---------------------------------------------------------------------------*/
 
+#include "OStringStream.H"
 #include "UList.H"
 #include "List.H"
 #include "fvMesh.H"
@@ -51,7 +52,7 @@ https://www.boost.org/doc/libs/1_47_0/libs/conversion/lexical_cast.htm#tuning
 #include "IFstream.H"
 #include "Random.H"
 #include "IOmanip.H"
-#include <boost/lexical_cast.hpp>
+//#include <boost/lexical_cast.hpp>
 
 using namespace Foam;
 
@@ -309,7 +310,7 @@ int main(int argc, char *argv[])
     scalarField fld(10000000);
     forAll(fld, i)
     {
-        fld[i] = pow(10, 10*rndGen.scalar01());
+        fld[i] = 1/rndGen.scalar01();   //pow(10, 10*rndGen.scalar01());
     }
     vectorField vfld(4000000);
     forAll(vfld, i)
@@ -322,9 +323,24 @@ int main(int argc, char *argv[])
 
     {
         OFstream os("scalars_foam.txt");
+        os << nl << fld.size() << nl << token::BEGIN_LIST;
+        // Write contents
+        forAll(fld, i)
+        {
+            os << nl << fld[i];
+        }
+        // Write end delimiter
+        os << nl << token::END_LIST << nl;
+
+    }
+    Pout<< "Written original OpenFOAM " << fld.size() << " in "
+        << timer.cpuTimeIncrement()
+        << endl;
+    {
+        OFstream os("scalars_optimised_foam.txt");
         os << fld << endl;
     }
-    Pout<< "Written OpenFOAM " << fld.size() << " in "
+    Pout<< "Written optimised OpenFOAM " << fld.size() << " in "
         << timer.cpuTimeIncrement()
         << endl;
 
@@ -450,16 +466,16 @@ int main(int argc, char *argv[])
 
 
 
-//- OStringStream is slower (7s vs. 4s)
-//    {
-//        OStringStream buf;
-//        buf << fld << endl;
-//        OFstream os("scalars_foam.txt");
-//        os << buf.str() << endl;
-//    }
-//    Pout<< "Written buffered OpenFOAM " << fld.size() << " in "
-//        << timer.cpuTimeIncrement()
-//        << endl;
+    //- OStringStream is slower (7s vs. 4s)
+    {
+        OStringStream buf(100000000);
+        buf << fld << endl;
+        OFstream os("scalars_buffered_foam.txt");
+        os << buf.str() << endl;
+    }
+    Pout<< "Written buffered OpenFOAM " << fld.size() << " in "
+        << timer.cpuTimeIncrement()
+        << endl;
 
     {
         FILE* fp = fopen("scalars_c.txt", "w");
