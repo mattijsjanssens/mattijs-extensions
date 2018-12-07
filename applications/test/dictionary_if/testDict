@@ -1,0 +1,17 @@
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+AAA cdcc;
+
+#ifEq DDD DDD
+
+INSIDEIF true;
+
+#else
+
+INSIDEELSE true;
+
+#endif
+
+AFTERENDIF true;
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
