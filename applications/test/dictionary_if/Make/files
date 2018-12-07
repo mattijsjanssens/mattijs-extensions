@@ -1,4 +1,5 @@
-ifFunctionEntry.C
+ifEntry.C
+ifeqEntry.C
 Test-dictionary_if.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-dictionary_if

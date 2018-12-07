@@ -22,19 +22,31 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::functionEntries::ifEq
+    Foam::functionEntries::if
 
 Description
+    Conditional parsing of dictionary entries.
+
+    E.g.
+    \verbatim
+        U_inlet 15;
+
+        #if #calc "${U_inlet} < 10"
+            ..
+        #else
+            ..
+        #endif
+    \endverbatim
 
 SourceFiles
-    ifEq.C
+    ifEntry.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef ifFunctionEntry_H
-#define ifFunctionEntry_H
+#ifndef ifEntry_H
+#define ifEntry_H
 
-#include "functionEntry.H"
+#include "ifeqEntry.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -44,52 +56,28 @@ namespace functionEntries
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class ifFunctionEntry Declaration
+                          Class ifEntry Declaration
 \*---------------------------------------------------------------------------*/
 
-class ifFunctionEntry
+class ifEntry
 :
-    public functionEntry
+    public ifeqEntry
 {
+private:
+
     // Private Member Functions
 
-        //- Read tokens. Skip dummy tokens
-        static void readToken(token& t, Istream& is);
-
-        //- In-place expand a string
-        static void expand
-        (
-            const dictionary& dict,
-            string& keyword
-        );
-
-        //- In-place expand a string or word token
-        static void expand
-        (
-            const dictionary& dict,
-            token& t
-        );
-
-        //- Consume tokens until reached a specific word
-        static void skipUntil
-        (
-            const dictionary& parentDict,
-            const word& endWord,
-            Istream& is
-        );
-
         //- No copy construct
-        ifFunctionEntry(const ifFunctionEntry&) = delete;
+        ifEntry(const ifEntry&) = delete;
 
         //- No copy assignment
-        void operator=(const ifFunctionEntry&) = delete;
+        void operator=(const ifEntry&) = delete;
 
 
 public:
 
     //- Runtime type information
     ClassName("if");
-
 
     // Member Functions
 
