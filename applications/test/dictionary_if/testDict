@@ -8,9 +8,9 @@ c cVal;
 
 #if $a $b
     INSIDEIF true;
-//    #if $c "cVal"
-//        INSIDEIF2 0;
-//    #endif
+    #if $c "cVal"
+        INSIDEIF2 0;
+    #endif
 #else
     INSIDEELSE true;
     #if $c "cVal"

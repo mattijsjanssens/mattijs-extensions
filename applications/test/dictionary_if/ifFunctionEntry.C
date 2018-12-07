@@ -106,6 +106,35 @@ void Foam::functionEntries::ifFunctionEntry::expand
 }
 
 
+void Foam::functionEntries::ifFunctionEntry::skipUntil
+(
+    const dictionary& parentDict,
+    const word& endWord,
+    Istream& is
+)
+{
+    while (!is.eof())
+    {
+        token t;
+        readToken(t, is);
+        if (t.isWord())
+        {
+            if (t.wordToken() == "#if")
+            {
+                skipUntil(parentDict, "#endif", is);
+            }
+            else if (t.wordToken() == endWord)
+            {
+                return;
+            }
+        }
+    }
+
+    FatalIOErrorInFunction(parentDict)
+        << "Did not find #endif" << exit(FatalIOError);
+}
+
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 bool Foam::functionEntries::ifFunctionEntry::execute
@@ -138,7 +167,12 @@ bool Foam::functionEntries::ifFunctionEntry::execute
         {
             token t;
             readToken(t, is);
-            if
+            if (t.isWord() && t.wordToken() == "#if")
+            {
+                // Evaluate
+                execute(parentDict, is);
+            }
+            else if
             (
                 t.isWord()
              && (t.wordToken() == "#else" || t.wordToken() == "#endif")
@@ -147,24 +181,18 @@ bool Foam::functionEntries::ifFunctionEntry::execute
                 if (t.wordToken() == "#else")
                 {
                     // Now skip until #endif
-                    while (!is.eof())
-                    {
-                        token t;
-                        readToken(t, is);
-                        if (t.isWord() && t.wordToken() == "#endif")
-                        {
-                            break;
-                        }
-                    }
+                    skipUntil(parentDict, "#endif", is);
                 }
                 break;
             }
-            is.putBack(t);
-
-            bool ok = entry::New(parentDict, is);
-            if (!ok)
+            else
             {
-                break;
+                is.putBack(t);
+                bool ok = entry::New(parentDict, is);
+                if (!ok)
+                {
+                    break;
+                }
             }
         }
     }
@@ -181,7 +209,11 @@ bool Foam::functionEntries::ifFunctionEntry::execute
         while (!is.eof())
         {
             readToken(t, is);
-            if
+            if (t.isWord() && t.wordToken() == "#if")
+            {
+                skipUntil(parentDict, "#endif", is);
+            }
+            else if
             (
                 t.isWord()
              && (t.wordToken() == "#else" || t.wordToken() == "#endif")
@@ -193,29 +225,29 @@ bool Foam::functionEntries::ifFunctionEntry::execute
 
         if (t.wordToken() == "#else")
         {
-            //Info
-            //    << "Starting #else at line " << line
-            //    << " in file " <<  parentDict.name() << endl;
-
-            // Parse until #endif
+            // Evaluate until #endif
             while (!is.eof())
             {
                 token t;
                 readToken(t, is);
-                if (t.isWord() && t.wordToken() == "#endif")
+                if (t.isWord() && t.wordToken() == "#if")
                 {
-                    //Info
-                    //    << "Finished #else from line " << line
-                    //    << " to " << is.lineNumber()
-                    //    << " in file " <<  parentDict.name() << endl;
+                    // Evaluate
+                    execute(parentDict, is);
+                }
+                else if (t.isWord() && t.wordToken() == "#endif")
+                {
                     break;
                 }
-                is.putBack(t);
-
-                bool ok = entry::New(parentDict, is);
-                if (!ok)
+                else
                 {
-                    break;
+                    is.putBack(t);
+
+                    bool ok = entry::New(parentDict, is);
+                    if (!ok)
+                    {
+                        break;
+                    }
                 }
             }
         }

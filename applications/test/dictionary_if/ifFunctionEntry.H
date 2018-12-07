@@ -70,6 +70,14 @@ class ifFunctionEntry
             token& t
         );
 
+        //- Consume tokens until reached a specific word
+        static void skipUntil
+        (
+            const dictionary& parentDict,
+            const word& endWord,
+            Istream& is
+        );
+
         //- No copy construct
         ifFunctionEntry(const ifFunctionEntry&) = delete;
 
