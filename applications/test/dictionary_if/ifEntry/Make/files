@@ -1,0 +1,5 @@
+ifEntry.C
+ifeqEntry.C
+
+
+LIB = $(FOAM_USER_LIBBIN)/libifEntry

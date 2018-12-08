@@ -1,1 +1,6 @@
-EXE_INC = -DFULLDEBUG -g -O0
+EXE_INC = \
+    -DFULLDEBUG -g -O0 \
+    -IifEntry
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) -lifEntry

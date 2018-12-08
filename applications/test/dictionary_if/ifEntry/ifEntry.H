@@ -38,6 +38,14 @@ Description
         #endif
     \endverbatim
 
+    Note:
+    - only supports single line - no '\' is supported
+    - condition should be readable as a Switch (supports 0,1, true, false, etc.)
+
+See also
+    Foam::functionEntries::ifeq
+    Foam::Switch
+
 SourceFiles
     ifEntry.C
 

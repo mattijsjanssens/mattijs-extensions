@@ -39,6 +39,25 @@ Description
         #endif
     \endverbatim
 
+    \verbatim
+    ddtSchemes
+    {
+    #ifeq ${FOAM_APPLICATION} simpleFoam
+        default         steadyState;
+    #else
+        default         Euler;
+    #endif
+    }
+    \endverbatim
+
+    Note:
+    - supports dictionary variables and environment variables
+    - the two arguments should be two tokens
+    - the comparison is a string comparison for any word/string/variable,
+      integer comparison for two integers and floating point comparison for
+      any floating point number.
+    - parsing of (non)matching #else, #endif is not very sophisticated
+
 See also
     Foam::functionEntries::if
 
@@ -74,19 +93,25 @@ protected:
         //- Read tokens. Skip dummy tokens
         static void readToken(token& t, Istream& is);
 
-        //- In-place expand a variable (string/word/var starting with '$')
-        static void expand
+        //- Expand a variable (string/word/var starting with '$')
+        static token expand
         (
             const dictionary& dict,
-            string& keyword,
-            token& t
+            const string& keyword,
+            const token& t
         );
 
-        //- In-place expand a string or word token
-        static void expand
+        //- Expand a string/word/var token
+        static token expand
         (
             const dictionary& dict,
-            token& t
+            const token& t
+        );
+
+        static bool equalToken
+        (
+            const token& t1,
+            const token& t2
         );
 
         //- Consume tokens until reached a specific word
@@ -94,6 +119,14 @@ protected:
         (
             const dictionary& parentDict,
             const word& endWord,
+            Istream& is
+        );
+
+        static bool evaluate
+        (
+            const bool doIf,
+            const label start,
+            dictionary& parentDict,
             Istream& is
         );
 

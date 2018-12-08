@@ -5,8 +5,16 @@ b 1.23e-1;
 
 #ifeq $a $b
     INSIDEIF true;
+    somedict
+    {
+        INSIDEIF a;
+    }
 #else
     INSIDEELSE true;
+    somedict
+    {
+        INSIDEELSE a;
+    }
 #endif
 AFTERENDIF true;
 

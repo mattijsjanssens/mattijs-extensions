@@ -71,11 +71,11 @@ void Foam::functionEntries::ifeqEntry::readToken(token& t, Istream& is)
 }
 
 
-void Foam::functionEntries::ifeqEntry::expand
+Foam::token Foam::functionEntries::ifeqEntry::expand
 (
     const dictionary& dict,
-    string& keyword,
-    token& t
+    const string& keyword,
+    const token& t
 )
 {
     if (keyword[0] == '$')
@@ -91,42 +91,167 @@ void Foam::functionEntries::ifeqEntry::expand
         );
         if (ePtr)
         {
-            t = token(ePtr->stream());
+            return token(ePtr->stream());
         }
         else
         {
             // String expansion
-            stringOps::inplaceExpand(keyword, dict, true, false);
+            string expanded(keyword);
+            stringOps::inplaceExpand(expanded, dict, true, false);
             // Re-form as a string token so we can compare to string
-            t = token(keyword, t.lineNumber());
+            return token(expanded, t.lineNumber());
         }
     }
     else if (!t.isString())
     {
         // Re-form as a string token so we can compare to string
-        t = token(keyword, t.lineNumber());
+        return token(keyword, t.lineNumber());
+    }
+    else
+    {
+        return t;
     }
 }
 
 
-void Foam::functionEntries::ifeqEntry::expand
+Foam::token Foam::functionEntries::ifeqEntry::expand
 (
     const dictionary& dict,
-    token& t
+    const token& t
 )
 {
     if (t.isWord())
     {
-        expand(dict, const_cast<word&>(t.wordToken()), t);
+        return expand(dict, t.wordToken(), t);
     }
     else if (t.isVariable())
     {
-        expand(dict, const_cast<string&>(t.stringToken()), t);
+        return expand(dict, t.stringToken(), t);
     }
     else if (t.isString())
     {
-        expand(dict, const_cast<string&>(t.stringToken()), t);
+        return expand(dict, t.stringToken(), t);
     }
+    else
+    {
+        return t;
+    }
+}
+
+
+bool Foam::functionEntries::ifeqEntry::equalToken
+(
+    const token& t1,
+    const token& t2
+)
+{
+    const bool eqType = (t1.type() == t2.type());
+
+    switch (t1.type())
+    {
+        case token::UNDEFINED:
+            return eqType;
+
+        case token::PUNCTUATION:
+            return (eqType && t1.pToken() == t2.pToken());
+
+        case token::WORD:
+            if (eqType)
+            {
+                return t1.wordToken() == t2.wordToken();
+            }
+            else if (t2.isString())
+            {
+                return t1.wordToken() == t2.stringToken();
+            }
+            else
+            {
+                return false;
+            }
+
+        case token::STRING:
+        case token::VARIABLE:
+        case token::VERBATIMSTRING:
+            if (eqType)
+            {
+                return t1.stringToken() == t2.stringToken();
+            }
+            else if (t2.isWord())
+            {
+                return t1.stringToken() == t2.wordToken();
+            }
+            else
+            {
+                return false;
+            }
+
+        case token::LABEL:
+            if (eqType)
+            {
+                return t1.labelToken() == t2.labelToken();
+            }
+            else if (t2.isScalar())
+            {
+                return t1.labelToken() == t2.scalarToken();
+            }
+            else
+            {
+                return false;
+            }
+
+        case token::FLOAT_SCALAR:
+            if (eqType)
+            {
+                return equal(t1.floatScalarToken(), t2.floatScalarToken());
+            }
+            else if (t2.isScalar())
+            {
+                return t1.scalarToken() == t2.scalarToken();
+            }
+            else
+            {
+                return false;
+            }
+
+        case token::DOUBLE_SCALAR:
+            if (eqType)
+            {
+                return equal(t1.doubleScalarToken(), t2.doubleScalarToken());
+            }
+            else if (t2.isScalar())
+            {
+                return t1.scalarToken() == t2.scalarToken();
+            }
+            else
+            {
+                return false;
+            }
+
+        case token::LONG_DOUBLE_SCALAR:
+            if (eqType)
+            {
+                return equal
+                (
+                    t1.longDoubleScalarToken(),
+                    t2.longDoubleScalarToken()
+                );
+            }
+            else if (t2.isScalar())
+            {
+                return t1.scalarToken() == t2.scalarToken();
+            }
+            else
+            {
+                return false;
+            }
+
+        case token::COMPOUND:
+            return false;//eqType && (t1.compoundToken() == t2.compoundToken());
+
+        case token::ERROR:
+            return eqType;
+    }
+    return false;
 }
 
 
@@ -159,6 +284,53 @@ void Foam::functionEntries::ifeqEntry::skipUntil
 }
 
 
+bool Foam::functionEntries::ifeqEntry::evaluate
+(
+    const bool doIf,
+    const label start,
+    dictionary& parentDict,
+    Istream& is
+)
+{
+    while (!is.eof())
+    {
+        token t;
+        readToken(t, is);
+
+        if (t.isWord() && t.wordToken() == "#ifeq")
+        {
+            // Recurse to evaluate
+            execute(parentDict, is);
+        }
+        else if (t.isWord() && t.wordToken() == "#if")
+        {
+            // Recurse to evaluate
+            ifEntry::execute(parentDict, is);
+        }
+        else if (doIf && t.isWord() && t.wordToken() == "#else")
+        {
+            // Now skip until #endif
+            skipUntil(parentDict, "#endif", is);
+            break;
+        }
+        else if (t.isWord() && t.wordToken() == "#endif")
+        {
+            break;
+        }
+        else
+        {
+            is.putBack(t);
+            bool ok = entry::New(parentDict, is);
+            if (!ok)
+            {
+                return false;   //break;
+            }
+        }
+    }
+    return true;
+}
+
+
 bool Foam::functionEntries::ifeqEntry::execute
 (
     const bool doIf,
@@ -169,44 +341,7 @@ bool Foam::functionEntries::ifeqEntry::execute
 {
     if (doIf)
     {
-        while (!is.eof())
-        {
-            token t;
-            readToken(t, is);
-
-            if (t.isWord() && t.wordToken() == "#ifeq")
-            {
-                // Recurse to evaluate
-                execute(parentDict, is);
-            }
-            else if (t.isWord() && t.wordToken() == "#if")
-            {
-                // Recurse to evaluate
-                ifEntry::execute(parentDict, is);
-            }
-            else if
-            (
-                t.isWord()
-             && (t.wordToken() == "#else" || t.wordToken() == "#endif")
-            )
-            {
-                if (t.wordToken() == "#else")
-                {
-                    // Now skip until #endif
-                    skipUntil(parentDict, "#endif", is);
-                }
-                break;
-            }
-            else
-            {
-                is.putBack(t);
-                bool ok = entry::New(parentDict, is);
-                if (!ok)
-                {
-                    break;
-                }
-            }
-        }
+        evaluate(true, start, parentDict, is);
     }
     else
     {
@@ -235,36 +370,7 @@ bool Foam::functionEntries::ifeqEntry::execute
 
         if (t.wordToken() == "#else")
         {
-            // Evaluate until #endif
-            while (!is.eof())
-            {
-                token t;
-                readToken(t, is);
-                if (t.isWord() && t.wordToken() == "#ifeq")
-                {
-                    // Recurse to evaluate
-                    execute(parentDict, is);
-                }
-                else if (t.isWord() && t.wordToken() == "#if")
-                {
-                    // Recurse to evaluate
-                    ifEntry::execute(parentDict, is);
-                }
-                else if (t.isWord() && t.wordToken() == "#endif")
-                {
-                    break;
-                }
-                else
-                {
-                    is.putBack(t);
-
-                    bool ok = entry::New(parentDict, is);
-                    if (!ok)
-                    {
-                        break;
-                    }
-                }
-            }
+            evaluate(false, start, parentDict, is);
         }
     }
     return true;
@@ -283,13 +389,14 @@ bool Foam::functionEntries::ifeqEntry::execute
 
     // Read first token and expand any string
     token cond1(is);
-    expand(parentDict, cond1);
+    cond1 = expand(parentDict, cond1);
 
     // Read second token and expand any string
     token cond2(is);
-    expand(parentDict, cond2);
+    cond2 = expand(parentDict, cond2);
 
-    const bool equal = (cond1 == cond2);
+    //const bool equal = (cond1 == cond2);
+    const bool equal = equalToken(cond1, cond2);
 
     Info
         << "Evaluating #" << typeName << " " << cond1
