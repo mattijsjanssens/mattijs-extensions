@@ -70,6 +70,8 @@ SourceFiles
 #define ifeqEntry_H
 
 #include "functionEntry.H"
+#include "Tuple2.H"
+#include "DynamicList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -86,6 +88,10 @@ class ifeqEntry
 :
     public functionEntry
 {
+public:
+
+    typedef Tuple2<fileName, label> filePos;
+
 protected:
 
     // Protected Member Functions
@@ -117,6 +123,7 @@ protected:
         //- Consume tokens until reached a specific word
         static void skipUntil
         (
+            DynamicList<filePos>& stack,
             const dictionary& parentDict,
             const word& endWord,
             Istream& is
@@ -125,7 +132,7 @@ protected:
         static bool evaluate
         (
             const bool doIf,
-            const label start,
+            DynamicList<filePos>& stack,
             dictionary& parentDict,
             Istream& is
         );
@@ -135,7 +142,7 @@ protected:
         static bool execute
         (
             const bool equal,
-            const label start,
+            DynamicList<filePos>& stack,
             dictionary& parentDict,
             Istream& is
         );

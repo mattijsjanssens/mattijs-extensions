@@ -27,6 +27,7 @@ License
 #include "addToMemberFunctionSelectionTable.H"
 #include "IStringStream.H"
 #include "Switch.H"
+#include "IOstreams.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -56,7 +57,8 @@ bool Foam::functionEntries::ifEntry::execute
     Istream& is
 )
 {
-    const label start = is.lineNumber();
+    DynamicList<filePos> stack(10);
+    stack.append(filePos(parentDict.name(), is.lineNumber()));
 
     // Read line
     string line;
@@ -67,11 +69,23 @@ bool Foam::functionEntries::ifEntry::execute
     const Switch doIf(e.stream());
 
     Info
-        << "Evaluating #" << typeName << " " << doIf
-        << " at line " << start
-        << " in file " <<  parentDict.name() << endl;
+        << "Using #" << typeName << " " << doIf
+        << " at line " << stack.last().second()
+        << " in file " <<  stack.last().first() << endl;
 
-    return ifeqEntry::execute(doIf, start, parentDict, is);
+    bool ok = ifeqEntry::execute(doIf, stack, parentDict, is);
+
+DebugVar(stack);
+
+    if (stack.size() != 1)
+    {
+        FatalIOErrorInFunction(parentDict)
+            << "Did not find matching #endif for condition starting"
+            << " at line " << stack.last().second()
+            << " in file " <<  stack.last().first() << exit(FatalIOError);
+    }
+
+    return ok;
 }
 
 

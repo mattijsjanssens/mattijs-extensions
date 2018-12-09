@@ -95,9 +95,9 @@ Foam::token Foam::functionEntries::ifeqEntry::expand
         }
         else
         {
-            // String expansion
+            // String expansion. Allow unset variables
             string expanded(keyword);
-            stringOps::inplaceExpand(expanded, dict, true, false);
+            stringOps::inplaceExpand(expanded, dict, true, true);   //false);
             // Re-form as a string token so we can compare to string
             return token(expanded, t.lineNumber());
         }
@@ -257,6 +257,7 @@ bool Foam::functionEntries::ifeqEntry::equalToken
 
 void Foam::functionEntries::ifeqEntry::skipUntil
 (
+    DynamicList<filePos>& stack,
     const dictionary& parentDict,
     const word& endWord,
     Istream& is
@@ -270,7 +271,9 @@ void Foam::functionEntries::ifeqEntry::skipUntil
         {
             if (t.wordToken() == "#if" || t.wordToken() == "#ifeq")
             {
-                skipUntil(parentDict, "#endif", is);
+                stack.append(filePos(is.name(), is.lineNumber()));
+                skipUntil(stack, parentDict, "#endif", is);
+                stack.remove();
             }
             else if (t.wordToken() == endWord)
             {
@@ -287,7 +290,7 @@ void Foam::functionEntries::ifeqEntry::skipUntil
 bool Foam::functionEntries::ifeqEntry::evaluate
 (
     const bool doIf,
-    const label start,
+    DynamicList<filePos>& stack,
     dictionary& parentDict,
     Istream& is
 )
@@ -300,17 +303,21 @@ bool Foam::functionEntries::ifeqEntry::evaluate
         if (t.isWord() && t.wordToken() == "#ifeq")
         {
             // Recurse to evaluate
+            stack.append(filePos(is.name(), is.lineNumber()));
             execute(parentDict, is);
+            stack.remove();
         }
         else if (t.isWord() && t.wordToken() == "#if")
         {
             // Recurse to evaluate
+            stack.append(filePos(is.name(), is.lineNumber()));
             ifEntry::execute(parentDict, is);
+            stack.remove();
         }
         else if (doIf && t.isWord() && t.wordToken() == "#else")
         {
             // Now skip until #endif
-            skipUntil(parentDict, "#endif", is);
+            skipUntil(stack, parentDict, "#endif", is);
             break;
         }
         else if (t.isWord() && t.wordToken() == "#endif")
@@ -334,14 +341,14 @@ bool Foam::functionEntries::ifeqEntry::evaluate
 bool Foam::functionEntries::ifeqEntry::execute
 (
     const bool doIf,
-    const label start,
+    DynamicList<filePos>& stack,
     dictionary& parentDict,
     Istream& is
 )
 {
     if (doIf)
     {
-        evaluate(true, start, parentDict, is);
+        evaluate(true, stack, parentDict, is);
     }
     else
     {
@@ -356,7 +363,9 @@ bool Foam::functionEntries::ifeqEntry::execute
              && (t.wordToken() == "#if" || t.wordToken() == "#ifeq")
             )
             {
-                skipUntil(parentDict, "#endif", is);
+                stack.append(filePos(is.name(), is.lineNumber()));
+                skipUntil(stack, parentDict, "#endif", is);
+                stack.remove();
             }
             else if
             (
@@ -370,7 +379,7 @@ bool Foam::functionEntries::ifeqEntry::execute
 
         if (t.wordToken() == "#else")
         {
-            evaluate(false, start, parentDict, is);
+            evaluate(false, stack, parentDict, is);
         }
     }
     return true;
@@ -385,7 +394,8 @@ bool Foam::functionEntries::ifeqEntry::execute
     Istream& is
 )
 {
-    const label start = is.lineNumber();
+    DynamicList<filePos> stack(10);
+    stack.append(filePos(parentDict.name(), is.lineNumber()));
 
     // Read first token and expand any string
     token cond1(is);
@@ -395,16 +405,26 @@ bool Foam::functionEntries::ifeqEntry::execute
     token cond2(is);
     cond2 = expand(parentDict, cond2);
 
-    //const bool equal = (cond1 == cond2);
     const bool equal = equalToken(cond1, cond2);
 
     Info
-        << "Evaluating #" << typeName << " " << cond1
+        << "Using #" << typeName << " " << cond1
         << " == " << cond2
-        << " at line " << start
-        << " in file " <<  parentDict.name() << endl;
+        << " at line " << stack.last().second()
+        << " in file " <<  stack.last().first() << endl;
 
-    return execute(equal, start, parentDict, is);
+    bool ok = ifeqEntry::execute(equal, stack, parentDict, is);
+DebugVar(stack);
+
+    if (stack.size() != 1)
+    {
+        FatalIOErrorInFunction(parentDict)
+            << "Did not find matching #endif for condition starting"
+            << " at line " << stack.last().second()
+            << " in file " <<  stack.last().first() << exit(FatalIOError);
+    }
+
+    return ok;
 }
 
 

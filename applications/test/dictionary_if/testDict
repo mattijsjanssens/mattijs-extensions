@@ -5,10 +5,12 @@ b 1.23e-1;
 
 #ifeq $a $b
     INSIDEIF true;
-    somedict
-    {
-        INSIDEIF a;
-    }
+    #ifeq ${c} ""
+        somedict
+        {
+            INSIDEIF a;
+        }
+    //#endif
 #else
     INSIDEELSE true;
     somedict
