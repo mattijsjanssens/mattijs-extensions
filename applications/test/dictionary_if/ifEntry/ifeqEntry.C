@@ -303,25 +303,23 @@ bool Foam::functionEntries::ifeqEntry::evaluate
         if (t.isWord() && t.wordToken() == "#ifeq")
         {
             // Recurse to evaluate
-            stack.append(filePos(is.name(), is.lineNumber()));
-            execute(parentDict, is);
-            stack.remove();
+            execute(stack, parentDict, is);
         }
         else if (t.isWord() && t.wordToken() == "#if")
         {
             // Recurse to evaluate
-            stack.append(filePos(is.name(), is.lineNumber()));
-            ifEntry::execute(parentDict, is);
-            stack.remove();
+            ifEntry::execute(stack, parentDict, is);
         }
         else if (doIf && t.isWord() && t.wordToken() == "#else")
         {
             // Now skip until #endif
             skipUntil(stack, parentDict, "#endif", is);
+            stack.remove();
             break;
         }
         else if (t.isWord() && t.wordToken() == "#endif")
         {
+            stack.remove();
             break;
         }
         else
@@ -367,12 +365,13 @@ bool Foam::functionEntries::ifeqEntry::execute
                 skipUntil(stack, parentDict, "#endif", is);
                 stack.remove();
             }
-            else if
-            (
-                t.isWord()
-             && (t.wordToken() == "#else" || t.wordToken() == "#endif")
-            )
+            else if (t.isWord() && t.wordToken() == "#else")
             {
+                break;
+            }
+            else if (t.isWord() && t.wordToken() == "#endif")
+            {
+                stack.remove();
                 break;
             }
         }
@@ -386,16 +385,16 @@ bool Foam::functionEntries::ifeqEntry::execute
 }
 
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
 bool Foam::functionEntries::ifeqEntry::execute
 (
+    DynamicList<filePos>& stack,
     dictionary& parentDict,
     Istream& is
 )
 {
-    DynamicList<filePos> stack(10);
-    stack.append(filePos(parentDict.name(), is.lineNumber()));
+    const label nNested = stack.size();
+
+    stack.append(filePos(is.name(), is.lineNumber()));
 
     // Read first token and expand any string
     token cond1(is);
@@ -414,9 +413,8 @@ bool Foam::functionEntries::ifeqEntry::execute
         << " in file " <<  stack.last().first() << endl;
 
     bool ok = ifeqEntry::execute(equal, stack, parentDict, is);
-DebugVar(stack);
 
-    if (stack.size() != 1)
+    if (stack.size() != nNested)
     {
         FatalIOErrorInFunction(parentDict)
             << "Did not find matching #endif for condition starting"
@@ -425,6 +423,19 @@ DebugVar(stack);
     }
 
     return ok;
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::functionEntries::ifeqEntry::execute
+(
+    dictionary& parentDict,
+    Istream& is
+)
+{
+    DynamicList<filePos> stack(10);
+    return execute(stack, parentDict, is);
 }
 
 

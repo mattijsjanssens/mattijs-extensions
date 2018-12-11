@@ -147,6 +147,16 @@ protected:
             Istream& is
         );
 
+        //- Main driver: depending on 'equal' starts evaluating or
+        //  skips forward to #else
+        static bool execute
+        (
+            DynamicList<filePos>& stack,
+            dictionary& parentDict,
+            Istream& is
+        );
+
+
 private:
 
     // Private Member Functions

@@ -73,7 +73,17 @@ class ifEntry
 {
 private:
 
+    friend class ifeqEntry;
+
     // Private Member Functions
+
+        //- Execute the functionEntry in a sub-dict context
+        static bool execute
+        (
+            DynamicList<filePos>& stack,
+            dictionary& parentDict,
+            Istream& is
+        );
 
         //- No copy construct
         ifEntry(const ifEntry&) = delete;

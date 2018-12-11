@@ -49,16 +49,18 @@ namespace functionEntries
 }
 
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 bool Foam::functionEntries::ifEntry::execute
 (
+    DynamicList<filePos>& stack,
     dictionary& parentDict,
     Istream& is
 )
 {
-    DynamicList<filePos> stack(10);
-    stack.append(filePos(parentDict.name(), is.lineNumber()));
+    const label nNested = stack.size();
+
+    stack.append(filePos(is.name(), is.lineNumber()));
 
     // Read line
     string line;
@@ -75,9 +77,7 @@ bool Foam::functionEntries::ifEntry::execute
 
     bool ok = ifeqEntry::execute(doIf, stack, parentDict, is);
 
-DebugVar(stack);
-
-    if (stack.size() != 1)
+    if (stack.size() != nNested)
     {
         FatalIOErrorInFunction(parentDict)
             << "Did not find matching #endif for condition starting"
@@ -86,6 +86,19 @@ DebugVar(stack);
     }
 
     return ok;
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::functionEntries::ifEntry::execute
+(
+    dictionary& parentDict,
+    Istream& is
+)
+{
+    DynamicList<filePos> stack(10);
+    return execute(stack, parentDict, is);
 }
 
 
