@@ -1,6 +1,8 @@
+calcEntry.C
+ISstream.C
 stringOps.C
 ifEntry.C
 ifeqEntry.C
-
+precompileEntry.C
 
 LIB = $(FOAM_USER_LIBBIN)/libifEntry
