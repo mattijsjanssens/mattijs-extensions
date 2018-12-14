@@ -1,0 +1,21 @@
+User wants application with e.g. hacked snappyHexMesh functionality.
+Say triSurfaceTools.C
+
+- user provides application-to-patch and absolute filename (.H or .C):
+src/meshTools/triSurface/triSurfaceTools/triSurfaceTools.C
+
+=> from library meshTools
+=> used by any meshTools files?
+
+
+- script detects
+    - compilation dependencies
+    - direct uses: includes (scan .dep) & compilation dependencies
+    - link uses: includes library & compilation dependencies
+- script copies:
+    - all files
+    - adds to
+        Make/files
+        Make/options
+
+    
