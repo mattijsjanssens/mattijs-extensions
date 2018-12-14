@@ -29,6 +29,12 @@ License
 #include "dynamicCode.H"
 #include "codeStream.H"
 
+//#include "dynamicCodeContext.H"
+//#include "regExp.H"
+#include "IOstreams.H"
+#include "etcFiles.H"
+#include "OSspecific.H"
+
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
@@ -53,14 +59,22 @@ namespace functionEntries
         primitiveEntryIstream
     );
 
+
     addToMemberFunctionSelectionTable
     (
         functionEntry,
         calcEntry,
         preProcess,
-        preProcess
+        preProcessDictionary
     );
 
+    addToMemberFunctionSelectionTable
+    (
+        functionEntry,
+        calcEntry,
+        preProcess,
+        preProcessPrimitiveEntry
+    );
 }
 }
 
@@ -74,8 +88,36 @@ bool Foam::functionEntries::calcEntry::preProcess
     Istream& is
 )
 {
-    Info<< "Using PREPROCESS #calcEntry at line " << is.lineNumber()
-        << " in file " <<  parentDict.name() << endl;
+    //Info<< "Preprocessing #calcEntry at line " << is.lineNumber()
+    //    << " in file " <<  parentDict.name() << endl;
+
+    // Read string
+    string s(is);
+    // Make sure we stop this entry
+    // is.putBack(token(token::END_STATEMENT, is.lineNumber()));
+
+    // Construct codeDict for codeStream
+    // must reference parent for stringOps::expand to work nicely.
+    dictionary codeSubDict;
+    codeSubDict.add("code", "os << (" + s + ");");
+
+    dictionary codeDict(parentDict, codeSubDict);
+
+    //codeStream::getFunction(parentDict, codeDict);
+    codeStream::writeCode(parentDict, codeDict);
+
+    return true;
+}
+
+
+bool Foam::functionEntries::calcEntry::preProcess
+(
+    dictionary& parentDict,
+    Istream& is
+)
+{
+    //Info<< "Preprocessing #calcEntry at line " << is.lineNumber()
+    //    << " in file " <<  parentDict.name() << endl;
 
     // Read string
     string s(is);
@@ -88,7 +130,7 @@ bool Foam::functionEntries::calcEntry::preProcess
     codeSubDict.add("code", "os << (" + s + ");");
     dictionary codeDict(parentDict, codeSubDict);
 
-    codeStream::getFunction(parentDict, codeDict);
+    codeStream::writeCode(parentDict, codeDict);
 
     return true;
 }
@@ -101,7 +143,7 @@ bool Foam::functionEntries::calcEntry::execute
     Istream& is
 )
 {
-    Info<< "Using ENTRY #calcEntry at line " << is.lineNumber()
+    Info<< "Using #calcEntry at line " << is.lineNumber()
         << " in file " <<  parentDict.name() << endl;
 
     dynamicCode::checkSecurity
@@ -145,7 +187,7 @@ bool Foam::functionEntries::calcEntry::execute
     Istream& is
 )
 {
-    Info<< "Using DICTIONARY #calcEntry at line " << is.lineNumber()
+    Info<< "Using #calcEntry at line " << is.lineNumber()
         << " in file " <<  parentDict.name() << endl;
 
     dynamicCode::checkSecurity

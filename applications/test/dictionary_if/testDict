@@ -1,16 +1,23 @@
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+#precompile
+
 a #calc "0.123";
-b 1.23e-1;
+b #calc "1*readScalar(dict.lookup(\"a\"))";
+c #calc "2*readScalar(dict.lookup(\"b\"))";
+d #calc "3*readScalar(dict.lookup(\"c\"))";
+e #calc "4*readScalar(dict.lookup(\"d\"))";
+f #calc "5*readScalar(dict.lookup(\"e\"))";
+//b 1.23e-1;
 
 #ifeq $a $b
     INSIDEIF true;
-    #ifeq ${c} ""
+    #ifeq ${c} ${d}
         somedict
         {
             INSIDEIF a;
         }
-    //#endif
+    #endif
 #else
     INSIDEELSE true;
     somedict

@@ -74,6 +74,25 @@ class calcEntry
 
     // Private Member Functions
 
+        //static string expand
+        //(
+        //    const string& s,
+        //   string::size_type& index,
+        //    const dictionary& dict,
+        //    const bool allowEnvVars,
+        //    const bool allowEmpty
+        //);
+
+        //static string& inplaceExpand
+        //(
+        //    string& s,
+        //    const dictionary& dict,
+        //    const bool allowEnvVars,
+        //    const bool allowEmpty,
+        //    const char sigil = '$'
+        //);
+
+
         //- Disallow default bitwise copy construct
         calcEntry(const calcEntry&);
 
@@ -89,13 +108,6 @@ public:
 
     // Member Functions
 
-        static bool preProcess
-        (
-            const dictionary& parentDict,
-            primitiveEntry& thisEntry,
-            Istream& is
-        );
-
         //- Execute the functionEntry in a sub-dict context
         static bool execute(dictionary& parentDict, Istream&);
 
@@ -106,6 +118,19 @@ public:
             primitiveEntry&,
             Istream&
         );
+
+        // Optional support for preprocessing
+
+            //- Pre-execute. Pre-processes source code
+            static bool preProcess(dictionary& parentDict, Istream&);
+
+            //- Pre-execute. Pre-processes source code
+            static bool preProcess
+            (
+                const dictionary& parentDict,
+                primitiveEntry& thisEntry,
+                Istream& is
+            );
 };
 
 

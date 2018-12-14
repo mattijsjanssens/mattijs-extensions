@@ -30,7 +30,7 @@ License
 #include "Switch.H"
 #include "IOstreams.H"
 #include <iostream>
-#include "int64.H"
+#include "OSspecific.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -54,44 +54,6 @@ namespace functionEntries
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-//bool Foam::functionEntries::precompileEntry::execute
-//(
-//    DynamicList<filePos>& stack,
-//    dictionary& parentDict,
-//    Istream& is
-//)
-//{
-//    const label nNested = stack.size();
-//
-//    stack.append(filePos(is.name(), is.lineNumber()));
-//
-//    // Read line
-//    string line;
-//    dynamic_cast<ISstream&>(is).getLine(line);
-//    line += ';';
-//    IStringStream lineStream(line);
-//    const primitiveEntry e("precompileEntry", parentDict, lineStream);
-//    const Switch doIf(e.stream());
-//
-//    Info
-//        << "Using #" << typeName << " " << doIf
-//        << " at line " << stack.last().second()
-//        << " in file " <<  stack.last().first() << endl;
-//
-//    bool ok = ifeqEntry::execute(doIf, stack, parentDict, is);
-//
-//    if (stack.size() != nNested)
-//    {
-//        FatalIOErrorInFunction(parentDict)
-//            << "Did not find matching #endif for condition starting"
-//            << " at line " << stack.last().second()
-//            << " in file " <<  stack.last().first() << exit(FatalIOError);
-//    }
-//
-//    return ok;
-//}
-
-
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 bool Foam::functionEntries::precompileEntry::execute
@@ -100,106 +62,96 @@ bool Foam::functionEntries::precompileEntry::execute
     Istream& is
 )
 {
-DebugVar(is.info());
-DebugVar(parentDict);
-//DebugVar(is.type());
     if (isA<ISstream>(is))
     {
+        Info<< "#" << typeName
+            << " : pre-processing all coded entries at line " << is.lineNumber()
+            << " in file " <<  parentDict.name() << endl;
+
         ISstream& iss = dynamic_cast<ISstream&>(is);
         std::istream& stdis = iss.stdStream();
 
-        std::istream::streampos here = stdis.tellg();
-        DebugVar(here);
+        const std::istream::streampos startPos = stdis.tellg();
 
-        DebugVar(stdis.good());
-        DebugVar(stdis.fail());
-        DebugVar(stdis.bad());
-
-
+        // Starting state
         dictionary save(parentDict);
 
-//        executedictionaryIstreamMemberFunctionTable dictTable
-//        (
-//            *executedictionaryIstreamMemberFunctionTablePtr_
-//        );
-//        DebugVar(dictTable.sortedToc());
-
-
+        // Replace entries on the run-time selection table for the
+        // function entries
         executeprimitiveEntryIstreamMemberFunctionTable& et =
             *executeprimitiveEntryIstreamMemberFunctionTablePtr_;
 
         // Preserve old entries
         executeprimitiveEntryIstreamMemberFunctionTable entryTable(et);
 
-        // Replace entries
+        // Replace entries. Keep old ones or not? E.g #include?
+        //et.clear();
         forAllConstIter
         (
-            preProcesspreProcessMemberFunctionTable,
-            *preProcesspreProcessMemberFunctionTablePtr_,
+            preProcesspreProcessPrimitiveEntryMemberFunctionTable,
+            *preProcesspreProcessPrimitiveEntryMemberFunctionTablePtr_,
             iter
         )
         {
+            //Info<< "Switching to preprocess mode for"
+            //    << " primitiveEntry function " << iter.key() << endl;
             et.set(iter.key(), iter());
         }
+
+
+        executedictionaryIstreamMemberFunctionTable& dt =
+            *executedictionaryIstreamMemberFunctionTablePtr_;
+        // Preserve old entries
+        executedictionaryIstreamMemberFunctionTable dictTable(dt);
+
+        // Replace entries. Keep old ones or not? E.g #include?
+        //dt.clear();
+        forAllConstIter
+        (
+            preProcesspreProcessDictionaryMemberFunctionTable,
+            *preProcesspreProcessDictionaryMemberFunctionTablePtr_,
+            iter
+        )
+        {
+            //Info<< "Switching to preprocess mode for"
+            //    << " dictionary function " << iter.key() << endl;
+            dt.set(iter.key(), iter());
+        }
+
 
 
         // Read dictionary
         parentDict.read(is);
 
+
+        // Make all dynamicCode. This will now compile in parallel which
+        // is the whole reason of this code
+        if (Foam::isDir("dynamicCode"))
+        {
+            system("wmake all dynamicCode");
+        }
+
+
         // Restore stream
 
-        //- Use rewind
-        //is.rewind();
-
-        //- Use direct positioning
-        //stdis.seekg(here, stdis.beg);
-        //stdis.setstate(iostate::good)
-
-        //- Use direct positioning
-        //stdis.rdbuf()->pubseekpos(here);
-        Pout<< "Before seek at:" << int64_t(stdis.tellg()) << endl;
-        stdis.seekg(here, stdis.beg);
-        Pout<< "Now again at:" << int64_t(stdis.tellg()) << endl;
-
-
-        //stdis.clear(stdis.eofbit);
-        //stdis.clear(stdis.failbit);
-        //stdis.clear(stdis.badbit);
-        stdis.clear(std::ios::failbit);
-        //stdis.setstate(stdis.rdstate());
-
-        DebugVar(stdis.good());
-        DebugVar(stdis.fail());
-        DebugVar(stdis.bad());
-
+        // Dictionary reading sets bad/fail bit (reads past eof?) so reset
+        // state before trying to seek
+        stdis.clear();
         // Take over std state to ISstream level
         is.setState(stdis.rdstate());
 
-        //stdis.clear();
-        //is.setGood();
-
-        DebugVar(is.good());
-        DebugVar(is.fail());
-        DebugVar(is.bad());
-
-
-DebugVar(is.info());
-        //is.print(Pout);
+        stdis.seekg(startPos, stdis.beg);
 
         // Restore table
         et.transfer(entryTable);
+        dt.transfer(dictTable);
 
         // Restore dictionary
-        parentDict = save;
+        parentDict.transfer(save);
 
-        // Re-read
-DebugVar(is.info());
-        //stdis.rdbuf()->pubseekpos(here);
-        //is.setState(stdis.rdstate());
-Pout<< nl << "** STARTING REREADING" << endl;
-        dictionary d2(is);
-Pout<< nl << "** DONE REREADING d2:" << d2 << endl;
-DebugVar(is.info());
+        //Info<< "#" << typeName
+        //    << " pre-processed all coded entres"
+        //    << " in file " <<  parentDict.name() << endl;
     }
     return true;
 }
