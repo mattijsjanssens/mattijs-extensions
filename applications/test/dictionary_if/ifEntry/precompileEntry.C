@@ -119,10 +119,13 @@ bool Foam::functionEntries::precompileEntry::execute
         }
 
 
+        parentDict.add("preProcess", dictionary());
 
-        // Read dictionary
+        // Read dictionary, do #functionEntry::preProcess instead of
+        // execute.
         parentDict.read(is);
 
+DebugVar(parentDict);
 
         // Make all dynamicCode. This will now compile in parallel which
         // is the whole reason of this code

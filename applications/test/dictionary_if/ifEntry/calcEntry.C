@@ -29,11 +29,11 @@ License
 #include "dynamicCode.H"
 #include "codeStream.H"
 
-//#include "dynamicCodeContext.H"
 //#include "regExp.H"
 #include "IOstreams.H"
 #include "etcFiles.H"
 #include "OSspecific.H"
+#include "dynamicCodeContext.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -105,6 +105,19 @@ bool Foam::functionEntries::calcEntry::preProcess
 
     //codeStream::getFunction(parentDict, codeDict);
     codeStream::writeCode(parentDict, codeDict);
+
+
+    // get code, codeInclude, codeOptions
+    dynamicCodeContext context(codeDict);
+
+    // codeName: codeStream + _<sha1>
+    // codeDir : _<sha1>
+    std::string sha1Str(context.sha1().str(true));
+    const_cast<dictionary&>(parentDict).subDict("preProcess").add
+    (
+        word(sha1Str),
+        codeDict
+    );
 
     return true;
 }
