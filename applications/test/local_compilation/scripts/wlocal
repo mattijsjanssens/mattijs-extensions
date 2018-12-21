@@ -1,0 +1,238 @@
+#!/bin/sh
+set -u
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     | Website:  https://openfoam.org
+#   \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     wdep
+#
+# Usage
+#     wlocal <file>
+#
+# Description
+#     Finds all files that include the <file> and copies these and their
+#     dependencies. No need to recurse since .dep file already has all
+#     dependencies.
+#
+#------------------------------------------------------------------------------
+Script=${0##*/}
+
+# Source the wmake functions
+# shellcheck source=scripts/wmakeFunctions
+. "${WM_DIR}/scripts/wmakeFunctions"
+
+usage() {
+    cat<<USAGE
+
+Usage: $Script <file>
+
+Copy all files using the file.
+
+USAGE
+}
+
+error() {
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    usage
+    exit 1
+}
+
+
+findDir()
+{
+    if [ "$#" -ne 2 ]; then
+        echo "$Script error: insufficient arguments" 1>&2
+        exit 1
+    fi
+
+    if [ -e "$1/$2" ]; then
+        dir=$1
+    else
+        expandPath $WM_PROJECT_DIR
+        wmpdir=$exPath
+        expandPath $1
+
+        if [ "$exPath" = "$wmpdir" \
+                       -o "$exPath" = "$HOME" \
+                       -o "$exPath" = "/" \
+           ]
+        then
+            echo "$Script error: could not find $2 directory" 1>&2
+            exit 1
+        else
+            findDir $(dirname "$1") "$2"
+        fi
+    fi
+}
+
+
+# Extract value
+getValue()
+{
+    if [ "$#" -ne 1 ]; then
+        echo "$Script error: insufficient arguments" 1>&2
+        exit 1
+    fi
+
+    sed -e 's/[^\w][\w]*=[\w]*[^\w]/=/'
+}
+
+
+#
+#
+##------------------------------------------------------------------------------
+## Parse arguments and options
+##------------------------------------------------------------------------------
+#
+#depMode=single
+#
+#while [ "$#" -gt 0 ]
+#do
+#    case "$1" in
+#    -h | -help)
+#        usage && exit 0
+#        ;;
+#    -l)
+#        depMode="lookup"
+#        shift
+#        ;;
+#    -*)
+#        error "unknown option: '$*'"
+#        ;;
+#    *)
+#        break
+#        ;;
+#    esac
+#done
+
+# Check environment variables
+checkEnv
+
+
+#------------------------------------------------------------------------------
+# Check <file> is is the current directory,
+# otherwise search tree for first occurrence
+#------------------------------------------------------------------------------
+
+sourceFile=$1
+
+if [ ! -e "$1" ]
+then
+    sourceFile=$(find . -name lnInclude -prune -o \
+        -name "$sourceFile" -print -quit)
+    if [ -z "$sourceFile" ]
+    then
+        echo "$Script: cannot find source file $1" 1>&2
+        exit 1
+    fi
+fi
+#echo "sourceFile:$sourceFile"
+
+#EXE_INC=''
+#LIB_LIBS=''
+depFiles=$(wdep2 -l $sourceFile)
+libs=''
+optFiles=''
+echo "$depFiles" | while read -r depFile
+do
+    echo "depFile=$depFile"
+    depToSource "$depFile"
+    echo "sourceFile=$sourceFile"
+
+    # Check C++ or Flex source file exists
+    if [ -r "$sourceFile" ];
+    then
+        findDir $(dirname $sourceFile) Make
+        libDir=$dir
+
+        echo "    from lib: $libDir"
+        echo "    file    : $sourceFile"
+
+        libs="$libs $libDir"
+
+        # Use the pre-processed options file
+        findDir $(dirname $depFile) options
+        optDir=$dir
+        echo "    from options: $optDir/options"
+        optFile="$optDir/options"
+        echo "optFile=$optFile"
+        optFiles="$optFiles $optFile"
+        echo "optFiles=$optFiles"
+        #if [ -f "$optFile" ];
+        #then
+        #    line=$(grep 'EXE_INC[ ]*=' "$optFile")
+        #    EXE_INC=$(echo "$line" | sed -e 's/.*[\w]*=[\w]*[^\w]//')
+        #    echo "EXE_INC=$EXE_INC"
+        #
+        #    line=$(grep 'LIB_LIBS[ ]*=' "$optFile")
+        #    LIB_LIBS=$(echo "$line" | sed -e 's/.*[\w]*=[\w]*[^\w]//')
+        #    echo "LIB_LIBS=$LIB_LIBS"
+        #fi
+    fi
+done
+echo "1**optFiles=$optFiles"
+optFiles=$(echo "$optFiles" | tr ' ' '\n' | sort -u)
+echo "2**optFiles=$optFiles"
+#
+#
+##------------------------------------------------------------------------------
+## Search up directories tree for the Make sub-directory containing dep files
+## and echo path for the dep file corresponding to the specified source file
+##------------------------------------------------------------------------------
+#findTarget $(dirname $sourceFile)
+#libDir=$dir
+## libDir=./finiteVolume
+##echo "Library:$libDir"
+#
+#findObjectDir "$sourceFile"
+## objectsDir=~/OpenFOAM-dev/platforms/linux64GccDPInt32Opt/src/finiteVolume/fvMesh
+##echo "objectsDir:$objectsDir"
+#
+#fileName=${1##*/}
+## fileName=fvMesh.C
+##echo "fileName:$fileName"
+#
+#
+#case "$depMode" in
+#single)
+#    echo "$objectsDir/$fileName.dep"
+#    ;;
+#
+#lookup)
+#    platformPath=$WM_PROJECT_DIR/platforms/${WM_OPTIONS}
+#    find "$platformPath" -name '*.dep' -exec grep -q "$fileName" '{}' \; \
+#        -print
+#    ;;
+#
+#esac
+
+
+#------------------------------------------------------------------------------
+# Cleanup local variables and functions
+#------------------------------------------------------------------------------
+
+unset Script usage error depMode
+
+
+#------------------------------------------------------------------------------

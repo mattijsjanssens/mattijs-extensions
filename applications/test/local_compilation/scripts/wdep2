@@ -1,0 +1,181 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     | Website:  https://openfoam.org
+#   \\  /    A nd           | Copyright (C) 2014-2018 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     wdep
+#
+# Usage
+#     wdep <file>
+#     cat `wdep <file>`
+#
+#     Optional: wdep -l <file>
+#
+# Description
+#     Find the .dep file corresponding to <file> and print the path.
+#     If <file> is not in the current directory the tree is searched for
+#     the first occurrence.
+#     Optional 'wdep -l' ('lookup') to print all .dep files referring to
+#     the .dep file
+#
+#------------------------------------------------------------------------------
+Script=${0##*/}
+
+# Source the wmake functions
+# shellcheck source=scripts/wmakeFunctions
+. "${WM_DIR}/scripts/wmakeFunctions"
+
+usage() {
+    cat<<USAGE
+
+Usage: $Script <file>
+options:
+  -l                Lookup : find all .dep files referring to the file
+  -help             Print the usage
+
+Find the dep-file corresponding to <file> in the current directory
+and print the path.
+
+USAGE
+}
+
+error() {
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    usage
+    exit 1
+}
+
+
+findTarget()
+{
+    if [ -d "$1/Make" ]; then
+        dir=$1
+    else
+        expandPath $WM_PROJECT_DIR
+        wmpdir=$exPath
+        expandPath $1
+
+        if [ "$exPath" = "$wmpdir" \
+                       -o "$exPath" = "$HOME" \
+                       -o "$exPath" = "/" \
+           ]
+        then
+            echo "$Script error: could not find Make directory" 1>&2
+            exit 1
+        else
+            findTarget $(dirname $1)
+        fi
+    fi
+}
+
+
+#------------------------------------------------------------------------------
+# Parse arguments and options
+#------------------------------------------------------------------------------
+
+depMode=single
+
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+    -h | -help)
+        usage && exit 0
+        ;;
+    -l)
+        depMode="lookup"
+        shift
+        ;;
+    -*)
+        error "unknown option: '$*'"
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+# Check environment variables
+checkEnv
+
+
+#------------------------------------------------------------------------------
+# Check <file> is is the current directory,
+# otherwise search tree for first occurrence
+#------------------------------------------------------------------------------
+
+sourceFile=$1
+
+if [ ! -e "$1" ]
+then
+    sourceFile=$(find . -name lnInclude -prune -o \
+        -name "$sourceFile" -print -quit)
+    if [ -z "$sourceFile" ]
+    then
+        echo "$Script: cannot find source file $1" 1>&2
+        exit 1
+    fi
+fi
+#echo "sourceFile:$sourceFile"
+
+
+#------------------------------------------------------------------------------
+# Search up directories tree for the Make sub-directory containing dep files
+# and echo path for the dep file corresponding to the specified source file
+#------------------------------------------------------------------------------
+findTarget $(dirname $sourceFile)
+libDir=$dir
+# libDir=./finiteVolume
+#echo "Library:$libDir"
+
+findObjectDir "$sourceFile"
+# objectsDir=~/OpenFOAM-dev/platforms/linux64GccDPInt32Opt/src/finiteVolume/fvMesh
+#echo "objectsDir:$objectsDir"
+
+fileName=${1##*/}
+# fileName=fvMesh.C
+#echo "fileName:$fileName"
+
+
+case "$depMode" in
+single)
+    echo "$objectsDir/$fileName.dep"
+    ;;
+
+lookup)
+    platformPath=$WM_PROJECT_DIR/platforms/${WM_OPTIONS}
+    find "$platformPath" -name '*.dep' -exec grep -q "$fileName" '{}' \; \
+        -print
+    ;;
+
+esac
+
+
+#------------------------------------------------------------------------------
+# Cleanup local variables and functions
+#------------------------------------------------------------------------------
+
+unset Script usage error depMode
+
+
+#------------------------------------------------------------------------------

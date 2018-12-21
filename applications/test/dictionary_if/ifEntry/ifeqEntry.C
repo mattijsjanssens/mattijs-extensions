@@ -29,6 +29,7 @@ License
 #include "stringOps.H"
 #include "ifEntry.H"
 #include "IOstreams.H"
+#include "Switch.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -310,7 +311,12 @@ bool Foam::functionEntries::ifeqEntry::evaluate
             // Recurse to evaluate
             ifEntry::execute(stack, parentDict, is);
         }
-        else if (doIf && t.isWord() && t.wordToken() == "#else")
+        else if
+        (
+            doIf
+         && t.isWord()
+         && (t.wordToken() == "#else" || t.wordToken() == "#elif")
+        )
         {
             // Now skip until #endif
             skipUntil(stack, parentDict, "#endif", is);
@@ -369,6 +375,25 @@ bool Foam::functionEntries::ifeqEntry::execute
             {
                 break;
             }
+            else if (t.isWord() && t.wordToken() == "#elif")
+            {
+                const label lineNo = is.lineNumber();
+
+                // Read line
+                string line;
+                dynamic_cast<ISstream&>(is).getLine(line);
+                line += ';';
+                IStringStream lineStream(line);
+                const primitiveEntry e("ifEntry", parentDict, lineStream);
+                const Switch doIf(e.stream());
+
+                if (doIf)
+                {
+                    Info<< "Using #elif " << doIf << " at line " << lineNo
+                        << " in file " << is.name() << endl;
+                    break;
+                }
+            }
             else if (t.isWord() && t.wordToken() == "#endif")
             {
                 stack.remove();
@@ -378,7 +403,13 @@ bool Foam::functionEntries::ifeqEntry::execute
 
         if (t.wordToken() == "#else")
         {
+            // Evaluate until we hit #endif
             evaluate(false, stack, parentDict, is);
+        }
+        else if (t.wordToken() == "#elif")
+        {
+            // Evaluate until we hit #else or #endif
+            evaluate(true, stack, parentDict, is);
         }
     }
     return true;
