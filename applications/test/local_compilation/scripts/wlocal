@@ -152,9 +152,11 @@ fi
 #EXE_INC=''
 #LIB_LIBS=''
 depFiles=$(wdep2 -l $sourceFile)
+echo "depFiles=$depFiles"
 libs=''
 optFiles=''
-echo "$depFiles" | while read -r depFile
+
+for depFile in $depFiles
 do
     echo "depFile=$depFile"
     depToSource "$depFile"
@@ -166,8 +168,8 @@ do
         findDir $(dirname $sourceFile) Make
         libDir=$dir
 
-        echo "    from lib: $libDir"
-        echo "    file    : $sourceFile"
+        echo "    from lib    : $libDir"
+        echo "    file        : $sourceFile"
 
         libs="$libs $libDir"
 
@@ -178,6 +180,7 @@ do
         optFile="$optDir/options"
         echo "optFile=$optFile"
         optFiles="$optFiles $optFile"
+        optFiles="$(echo -e "${optFiles}" | sed -e 's/^[[ ]]*//')"
         echo "optFiles=$optFiles"
         #if [ -f "$optFile" ];
         #then
