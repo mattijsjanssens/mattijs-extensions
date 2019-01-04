@@ -27,11 +27,11 @@ Application
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
-#include "Time.H"
 #include "lduMatrix.H"
 #include "IFstream.H"
 #include "DynamicField.H"
 #include "lduPrimitiveMesh.H"
+#include "CompactListList.H"
 
 using namespace Foam;
 
@@ -39,36 +39,63 @@ using namespace Foam;
 
 int main(int argc, char *argv[])
 {
+    argList::validArgs.append("matrixmarket");
     #include "setRootCase.H"
 
-    #include "createTime.H"
-    //#include "createMesh.H"
+    fileName fName(args.args()[1]);
 
-    IFstream is("matrixmarket.txt");
+    IFstream is(fName);
     if (!is.good())
     {
-        FatalIOErrorInFunction(is) << "Problem opening file"
+        FatalIOErrorInFunction(is) << "Problem opening " << fName
             << exit(FatalIOError);
     }
     // %%MatrixMarket
     word hdr(is);
     DebugVar(hdr);
+    if (hdr != "%%MatrixMarket")
+    {
+        FatalIOErrorInFunction(is) << "Incorrect header " << hdr
+            << exit(FatalIOError);
+    }
 
     // matrix
-    word type(is);
-    DebugVar(type);
+    word object(is);
+    DebugVar(object);
+    if (object != "matrix")
+    {
+        FatalIOErrorInFunction(is) << "Unsupported object type " << object
+            << exit(FatalIOError);
+    }
 
     // coordinate
-    word coord(is);
-    DebugVar(coord);
+    word format(is);
+    DebugVar(format);
+    if (format != "coordinate")
+    {
+        FatalIOErrorInFunction(is) << "Unsupported format " << format
+            << exit(FatalIOError);
+    }
 
     // real
-    word numType(is);
-    DebugVar(numType);
+    word fieldType(is);
+    DebugVar(fieldType);
+    if (fieldType != "real")
+    {
+        FatalIOErrorInFunction(is) << "Unsupported field " << fieldType
+            << exit(FatalIOError);
+    }
 
     // general
-    word matrixType(is);
-    DebugVar(matrixType);
+    word symmetryType(is);
+    DebugVar(symmetryType);
+    if (symmetryType != "general")
+    {
+        FatalIOErrorInFunction(is) << "Format " << symmetryType
+            << " not supported. Only supported format is 'general'"
+            << exit(FatalIOError);
+    }
+
 
     const label nRows = readLabel(is);
     const label nCols = readLabel(is);
@@ -116,9 +143,9 @@ int main(int argc, char *argv[])
         }
     }
 
-DebugVar(nLower);
-DebugVar(nUpper);
-DebugVar(diag);
+//DebugVar(nLower);
+//DebugVar(nUpper);
+//DebugVar(diag);
 
 
 
@@ -129,7 +156,7 @@ DebugVar(diag);
         sum(nUpper),
         sum(nLower)
     );
-DebugVar(nFaces);
+//DebugVar(nFaces);
 
 
     DynamicList<label> lowerAddr(nFaces);
@@ -172,17 +199,19 @@ DebugVar(nFaces);
 
 
 
-
-
-    labelListList lowerCells(nRows);
-    forAll(lowerCells, celli)
-    {
-        lowerCells[celli].setSize(nLower[celli]);
-    }
-    nLower = 0;
-
     // Allocate faces to higher numbered cells (assumes are output in increasing
     // column number
+//     labelListList lowerCells(nRows);
+//     forAll(lowerCells, celli)
+//     {
+//         lowerCells[celli].setSize(nLower[celli]);
+//     }
+
+    CompactListList<label> lowerCells2(nLower);
+    const labelList& offsets2 = lowerCells2.offsets();
+    labelList& m2 = lowerCells2.m();
+
+    nLower = 0;
     forAll(row, conni)
     {
         label celli = row[conni];
@@ -197,9 +226,25 @@ DebugVar(nFaces);
             lower.append(-1);
 
             // Store the face
-            lowerCells[nbri][nLower[nbri]++] = facei;
+            //upperCells[celli][nUpper[celli]++] = facei;
+
+            label index = nLower[nbri]++;
+            //lowerCells[nbri][index] = facei;
+            m2[offsets2[nbri]+index] = facei;
+
         }
     }
+
+
+//     // Check if the faces need ordering (assume they don't)
+//     forAll(lowerCells, celli)
+//     {
+//         Pout<< "cell:" << nl
+//             << "    lower :" << lowerCells[celli] << nl
+//             << "    lower2:" << lowerCells2[celli] << endl;
+//     }
+
+
 
     // Use the addressing to set the coefficients to lower numbered cells
     forAll(row, conni)
@@ -209,7 +254,7 @@ DebugVar(nFaces);
         if (nbri < celli)
         {
             // Find the face
-            const labelList& faces = lowerCells[celli];
+            const labelUList& faces = lowerCells2[celli];
 
             label facei = -1;
             forAll(faces, i)
@@ -232,10 +277,10 @@ DebugVar(nFaces);
         }
     }
 
-    DebugVar(lowerAddr);
-    DebugVar(lower);
-    DebugVar(upperAddr);
-    DebugVar(upper);
+    //DebugVar(lowerAddr);
+    //DebugVar(lower);
+    //DebugVar(upperAddr);
+    //DebugVar(upper);
 
 
     PtrList<const lduInterface> interfaces(0);
@@ -265,7 +310,11 @@ DebugVar(nFaces);
     // Solution
     scalarField psi(nRows, 123.0);
 
-    dictionary solverControls;
+    dictionary solverControls("Test-lduSolver");
+    solverControls.add("solver", "PBiCGStab");
+    solverControls.add("preconditioner", "DILU");
+    solverControls.add("tolerance", 1e-06);
+    solverControls.add("relTol", 0);
 
     // Solver call
     solverPerformance solverPerf = lduMatrix::solver::New
@@ -279,6 +328,8 @@ DebugVar(nFaces);
     )->solve(psi, totalSource);
 
     solverPerf.print(Info.masterStream(lMesh.comm()));
+
+    DebugVar(psi);
 
     return 0;
 }
