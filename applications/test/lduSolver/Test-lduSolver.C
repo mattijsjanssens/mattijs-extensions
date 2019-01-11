@@ -27,23 +27,33 @@ Application
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
+#include "Time.H"
 #include "lduMatrix.H"
 #include "IFstream.H"
 #include "DynamicField.H"
 #include "lduPrimitiveMesh.H"
 #include "CompactListList.H"
+#include "scalarIOField.H"
+#include "IOdictionary.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+void readMatrixMarket
+(
+    const fileName& fName,
+
+    label& nRows,
+    labelList& lowerAddr,
+    labelList& upperAddr,
+    PtrList<const lduInterface>& interfaces,
+
+    scalarField& diag,
+    scalarField& lower,
+    scalarField& upper
+)
 {
-    argList::validArgs.append("matrixmarket");
-    #include "setRootCase.H"
-
-    fileName fName(args.args()[1]);
-
     IFstream is(fName);
     if (!is.good())
     {
@@ -97,7 +107,7 @@ int main(int argc, char *argv[])
     }
 
 
-    const label nRows = readLabel(is);
+    nRows = readLabel(is);
     const label nCols = readLabel(is);
     if (nRows != nCols)
     {
@@ -107,47 +117,73 @@ int main(int argc, char *argv[])
     const label nEntries = readLabel(is);
     DebugVar(nEntries);
 
-    // Read
-    DynamicList<label> row(nEntries);
-    DynamicList<label> column(nEntries);
-    DynamicField<scalar> coeff(nEntries);
-
+    // Read into structure
+    typedef Tuple2<labelPair, scalar> CellsCoeffType;
+    DynamicList<CellsCoeffType> entries(nEntries);
     for (label conni = 0; conni < nEntries; conni++)
     {
-        row.append(readLabel(is)-1);
-        column.append(readLabel(is)-1);
-        coeff.append(readScalar(is));
+        const label row = readLabel(is)-1;
+        const label col = readLabel(is)-1;
+        const scalar coeff = readScalar(is);
+        entries.append(CellsCoeffType(labelPair(row, col), coeff));
     }
+
+    // Do ordering into increasing nbr so when we hand out faces they
+    // are in upper-triangular order
+    Foam::sort
+    (
+        entries,
+        [](const CellsCoeffType& i, const CellsCoeffType& j)
+        {
+            const labelPair& ei = i.first();
+            const labelPair& ej = j.first();
+
+            if (ei.first() < ej.first())
+            {
+                return true;
+            }
+            else if (ei.first() == ej.first())
+            {
+                if (ei.second() == ej.second())
+                {
+                    FatalErrorInFunction << "Problem : multiple coefficients"
+                        << " between cell " << ei.first() << " and "
+                        <<  ei.second() << exit(FatalError);
+                }
+                return ei.second() < ej.second();
+            }
+            else
+            {
+                return false;
+            }
+        }
+    );
 
     // Count nNbrs per row
     labelList nLower(nRows, 0);
     labelList nUpper(nRows, 0);
 
     // And extract the diagonal since we do the checks anyway
-    scalarField diag(nRows, 0.0);
+    diag.setSize(nRows);
+    diag = 0.0;
 
-    forAll(row, conni)
+    forAll(entries, conni)
     {
-        const label celli = row[conni];
-        if (column[conni] < celli)
+        const CellsCoeffType& e = entries[conni];
+        const label celli = e.first().first();
+        if (e.first().second() < celli)
         {
             nLower[celli]++;
         }
-        else if (column[conni] > celli)
+        else if (e.first().second() > celli)
         {
             nUpper[celli]++;
         }
         else
         {
-            diag[celli] = coeff[conni];
+            diag[celli] = e.second();
         }
     }
-
-//DebugVar(nLower);
-//DebugVar(nUpper);
-//DebugVar(diag);
-
-
 
     // Extract out the connections to higher numbered cells
     //const label nFaces = (nEntries - nRows)/2;
@@ -156,105 +192,52 @@ int main(int argc, char *argv[])
         sum(nUpper),
         sum(nLower)
     );
-//DebugVar(nFaces);
 
+    label facei = 0;
+    lowerAddr.setSize(nFaces);
+    lower.setSize(nFaces);
+    upperAddr.setSize(nFaces);
+    upper.setSize(nFaces);
 
-    DynamicList<label> lowerAddr(nFaces);
-    DynamicField<scalar> lower(nFaces);
-    DynamicList<label> upperAddr(nFaces);
-    DynamicList<scalar> upper(nFaces);
+    // Allocate faces to higher numbered cells and store correspondence
 
-
-//     // Collect all higher numbered cells
-//     labelListList upperCells(nRows);
-//     forAll(upperCells, celli)
-//     {
-//         upperCells[celli].setSize(nUpper[celli]);
-//     }
-//     nUpper = 0;
-//     forAll(row, conni)
-//     {
-//         label celli = row[conni];
-//         label nbri = column[conni];
-//         if (nbri > celli)
-//         {
-//             upperCells[celli][nUpper[celli]++] = nbri;
-//         }
-//     }
-// 
-//     // Allocate faces to higher numbered cells
-//     forAll(upperCells, celli)
-//     {
-//         labelList& u = upperCells[celli];
-//         sort(u);
-//         forAll(u, i)
-//         {
-//             // Allocate a face
-//             label facei = lowerAddr.size();
-//             lowerAddr.append(celli);
-//             upperAddr.append(u[i]);
-//             upper.append(coeff[conni]);
-//             lower.append(-1);
-// 
-
-
-
-    // Allocate faces to higher numbered cells (assumes are output in increasing
-    // column number
-//     labelListList lowerCells(nRows);
-//     forAll(lowerCells, celli)
-//     {
-//         lowerCells[celli].setSize(nLower[celli]);
-//     }
-
-    CompactListList<label> lowerCells2(nLower);
-    const labelList& offsets2 = lowerCells2.offsets();
-    labelList& m2 = lowerCells2.m();
+    CompactListList<label> lowerCells(nLower);
+    const labelList& offsets = lowerCells.offsets();
+    labelList& m = lowerCells.m();
 
     nLower = 0;
-    forAll(row, conni)
+    forAll(entries, conni)
     {
-        label celli = row[conni];
-        label nbri = column[conni];
+        const CellsCoeffType& e = entries[conni];
+
+        label celli = e.first().first();
+        label nbri = e.first().second();
         if (nbri > celli)
         {
             // Allocate a face
-            label facei = lowerAddr.size();
-            lowerAddr.append(celli);
-            upperAddr.append(nbri);
-            upper.append(coeff[conni]);
-            lower.append(-1);
+            lowerAddr[facei] = celli;
+            upperAddr[facei] = nbri;
+            upper[facei] = e.second();
+            lower[facei] = -1;
+            // Store for later lookup
+            m[offsets[nbri]+nLower[nbri]++] = facei;
 
-            // Store the face
-            //upperCells[celli][nUpper[celli]++] = facei;
-
-            label index = nLower[nbri]++;
-            //lowerCells[nbri][index] = facei;
-            m2[offsets2[nbri]+index] = facei;
-
+            facei++;
         }
     }
 
 
-//     // Check if the faces need ordering (assume they don't)
-//     forAll(lowerCells, celli)
-//     {
-//         Pout<< "cell:" << nl
-//             << "    lower :" << lowerCells[celli] << nl
-//             << "    lower2:" << lowerCells2[celli] << endl;
-//     }
-
-
-
     // Use the addressing to set the coefficients to lower numbered cells
-    forAll(row, conni)
+    forAll(entries, conni)
     {
-        label celli = row[conni];
-        label nbri = column[conni];
+        const CellsCoeffType& e = entries[conni];
+
+        label celli = e.first().first();
+        label nbri = e.first().second();
         if (nbri < celli)
         {
             // Find the face
-            const labelUList& faces = lowerCells2[celli];
+            const labelUList& faces = lowerCells[celli];
 
             label facei = -1;
             forAll(faces, i)
@@ -273,20 +256,79 @@ int main(int argc, char *argv[])
                     << " and " << nbri << exit(FatalError);
             }
 
-            lower[facei] = coeff[conni];
+            lower[facei] = e.second();
         }
     }
 
-    //DebugVar(lowerAddr);
-    //DebugVar(lower);
-    //DebugVar(upperAddr);
-    //DebugVar(upper);
+//DebugVar(lowerAddr);
+//DebugVar(lower);
+//DebugVar(upperAddr);
+//DebugVar(upper);
+}
+
+int main(int argc, char *argv[])
+{
+    argList::validArgs.append("matrixmarket");
+    argList::validArgs.append("source");
+    #include "setRootCase.H"
+    #include "createTime.H"
+
+    fileName fName(args.args()[1]);
+    fileName sourceName(args.args()[2]);
+
+    Info<< "Reading matrix from " << fName << nl
+        << "        source from " << sourceName << nl << endl;
+
+    label nCells;
+    labelList lowerAddr;
+    labelList upperAddr;
+    PtrList<const lduInterface> interfaces;
+
+    scalarField diag;
+    scalarField lower;
+    scalarField upper;
+
+    // Read Matrix market
+    {
+        readMatrixMarket
+        (
+            fName,
+
+            // Addressing
+            nCells,
+            lowerAddr,
+            upperAddr,
+            interfaces,
+
+            // Coefficients
+            diag,
+            lower,
+            upper
+        );
+    }
+
+    
+    // Source
+    scalarField totalSource;
+    {
+        const IOdictionary sourceDict
+        (
+            IOobject
+            (
+                sourceName,
+                runTime,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false
+            )
+        );
+        totalSource = scalarField("value", sourceDict, nCells);
+    }
 
 
-    PtrList<const lduInterface> interfaces(0);
-    lduPrimitiveMesh lMesh
+    const lduPrimitiveMesh lMesh
     (
-        nRows,
+        nCells,
         lowerAddr,
         upperAddr,
         interfaces,
@@ -299,16 +341,14 @@ int main(int argc, char *argv[])
     lMat.lower() = lower;
     lMat.upper() = upper;
 
+
     // No boundary handling
     const lduInterfaceFieldPtrsList scalarInterfaces(0);
     const FieldField<Field, scalar> interfaceBouCoeffs(0);
     const FieldField<Field, scalar> interfaceIntCoeffs(0);
 
-    // Source
-    const scalarField totalSource(nRows, 0.0);
-
     // Solution
-    scalarField psi(nRows, 123.0);
+    scalarField psi(nCells, 123.0);
 
     dictionary solverControls("Test-lduSolver");
     solverControls.add("solver", "PBiCGStab");
