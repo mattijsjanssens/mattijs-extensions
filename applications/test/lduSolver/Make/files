@@ -1,3 +1,4 @@
+lduPrimitiveInterface.C
 Test-lduSolver.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-lduSolver

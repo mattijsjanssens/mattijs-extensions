@@ -35,6 +35,7 @@ Application
 #include "CompactListList.H"
 #include "scalarIOField.H"
 #include "IOdictionary.H"
+#include "lduPrimitiveInterface.H"
 
 using namespace Foam;
 
@@ -375,41 +376,63 @@ int main(int argc, char *argv[])
 
     if (Pstream::parRun())
     {
-        // Decompose in identical parts
-        const label nLocal = nCells / Pstream::nProcs();
-        labelList offsets(Pstream::nProcs()+1);
-        for (label proci = 0; proci < Pstream::nProcs())
+        labelList decomposition;
+        if (Pstream::master())
         {
-            offsets[proci+1] = offsets[proci]+nLocal;
-        }
-        // Any remainder into last processor
-        offsets.last() = nCells;
+            // Decompose in identical parts
+            const label nLocal = nCells / Pstream::nProcs();
+            labelList offsets(Pstream::nProcs()+1);
+            for (label proci = 0; proci < Pstream::nProcs(); proci++)
+            {
+                offsets[proci+1] = offsets[proci]+nLocal;
+            }
+            // Any remainder into last processor
+            offsets.last() = nCells;
 
-        labelList decomposition(nCells);
-        for (label proci = 0; proci < Pstream::nProcs())
+            decomposition.setSize(nCells);
+            for (label proci = 0; proci < Pstream::nProcs(); proci++)
+            {
+                label size = offsets[proci+1]-offsets[proci];
+                SubList<label>(decomposition, size, offsets[proci]) = proci;
+            }
+        }
+
+        // Assign local cell numbers
+
+
+
+        //const globalIndex globalNumbering(offsets);
+
+        // From my processor cell to global cell
+        List<DynamicList<label>> procCellMap(Pstream::nProcs());
+        // Local cell number
+        labelList localCell(decomposition.size());
+        forAll(decomposition, celli)
         {
-            label size = offsets[proci+1]-offsets[proci];
-            SubList<label>(decomposition, size, offsets[proci]) = proci;
+            localCell[celli] = procCellMap[decomposition[celli]].size();
+            procCellMap[decomposition[celli]].append(celli);
         }
-
-        const globalIndex globalNumbering(offsets);
 
         // From my processor to global face
         List<DynamicList<label>> procFaceMap(Pstream::nProcs());
 
         // From my processor and nbr processor to global faces
         List<List<DynamicList<label>>> procNbrFaces(Pstream::nProcs());
+        List<List<DynamicList<label>>> procFaceCells(Pstream::nProcs());
         forAll(procNbrFaces, proci)
         {
             procNbrFaces[proci].setSize(Pstream::nProcs());
+            procFaceCells[proci].setSize(Pstream::nProcs());
         }
 
-        forAll(owner, facei)
+        forAll(lMesh.lowerAddr(), facei)
         {
-            label ownCelli = lower[facei];
+            label ownCelli = lMesh.lowerAddr()[facei];
             label ownProc = decomposition[ownCelli];
-            label nbrCelli = upper[facei];
+            label ownProcCelli = localCell[ownCelli];
+            label nbrCelli = lMesh.upperAddr()[facei];
             label nbrProc = decomposition[nbrCelli];
+            label nbrProcCelli = localCell[nbrCelli];
 
             if (ownProc == nbrProc)
             {
@@ -420,45 +443,61 @@ int main(int argc, char *argv[])
             {
                 // Inter-processor map
                 procNbrFaces[ownProc][nbrProc].append(facei);
+                procFaceCells[ownProc][nbrProc].append(ownProcCelli);
                 procNbrFaces[nbrProc][ownProc].append(facei);
+                procFaceCells[nbrProc][ownProc].append(nbrProcCelli);
             }
         }
 
-        PstreamBuffers pBufs(Pstream::nonBlocking);
+        PstreamBuffers pBufs(Pstream::commsTypes::nonBlocking);
 
         if (Pstream::master())
         {
-            for (label proci = 1; proci < Pstream::nProcs(); proci++)
+            for (label proci = 0; proci < Pstream::nProcs(); proci++)
             {
                 UOPstream os(proci, pBufs);
 
+                os  << nCells
+                    <<  UIndirectList<label>
+                        (
+                            lMesh.lowerAddr(),
+                            procFaceMap[proci]
+                        )
+                    <<  UIndirectList<label>
+                        (
+                            lMesh.upperAddr(),
+                            procFaceMap[proci]
+                        )
+                    << procFaceCells[proci];
             }
         }
-        else
+
         {
+            UIPstream is(Pstream::master(), pBufs);
             label nCells(readLabel(is));
             labelList lowerAddr(is);
             labelList upperAddr(is);
             labelListList faceCells(is);
 
-            scalarField diag(is);
-            scalarField lower(is);
-            scalarField upper(is);
-
             PtrList<const lduInterface> interfaces(faceCells.size());
-            forAll(interfaces, inti)
+            label inti = 0;
+            forAll(faceCells, i)
             {
-                interfaces.set
-                (
-                    inti,
-                    new lduPrimitiveInterface
+                if (faceCells[i].size())
+                {
+                    interfaces.set
                     (
-                        faceCells[inti],
-                        labelList(0),
-                        labelList(0)
-                    )
-                );
+                        inti++,
+                        new lduPrimitiveInterface
+                        (
+                            faceCells[i],
+                            labelList(0),
+                            labelList(0)
+                        )
+                    );
+                }
             }
+            interfaces.setSize(inti);
 
             const lduPrimitiveMesh lMesh
             (
@@ -470,23 +509,30 @@ int main(int argc, char *argv[])
                 Pstream::worldComm
             );
 
-            lduMatrix lMat(lMesh);
-            lMat.diag() = diag;
-            lMat.lower() = lower;
-            lMat.upper() = upper;
-
-                const lduInterfaceFieldPtrsList scalarInterfaces(0);
-    const FieldField<Field, scalar> interfaceBouCoeffs(0);
-    const FieldField<Field, scalar> interfaceIntCoeffs(0);
-
-
+            //scalarField diag(is);
+            //scalarField lower(is);
+            //scalarField upper(is);
 
         }
-
-
-
-        if (Pstream::master())
-        {
+    }
+//
+//            lduMatrix lMat(lMesh);
+//            lMat.diag() = diag;
+//            lMat.lower() = lower;
+//            lMat.upper() = upper;
+//
+//                const lduInterfaceFieldPtrsList scalarInterfaces(0);
+//    const FieldField<Field, scalar> interfaceBouCoeffs(0);
+//    const FieldField<Field, scalar> interfaceIntCoeffs(0);
+//
+//
+//
+//        }
+//
+//
+//
+//        if (Pstream::master())
+//        {
 
 
 
