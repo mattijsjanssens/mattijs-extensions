@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2019 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -36,7 +36,7 @@ SourceFiles
 #ifndef lduPrimitiveProcessorInterface_H
 #define lduPrimitiveProcessorInterface_H
 
-#include "GAMGInterface.H"
+//#include "GAMGInterface.H"
 #include "processorLduInterface.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -50,9 +50,12 @@ namespace Foam
 
 class lduPrimitiveProcessorInterface
 :
-    public lduInterface
+    public lduInterface,
+    public processorLduInterface
 {
     // Private data
+
+        labelList faceCells_;
 
         //- Communicator to use for parallel communication
         const label comm_;
@@ -86,63 +89,119 @@ public:
 
     // Constructors
 
-        //- Construct from fine-level interface,
-        //  local and neighbour restrict addressing
-        lduPrimitiveProcessorInterface
-        (
-            const label index,
-            const lduInterfacePtrsList& coarseInterfaces,
-            const lduInterface& fineInterface,
-            const labelField& restrictAddressing,
-            const labelField& neighbourRestrictAddressing,
-            const label fineLevelIndex,
-            const label coarseComm
-        );
+//         //- Construct from fine-level interface,
+//         //  local and neighbour restrict addressing
+//         lduPrimitiveProcessorInterface
+//         (
+//             const label index,
+//             const lduInterfacePtrsList& coarseInterfaces,
+//             const lduInterface& fineInterface,
+//             const labelField& restrictAddressing,
+//             const labelField& neighbourRestrictAddressing,
+//             const label fineLevelIndex,
+//             const label coarseComm
+//         );
+// 
+//         //- Construct from components
+//         lduPrimitiveProcessorInterface
+//         (
+//             const label index,
+//             const lduInterfacePtrsList& coarseInterfaces,
+//             const labelUList& faceCells,
+//             const labelUList& faceRestrictAddresssing,
+//             const label coarseComm,
+//             const label myProcNo,
+//             const label neighbProcNo,
+//             const tensorField& forwardT,
+//             const int tag
+//         );
+// 
+//         //- Construct from Istream
+//         lduPrimitiveProcessorInterface
+//         (
+//             const label index,
+//             const lduInterfacePtrsList& coarseInterfaces,
+//             Istream& is
+//         );
 
         //- Construct from components
         lduPrimitiveProcessorInterface
         (
-            const label index,
-            const lduInterfacePtrsList& coarseInterfaces,
             const labelUList& faceCells,
-            const labelUList& faceRestrictAddresssing,
-            const label coarseComm,
+            const label comm,
             const label myProcNo,
             const label neighbProcNo,
             const tensorField& forwardT,
             const int tag
-        );
+        )
+        :
+            faceCells_(faceCells),
+            comm_(comm),
+            myProcNo_(myProcNo),
+            neighbProcNo_(neighbProcNo),
+            forwardT_(forwardT),
+            tag_(tag)
+        {}
 
         //- Construct from Istream
-        lduPrimitiveProcessorInterface
-        (
-            const label index,
-            const lduInterfacePtrsList& coarseInterfaces,
-            Istream& is
-        );
+        lduPrimitiveProcessorInterface(Istream& is)
+        :
+            faceCells_(is),
+            comm_(readLabel(is)),
+            myProcNo_(readLabel(is)),
+            neighbProcNo_(readLabel(is)),
+            forwardT_(is),
+            tag_(readInt(is))
+        {}
 
 
     //- Destructor
-    virtual ~lduPrimitiveProcessorInterface();
+    virtual ~lduPrimitiveProcessorInterface()
+    {}
 
 
     // Member Functions
 
+        // Access
+
+            //- Return faceCell addressing
+            virtual const labelUList& faceCells() const
+            {
+                return faceCells_;
+            }
+
+
         // Interface transfer functions
+
+            //- Return the values of the given internal data adjacent to
+            //  the interface as a field
+            virtual tmp<labelField> interfaceInternalField
+            (
+                const labelUList& iF
+            ) const
+            {
+                return tmp<labelField>(new labelField(iF, faceCells_));
+            }
 
             //- Initialise neighbour field transfer
             virtual void initInternalFieldTransfer
             (
                 const Pstream::commsTypes commsType,
                 const labelUList& iF
-            ) const;
+            ) const
+            {
+                send(commsType, UIndirectList<label>(iF, faceCells_)());
+            }
 
             //- Transfer and return internal field adjacent to the interface
             virtual tmp<labelField> internalFieldTransfer
             (
                 const Pstream::commsTypes commsType,
                 const labelUList& iF
-            ) const;
+            ) const
+            {
+                return receive<label>(commsType, faceCells_.size());
+            }
 
 
         //- Processor interface functions
@@ -181,7 +240,15 @@ public:
         // I/O
 
             //- Write to stream
-            virtual void write(Ostream&) const;
+            virtual void write(Ostream& os) const
+            {
+                os  << faceCells_
+                    << comm_
+                    << myProcNo_
+                    << neighbProcNo_
+                    << forwardT_
+                    << tag_;
+            }
 };
 
 
