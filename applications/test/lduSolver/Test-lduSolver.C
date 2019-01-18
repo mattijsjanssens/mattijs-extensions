@@ -37,14 +37,49 @@ Application
 #include "IOdictionary.H"
 //#include "lduPrimitiveInterface.H"
 #include "lduPrimitiveProcessorInterface.H"
-
-#include "point2D.H"
-#include "PrimitivePatch.H"
-#include "faceList.H"
+#include "globalIndex.H"
 
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+void getNbrData
+(
+    labelListList& nbrData,
+    const lduInterfacePtrsList& ifs,
+    const labelUList& iF
+)
+{
+    // Initialise transfer
+    forAll(ifs, inti)
+    {
+        if (ifs.set(inti))
+        {
+            ifs[inti].initInternalFieldTransfer
+            (
+                Pstream::commsTypes::nonBlocking,
+                iF
+            );
+        }
+    }
+    if (Pstream::parRun())
+    {
+        Pstream::waitRequests();
+    }
+    nbrData.setSize(ifs.size());
+    forAll(ifs, inti)
+    {
+        if (ifs.set(inti))
+        {
+            nbrData[inti] = ifs[inti].internalFieldTransfer
+            (
+                Pstream::commsTypes::nonBlocking,
+                iF
+            );
+        }
+    }
+}
+
 
 labelList decompose(const label nCells, const label nProcs)
 {
@@ -298,32 +333,6 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
 
-// Test lduPrimitiveProcessorInterface IO
-{
-    OStringStream os;
-    {
-        lduPrimitiveProcessorInterface pp
-        (
-            labelList(1, 123),
-            Pstream::worldComm,
-            Pstream::myProcNo(),
-            1,
-            tensorField(1, tensor::I),
-            Pstream::msgType()
-        );
-
-        pp.write(os);
-    }
-    {
-        IStringStream is(os.str());
-        lduPrimitiveProcessorInterface pp(is);
-        Pout<< "READ:" << endl;
-        pp.write(Pout);
-    }
-    return 0;
-}
-
-
     fileName fName(args.args()[1]);
     fileName sourceName(args.args()[2]);
 
@@ -341,23 +350,8 @@ int main(int argc, char *argv[])
     solverControls.add("tolerance", 1e-06);
     solverControls.add("relTol", 0);
 
-// {
-// typedef PrimitivePatch<face, List, Field<point2D>, point2D> ppType;
-// Foam::face f(identity(4));
-// Foam::faceList faces(1, f);
-// Field<point2D> points(4);
-// points[0] = point2D(0, 0);
-// points[1] = point2D(1, 0);
-// points[2] = point2D(1, 1);
-// points[3] = point2D(0, 1);
-// ppType patch(faces, points);
-// 
-// DebugVar(patch.pointEdges());
-// DebugVar(patch.localPoints());
-// }
     if (Pstream::master())
     {
-
         const bool oldParRun = Pstream::parRun();
         Pstream::parRun() = false;
 
@@ -407,7 +401,6 @@ int main(int argc, char *argv[])
             );
             totalSource = scalarField("value", sourceDict, nCells);
         }
-
 
         // Construct addressing
         const lduPrimitiveMesh lMesh
@@ -461,11 +454,6 @@ int main(int argc, char *argv[])
         if (Pstream::parRun())
         {
             labelList decomposition(decompose(nCells, Pstream::nProcs()));
-// DebugVar(decomposition);
-// decomposition[0] = 0;
-// decomposition[1] = 0;
-// decomposition[2] = 1;
-DebugVar(decomposition);
 
             // From processor+local cell to global cell
             List<DynamicList<label>> procCellMap(Pstream::nProcs());
@@ -522,85 +510,224 @@ DebugVar(decomposition);
                 const label nCells(procCellMap[proci].size());
 
                 // Internal faces for proci
-                const labelList& fMap = procFaceMap[proci];
+                const labelList& procFaces = procFaceMap[proci];
 
-                labelList subLower(fMap.size());
-                labelList subUpper(fMap.size());
-                forAll(fMap, i)
+                labelList subLower(procFaces.size());
+                labelList subUpper(procFaces.size());
+                forAll(procFaces, i)
                 {
-                    label facei = fMap[i];
+                    label facei = procFaces[i];
                     subLower[i] = localCell[lMesh.lowerAddr()[facei]];
                     subUpper[i] = localCell[lMesh.upperAddr()[facei]];
+                }
+
+                // Construct the interface only for its IO
+                const List<DynamicList<label>>& pFaceCells =
+                    procFaceCells[proci];
+
+                DynamicList<label> validNbrs(Pstream::nProcs());
+                forAll(pFaceCells, nbrProci)
+                {
+                    if (pFaceCells[nbrProci].size())
+                    {
+                        validNbrs.append(nbrProci);
+                    }
+                }
+                PtrList<lduPrimitiveProcessorInterface> interfaces
+                (
+                    validNbrs.size()
+                );
+                forAll(validNbrs, i)
+                {
+                    label nbrProci = validNbrs[i];
+                    interfaces.set
+                    (
+                        i,
+                        new lduPrimitiveProcessorInterface
+                        (
+                            pFaceCells[nbrProci],
+                            lMesh.comm(),
+                            proci,
+                            nbrProci,
+                            tensorField(1, tensor::I),
+                            Pstream::msgType()
+                        )
+                    );
                 }
 
 Pout<< "Sending to " << proci
     << " nCells:" << nCells
     << " lower:" << subLower
     << " upper:" << subUpper
-    << " procFaceCells:" << procFaceCells[proci]
+    << " validNbrs:" << validNbrs
     << endl;
-
 
                 os  << nCells
                     << subLower
                     << subUpper
-                    << procFaceCells[proci];
+                    << validNbrs;
+                forAll(interfaces, i)
+                {
+                    interfaces[i].write(os);
+                }
             }
         }
     }
 
-    pBufs.finishedSends();
-
+    autoPtr<lduPrimitiveMesh> localMeshPtr;
+    if (Pstream::parRun())
     {
+        pBufs.finishedSends();
+
         UIPstream is(Pstream::masterNo(), pBufs);
 
         const label nCells(readLabel(is));
         labelList lowerAddr(is);
         labelList upperAddr(is);
-        const labelListList faceCells(is);
+        labelList validNbrs(is);
 
-        PtrList<const lduInterface> interfaces(faceCells.size());
-        label inti = 0;
-        forAll(faceCells, i)
+        PtrList<const lduInterface> interfaces(validNbrs.size());
+        forAll(validNbrs, i)
         {
-            if (faceCells[i].size())
+            interfaces.set
+            (
+                i,
+                new lduPrimitiveProcessorInterface(is)
+            );
+        }
+
+        localMeshPtr.reset
+        (
+            new lduPrimitiveMesh
+            (
+                nCells,
+                lowerAddr,
+                upperAddr,
+                interfaces,
+                lduSchedule(0),
+                Pstream::worldComm
+            )
+        );
+        lduMesh::debug = 1;
+        Pout<< localMeshPtr().info() << endl;
+    }
+
+
+    // Now send over the matrix
+    if (Pstream::parRun())
+    {
+        PstreamBuffers pBufs(Pstream::commsTypes::nonBlocking);
+
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
+        {
+            UOPstream os(proci, pBufs);
+
+            // Cells for proci
+            const labelList& procCells = procCellMap[proci];
+
+            // Internal faces for proci
+            const labelList& procFaces = procFaceMap[proci];
+
+//             labelList subLower(fMap.size());
+//             labelList subUpper(fMap.size());
+//             forAll(fMap, i)
+//             {
+//                 label facei = fMap[i];
+//                 subLower[i] = localCell[lMesh.lowerAddr()[facei]];
+//                 subUpper[i] = localCell[lMesh.upperAddr()[facei]];
+//             }
+
+            // Construct the interface only for its IO
+            const List<DynamicList<label>>& pFaceCells =
+                procFaceCells[proci];
+
+            DynamicList<label> validNbrs(Pstream::nProcs());
+            forAll(pFaceCells, nbrProci)
             {
+                if (pFaceCells[nbrProci].size())
+                {
+                    validNbrs.append(nbrProci);
+                }
+            }
+            PtrList<lduPrimitiveProcessorInterface> interfaces
+            (
+                validNbrs.size()
+            );
+            forAll(validNbrs, i)
+            {
+                label nbrProci = validNbrs[i];
                 interfaces.set
                 (
-                    inti++,
+                    i,
                     new lduPrimitiveProcessorInterface
                     (
-                        faceCells[i],
-                        Pstream::worldComm,
-                        Pstream::myProcNo(),
-                        1,  //neigbProcNo,
+                        pFaceCells[nbrProci],
+                        lMesh.comm(),
+                        proci,
+                        nbrProci,
                         tensorField(1, tensor::I),
                         Pstream::msgType()
                     )
                 );
             }
+
+
+Pout<< "Sending to " << proci
+<< " nCells:" << nCells
+<< " lower:" << subLower
+<< " upper:" << subUpper
+<< " validNbrs:" << validNbrs
+<< endl;
+
+
+
+            os  << subLower
+                << subUpper
+                << validNbrs;
+            forAll(interfaces, i)
+            {
+                interfaces[i].write(os);
+            }
         }
-        interfaces.setSize(inti);
 
-        const lduPrimitiveMesh lMesh
-        (
-            nCells,
-            lowerAddr,
-            upperAddr,
-            interfaces,
-            lduSchedule(0),
-            Pstream::worldComm
-        );
+        pBufs.finishedSends();
 
-        //scalarField diag(is);
-        //scalarField lower(is);
-        //scalarField upper(is);
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
+        {
+            UIPstream is(proci, pBufs);
 
+            scalarField diag(is);
+            scalarField lower(is);
+            scalarField upper(is);
 
-        lduMesh::debug = 1;
-        Pout<< lMesh.info() << endl;
+            // Construct matrix
+            lduMatrix lMat(lMesh);
+            lMat.diag() = diag;
+            lMat.lower() = lower;
+            lMat.upper() = upper;
 
+            labelList validNbrs(is);
+
+            lduInterfaceFieldPtrsList scalarInterfaces(validNbrs.size());
+            forAll(validNbrs, i)
+            {
+                const lduInterface& intf = lMesh.interfaces()
+
+                scalarInterfaces.set
+                (
+                    i,
+                    new lduPrimitiveProcessorInterfaceField(is)
+                );
+            }
+        }
     }
+
+
+//         // No boundary handling
+//         const lduInterfaceFieldPtrsList scalarInterfaces(0);
+//         const FieldField<Field, scalar> interfaceBouCoeffs(0);
+//         const FieldField<Field, scalar> interfaceIntCoeffs(0);
+// 
 //
 //            lduMatrix lMat(lMesh);
 //            lMat.diag() = diag;
