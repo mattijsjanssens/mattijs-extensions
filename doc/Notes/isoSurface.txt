@@ -13,6 +13,27 @@
     - do not allow the same collapse on any other face.
 
 
+Problem:
+(Bugs/iso_filtering/)
+- normal hex
+- but with one edge split
+  (since edge connected to a hex which was split,
+   causing the edge to split)
+- now if the face decomposition on both faces starts
+  off from a vertex one before the split-edge-point
+- then both faces can have the same triangle points
+  (and even the same tet points!)
+- (triangle points will be in opposite order?)
+- so will generate duplicate iso triangles
+- which give problems in filtering
+- this will only happen if there is no valid tet-decomposition
+Workaround:
+- if no valid tet-decomposition enforce
+  fan-triangulation starting from split-edge-point
+
+
+
+
 
 #- two neighbouring cells
 #- iso surface has small polyp sticking into cells above

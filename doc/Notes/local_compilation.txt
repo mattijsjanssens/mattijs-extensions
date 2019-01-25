@@ -4,6 +4,17 @@ Say triSurfaceTools.C
 - user provides application-to-patch and absolute filename (.H or .C):
 src/meshTools/triSurface/triSurfaceTools/triSurfaceTools.C
 
+- wmakeLocal
+- user provides filename
+- scripts finds original source and from it:
+    - wrmdep -> files including it
+    - library
+    - wlib -> libraries including library
+    -
+    -> $objectsDir
+    -> 
+
+
 => from library meshTools
 => used by any meshTools files?
 
