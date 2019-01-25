@@ -170,6 +170,11 @@ public:
                 return faceCells_;
             }
 
+            virtual label size() const
+            {
+                return faceCells_.size();
+            }
+
 
         // Interface transfer functions
 
@@ -242,11 +247,11 @@ public:
             //- Write to stream
             virtual void write(Ostream& os) const
             {
-                os  << faceCells_
-                    << comm_
-                    << myProcNo_
-                    << neighbProcNo_
-                    << forwardT_
+                os  << faceCells_ << token::SPACE
+                    << comm_ << token::SPACE
+                    << myProcNo_ << token::SPACE
+                    << neighbProcNo_ << token::SPACE
+                    << forwardT_ << token::SPACE
                     << tag_;
             }
 };
