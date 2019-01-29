@@ -1,0 +1,23 @@
+./lduMatrix/lduMatrix/lduMatrixATmul.C
+./lduMatrix/lduMatrix/lduMatrix.C
+./lduMatrix/lduMatrix/lduMatrixOperations.C
+./lduMatrix/lduMatrix/lduMatrixPreconditioner.C
+./lduMatrix/lduMatrix/lduMatrixSmoother.C
+./lduMatrix/lduMatrix/lduMatrixSolver.C
+./lduMatrix/lduMatrix/lduMatrixUpdateMatrixInterfaces.C
+
+./lduMatrix/solvers/smoothSolver/smoothSolver.C
+./lduMatrix/solvers/PCG/PCG.C
+./lduMatrix/solvers/diagonalSolver/diagonalSolver.C
+./lduMatrix/solvers/PBiCG/PBiCG.C
+./lduMatrix/solvers/PBiCGStab/PBiCGStab.C
+
+./lduMatrix/preconditioners/diagonalPreconditioner/diagonalPreconditioner.C
+./lduMatrix/preconditioners/DICPreconditioner/DICPreconditioner.C
+./lduMatrix/preconditioners/DILUPreconditioner/DILUPreconditioner.C
+./lduMatrix/preconditioners/FDICPreconditioner/FDICPreconditioner.C
+./lduMatrix/preconditioners/noPreconditioner/noPreconditioner.C
+
+Test-singlePrecisionLduSolver.C
+
+EXE = $(FOAM_USER_APPBIN)/Test-singlePrecisionLduSolver

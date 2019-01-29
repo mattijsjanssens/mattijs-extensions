@@ -1,0 +1,300 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2016-2017 OpenFOAM Foundation
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "PBiCGStab.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+    defineTypeNameAndDebug(PBiCGStab, 0);
+
+    lduMatrix::solver::addsymMatrixConstructorToTable<PBiCGStab>
+        addPBiCGStabSymMatrixConstructorToTable_;
+
+    lduMatrix::solver::addasymMatrixConstructorToTable<PBiCGStab>
+        addPBiCGStabAsymMatrixConstructorToTable_;
+}
+
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::PBiCGStab::PBiCGStab
+(
+    const word& fieldName,
+    const lduMatrix& matrix,
+    const FieldField<Field, scalar>& interfaceBouCoeffs,
+    const FieldField<Field, scalar>& interfaceIntCoeffs,
+    const lduInterfaceFieldPtrsList& interfaces,
+    const dictionary& solverControls
+)
+:
+    lduMatrix::solver
+    (
+        fieldName,
+        matrix,
+        interfaceBouCoeffs,
+        interfaceIntCoeffs,
+        interfaces,
+        solverControls
+    )
+{}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::solverPerformance Foam::PBiCGStab::solve
+(
+    scalarField& psi_s,
+    const scalarField& source,
+    const direction cmpt
+) const
+{
+    #ifdef WM_DP
+    scalarField& psi = psi_s;
+    #else
+    solveScalarField psi(psi_s.size());
+    forAll(psi, i)
+    {
+        psi[i] = solveScalar(psi_s[i]);
+    }
+    #endif
+
+    // --- Setup class containing solver performance data
+    solverPerformance solverPerf
+    (
+        lduMatrix::preconditioner::getName(controlDict_) + typeName,
+        fieldName_
+    );
+
+    const label nCells = psi.size();
+
+    solveScalar* __restrict__ psiPtr = psi.begin();
+
+    solveScalarField pA(nCells);
+    solveScalar* __restrict__ pAPtr = pA.begin();
+
+    solveScalarField yA(nCells);
+    solveScalar* __restrict__ yAPtr = yA.begin();
+
+    // --- Calculate A.psi
+    matrix_.Amul(yA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
+
+    // --- Calculate initial residual field
+    //solveScalarField rA(source - yA);
+    solveScalarField rA(source.size());
+    forAll(rA, i)
+    {
+        rA[i] = source[i] - yA[i];
+    }
+    solveScalar* __restrict__ rAPtr = rA.begin();
+
+    //matrix().setResidualField(rA, fieldName_, true);
+    #ifdef WM_DP
+    matrix().setResidualField(rA, fieldName_, false);
+    #else
+    scalarField rA_s(rA.size());
+    forAll(rA_s, i)
+    {
+        rA_s[i] = rA[i];
+    }
+    matrix().setResidualField(rA_s, fieldName_, false);
+    #endif
+
+
+    // --- Calculate normalisation factor
+    const solveScalar normFactor = this->normFactor(psi, source, yA, pA);
+
+    if (lduMatrix::debug >= 2)
+    {
+        Info<< "   Normalisation factor = " << normFactor << endl;
+    }
+
+    // --- Calculate normalised residual norm
+    solverPerf.initialResidual() =
+        gSumMag(rA, matrix().mesh().comm())
+       /normFactor;
+    solverPerf.finalResidual() = solverPerf.initialResidual();
+
+    // --- Check convergence, solve if not converged
+    if
+    (
+        minIter_ > 0
+     || !solverPerf.checkConvergence(tolerance_, relTol_)
+    )
+    {
+        solveScalarField AyA(nCells);
+        solveScalar* __restrict__ AyAPtr = AyA.begin();
+
+        solveScalarField sA(nCells);
+        solveScalar* __restrict__ sAPtr = sA.begin();
+
+        solveScalarField zA(nCells);
+        solveScalar* __restrict__ zAPtr = zA.begin();
+
+        solveScalarField tA(nCells);
+        solveScalar* __restrict__ tAPtr = tA.begin();
+
+        // --- Store initial residual
+        const solveScalarField rA0(rA);
+
+        // --- Initial values not used
+        solveScalar rA0rA = 0;
+        solveScalar alpha = 0;
+        solveScalar omega = 0;
+
+        // --- Select and construct the preconditioner
+        autoPtr<lduMatrix::preconditioner> preconPtr =
+        lduMatrix::preconditioner::New
+        (
+            *this,
+            controlDict_
+        );
+
+        // --- Solver iteration
+        do
+        {
+            // --- Store previous rA0rA
+            const solveScalar rA0rAold = rA0rA;
+
+            rA0rA = gSumProd(rA0, rA, matrix().mesh().comm());
+
+            // --- Test for singularity
+            if (solverPerf.checkSingularity(mag(rA0rA)))
+            {
+                break;
+            }
+
+            // --- Update pA
+            if (solverPerf.nIterations() == 0)
+            {
+                for (label cell=0; cell<nCells; cell++)
+                {
+                    pAPtr[cell] = rAPtr[cell];
+                }
+            }
+            else
+            {
+                // --- Test for singularity
+                if (solverPerf.checkSingularity(mag(omega)))
+                {
+                    break;
+                }
+
+                const solveScalar beta = (rA0rA/rA0rAold)*(alpha/omega);
+
+                for (label cell=0; cell<nCells; cell++)
+                {
+                    pAPtr[cell] =
+                        rAPtr[cell] + beta*(pAPtr[cell] - omega*AyAPtr[cell]);
+                }
+            }
+
+            // --- Precondition pA
+            preconPtr->precondition(yA, pA, cmpt);
+
+            // --- Calculate AyA
+            matrix_.Amul(AyA, yA, interfaceBouCoeffs_, interfaces_, cmpt);
+
+            const solveScalar rA0AyA = gSumProd(rA0, AyA, matrix().mesh().comm());
+
+            alpha = rA0rA/rA0AyA;
+
+            // --- Calculate sA
+            for (label cell=0; cell<nCells; cell++)
+            {
+                sAPtr[cell] = rAPtr[cell] - alpha*AyAPtr[cell];
+            }
+
+            // --- Test sA for convergence
+            solverPerf.finalResidual() =
+                gSumMag(sA, matrix().mesh().comm())/normFactor;
+
+            if (solverPerf.checkConvergence(tolerance_, relTol_))
+            {
+                for (label cell=0; cell<nCells; cell++)
+                {
+                    psiPtr[cell] += alpha*yAPtr[cell];
+                }
+
+                solverPerf.nIterations()++;
+
+                return solverPerf;
+            }
+
+            // --- Precondition sA
+            preconPtr->precondition(zA, sA, cmpt);
+
+            // --- Calculate tA
+            matrix_.Amul(tA, zA, interfaceBouCoeffs_, interfaces_, cmpt);
+
+            const solveScalar tAtA = gSumSqr(tA, matrix().mesh().comm());
+
+            // --- Calculate omega from tA and sA
+            //     (cheaper than using zA with preconditioned tA)
+            omega = gSumProd(tA, sA, matrix().mesh().comm())/tAtA;
+
+            // --- Update solution and residual
+            for (label cell=0; cell<nCells; cell++)
+            {
+                psiPtr[cell] += alpha*yAPtr[cell] + omega*zAPtr[cell];
+                rAPtr[cell] = sAPtr[cell] - omega*tAPtr[cell];
+            }
+
+            solverPerf.finalResidual() =
+                gSumMag(rA, matrix().mesh().comm())
+               /normFactor;
+        } while
+        (
+            (
+              ++solverPerf.nIterations() < maxIter_
+            && !solverPerf.checkConvergence(tolerance_, relTol_)
+            )
+         || solverPerf.nIterations() < minIter_
+        );
+    }
+
+    #ifdef WM_DP
+    matrix().setResidualField(rA, fieldName_, false);
+    #else
+    forAll(rA_s, i)
+    {
+        rA_s[i] = rA[i];
+    }
+    matrix().setResidualField(rA_s, fieldName_, false);
+    #endif
+
+    #ifndef WM_DP
+    forAll(psi, i)
+    {
+        psi_s[i] = psi[i];
+    }
+    #endif
+
+    return solverPerf;
+}
+
+
+// ************************************************************************* //
