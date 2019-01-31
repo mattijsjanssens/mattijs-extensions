@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "algebraicPairGAMGAgglomeration.H"
 #include "lduMatrix.H"
 #include "addToRunTimeSelectionTable.H"

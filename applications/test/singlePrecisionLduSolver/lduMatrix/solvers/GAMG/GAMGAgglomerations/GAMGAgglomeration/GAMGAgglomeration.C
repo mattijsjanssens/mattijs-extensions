@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "GAMGAgglomeration.H"
 #include "lduMesh.H"
 #include "lduMatrix.H"

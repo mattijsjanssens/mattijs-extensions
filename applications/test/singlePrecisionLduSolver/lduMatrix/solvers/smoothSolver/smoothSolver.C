@@ -85,9 +85,9 @@ Foam::solverPerformance Foam::smoothSolver::solve
 ) const
 {
     #ifdef WM_DP
-    Field<solveScalar>& psi = psi_s;
+    solveScalarField& psi = psi_s;
     #else
-    Field<solveScalar> psi(psi_s.size());
+    solveScalarField psi(psi_s.size());
     forAll(psi, i)
     {
         psi[i] = solveScalar(psi_s[i]);
@@ -125,11 +125,11 @@ Foam::solverPerformance Foam::smoothSolver::solve
     else
     {
         solveScalar normFactor = 0;
-        Field<solveScalar> residual;
+        solveScalarField residual;
 
         {
-            Field<solveScalar> Apsi(psi.size());
-            Field<solveScalar> temp(psi.size());
+            solveScalarField Apsi(psi.size());
+            solveScalarField temp(psi.size());
 
             // Calculate A.psi
             matrix_.Amul(Apsi, psi, interfaceBouCoeffs_, interfaces_, cmpt);

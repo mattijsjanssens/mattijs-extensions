@@ -56,6 +56,7 @@ SourceFiles
 #ifndef GAMGSolver_H
 #define GAMGSolver_H
 
+#include "scalarField.H"
 #include "GAMGAgglomeration.H"
 #include "lduMatrix.H"
 #include "labelField.H"
@@ -228,8 +229,8 @@ class GAMGSolver
         //- Interpolate the correction after injected prolongation
         void interpolate
         (
-            scalarField& psi,
-            scalarField& Apsi,
+            solveScalarField& psi,
+            solveScalarField& Apsi,
             const lduMatrix& m,
             const FieldField<Field, scalar>& interfaceBouCoeffs,
             const lduInterfaceFieldPtrsList& interfaces,
@@ -240,13 +241,13 @@ class GAMGSolver
         //  re-normalise
         void interpolate
         (
-            scalarField& psi,
-            scalarField& Apsi,
+            solveScalarField& psi,
+            solveScalarField& Apsi,
             const lduMatrix& m,
             const FieldField<Field, scalar>& interfaceBouCoeffs,
             const lduInterfaceFieldPtrsList& interfaces,
             const labelList& restrictAddressing,
-            const scalarField& psiC,
+            const solveScalarField& psiC,
             const direction cmpt
         ) const;
 
@@ -257,23 +258,23 @@ class GAMGSolver
         //  scaling factor.
         void scale
         (
-            scalarField& field,
-            scalarField& Acf,
+            solveScalarField& field,
+            solveScalarField& Acf,
             const lduMatrix& A,
             const FieldField<Field, scalar>& interfaceLevelBouCoeffs,
             const lduInterfaceFieldPtrsList& interfaceLevel,
-            const scalarField& source,
+            const solveScalarField& source,
             const direction cmpt
         ) const;
 
         //- Initialise the data structures for the V-cycle
         void initVcycle
         (
-            PtrList<scalarField>& coarseCorrFields,
-            PtrList<scalarField>& coarseSources,
+            PtrList<solveScalarField>& coarseCorrFields,
+            PtrList<solveScalarField>& coarseSources,
             PtrList<lduMatrix::smoother>& smoothers,
-            scalarField& scratch1,
-            scalarField& scratch2
+            solveScalarField& scratch1,
+            solveScalarField& scratch2
         ) const;
 
 
@@ -281,17 +282,17 @@ class GAMGSolver
         void Vcycle
         (
             const PtrList<lduMatrix::smoother>& smoothers,
-            scalarField& psi,
+            solveScalarField& psi,
             const scalarField& source,
-            scalarField& Apsi,
-            scalarField& finestCorrection,
-            scalarField& finestResidual,
+            solveScalarField& Apsi,
+            solveScalarField& finestCorrection,
+            solveScalarField& finestResidual,
 
-            scalarField& scratch1,
-            scalarField& scratch2,
+            solveScalarField& scratch1,
+            solveScalarField& scratch2,
 
-            PtrList<scalarField>& coarseCorrFields,
-            PtrList<scalarField>& coarseSources,
+            PtrList<solveScalarField>& coarseCorrFields,
+            PtrList<solveScalarField>& coarseSources,
             const direction cmpt=0
         ) const;
 

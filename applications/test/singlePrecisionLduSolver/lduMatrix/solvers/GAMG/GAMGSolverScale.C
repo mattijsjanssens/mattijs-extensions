@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "GAMGSolver.H"
 #include "vector2D.H"
 
@@ -30,12 +31,12 @@ License
 
 void Foam::GAMGSolver::scale
 (
-    scalarField& field,
-    scalarField& Acf,
+    solveScalarField& field,
+    solveScalarField& Acf,
     const lduMatrix& A,
     const FieldField<Field, scalar>& interfaceLevelBouCoeffs,
     const lduInterfaceFieldPtrsList& interfaceLevel,
-    const scalarField& source,
+    const solveScalarField& source,
     const direction cmpt
 ) const
 {
@@ -50,13 +51,13 @@ void Foam::GAMGSolver::scale
 
 
     const label nCells = field.size();
-    scalar* __restrict__ fieldPtr = field.begin();
-    const scalar* const __restrict__ sourcePtr = source.begin();
-    const scalar* const __restrict__ AcfPtr = Acf.begin();
+    solveScalar* __restrict__ fieldPtr = field.begin();
+    const solveScalar* const __restrict__ sourcePtr = source.begin();
+    const solveScalar* const __restrict__ AcfPtr = Acf.begin();
 
 
-    scalar scalingFactorNum = 0.0;
-    scalar scalingFactorDenom = 0.0;
+    solveScalar scalingFactorNum = 0.0;
+    solveScalar scalingFactorDenom = 0.0;
 
     for (label i=0; i<nCells; i++)
     {
@@ -64,10 +65,18 @@ void Foam::GAMGSolver::scale
         scalingFactorDenom += AcfPtr[i]*fieldPtr[i];
     }
 
-    vector2D scalingVector(scalingFactorNum, scalingFactorDenom);
-    A.mesh().reduce(scalingVector, sumOp<vector2D>());
+    Vector2D<solveScalar> scalingVector(scalingFactorNum, scalingFactorDenom);
+    A.mesh().reduce(scalingVector, sumOp<Vector2D<solveScalar>>());
 
-    const scalar sf = scalingVector.x()/stabilise(scalingVector.y(), VSMALL);
+    #if defined(WM_SP)
+    const solveScalar small(doubleScalarSMALL);
+    #else
+    const solveScalar small(VSMALL);
+    #endif
+
+    const solveScalar sf =
+        scalingVector.x()
+       /stabilise(scalingVector.y(), small);
 
     if (debug >= 2)
     {

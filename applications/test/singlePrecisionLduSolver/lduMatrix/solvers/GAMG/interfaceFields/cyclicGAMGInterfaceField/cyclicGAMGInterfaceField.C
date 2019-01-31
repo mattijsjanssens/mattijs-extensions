@@ -108,16 +108,16 @@ Foam::cyclicGAMGInterfaceField::~cyclicGAMGInterfaceField()
 
 void Foam::cyclicGAMGInterfaceField::updateInterfaceMatrix
 (
-    scalarField& result,
+    solveScalarField& result,
     const bool add,
-    const scalarField& psiInternal,
+    const solveScalarField& psiInternal,
     const scalarField& coeffs,
     const direction cmpt,
     const Pstream::commsTypes
 ) const
 {
     // Get neighbouring field
-    scalarField pnf
+    solveScalarField pnf
     (
         cyclicInterface_.neighbPatch().interfaceInternalField(psiInternal)
     );

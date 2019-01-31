@@ -12,6 +12,43 @@
 ./lduMatrix/solvers/PBiCG/PBiCG.C
 ./lduMatrix/solvers/PBiCGStab/PBiCGStab.C
 
+GAMG = ./lduMatrix/solvers/GAMG
+$(GAMG)/GAMGSolver.C
+$(GAMG)/GAMGSolverAgglomerateMatrix.C
+$(GAMG)/GAMGSolverInterpolate.C
+$(GAMG)/GAMGSolverScale.C
+$(GAMG)/GAMGSolverSolve.C
+
+GAMGInterfaces = $(GAMG)/interfaces
+$(GAMGInterfaces)/GAMGInterface/GAMGInterface.C
+$(GAMGInterfaces)/GAMGInterface/GAMGInterfaceNew.C
+$(GAMGInterfaces)/processorGAMGInterface/processorGAMGInterface.C
+$(GAMGInterfaces)/processorCyclicGAMGInterface/processorCyclicGAMGInterface.C
+$(GAMGInterfaces)/cyclicGAMGInterface/cyclicGAMGInterface.C
+
+GAMGInterfaceFields = $(GAMG)/interfaceFields
+$(GAMGInterfaceFields)/GAMGInterfaceField/GAMGInterfaceField.C
+$(GAMGInterfaceFields)/GAMGInterfaceField/GAMGInterfaceFieldNew.C
+$(GAMGInterfaceFields)/processorGAMGInterfaceField/processorGAMGInterfaceField.C
+$(GAMGInterfaceFields)/processorCyclicGAMGInterfaceField/processorCyclicGAMGInterfaceField.C
+$(GAMGInterfaceFields)/cyclicGAMGInterfaceField/cyclicGAMGInterfaceField.C
+
+GAMGAgglomerations = $(GAMG)/GAMGAgglomerations
+
+GAMGAgglomeration = $(GAMGAgglomerations)/GAMGAgglomeration
+$(GAMGAgglomeration)/GAMGAgglomeration.C
+$(GAMGAgglomeration)/GAMGAgglomerateLduAddressing.C
+
+pairGAMGAgglomeration = $(GAMGAgglomerations)/pairGAMGAgglomeration
+$(pairGAMGAgglomeration)/pairGAMGAgglomeration.C
+$(pairGAMGAgglomeration)/pairGAMGAgglomerate.C
+
+algebraicPairGAMGAgglomeration = $(GAMGAgglomerations)/algebraicPairGAMGAgglomeration
+$(algebraicPairGAMGAgglomeration)/algebraicPairGAMGAgglomeration.C
+
+dummyAgglomeration = $(GAMGAgglomerations)/dummyAgglomeration
+$(dummyAgglomeration)/dummyAgglomeration.C
+
 ./lduMatrix/preconditioners/diagonalPreconditioner/diagonalPreconditioner.C
 ./lduMatrix/preconditioners/DICPreconditioner/DICPreconditioner.C
 ./lduMatrix/preconditioners/DILUPreconditioner/DILUPreconditioner.C

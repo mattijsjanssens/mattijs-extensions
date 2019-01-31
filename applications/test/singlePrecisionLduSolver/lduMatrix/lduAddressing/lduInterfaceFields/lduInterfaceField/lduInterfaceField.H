@@ -36,7 +36,7 @@ SourceFiles
 #ifndef lduInterfaceField_H
 #define lduInterfaceField_H
 
-#include "scalar.H"
+#include "scalarField.H"
 #include "lduInterface.H"
 #include "primitiveFieldsFwd.H"
 #include "Pstream.H"
@@ -136,9 +136,9 @@ public:
             //  or subtract coupled contributions to matrix
             virtual void initInterfaceMatrixUpdate
             (
-                Field<solveScalar>&,
+                solveScalarField&,
                 const bool add,
-                const Field<solveScalar>&,
+                const solveScalarField&,
                 const scalarField&,
                 const direction,
                 const Pstream::commsTypes commsType
@@ -149,9 +149,9 @@ public:
             //  or subtract coupled contributions to matrix
             virtual void updateInterfaceMatrix
             (
-                Field<solveScalar>&,
+                solveScalarField&,
                 const bool add,
-                const Field<solveScalar>&,
+                const solveScalarField&,
                 const scalarField&,
                 const direction,
                 const Pstream::commsTypes commsType
