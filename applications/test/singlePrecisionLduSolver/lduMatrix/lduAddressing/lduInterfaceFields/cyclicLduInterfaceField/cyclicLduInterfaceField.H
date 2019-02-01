@@ -35,6 +35,7 @@ SourceFiles
 #ifndef cyclicLduInterfaceField_H
 #define cyclicLduInterfaceField_H
 
+#include "scalarField.H"
 #include "primitiveFieldsFwd.H"
 #include "typeInfo.H"
 
@@ -91,7 +92,7 @@ public:
         //- Transform given patch component field
         void transformCoupleField
         (
-            scalarField& f,
+            solveScalarField& f,
             const direction cmpt
         ) const;
 };

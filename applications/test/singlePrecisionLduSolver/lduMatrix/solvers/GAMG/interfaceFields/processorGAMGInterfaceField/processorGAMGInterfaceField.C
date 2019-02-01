@@ -92,9 +92,9 @@ Foam::processorGAMGInterfaceField::~processorGAMGInterfaceField()
 
 void Foam::processorGAMGInterfaceField::initInterfaceMatrixUpdate
 (
-    scalarField&,
+    solveScalarField&,
     const bool,
-    const scalarField& psiInternal,
+    const solveScalarField& psiInternal,
     const scalarField&,
     const direction,
     const Pstream::commsTypes commsType
@@ -143,9 +143,9 @@ void Foam::processorGAMGInterfaceField::initInterfaceMatrixUpdate
 
 void Foam::processorGAMGInterfaceField::updateInterfaceMatrix
 (
-    scalarField& result,
+    solveScalarField& result,
     const bool add,
-    const scalarField&,
+    const solveScalarField&,
     const scalarField& coeffs,
     const direction cmpt,
     const Pstream::commsTypes commsType
@@ -185,9 +185,13 @@ void Foam::processorGAMGInterfaceField::updateInterfaceMatrix
     }
     else
     {
-        scalarField pnf
+        solveScalarField pnf
         (
-            procInterface_.compressedReceive<scalar>(commsType, coeffs.size())
+            procInterface_.compressedReceive<solveScalar>
+            (
+                commsType,
+                coeffs.size()
+            )
         );
         transformCoupleField(pnf, cmpt);
 

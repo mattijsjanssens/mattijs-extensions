@@ -55,6 +55,35 @@ $(dummyAgglomeration)/dummyAgglomeration.C
 ./lduMatrix/preconditioners/FDICPreconditioner/FDICPreconditioner.C
 ./lduMatrix/preconditioners/noPreconditioner/noPreconditioner.C
 
+
+finiteVolume/fvMatrices/fvMatrices.C
+finiteVolume/fvMatrices/fvScalarMatrix/fvScalarMatrix.C
+finiteVolume/fvMatrices/solvers/MULES/MULES.C
+finiteVolume/fvMatrices/solvers/MULES/CMULES.C
+finiteVolume/fvMatrices/solvers/isoAdvection/isoCutCell/isoCutCell.C
+finiteVolume/fvMatrices/solvers/isoAdvection/isoCutFace/isoCutFace.C
+finiteVolume/fvMatrices/solvers/isoAdvection/isoAdvection/isoAdvection.C
+finiteVolume/fvMatrices/solvers/GAMGSymSolver/GAMGAgglomerations/faceAreaPairGAMGAgglomeration/faceAreaPairGAMGAgglomeration.C
+
+fvPatchFields = finiteVolume/fields/fvPatchFields
+constraintFvPatchFields = $(fvPatchFields)/constraint
+/*
+$(constraintFvPatchFields)/cyclic/cyclicFvPatchFields.C
+$(constraintFvPatchFields)/cyclicAMI/cyclicAMIFvPatchFields.C
+$(constraintFvPatchFields)/cyclicACMI/cyclicACMIFvPatchFields.C
+$(constraintFvPatchFields)/cyclicSlip/cyclicSlipFvPatchFields.C
+$(constraintFvPatchFields)/empty/emptyFvPatchFields.C
+$(constraintFvPatchFields)/jumpCyclic/jumpCyclicFvPatchFields.C
+$(constraintFvPatchFields)/jumpCyclicAMI/jumpCyclicAMIFvPatchFields.C
+$(constraintFvPatchFields)/nonuniformTransformCyclic/nonuniformTransformCyclicFvPatchFields.C
+*/
+$(constraintFvPatchFields)/processor/processorFvPatchFields.C
+$(constraintFvPatchFields)/processor/processorFvPatchScalarField.C
+/*
+$(constraintFvPatchFields)/processorCyclic/processorCyclicFvPatchFields.C
+*/
+
+
 Test-singlePrecisionLduSolver.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-singlePrecisionLduSolver
