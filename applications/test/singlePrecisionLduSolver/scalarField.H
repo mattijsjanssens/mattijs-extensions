@@ -49,6 +49,64 @@ namespace Foam
 typedef Field<scalar> scalarField;
 typedef Field<solveScalar> solveScalarField;
 
+const scalarField& get(const solveScalarField& f, scalarField& store)
+{
+    #ifdef WM_DP
+    return f;
+    #else
+    store.setSize(f.size());
+    forAll(store, i)
+    {
+        store[i] = f[i];
+    }
+    return store;
+    #endif
+}
+tmp<scalarField> get(const solveScalarField& f)
+{
+    #ifdef WM_DP
+    return f;
+    #else
+    tmp<scalarField> tstore(tmp<scalarField>::New(f.size()));
+    scalarField& store = tstore.ref();
+    forAll(store, i)
+    {
+        store[i] = f[i];
+    }
+    return tstore;
+    #endif
+}
+tmp<scalarField> get(const tmp<solveScalarField>& tf)
+{
+    #ifdef WM_DP
+    return tf;
+    #else
+    const solveScalarField& f = tf();
+    tmp<scalarField> tstore(tmp<scalarField>::New(f.size()));
+    scalarField& store = tstore.ref();
+    forAll(store, i)
+    {
+        store[i] = f[i];
+    }
+    return tstore;
+    #endif
+}
+tmp<solveScalarField> get(const scalarField& f)
+{
+    #ifdef WM_DP
+    return f;
+    #else
+    tmp<solveScalarField> tstore(tmp<solveScalarField>::New(f.size()));
+    solveScalarField& store = tstore.ref();
+    forAll(store, i)
+    {
+        store[i] = f[i];
+    }
+    return tstore;
+    #endif
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<>

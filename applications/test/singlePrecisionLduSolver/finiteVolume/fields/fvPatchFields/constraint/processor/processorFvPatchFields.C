@@ -24,6 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "scalarField.H"
+#include "fvPatchField.H"
 #include "processorFvPatchFields.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"

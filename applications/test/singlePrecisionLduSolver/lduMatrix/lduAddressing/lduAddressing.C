@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "lduAddressing.H"
 #include "demandDrivenData.H"
 #include "scalarField.H"

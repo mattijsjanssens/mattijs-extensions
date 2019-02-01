@@ -87,7 +87,7 @@ public:
         //- Smooth the solution for a given number of sweeps
         virtual void smooth
         (
-            scalarField& psi,
+            solveScalarField& psi,
             const scalarField& Source,
             const direction cmpt,
             const label nSweeps

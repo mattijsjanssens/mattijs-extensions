@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "cyclicLduInterfaceField.H"
 #include "diagTensorField.H"
 
@@ -44,7 +45,7 @@ Foam::cyclicLduInterfaceField::~cyclicLduInterfaceField()
 
 void Foam::cyclicLduInterfaceField::transformCoupleField
 (
-    scalarField& f,
+    solveScalarField& f,
     const direction cmpt
 ) const
 {

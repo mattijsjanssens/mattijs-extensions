@@ -114,13 +114,21 @@ void Foam::GAMGPreconditioner::precondition
         finestCorrectionScratch
     );
 
+
+    scalarField rA_s;
+
     for (label cycle=0; cycle<nVcycles_; cycle++)
     {
+        forAll(rA_s, i)
+        {
+            rA_s[i] = rA[i];
+        }
+
         Vcycle
         (
             smoothers,
             wA,
-            rA,
+            Foam::get(rA, rA_s),
             AwA,
             finestCorrection,
             finestResidual,

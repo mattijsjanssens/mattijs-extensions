@@ -44,7 +44,7 @@ Foam::processorLduInterfaceField::~processorLduInterfaceField()
 
 void Foam::processorLduInterfaceField::transformCoupleField
 (
-    scalarField& f,
+    solveScalarField& f,
     const direction cmpt
 ) const
 {

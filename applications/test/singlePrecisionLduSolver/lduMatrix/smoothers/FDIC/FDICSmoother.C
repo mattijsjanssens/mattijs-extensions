@@ -97,7 +97,7 @@ Foam::FDICSmoother::FDICSmoother
 
 void Foam::FDICSmoother::smooth
 (
-    scalarField& psi,
+    solveScalarField& psi,
     const scalarField& source,
     const direction cmpt,
     const label nSweeps
@@ -112,8 +112,8 @@ void Foam::FDICSmoother::smooth
         matrix_.lduAddr().lowerAddr().begin();
 
     // Temporary storage for the residual
-    scalarField rA(rD_.size());
-    scalar* __restrict__ rAPtr = rA.begin();
+    solveScalarField rA(rD_.size());
+    solveScalar* __restrict__ rAPtr = rA.begin();
 
     for (label sweep=0; sweep<nSweeps; sweep++)
     {

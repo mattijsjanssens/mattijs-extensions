@@ -35,6 +35,7 @@ SourceFiles
 #ifndef processorLduInterfaceField_H
 #define processorLduInterfaceField_H
 
+#include "scalarField.H"
 #include "primitiveFieldsFwd.H"
 #include "typeInfo.H"
 

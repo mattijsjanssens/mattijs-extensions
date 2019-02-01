@@ -78,7 +78,7 @@ Foam::DICGaussSeidelSmoother::DICGaussSeidelSmoother
 
 void Foam::DICGaussSeidelSmoother::smooth
 (
-    scalarField& psi,
+    solveScalarField& psi,
     const scalarField& source,
     const direction cmpt,
     const label nSweeps

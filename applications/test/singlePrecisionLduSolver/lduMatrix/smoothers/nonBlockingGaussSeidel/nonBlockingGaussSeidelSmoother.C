@@ -93,7 +93,7 @@ Foam::nonBlockingGaussSeidelSmoother::nonBlockingGaussSeidelSmoother
 void Foam::nonBlockingGaussSeidelSmoother::smooth
 (
     const word& fieldName_,
-    scalarField& psi,
+    solveScalarField& psi,
     const lduMatrix& matrix_,
     const label blockStart,
     const scalarField& source,
@@ -103,12 +103,12 @@ void Foam::nonBlockingGaussSeidelSmoother::smooth
     const label nSweeps
 )
 {
-    scalar* __restrict__ psiPtr = psi.begin();
+    solveScalar* __restrict__ psiPtr = psi.begin();
 
     const label nCells = psi.size();
 
-    scalarField bPrime(nCells);
-    scalar* __restrict__ bPrimePtr = bPrime.begin();
+    solveScalarField bPrime(nCells);
+    solveScalar* __restrict__ bPrimePtr = bPrime.begin();
 
     const scalar* const __restrict__ diagPtr = matrix_.diag().begin();
     const scalar* const __restrict__ upperPtr =
@@ -137,7 +137,12 @@ void Foam::nonBlockingGaussSeidelSmoother::smooth
 
     for (label sweep=0; sweep<nSweeps; sweep++)
     {
-        bPrime = source;
+        //bPrime = source;
+        bPrime.setSize(source.size());
+        forAll(bPrime, i)
+        {
+            bPrime[i] = source[i];
+        }
 
         matrix_.initMatrixInterfaces
         (
@@ -149,7 +154,7 @@ void Foam::nonBlockingGaussSeidelSmoother::smooth
             cmpt
         );
 
-        scalar curPsi;
+        solveScalar curPsi;
         label fStart;
         label fEnd = ownStartPtr[0];
 
@@ -223,7 +228,7 @@ void Foam::nonBlockingGaussSeidelSmoother::smooth
 
 void Foam::nonBlockingGaussSeidelSmoother::smooth
 (
-    scalarField& psi,
+    solveScalarField& psi,
     const scalarField& source,
     const direction cmpt,
     const label nSweeps

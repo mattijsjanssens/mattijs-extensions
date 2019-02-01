@@ -44,6 +44,7 @@ SourceFiles
 #ifndef fvPatchField_H
 #define fvPatchField_H
 
+#include "scalarField.H"
 #include "fvPatch.H"
 #include "DimensionedField.H"
 #include "fieldTypes.H"

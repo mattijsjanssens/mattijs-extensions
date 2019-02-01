@@ -79,7 +79,7 @@ public:
         static void smooth
         (
             const word& fieldName,
-            scalarField& psi,
+            solveScalarField& psi,
             const lduMatrix& matrix,
             const scalarField& source,
             const FieldField<Field, scalar>& interfaceBouCoeffs,
@@ -92,7 +92,7 @@ public:
         //- Smooth the solution for a given number of sweeps
         virtual void smooth
         (
-            scalarField& psi,
+            solveScalarField& psi,
             const scalarField& Source,
             const direction cmpt,
             const label nSweeps

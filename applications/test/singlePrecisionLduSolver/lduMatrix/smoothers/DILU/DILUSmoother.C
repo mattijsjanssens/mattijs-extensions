@@ -56,8 +56,14 @@ Foam::DILUSmoother::DILUSmoother
         interfaceIntCoeffs,
         interfaces
     ),
-    rD_(matrix_.diag())
+    rD_(matrix_.diag().size())
 {
+    const scalarField& diag = matrix_.diag();
+    forAll(diag, i)
+    {
+        rD_[i] = diag[i];
+    }
+
     DILUPreconditioner::calcReciprocalD(rD_, matrix_);
 }
 
@@ -66,13 +72,13 @@ Foam::DILUSmoother::DILUSmoother
 
 void Foam::DILUSmoother::smooth
 (
-    scalarField& psi,
+    solveScalarField& psi,
     const scalarField& source,
     const direction cmpt,
     const label nSweeps
 ) const
 {
-    const scalar* const __restrict__ rDPtr = rD_.begin();
+    const solveScalar* const __restrict__ rDPtr = rD_.begin();
 
     const label* const __restrict__ uPtr =
         matrix_.lduAddr().upperAddr().begin();
@@ -83,8 +89,8 @@ void Foam::DILUSmoother::smooth
     const scalar* const __restrict__ lowerPtr = matrix_.lower().begin();
 
     // Temporary storage for the residual
-    scalarField rA(rD_.size());
-    scalar* __restrict__ rAPtr = rA.begin();
+    solveScalarField rA(rD_.size());
+    solveScalar* __restrict__ rAPtr = rA.begin();
 
     for (label sweep=0; sweep<nSweeps; sweep++)
     {
