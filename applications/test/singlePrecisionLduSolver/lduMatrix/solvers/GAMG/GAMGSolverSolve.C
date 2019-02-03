@@ -38,15 +38,18 @@ Foam::solverPerformance Foam::GAMGSolver::solve
     const direction cmpt
 ) const
 {
-    #ifdef WM_DP
-    Field<solveScalar>& psi = psi_s;
-    #else
-    Field<solveScalar> psi(psi_s.size());
-    forAll(psi, i)
-    {
-        psi[i] = solveScalar(psi_s[i]);
-    }
-    #endif
+//    #ifdef WM_DP
+//    Field<solveScalar>& psi = psi_s;
+//    #else
+//    Field<solveScalar> psi(psi_s.size());
+//    forAll(psi, i)
+//    {
+//        psi[i] = solveScalar(psi_s[i]);
+//    }
+//    #endif
+    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
+    solveScalarField& psi = tpsi.ref();
+
 
     // Setup class containing solver performance data
     solverPerformance solverPerf(typeName, fieldName_);
@@ -75,17 +78,12 @@ Foam::solverPerformance Foam::GAMGSolver::solve
         finestResidual[i] = source[i] - Apsi[i];
     }
 
-    //matrix().setResidualField(finestResidual, fieldName_, true);
-    #ifdef WM_DP
-    matrix().setResidualField(finestResidual, fieldName_, false);
-    #else
-    scalarField finestResidual_s(finestResidual.size());
-    forAll(finestResidual_s, i)
-    {
-        finestResidual_s[i] = finestResidual[i];
-    }
-    matrix().setResidualField(finestResidual_s, fieldName_, false);
-    #endif
+    matrix().setResidualField
+    (
+        ConstFieldWrapper<scalarField, solveScalarField>(finestResidual)(),
+        fieldName_,
+        false
+    );
 
     // Calculate normalised residual for convergence test
     solverPerf.initialResidual() = gSumMag
@@ -176,15 +174,12 @@ Foam::solverPerformance Foam::GAMGSolver::solve
         );
     }
 
-    #ifdef WM_DP
-    matrix().setResidualField(finestResidual, fieldName_, false);
-    #else
-    forAll(finestResidual_s, i)
-    {
-        finestResidual_s[i] = finestResidual[i];
-    }
-    matrix().setResidualField(finestResidual_s, fieldName_, false);
-    #endif
+    matrix().setResidualField
+    (
+        ConstFieldWrapper<scalarField, solveScalarField>(finestResidual)(),
+        fieldName_,
+        false
+    );
 
     return solverPerf;
 }
@@ -231,15 +226,11 @@ void Foam::GAMGSolver::Vcycle
             {
                 coarseCorrFields[leveli] = 0.0;
 
-                #ifdef WM_DP
-                scalarField& coarseSource = coarseSources[leveli];
-                #else
-                scalarField coarseSource(coarseSources[leveli].size());
-                forAll(coarseSource, i)
-                {
-                    coarseSource[i] = coarseSources[leveli][i];
-                }
-                #endif
+                FieldWrapper<scalarField, solveScalarField> tcoarseSource
+                (
+                    coarseSources[leveli]
+                );
+                scalarField& coarseSource = tcoarseSource.ref();
 
                 smoothers[leveli + 1].smooth
                 (
@@ -314,21 +305,17 @@ void Foam::GAMGSolver::Vcycle
     // Solve Coarsest level with either an iterative or direct solver
     if (coarseCorrFields.set(coarsestLevel))
     {
-        #ifdef WM_DP
-        scalarField& coarsestCorr = coarseCorrFields[coarsestLevel];
-        const scalarField& coarseSource = coarseSources[coarsestLevel];
-        #else
-        scalarField coarsestCorr(coarseCorrFields[coarsestLevel].size());
-        forAll(coarsestCorr, i)
-        {
-            coarsestCorr[i] = coarseCorrFields[coarsestLevel][i];
-        }
-        scalarField coarseSource(coarseSources[coarsestLevel].size());
-        forAll(coarseSource, i)
-        {
-            coarseSource[i] = coarseSources[coarsestLevel][i];
-        }
-        #endif
+        FieldWrapper<scalarField, solveScalarField> tcoarsestCorr
+        (
+            coarseCorrFields[coarsestLevel]
+        );
+        scalarField& coarsestCorr = tcoarsestCorr.ref();
+        FieldWrapper<scalarField, solveScalarField> tcoarseSource
+        (
+            coarseSources[coarsestLevel]
+        );
+        scalarField& coarseSource = tcoarseSource.ref();
+
         solveCoarsestLevel
         (
             coarsestCorr,
@@ -445,15 +432,12 @@ void Foam::GAMGSolver::Vcycle
                 coarseCorrFields[leveli] += preSmoothedCoarseCorrField;
             }
 
-            #ifdef WM_DP
-            scalarField& coarseSource = coarseSources[leveli];
-            #else
-            scalarField coarseSource(coarseSources[leveli].size());
-            forAll(coarseSource, i)
-            {
-                coarseSource[i] = coarseSources[leveli][i];
-            }
-            #endif
+            FieldWrapper<scalarField, solveScalarField> tcoarseSource
+            (
+                coarseSources[leveli]
+            );
+            scalarField& coarseSource = tcoarseSource.ref();
+
             smoothers[leveli + 1].smooth
             (
                 coarseCorrFields[leveli],

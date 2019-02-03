@@ -49,62 +49,102 @@ namespace Foam
 typedef Field<scalar> scalarField;
 typedef Field<solveScalar> solveScalarField;
 
-const scalarField& get(const solveScalarField& f, scalarField& store)
+template<class Type, class InputType>
+class FieldWrapper
+:
+    public tmp<Type>
 {
-    #ifdef WM_DP
-    return f;
-    #else
-    store.setSize(f.size());
-    forAll(store, i)
+    // Private data
+
+        //- Reference to underlying field
+        InputType& ref_;
+
+
+public:
+
+    // Constructors
+
+        //- Construct from InputType
+        FieldWrapper(InputType& f)
+        :
+            #ifdef WM_DP
+            tmp<Type>(f),
+            #else
+            tmp<Type>(tmp<Type>::New(f.size())),
+            #endif
+            ref_(f)
+        {
+            #ifndef WM_DP
+            Type& store = this->ref();
+            forAll(store, i)
+            {
+                store[i] = f[i];
+            }
+            #endif
+        }
+
+
+    //- Destructor
+    ~FieldWrapper()
     {
-        store[i] = f[i];
+        if (this->isTmp())
+        {
+            const Type& store = this->operator()();
+            ref_.setSize(store.size());
+            forAll(ref_, i)
+            {
+                ref_[i] = store[i];
+            }
+        }
     }
-    return store;
-    #endif
-}
-tmp<scalarField> get(const solveScalarField& f)
+};
+
+
+template<class Type, class InputType>
+class ConstFieldWrapper
+:
+    public tmp<Type>
 {
-    #ifdef WM_DP
-    return f;
-    #else
-    tmp<scalarField> tstore(tmp<scalarField>::New(f.size()));
-    scalarField& store = tstore.ref();
-    forAll(store, i)
-    {
-        store[i] = f[i];
-    }
-    return tstore;
-    #endif
-}
-tmp<scalarField> get(const tmp<solveScalarField>& tf)
-{
-    #ifdef WM_DP
-    return tf;
-    #else
-    const solveScalarField& f = tf();
-    tmp<scalarField> tstore(tmp<scalarField>::New(f.size()));
-    scalarField& store = tstore.ref();
-    forAll(store, i)
-    {
-        store[i] = f[i];
-    }
-    return tstore;
-    #endif
-}
-tmp<solveScalarField> get(const scalarField& f)
-{
-    #ifdef WM_DP
-    return f;
-    #else
-    tmp<solveScalarField> tstore(tmp<solveScalarField>::New(f.size()));
-    solveScalarField& store = tstore.ref();
-    forAll(store, i)
-    {
-        store[i] = f[i];
-    }
-    return tstore;
-    #endif
-}
+public:
+
+    // Constructors
+
+        //- Construct from InputType
+        ConstFieldWrapper(const InputType& f)
+        :
+            #ifdef WM_DP
+            tmp<Type>(f)
+            #else
+            tmp<Type>(tmp<Type>::New(f.size()))
+            #endif
+        {
+            #ifndef WM_DP
+            Type& store = this->ref();
+            forAll(store, i)
+            {
+                store[i] = f[i];
+            }
+            #endif
+        }
+
+
+    // Member functions
+
+        static const Type& get(const InputType& f, Type& store)
+        {
+            #ifdef WM_DP
+            return f;
+            #else
+            store.setSize(f.size());
+            forAll(store, i)
+            {
+                store[i] = f[i];
+            }
+            return store;
+            #endif
+        }
+};
+
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

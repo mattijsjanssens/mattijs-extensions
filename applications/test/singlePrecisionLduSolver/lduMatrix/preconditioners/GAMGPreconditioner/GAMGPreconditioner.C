@@ -81,14 +81,14 @@ void Foam::GAMGPreconditioner::readControls()
 void Foam::GAMGPreconditioner::precondition
 (
     solveScalarField& wA,
-    const solveScalarField& rA,
+    const solveScalarField& rA_ss,
     const direction cmpt
 ) const
 {
     wA = 0.0;
     solveScalarField AwA(wA.size());
     solveScalarField finestCorrection(wA.size());
-    solveScalarField finestResidual(rA);
+    solveScalarField finestResidual(rA_ss);
 
     // Create coarse grid correction fields
     PtrList<solveScalarField> coarseCorrFields;
@@ -119,16 +119,17 @@ void Foam::GAMGPreconditioner::precondition
 
     for (label cycle=0; cycle<nVcycles_; cycle++)
     {
-        forAll(rA_s, i)
-        {
-            rA_s[i] = rA[i];
-        }
+        const scalarField& rA = ConstFieldWrapper
+        <
+            scalarField,
+            solveScalarField
+        >::get(rA_ss, rA_s);
 
         Vcycle
         (
             smoothers,
             wA,
-            Foam::get(rA, rA_s),
+            rA,
             AwA,
             finestCorrection,
             finestResidual,

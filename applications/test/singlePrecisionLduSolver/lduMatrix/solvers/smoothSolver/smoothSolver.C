@@ -84,15 +84,8 @@ Foam::solverPerformance Foam::smoothSolver::solve
     const direction cmpt
 ) const
 {
-    #ifdef WM_DP
-    solveScalarField& psi = psi_s;
-    #else
-    solveScalarField psi(psi_s.size());
-    forAll(psi, i)
-    {
-        psi[i] = solveScalar(psi_s[i]);
-    }
-    #endif
+    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
+    solveScalarField& psi = tpsi.ref();
 
     // Setup class containing solver performance data
     solverPerformance solverPerf(typeName, fieldName_);
@@ -144,16 +137,12 @@ Foam::solverPerformance Foam::smoothSolver::solve
                 residual[i] = source[i] - Apsi[i];
             }
 
-            #ifdef WM_DP
-            matrix().setResidualField(residual, fieldName_, false);
-            #else
-            scalarField residual_s(residual.size());
-            forAll(residual_s, i)
-            {
-                residual_s[i] = residual[i];
-            }
-            matrix().setResidualField(residual_s, fieldName_, false);
-            #endif
+            matrix().setResidualField
+            (
+                ConstFieldWrapper<scalarField, solveScalarField>(residual)(),
+                fieldName_,
+                false
+            );
 
             // Calculate residual magnitude
             solverPerf.initialResidual() =
@@ -221,24 +210,13 @@ Foam::solverPerformance Foam::smoothSolver::solve
             );
         }
 
-        #ifdef WM_DP
-        matrix().setResidualField(residual, fieldName_, false);
-        #else
-        scalarField residual_s(residual.size());
-        forAll(residual_s, i)
-        {
-            residual_s[i] = residual[i];
-        }
-        matrix().setResidualField(residual_s, fieldName_, false);
-        #endif
+        matrix().setResidualField
+        (
+            ConstFieldWrapper<scalarField, solveScalarField>(residual)(),
+            fieldName_,
+            false
+        );
     }
-
-    #ifndef WM_DP
-    forAll(psi, i)
-    {
-        psi_s[i] = psi[i];
-    }
-    #endif
 
     return solverPerf;
 }

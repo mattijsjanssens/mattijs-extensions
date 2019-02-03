@@ -58,7 +58,11 @@ void Foam::jumpCyclicAMIFvPatchField<scalar>::updateInterfaceMatrix
     pnf = this->cyclicAMIPatch().interpolate(pnf);
 
     // only apply jump to original field
-    if (&psiInternal == &this->primitiveField())
+    if
+    (
+        reinterpret_cast<const void*>(&psiInternal)
+     == reinterpret_cast<const void*>(&this->primitiveField())
+    )
     {
         Field<scalar> jf(this->jump());
 
@@ -67,7 +71,11 @@ void Foam::jumpCyclicAMIFvPatchField<scalar>::updateInterfaceMatrix
             jf *= -1.0;
         }
 
-        pnf -= jf;
+        //pnf -= jf;
+        forAll(pnf, i)
+        {
+            pnf[i] -= jf[i];
+        }
     }
 
     // Transform according to the transformation tensors

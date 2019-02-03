@@ -171,25 +171,36 @@ Foam::SolverPerformance<Type> Foam::fvMatrix<Type>::solveSegregated
         // Use the initMatrixInterfaces and updateMatrixInterfaces to correct
         // bouCoeffsCmpt for the explicit part of the coupled boundary
         // conditions
-        initMatrixInterfaces
-        (
-            true,
-            bouCoeffsCmpt,
-            interfaces,
-            psiCmpt,
-            sourceCmpt,
-            cmpt
-        );
+        {
+            FieldWrapper<solveScalarField, scalarField> sourceCmpt_ss
+            (
+                sourceCmpt
+            );
+            ConstFieldWrapper<solveScalarField, scalarField> psiCmpt_ss
+            (
+                psiCmpt
+            );
 
-        updateMatrixInterfaces
-        (
-            true,
-            bouCoeffsCmpt,
-            interfaces,
-            psiCmpt,
-            sourceCmpt,
-            cmpt
-        );
+            initMatrixInterfaces
+            (
+                true,
+                bouCoeffsCmpt,
+                interfaces,
+                psiCmpt_ss(),
+                sourceCmpt_ss.ref(),
+                cmpt
+            );
+
+            updateMatrixInterfaces
+            (
+                true,
+                bouCoeffsCmpt,
+                interfaces,
+                psiCmpt_ss(),
+                sourceCmpt_ss.ref(),
+                cmpt
+            );
+        }
 
         solverPerformance solverPerf;
 

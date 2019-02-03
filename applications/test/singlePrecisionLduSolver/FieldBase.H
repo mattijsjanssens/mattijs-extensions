@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,25 +21,59 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::FieldBase
+
+Description
+    Template invariant parts for Field
+
+SourceFiles
+    FieldBase.C
+
 \*---------------------------------------------------------------------------*/
 
-#include "coupledFvPatchField.H"
-#include "scalarField.H"
-#include "cyclicFvPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "volFields.H"
+#ifndef FieldBase_H
+#define FieldBase_H
+
+#include "refCount.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+/*---------------------------------------------------------------------------*\
+                          Class FieldBase Declaration
+\*---------------------------------------------------------------------------*/
 
-makePatchFields(cyclic);
+class FieldBase
+:
+    public refCount
+{
+public:
+
+    // Static data members
+
+        //- Typename for Field
+        static const char* const typeName;
+
+        static bool allowConstructFromLargerSize;
+
+
+    // Constructors
+
+        //- Construct null, with refCount zero
+        constexpr FieldBase() noexcept
+        :
+            refCount()
+        {}
+};
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+#endif
 
 // ************************************************************************* //

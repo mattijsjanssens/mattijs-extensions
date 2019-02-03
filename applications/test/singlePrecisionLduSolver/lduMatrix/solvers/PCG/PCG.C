@@ -69,15 +69,18 @@ Foam::solverPerformance Foam::PCG::solve
     const direction cmpt
 ) const
 {
-    #ifdef WM_DP
-    scalarField& psi = psi_s;
-    #else
-    solveScalarField psi(psi_s.size());
-    forAll(psi, i)
-    {
-        psi[i] = solveScalar(psi_s[i]);
-    }
-    #endif
+    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
+    solveScalarField& psi = tpsi.ref();
+
+//    #ifdef WM_DP
+//    scalarField& psi = psi_s;
+//    #else
+//    solveScalarField psi(psi_s.size());
+//    forAll(psi, i)
+//    {
+//        psi[i] = solveScalar(psi_s[i]);
+//    }
+//    #endif
 
     // --- Setup class containing solver performance data
     solverPerformance solverPerf
@@ -111,16 +114,12 @@ Foam::solverPerformance Foam::PCG::solve
     }
     solveScalar* __restrict__ rAPtr = rA.begin();
 
-    #ifdef WM_DP
-    matrix().setResidualField(rA, fieldName_, false);
-    #else
-    scalarField rA_s(rA.size());
-    forAll(rA_s, i)
-    {
-        rA_s[i] = rA[i];
-    }
-    matrix().setResidualField(rA_s, fieldName_, false);
-    #endif
+    matrix().setResidualField
+    (
+        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        fieldName_,
+        false
+    );
 
     // --- Calculate normalisation factor
     solveScalar normFactor = this->normFactor(psi, source, wA, pA);
@@ -215,22 +214,12 @@ Foam::solverPerformance Foam::PCG::solve
         );
     }
 
-    #ifdef WM_DP
-    matrix().setResidualField(rA, fieldName_, false);
-    #else
-    forAll(rA_s, i)
-    {
-        rA_s[i] = rA[i];
-    }
-    matrix().setResidualField(rA_s, fieldName_, false);
-    #endif
-
-    #ifndef WM_DP
-    forAll(psi, i)
-    {
-        psi_s[i] = psi[i];
-    }
-    #endif
+    matrix().setResidualField
+    (
+        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        fieldName_,
+        false
+    );
 
     return solverPerf;
 }

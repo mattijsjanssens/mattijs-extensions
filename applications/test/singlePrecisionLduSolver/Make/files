@@ -78,12 +78,6 @@ $(algebraicPairGAMGAgglomeration)/algebraicPairGAMGAgglomeration.C
 dummyAgglomeration = $(GAMGAgglomerations)/dummyAgglomeration
 $(dummyAgglomeration)/dummyAgglomeration.C
 
-./lduMatrix/preconditioners/diagonalPreconditioner/diagonalPreconditioner.C
-./lduMatrix/preconditioners/DICPreconditioner/DICPreconditioner.C
-./lduMatrix/preconditioners/DILUPreconditioner/DILUPreconditioner.C
-./lduMatrix/preconditioners/FDICPreconditioner/FDICPreconditioner.C
-./lduMatrix/preconditioners/noPreconditioner/noPreconditioner.C
-
 
 finiteVolume/fvMatrices/fvMatrices.C
 finiteVolume/fvMatrices/fvScalarMatrix/fvScalarMatrix.C
@@ -96,8 +90,9 @@ finiteVolume/fvMatrices/solvers/GAMGSymSolver/GAMGAgglomerations/faceAreaPairGAM
 
 fvPatchFields = finiteVolume/fields/fvPatchFields
 constraintFvPatchFields = $(fvPatchFields)/constraint
-/*
+
 $(constraintFvPatchFields)/cyclic/cyclicFvPatchFields.C
+/*
 $(constraintFvPatchFields)/cyclicAMI/cyclicAMIFvPatchFields.C
 $(constraintFvPatchFields)/cyclicACMI/cyclicACMIFvPatchFields.C
 $(constraintFvPatchFields)/cyclicSlip/cyclicSlipFvPatchFields.C

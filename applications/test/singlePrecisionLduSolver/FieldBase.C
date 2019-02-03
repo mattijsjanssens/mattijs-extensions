@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018 OpenCFD Ltd.
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,23 +23,13 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "coupledFvPatchField.H"
-#include "scalarField.H"
-#include "cyclicFvPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "volFields.H"
+#include "FieldBase.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Static Members  * * * * * * * * * * * * * * //
 
-namespace Foam
-{
+const char* const Foam::FieldBase::typeName("Field");
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+bool Foam::FieldBase::allowConstructFromLargerSize = false;
 
-makePatchFields(cyclic);
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
 
 // ************************************************************************* //

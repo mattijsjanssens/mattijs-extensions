@@ -90,13 +90,7 @@ class processorFvPatchField
 
             //- Scalar receive buffer
             mutable solveScalarField scalarReceiveBuf_;
-//
-//            #ifdef WM_SP
-//            //- solveScalar send buffer
-//            mutable solveScalarField solveScalarSendBuf_;
-//
-//            //- Scalar receive buffer
-//            mutable solveScalarField solveScalarReceiveBuf_;
+
 
 public:
 

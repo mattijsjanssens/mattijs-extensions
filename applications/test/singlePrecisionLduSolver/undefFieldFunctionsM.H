@@ -23,23 +23,22 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "coupledFvPatchField.H"
-#include "scalarField.H"
-#include "cyclicFvPatchFields.H"
-#include "addToRunTimeSelectionTable.H"
-#include "volFields.H"
+#undef UNARY_FUNCTION
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#undef UNARY_OPERATOR
 
-namespace Foam
-{
+#undef BINARY_FUNCTION
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+#undef BINARY_TYPE_FUNCTION_SF
+#undef BINARY_TYPE_FUNCTION_FS
+#undef BINARY_TYPE_FUNCTION
 
-makePatchFields(cyclic);
+#undef BINARY_OPERATOR
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#undef BINARY_TYPE_OPERATOR_SF
+#undef BINARY_TYPE_OPERATOR_FS
+#undef BINARY_TYPE_OPERATOR
 
-} // End namespace Foam
+#undef TEMPLATE
 
 // ************************************************************************* //

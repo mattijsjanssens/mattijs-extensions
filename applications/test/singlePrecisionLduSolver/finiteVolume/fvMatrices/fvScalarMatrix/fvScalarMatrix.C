@@ -199,7 +199,9 @@ Foam::tmp<Foam::scalarField> Foam::fvMatrix<Foam::scalar>::residual() const
     addBoundaryDiag(boundaryDiag, 0);
 
     const scalarField& psif = psi_.primitiveField();
-    const solveScalarField& psi = Foam::get(psif);
+
+    ConstFieldWrapper<solveScalarField, scalarField> tpsi(psif);
+    const solveScalarField& psi = tpsi();
 
     tmp<solveScalarField> tres
     (
@@ -212,7 +214,7 @@ Foam::tmp<Foam::scalarField> Foam::fvMatrix<Foam::scalar>::residual() const
             0
         )
     );
-    tmp<scalarField> tres_s(Foam::get(tres));
+    ConstFieldWrapper<scalarField, solveScalarField> tres_s(tres);
     addBoundarySource(tres_s.ref());
     return tres_s;
 }
