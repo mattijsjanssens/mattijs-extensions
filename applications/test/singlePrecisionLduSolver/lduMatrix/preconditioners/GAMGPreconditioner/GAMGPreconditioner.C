@@ -119,11 +119,8 @@ void Foam::GAMGPreconditioner::precondition
 
     for (label cycle=0; cycle<nVcycles_; cycle++)
     {
-        const scalarField& rA = ConstFieldWrapper
-        <
-            scalarField,
-            solveScalarField
-        >::get(rA_ss, rA_s);
+        const scalarField& rA =
+            ConstFieldWrapper<scalar, solveScalar>::get(rA_ss, rA_s);
 
         Vcycle
         (
@@ -150,7 +147,7 @@ void Foam::GAMGPreconditioner::precondition
         {
             // Calculate finest level residual field
             matrix_.Amul(AwA, wA, interfaceBouCoeffs_, interfaces_, cmpt);
-            finestResidual = rA;
+            finestResidual = rA_ss;
             finestResidual -= AwA;
         }
     }

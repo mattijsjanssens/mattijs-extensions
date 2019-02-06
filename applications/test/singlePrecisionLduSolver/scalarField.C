@@ -21,223 +21,185 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Typedef
-    Foam::scalarField
-
 Description
     Specialisation of Field\<T\> for scalar.
 
-SourceFiles
-    scalarField.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef scalarField_H
-#define scalarField_H
-
-#include "scalar.H"
-#include "Field.H"
+#include "scalarField.H"
+#include "unitConversion.H"
 
 #define TEMPLATE
-#include "FieldFunctionsM.H"
+#include "FieldFunctionsM.C"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-typedef Field<scalar> scalarField;
-typedef Field<solveScalar> solveScalarField;
-//class solveScalarField
-//:
-//    public Field<solveScalar>
-//{
-//    //- Copy construct
-//    //solveScalarField(constsolveScalarField& fld);
-//
-//    //- Conversion construct
-//    template<class Type2>
-//    explicit solveScalarField(const Field<Type2>& fld)
-//    {
-//        this->setSize(fld.size());
-//        forAll(fld, i)
-//        {
-//            this->operator[](i) = fld[i];
-//        }
-//    }
-//};
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-
-template<class Type, class InputType>
-class FieldWrapper
+template<>
+FieldWrapper<scalar, scalar>::FieldWrapper(scalarField& f)
 :
-    public tmp<Field<Type>>
-{
-    static const Field<Type>& copy
-    (
-        const Field<InputType>& f,
-        Field<Type>& store
-    )
-    {
-        store.setSize(f.size());
-        forAll(store, i)
-        {
-            store[i] = f[i];
-        }
-        return store;
-    }
-
-    // Private data
-
-        //- Reference to underlying field
-        Field<InputType>& ref_;
-
-
-public:
-
-    // Constructors
-
-        //- Construct from Field<InputType>
-        FieldWrapper(Field<InputType>& f) = delete;
-
-
-    //- Destructor
-    ~FieldWrapper()
-    {
-        if (this->isTmp())
-        {
-            const Field<Type>& store = this->operator()();
-            ref_.setSize(store.size());
-            forAll(ref_, i)
-            {
-                ref_[i] = store[i];
-            }
-        }
-    }
-};
-
+    tmp<Field<scalar>>(f),
+    ref_(f)
+{}
 template<>
-FieldWrapper<scalar, scalar>::FieldWrapper(scalarField& f);
-template<>
-FieldWrapper<solveScalar, solveScalar>::FieldWrapper(solveScalarField& f);
-template<>
-FieldWrapper<solveScalar, scalar>::FieldWrapper(scalarField& f);
-template<>
-FieldWrapper<scalar, solveScalar>::FieldWrapper(solveScalarField& f);
-
-
-template<class Type, class InputType>
-class ConstFieldWrapper
+FieldWrapper<solveScalar, solveScalar>::FieldWrapper(solveScalarField& f)
 :
-    public tmp<Field<Type>>
+    tmp<Field<solveScalar>>(f),
+    ref_(f)
+{}
+template<>
+FieldWrapper<solveScalar, scalar>::FieldWrapper(scalarField& f)
+:
+    tmp<Field<solveScalar>>(tmp<Field<solveScalar>>::New(f.size())),
+    ref_(f)
 {
-    static const Field<Type>& copy
-    (
-        const Field<InputType>& f,
-        Field<Type>& store
-    )
-    {
-        store.setSize(f.size());
-        forAll(store, i)
-        {
-            store[i] = f[i];
-        }
-        return store;
-    }
-
-
-public:
-
-    // Constructors
-
-        //- Construct from InputType
-        ConstFieldWrapper(const Field<InputType>& f) = delete;
-
-
-    // Member functions
-
-        static const Field<Type>& get
-        (
-            const Field<InputType>&,
-            Field<Type>&
-        ) = delete;
-};
+    copy(f, this->ref());
+}
+template<>
+FieldWrapper<scalar, solveScalar>::FieldWrapper(solveScalarField& f)
+:
+    tmp<Field<scalar>>(tmp<Field<scalar>>::New(f.size())),
+    ref_(f)
+{
+    copy(f, this->ref());
+}
 
 template<>
-ConstFieldWrapper<scalar, scalar>::ConstFieldWrapper(const scalarField& f);
+ConstFieldWrapper<scalar, scalar>::ConstFieldWrapper(const scalarField& f)
+:
+    tmp<Field<scalar>>(f)
+{}
 template<>
 const scalarField&
-ConstFieldWrapper<scalar, scalar>::get(const scalarField& f, scalarField&);
-
+ConstFieldWrapper<scalar, scalar>::get(const scalarField& f, scalarField&)
+{
+    return f;
+}
 template<>
 ConstFieldWrapper<solveScalar, solveScalar>::ConstFieldWrapper
 (
     const solveScalarField& f
-);
+)
+:
+    tmp<Field<solveScalar>>(f)
+{}
 template<>
 const solveScalarField& ConstFieldWrapper<solveScalar, solveScalar>::
-get(const solveScalarField& f, solveScalarField&);
+get(const solveScalarField& f, solveScalarField&)
+{
+    return f;
+}
 
 // Conversion specialisations
 template<>
-ConstFieldWrapper<solveScalar, scalar>::ConstFieldWrapper(const scalarField& f);
+ConstFieldWrapper<solveScalar, scalar>::ConstFieldWrapper(const scalarField& f)
+:
+    tmp<Field<solveScalar>>(tmp<Field<solveScalar>>::New(f.size()))
+{
+    copy(f, this->ref());
+}
 template<>
 const solveScalarField&
 ConstFieldWrapper<solveScalar, scalar>::
-get(const scalarField& f, solveScalarField& store);
-
+get(const scalarField& f, solveScalarField& store)
+{
+    return copy(f, store);
+}
 template<>
 ConstFieldWrapper<scalar, solveScalar>::ConstFieldWrapper
 (
     const solveScalarField& f
-);
+)
+:
+    tmp<Field<scalar>>(tmp<Field<scalar>>::New(f.size()))
+{
+    copy(f, this->ref());
+}
 template<>
 const scalarField&
 ConstFieldWrapper<scalar, solveScalar>::
-get(const solveScalarField& f, scalarField& store);
-
-
-template<class Type>
-class solveVSmall
+get(const solveScalarField& f, scalarField& store)
 {
-public:
+    return copy(f, store);
+}
 
-    static Type value() = delete;
-};
+
 template<>
-float solveVSmall<float>::value();
+float solveVSmall<float>::value()
+{
+    return floatScalarVSMALL;
+}
 template<>
-double solveVSmall<double>::value();
+double solveVSmall<double>::value()
+{
+    return doubleScalarVSMALL;
+}
+
+
+template<>
+tmp<scalarField> scalarField::component(const direction) const
+{
+    return *this;
+}
+
+void component(scalarField& sf, const UList<scalar>& f, const direction)
+{
+    sf = f;
+}
+
+template<>
+void scalarField::replace(const direction, const UList<scalar>& sf)
+{
+    *this = sf;
+}
+
+template<>
+void scalarField::replace(const direction, const scalar& s)
+{
+    *this = s;
+}
+
+
+void stabilise(scalarField& res, const UList<scalar>& sf, const scalar s)
+{
+    TFOR_ALL_F_OP_FUNC_S_F
+    (
+        scalar, res, =, ::Foam::stabilise, scalar, s, scalar, sf
+    )
+}
+
+tmp<scalarField> stabilise(const UList<scalar>& sf, const scalar s)
+{
+    auto tresult = tmp<scalarField>::New(sf.size());
+    stabilise(tresult.ref(), sf, s);
+    return tresult;
+}
+
+tmp<scalarField> stabilise(const tmp<scalarField>& tsf, const scalar s)
+{
+    tmp<scalarField> tresult = New(tsf);
+    stabilise(tresult.ref(), tsf(), s);
+    tsf.clear();
+    return tresult;
+}
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<>
-tmp<scalarField> scalarField::component(const direction) const;
-
-void component
-(
-    scalarField& sf,
-    const UList<scalar>& f,
-    const direction
-);
-
-template<>
-void scalarField::replace(const direction, const UList<scalar>& sf);
-
-template<>
-void scalarField::replace(const direction, const scalar& s);
-
-
-void stabilise(scalarField& Res, const UList<scalar>& sf, const scalar s);
-tmp<scalarField> stabilise(const UList<scalar>&, const scalar s);
-tmp<scalarField> stabilise(const tmp<scalarField>&, const scalar s);
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-template<>
-scalar sumProd(const UList<scalar>& f1, const UList<scalar>& f2);
+scalar sumProd(const UList<scalar>& f1, const UList<scalar>& f2)
+{
+    scalar SumProd = 0.0;
+    if (f1.size() && (f1.size() == f2.size()))
+    {
+        TFOR_ALL_S_OP_F_OP_F(scalar, SumProd, +=, scalar, f1, *, scalar, f2)
+    }
+    return SumProd;
+}
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -255,7 +217,6 @@ BINARY_TYPE_FUNCTION(scalar, scalar, scalar, pow)
 
 BINARY_FUNCTION(scalar, scalar, scalar, atan2)
 BINARY_TYPE_FUNCTION(scalar, scalar, scalar, atan2)
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -301,10 +262,27 @@ UNARY_FUNCTION(scalar, scalar, radToDeg)
 UNARY_FUNCTION(scalar, scalar, atmToPa)
 UNARY_FUNCTION(scalar, scalar, paToAtm)
 
-#define BesselFunc(func)                                            \
-void func(scalarField& Res, const int n, const UList<scalar>& sf);  \
-tmp<scalarField> func(const int n, const UList<scalar>&);           \
-tmp<scalarField> func(const int n, const tmp<scalarField>&);
+
+#define BesselFunc(func)                                                       \
+void func(scalarField& res, const int n, const UList<scalar>& sf)              \
+{                                                                              \
+    TFOR_ALL_F_OP_FUNC_S_F(scalar, res, =, ::Foam::func, int, n, scalar, sf)   \
+}                                                                              \
+                                                                               \
+tmp<scalarField> func(const int n, const UList<scalar>& sf)                    \
+{                                                                              \
+    auto tresult = tmp<scalarField>::New(sf.size());                           \
+    func(tresult.ref(), n, sf);                                                \
+    return tresult;                                                            \
+}                                                                              \
+                                                                               \
+tmp<scalarField> func(const int n, const tmp<scalarField>& tsf)                \
+{                                                                              \
+    tmp<scalarField> tresult = New(tsf);                                       \
+    func(tresult.ref(), n, tsf());                                             \
+    tsf.clear();                                                               \
+    return tresult;                                                            \
+}
 
 BesselFunc(jn)
 BesselFunc(yn)
@@ -319,9 +297,5 @@ BesselFunc(yn)
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #include "undefFieldFunctionsM.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#endif
 
 // ************************************************************************* //

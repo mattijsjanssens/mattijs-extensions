@@ -72,7 +72,7 @@ Foam::solverPerformance Foam::PBiCGStab::solve
     const direction cmpt
 ) const
 {
-    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
+    FieldWrapper<solveScalar, scalar> tpsi(psi_s);
     solveScalarField& psi = tpsi.ref();
 
     // --- Setup class containing solver performance data
@@ -96,17 +96,13 @@ Foam::solverPerformance Foam::PBiCGStab::solve
     matrix_.Amul(yA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
 
     // --- Calculate initial residual field
-    //solveScalarField rA(source - yA);
-    solveScalarField rA(source.size());
-    forAll(rA, i)
-    {
-        rA[i] = source[i] - yA[i];
-    }
+    ConstFieldWrapper<solveScalar, scalar> tsource(source);
+    solveScalarField rA(tsource() - yA);
     solveScalar* __restrict__ rAPtr = rA.begin();
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        ConstFieldWrapper<scalar, solveScalar>(rA)(),
         fieldName_,
         true
     );
@@ -265,7 +261,7 @@ Foam::solverPerformance Foam::PBiCGStab::solve
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        ConstFieldWrapper<scalar, solveScalar>(rA)(),
         fieldName_,
         false
     );

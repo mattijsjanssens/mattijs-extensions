@@ -69,8 +69,8 @@ Foam::solverPerformance Foam::PBiCG::solve
     const direction cmpt
 ) const
 {
-    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
-    solveScalarField& psi = tpsi.ref();
+    FieldWrapper<solveScalar, scalar> tpsi(psi_s);
+    solveScalarField& psi = tpsi.constCast();
 
     // --- Setup class containing solver performance data
     solverPerformance solverPerf
@@ -93,17 +93,13 @@ Foam::solverPerformance Foam::PBiCG::solve
     matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
 
     // --- Calculate initial residual field
-    //solveScalarField rA(source - wA);
-    solveScalarField rA(source.size());
-    forAll(rA, i)
-    {
-        rA[i] = source[i] - wA[i];
-    }
+    ConstFieldWrapper<solveScalar, scalar> tsource(source);
+    solveScalarField rA(tsource() - wA);
     solveScalar* __restrict__ rAPtr = rA.begin();
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        ConstFieldWrapper<scalar, solveScalar>(rA)(),
         fieldName_,
         false
     );
@@ -139,12 +135,7 @@ Foam::solverPerformance Foam::PBiCG::solve
         matrix_.Tmul(wT, psi, interfaceIntCoeffs_, interfaces_, cmpt);
 
         // --- Calculate initial transpose residual field
-        //solveScalarField rT(source - wT);
-        solveScalarField rT(source.size());
-        forAll(rT, i)
-        {
-            rT[i] = source[i] - wT[i];
-        }
+        solveScalarField rT(tsource() - wT);
         solveScalar* __restrict__ rTPtr = rT.begin();
 
         // --- Initial value not used
@@ -240,7 +231,7 @@ Foam::solverPerformance Foam::PBiCG::solve
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        ConstFieldWrapper<scalar, solveScalar>(rA)(),
         fieldName_,
         false
     );

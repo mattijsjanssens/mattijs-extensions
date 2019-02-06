@@ -62,7 +62,7 @@ Foam::DICPreconditioner::DICPreconditioner
 
 void Foam::DICPreconditioner::calcReciprocalD
 (
-    Field<solveScalar>& rD,
+    solveScalarField& rD,
     const lduMatrix& matrix
 )
 {
@@ -92,8 +92,8 @@ void Foam::DICPreconditioner::calcReciprocalD
 
 void Foam::DICPreconditioner::precondition
 (
-    Field<solveScalar>& wA,
-    const Field<solveScalar>& rA,
+    solveScalarField& wA,
+    const solveScalarField& rA,
     const direction
 ) const
 {

@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "DICSmoother.H"
 #include "DICPreconditioner.H"
 
@@ -89,6 +90,8 @@ void Foam::DICSmoother::smooth
     solveScalarField rA(rD_.size());
     solveScalar* __restrict__ rAPtr = rA.begin();
 
+    //ConstFieldWrapper<solveScalar, scalar> trD(rD_);
+
     for (label sweep=0; sweep<nSweeps; sweep++)
     {
         matrix_.residual
@@ -101,7 +104,10 @@ void Foam::DICSmoother::smooth
             cmpt
         );
 
-        rA *= rD_;
+        forAll(rA, i)
+        {
+            rA[i] *= rD_[i];
+        }
 
         label nFaces = matrix_.upper().size();
         for (label facei=0; facei<nFaces; facei++)

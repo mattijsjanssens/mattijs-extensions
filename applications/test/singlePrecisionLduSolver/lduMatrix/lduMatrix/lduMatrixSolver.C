@@ -170,10 +170,10 @@ void Foam::lduMatrix::solver::read(const dictionary& solverControls)
 
 Foam::scalar Foam::lduMatrix::solver::normFactor
 (
-    const Field<solveScalar>& psi,
+    const solveScalarField& psi,
     const scalarField& source,
-    const Field<solveScalar>& Apsi,
-    Field<solveScalar>& tmpField
+    const solveScalarField& Apsi,
+    solveScalarField& tmpField
 ) const
 {
     // --- Calculate A dot reference value of psi

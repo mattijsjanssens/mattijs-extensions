@@ -676,16 +676,16 @@ void Foam::Field<Type>::operator=(const tmp<Field>& rhs)
 }
 
 
-template<class Type>
-template<class Type2>
-void Foam::Field<Type>::operator=(const Field<Type2>& rhs)
-{
-    this->setSize(rhs.size());
-    forAll(rhs, i)
-    {
-        this->operator[](i) = rhs[i];
-    }
-}
+//template<class Type>
+//template<class Type2>
+//void Foam::Field<Type>::operator=(const Field<Type2>& rhs)
+//{
+//    this->setSize(rhs.size());
+//    forAll(rhs, i)
+//    {
+//        this->operator[](i) = rhs[i];
+//    }
+//}
 
 
 template<class Type>
@@ -722,10 +722,10 @@ COMPUTED_ASSIGNMENT(Type, -=)
 COMPUTED_ASSIGNMENT(scalar, *=)
 COMPUTED_ASSIGNMENT(scalar, /=)
 
-#ifdef WM_SP
-COMPUTED_ASSIGNMENT(solveScalar, *=)
-COMPUTED_ASSIGNMENT(solveScalar, /=)
-#endif
+//#ifdef WM_SP
+//COMPUTED_ASSIGNMENT(solveScalar, *=)
+//COMPUTED_ASSIGNMENT(solveScalar, /=)
+//#endif
 
 #undef COMPUTED_ASSIGNMENT
 

@@ -23,6 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "scalarField.H"
 #include "DILUSmoother.H"
 #include "DILUPreconditioner.H"
 
@@ -104,7 +105,10 @@ void Foam::DILUSmoother::smooth
             cmpt
         );
 
-        rA *= rD_;
+        forAll(rA, i)
+        {
+            rA[i] *= rD_[i];
+        }
 
         label nFaces = matrix_.upper().size();
         for (label face=0; face<nFaces; face++)

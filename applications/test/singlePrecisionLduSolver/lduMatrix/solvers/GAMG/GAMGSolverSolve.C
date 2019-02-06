@@ -38,18 +38,10 @@ Foam::solverPerformance Foam::GAMGSolver::solve
     const direction cmpt
 ) const
 {
-//    #ifdef WM_DP
-//    Field<solveScalar>& psi = psi_s;
-//    #else
-//    Field<solveScalar> psi(psi_s.size());
-//    forAll(psi, i)
-//    {
-//        psi[i] = solveScalar(psi_s[i]);
-//    }
-//    #endif
-    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
-    solveScalarField& psi = tpsi.ref();
+    FieldWrapper<solveScalar, scalar> tpsi(psi_s);
+    solveScalarField& psi = tpsi.constCast();
 
+    ConstFieldWrapper<solveScalar, scalar> tsource(source);
 
     // Setup class containing solver performance data
     solverPerformance solverPerf(typeName, fieldName_);
@@ -63,7 +55,8 @@ Foam::solverPerformance Foam::GAMGSolver::solve
     solveScalarField finestCorrection(psi.size());
 
     // Calculate normalisation factor
-    solveScalar normFactor = this->normFactor(psi, source, Apsi, finestCorrection);
+    solveScalar normFactor =
+        this->normFactor(psi, source, Apsi, finestCorrection);
 
     if (debug >= 2)
     {
@@ -71,16 +64,11 @@ Foam::solverPerformance Foam::GAMGSolver::solve
     }
 
     // Calculate initial finest-grid residual field
-    //solveScalarField finestResidual(source - Apsi);
-    solveScalarField finestResidual(source.size());
-    forAll(finestResidual, i)
-    {
-        finestResidual[i] = source[i] - Apsi[i];
-    }
+    solveScalarField finestResidual(tsource() - Apsi);
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(finestResidual)(),
+        ConstFieldWrapper<scalar, solveScalar>(finestResidual)(),
         fieldName_,
         false
     );
@@ -146,12 +134,7 @@ Foam::solverPerformance Foam::GAMGSolver::solve
 
             // Calculate finest level residual field
             matrix_.Amul(Apsi, psi, interfaceBouCoeffs_, interfaces_, cmpt);
-            //finestResidual = source;
-            finestResidual.setSize(source.size());
-            forAll(finestResidual, i)
-            {
-                finestResidual[i] = source[i];
-            }
+            finestResidual = tsource();
             finestResidual -= Apsi;
 
             solverPerf.finalResidual() = gSumMag
@@ -176,7 +159,7 @@ Foam::solverPerformance Foam::GAMGSolver::solve
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(finestResidual)(),
+        ConstFieldWrapper<scalar, solveScalar>(finestResidual)(),
         fieldName_,
         false
     );
@@ -226,11 +209,11 @@ void Foam::GAMGSolver::Vcycle
             {
                 coarseCorrFields[leveli] = 0.0;
 
-                FieldWrapper<scalarField, solveScalarField> tcoarseSource
+                FieldWrapper<scalar, solveScalar> tcoarseSource
                 (
                     coarseSources[leveli]
                 );
-                scalarField& coarseSource = tcoarseSource.ref();
+                scalarField& coarseSource = tcoarseSource.constCast();
 
                 smoothers[leveli + 1].smooth
                 (
@@ -305,16 +288,16 @@ void Foam::GAMGSolver::Vcycle
     // Solve Coarsest level with either an iterative or direct solver
     if (coarseCorrFields.set(coarsestLevel))
     {
-        FieldWrapper<scalarField, solveScalarField> tcoarsestCorr
+        FieldWrapper<scalar, solveScalar> tcoarsestCorr
         (
             coarseCorrFields[coarsestLevel]
         );
-        scalarField& coarsestCorr = tcoarsestCorr.ref();
-        FieldWrapper<scalarField, solveScalarField> tcoarseSource
+        scalarField& coarsestCorr = tcoarsestCorr.constCast();
+        FieldWrapper<scalar, solveScalar> tcoarseSource
         (
             coarseSources[coarsestLevel]
         );
-        scalarField& coarseSource = tcoarseSource.ref();
+        scalarField& coarseSource = tcoarseSource.constCast();
 
         solveCoarsestLevel
         (
@@ -432,11 +415,11 @@ void Foam::GAMGSolver::Vcycle
                 coarseCorrFields[leveli] += preSmoothedCoarseCorrField;
             }
 
-            FieldWrapper<scalarField, solveScalarField> tcoarseSource
+            FieldWrapper<scalar, solveScalar> tcoarseSource
             (
                 coarseSources[leveli]
             );
-            scalarField& coarseSource = tcoarseSource.ref();
+            scalarField& coarseSource = tcoarseSource.constCast();
 
             smoothers[leveli + 1].smooth
             (

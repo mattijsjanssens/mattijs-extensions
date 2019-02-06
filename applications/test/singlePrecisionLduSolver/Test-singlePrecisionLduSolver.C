@@ -174,33 +174,72 @@ Description
 //#endif
 
 
+typedef Field<scalar> scalarField;
+typedef Field<solveScalar> solveScalarField;
+
+template<class Type, class InputType>
+class FieldWrapper2
+:
+    public tmp<Field<Type>>
+{
+    // Private data
+
+        //- Reference to underlying field
+        Field<InputType>& ref_;
+
+
+public:
+
+    // Constructors
+
+        //- Construct from Field<InputType>
+        FieldWrapper2(Field<InputType>& f) = delete;
+
+    //- Destructor
+    ~FieldWrapper2()
+    {
+        if (this->isTmp())
+        {
+            const Field<Type>& store = this->operator()();
+            ref_.setSize(store.size());
+            forAll(ref_, i)
+            {
+                ref_[i] = store[i];
+            }
+        }
+    }
+};
+
+template<>
+FieldWrapper2<scalar, scalar>::FieldWrapper2(scalarField& f)
+:
+    tmp<Field<scalar>>(f),
+    ref_(f)
+{}
+
+template<>
+FieldWrapper2<solveScalar, scalar>::FieldWrapper2(scalarField& f)
+:
+    tmp<Field<solveScalar>>(tmp<Field<solveScalar>>::New(f.size())),
+    ref_(f)
+{
+    Field<solveScalar>& store = this->ref();
+    forAll(store, i)
+    {
+        store[i] = f[i];
+    }
+}
 
 
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
-    #include "createMesh.H"
+    //#include "createMesh.H"
 
-    
-
-
-//    volScalarField fx(pow(mesh.C().component(vector::X), 1));
-//    fx.write();
-//    volScalarField gradx4(fvc::grad(fx)().component(vector::X));
-//    gradx4.write();
-//
-//    volVectorField curlC(fvc::curl(1.0*mesh.C()));
-//    curlC.write();
-//
-//    surfaceScalarField xf(mesh.Cf().component(vector::X));
-//    surfaceScalarField xf4(pow(xf, 4));
-//
-//    for (int i=1; i<xf4.size()-1; i++)
-//    {
-//        scalar gradx4a = (xf4[i] - xf4[i-1])/(xf[i] - xf[i-1]);
-//        Info<< (gradx4a - gradx4[i])/gradx4a << endl;
-//    }
+    scalarField input(3);
+    FieldWrapper2<solveScalar, scalar> toutput(input);
+    solveScalarField& output = toutput.constCast();
 
     Info<< "End" << endl;
 }

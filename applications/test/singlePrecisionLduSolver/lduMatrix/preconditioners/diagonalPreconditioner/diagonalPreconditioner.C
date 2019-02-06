@@ -69,8 +69,8 @@ Foam::diagonalPreconditioner::diagonalPreconditioner
 
 void Foam::diagonalPreconditioner::precondition
 (
-    Field<solveScalar>& wA,
-    const Field<solveScalar>& rA,
+    solveScalarField& wA,
+    const solveScalarField& rA,
     const direction
 ) const
 {

@@ -59,7 +59,7 @@ class diagonalPreconditioner
     // Private data
 
         //- The reciprocal diagonal
-        Field<solveScalar> rD;
+        solveScalarField rD;
 
 
     // Private Member Functions
@@ -97,16 +97,16 @@ public:
         //- Return wA the preconditioned form of residual rA
         virtual void precondition
         (
-            Field<solveScalar>& wA,
-            const Field<solveScalar>& rA,
+            solveScalarField& wA,
+            const solveScalarField& rA,
             const direction cmpt=0
         ) const;
 
         //- Return wT the transpose-matrix preconditioned form of residual rT.
         virtual void preconditionT
         (
-            Field<solveScalar>& wT,
-            const Field<solveScalar>& rT,
+            solveScalarField& wT,
+            const solveScalarField& rT,
             const direction cmpt=0
         ) const
         {

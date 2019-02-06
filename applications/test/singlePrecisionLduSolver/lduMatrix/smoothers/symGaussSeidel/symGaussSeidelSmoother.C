@@ -107,14 +107,11 @@ void Foam::symGaussSeidelSmoother::smooth
     // To compensate for this, it is necessary to turn the
     // sign of the contribution.
 
+    ConstFieldWrapper<solveScalar, scalar> tsource(source);
+
     for (label sweep=0; sweep<nSweeps; sweep++)
     {
-        //bPrime = source;
-        bPrime.setSize(source.size());
-        forAll(bPrime, i)
-        {
-            bPrime[i] = source[i];
-        }
+        bPrime = tsource();
 
         matrix_.initMatrixInterfaces
         (

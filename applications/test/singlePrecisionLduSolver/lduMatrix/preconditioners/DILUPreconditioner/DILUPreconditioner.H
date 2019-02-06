@@ -58,7 +58,7 @@ class DILUPreconditioner
     // Private data
 
         //- The reciprocal preconditioned diagonal
-        Field<solveScalar> rD_;
+        solveScalarField rD_;
 
 
 public:
@@ -85,21 +85,21 @@ public:
     // Member Functions
 
         //- Calculate the reciprocal of the preconditioned diagonal
-        static void calcReciprocalD(Field<solveScalar>&, const lduMatrix&);
+        static void calcReciprocalD(solveScalarField&, const lduMatrix&);
 
         //- Return wA the preconditioned form of residual rA
         virtual void precondition
         (
-            Field<solveScalar>& wA,
-            const Field<solveScalar>& rA,
+            solveScalarField& wA,
+            const solveScalarField& rA,
             const direction cmpt=0
         ) const;
 
         //- Return wT the transpose-matrix preconditioned form of residual rT.
         virtual void preconditionT
         (
-            Field<solveScalar>& wT,
-            const Field<solveScalar>& rT,
+            solveScalarField& wT,
+            const solveScalarField& rT,
             const direction cmpt=0
         ) const;
 };

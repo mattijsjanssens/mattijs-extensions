@@ -115,9 +115,9 @@ public:
         //- Copy construct
         inline Field(const Field<Type>& fld);
 
-        //- Conversion construct
-        template<class Type2>
-        inline explicit Field(const Field<Type2>& fld);
+//        //- Conversion construct
+//        template<class Type2>
+//        inline explicit Field(const Field<Type2>& fld);
 
         //- Copy construct from UList\<Type\>
         inline explicit Field(const UList<Type>& list);
@@ -361,9 +361,9 @@ public:
         inline void operator=(const UList<Type>&);
         inline void operator=(const SubField<Type>&);
 
-        //- Conversion assignment
-        template<class Type2>
-        void operator=(const Field<Type2>&);
+//        //- Conversion assignment
+//        template<class Type2>
+//        void operator=(const Field<Type2>&);
 
         //- Move assignment
         inline void operator=(Field<Type>&& rhs);
@@ -388,27 +388,27 @@ public:
 
         void operator*=(const UList<scalar>&);
         void operator*=(const tmp<Field<scalar>>&);
-        #ifdef WM_SP
-        void operator*=(const UList<solveScalar>&);
-        void operator*=(const tmp<Field<solveScalar>>&);
-        #endif
+//        #ifdef WM_SP
+//        void operator*=(const UList<solveScalar>&);
+//        void operator*=(const tmp<Field<solveScalar>>&);
+//        #endif
 
         void operator/=(const UList<scalar>&);
         void operator/=(const tmp<Field<scalar>>&);
-        #ifdef WM_SP
-        void operator/=(const UList<solveScalar>&);
-        void operator/=(const tmp<Field<solveScalar>>&);
-        #endif
+//        #ifdef WM_SP
+//        void operator/=(const UList<solveScalar>&);
+//        void operator/=(const tmp<Field<solveScalar>>&);
+//        #endif
 
         void operator+=(const Type&);
         void operator-=(const Type&);
 
         void operator*=(const scalar&);
         void operator/=(const scalar&);
-        #ifdef WM_SP
-        void operator*=(const solveScalar&);
-        void operator/=(const solveScalar&);
-        #endif
+//        #ifdef WM_SP
+//        void operator*=(const solveScalar&);
+//        void operator/=(const solveScalar&);
+//        #endif
 
 
     // IOstream operators

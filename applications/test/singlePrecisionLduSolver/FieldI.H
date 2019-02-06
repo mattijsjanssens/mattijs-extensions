@@ -60,17 +60,17 @@ inline Foam::Field<Type>::Field(const Field<Type>& fld)
 {}
 
 
-template<class Type>
-template<class Type2>
-inline Foam::Field<Type>::Field(const Field<Type2>& fld)
-:
-    List<Type>(fld.size())
-{
-    forAll(fld, i)
-    {
-        this->operator[](i) = fld[i];
-    }
-}
+//template<class Type>
+//template<class Type2>
+//inline Foam::Field<Type>::Field(const Field<Type2>& fld)
+//:
+//    List<Type>(fld.size())
+//{
+//    forAll(fld, i)
+//    {
+//        this->operator[](i) = fld[i];
+//    }
+//}
 
 
 template<class Type>

@@ -69,18 +69,8 @@ Foam::solverPerformance Foam::PCG::solve
     const direction cmpt
 ) const
 {
-    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
-    solveScalarField& psi = tpsi.ref();
-
-//    #ifdef WM_DP
-//    scalarField& psi = psi_s;
-//    #else
-//    solveScalarField psi(psi_s.size());
-//    forAll(psi, i)
-//    {
-//        psi[i] = solveScalar(psi_s[i]);
-//    }
-//    #endif
+    FieldWrapper<solveScalar, scalar> tpsi(psi_s);
+    solveScalarField& psi = tpsi.constCast();
 
     // --- Setup class containing solver performance data
     solverPerformance solverPerf
@@ -106,17 +96,13 @@ Foam::solverPerformance Foam::PCG::solve
     matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
 
     // --- Calculate initial residual field
-    //solveScalarField rA(source - wA);
-    solveScalarField rA(source.size());
-    forAll(rA, i)
-    {
-        rA[i] = source[i] - wA[i];
-    }
+    ConstFieldWrapper<solveScalar, scalar> tsource(source);
+    solveScalarField rA(tsource() - wA);
     solveScalar* __restrict__ rAPtr = rA.begin();
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        ConstFieldWrapper<scalar, solveScalar>(rA)(),
         fieldName_,
         false
     );
@@ -216,7 +202,7 @@ Foam::solverPerformance Foam::PCG::solve
 
     matrix().setResidualField
     (
-        ConstFieldWrapper<scalarField, solveScalarField>(rA)(),
+        ConstFieldWrapper<scalar, solveScalar>(rA)(),
         fieldName_,
         false
     );

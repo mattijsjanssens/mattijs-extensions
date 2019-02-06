@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "scalar.H"
+#include "scalarField.H"
 #include "lduMatrix.H"
 #include "smoothSolver.H"
 #include "profiling.H"
@@ -84,8 +84,8 @@ Foam::solverPerformance Foam::smoothSolver::solve
     const direction cmpt
 ) const
 {
-    FieldWrapper<solveScalarField, scalarField> tpsi(psi_s);
-    solveScalarField& psi = tpsi.ref();
+    FieldWrapper<solveScalar, scalar> tpsi(psi_s);
+    solveScalarField& psi = tpsi.constCast();
 
     // Setup class containing solver performance data
     solverPerformance solverPerf(typeName, fieldName_);
@@ -120,6 +120,8 @@ Foam::solverPerformance Foam::smoothSolver::solve
         solveScalar normFactor = 0;
         solveScalarField residual;
 
+        ConstFieldWrapper<solveScalar, scalar> tsource(source);
+
         {
             solveScalarField Apsi(psi.size());
             solveScalarField temp(psi.size());
@@ -130,16 +132,11 @@ Foam::solverPerformance Foam::smoothSolver::solve
             // Calculate normalisation factor
             normFactor = this->normFactor(psi, source, Apsi, temp);
 
-            //residual = source - Apsi;
-            residual.setSize(source.size());
-            forAll(residual, i)
-            {
-                residual[i] = source[i] - Apsi[i];
-            }
+            residual = tsource() - Apsi;
 
             matrix().setResidualField
             (
-                ConstFieldWrapper<scalarField, solveScalarField>(residual)(),
+                ConstFieldWrapper<scalar, solveScalar>(residual)(),
                 fieldName_,
                 false
             );
@@ -212,7 +209,7 @@ Foam::solverPerformance Foam::smoothSolver::solve
 
         matrix().setResidualField
         (
-            ConstFieldWrapper<scalarField, solveScalarField>(residual)(),
+            ConstFieldWrapper<scalar, solveScalar>(residual)(),
             fieldName_,
             false
         );

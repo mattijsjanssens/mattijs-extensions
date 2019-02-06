@@ -32,8 +32,8 @@ void Foam::lduMatrix::initMatrixInterfaces
     const bool add,
     const FieldField<Field, scalar>& coupleCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
-    const Field<solveScalar>& psiif,
-    Field<solveScalar>& result,
+    const solveScalarField& psiif,
+    solveScalarField& result,
     const direction cmpt
 ) const
 {
@@ -101,8 +101,8 @@ void Foam::lduMatrix::updateMatrixInterfaces
     const bool add,
     const FieldField<Field, scalar>& coupleCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
-    const Field<solveScalar>& psiif,
-    Field<solveScalar>& result,
+    const solveScalarField& psiif,
+    solveScalarField& result,
     const direction cmpt
 ) const
 {

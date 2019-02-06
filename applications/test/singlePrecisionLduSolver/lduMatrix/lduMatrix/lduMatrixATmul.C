@@ -34,8 +34,8 @@ Description
 
 void Foam::lduMatrix::Amul
 (
-    Field<solveScalar>& Apsi,
-    const tmp<Field<solveScalar>>& tpsi,
+    solveScalarField& Apsi,
+    const tmp<solveScalarField>& tpsi,
     const FieldField<Field, scalar>& interfaceBouCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
     const direction cmpt
@@ -43,7 +43,7 @@ void Foam::lduMatrix::Amul
 {
     solveScalar* __restrict__ ApsiPtr = Apsi.begin();
 
-    const Field<solveScalar>& psi = tpsi();
+    const solveScalarField& psi = tpsi();
     const solveScalar* const __restrict__ psiPtr = psi.begin();
 
     const scalar* const __restrict__ diagPtr = diag().begin();
@@ -97,8 +97,8 @@ void Foam::lduMatrix::Amul
 
 void Foam::lduMatrix::Tmul
 (
-    Field<solveScalar>& Tpsi,
-    const tmp<Field<solveScalar>>& tpsi,
+    solveScalarField& Tpsi,
+    const tmp<solveScalarField>& tpsi,
     const FieldField<Field, scalar>& interfaceIntCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
     const direction cmpt
@@ -106,7 +106,7 @@ void Foam::lduMatrix::Tmul
 {
     solveScalar* __restrict__ TpsiPtr = Tpsi.begin();
 
-    const Field<solveScalar>& psi = tpsi();
+    const solveScalarField& psi = tpsi();
     const solveScalar* const __restrict__ psiPtr = psi.begin();
 
     const scalar* const __restrict__ diagPtr = diag().begin();
@@ -158,7 +158,7 @@ void Foam::lduMatrix::Tmul
 
 void Foam::lduMatrix::sumA
 (
-    Field<solveScalar>& sumA,
+    solveScalarField& sumA,
     const FieldField<Field, scalar>& interfaceBouCoeffs,
     const lduInterfaceFieldPtrsList& interfaces
 ) const
@@ -207,8 +207,8 @@ void Foam::lduMatrix::sumA
 
 void Foam::lduMatrix::residual
 (
-    Field<solveScalar>& rA,
-    const Field<solveScalar>& psi,
+    solveScalarField& rA,
+    const solveScalarField& psi,
     const scalarField& source,
     const FieldField<Field, scalar>& interfaceBouCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
@@ -279,14 +279,14 @@ void Foam::lduMatrix::residual
 
 Foam::tmp<Foam::Field<Foam::solveScalar>> Foam::lduMatrix::residual
 (
-    const Field<solveScalar>& psi,
+    const solveScalarField& psi,
     const scalarField& source,
     const FieldField<Field, scalar>& interfaceBouCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
     const direction cmpt
 ) const
 {
-    tmp<Field<solveScalar>> trA(new Field<solveScalar>(psi.size()));
+    tmp<solveScalarField> trA(new solveScalarField(psi.size()));
     residual(trA.ref(), psi, source, interfaceBouCoeffs, interfaces, cmpt);
     return trA;
 }

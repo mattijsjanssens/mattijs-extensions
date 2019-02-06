@@ -62,7 +62,7 @@ Foam::DILUPreconditioner::DILUPreconditioner
 
 void Foam::DILUPreconditioner::calcReciprocalD
 (
-    Field<solveScalar>& rD,
+    solveScalarField& rD,
     const lduMatrix& matrix
 )
 {
@@ -93,8 +93,8 @@ void Foam::DILUPreconditioner::calcReciprocalD
 
 void Foam::DILUPreconditioner::precondition
 (
-    Field<solveScalar>& wA,
-    const Field<solveScalar>& rA,
+    solveScalarField& wA,
+    const solveScalarField& rA,
     const direction
 ) const
 {
@@ -143,8 +143,8 @@ void Foam::DILUPreconditioner::precondition
 
 void Foam::DILUPreconditioner::preconditionT
 (
-    Field<solveScalar>& wT,
-    const Field<solveScalar>& rT,
+    solveScalarField& wT,
+    const solveScalarField& rT,
     const direction
 ) const
 {

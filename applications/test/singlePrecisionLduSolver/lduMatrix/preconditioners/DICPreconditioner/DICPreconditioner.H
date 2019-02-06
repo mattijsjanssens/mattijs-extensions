@@ -58,7 +58,7 @@ class DICPreconditioner
     // Private data
 
         //- The reciprocal preconditioned diagonal
-        Field<solveScalar> rD_;
+        solveScalarField rD_;
 
 
 public:
@@ -85,13 +85,13 @@ public:
     // Member Functions
 
         //- Calculate the reciprocal of the preconditioned diagonal
-        static void calcReciprocalD(Field<solveScalar>&, const lduMatrix&);
+        static void calcReciprocalD(solveScalarField&, const lduMatrix&);
 
         //- Return wA the preconditioned form of residual rA
         virtual void precondition
         (
-            Field<solveScalar>& wA,
-            const Field<solveScalar>& rA,
+            solveScalarField& wA,
+            const solveScalarField& rA,
             const direction cmpt=0
         ) const;
 };
