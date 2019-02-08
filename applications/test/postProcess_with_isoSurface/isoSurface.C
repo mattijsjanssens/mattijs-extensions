@@ -29,6 +29,7 @@ License
 #include "tetPointRef.H"
 #include "DynamicField.H"
 #include "syncTools.H"
+#include "polyMeshTetDecomposition.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -109,15 +110,11 @@ Foam::isoSurface2::cellCutType Foam::isoSurface2::calcCutType
 
             label fp0 = tetBasePtIs_[facei];
 
-            // Skip undefined tets
+            // Fall back for problem decompositions
             if (fp0 < 0)
             {
-Pout<< "** FILTERING : problem for face:" << facei
-    << " at:" << mesh_.faceCentres()[facei]
-    << endl;
                 fp0 = 0;
             }
-
 
             label fp = f.fcIndex(fp0);
             for (label i = 2; i < f.size(); i++)
@@ -203,84 +200,183 @@ Foam::label Foam::isoSurface2::calcCutTypes
 }
 
 
+Foam::scalar Foam::isoSurface2::minTetQ
+(
+    const label facei,
+    const label faceBasePtI
+) const
+{
+    scalar q = polyMeshTetDecomposition::minQuality
+    (
+        mesh_,
+        mesh_.cellCentres()[mesh_.faceOwner()[facei]],
+        facei,
+        true,
+        faceBasePtI
+    );
+
+    if (mesh_.isInternalFace(facei))
+    {
+        q = min
+        (
+            q,
+            polyMeshTetDecomposition::minQuality
+            (
+                mesh_,
+                mesh_.cellCentres()[mesh_.faceNeighbour()[facei]],
+                facei,
+                false,
+                faceBasePtI
+            )
+        );
+    }
+    return q;
+}
+
+
 void Foam::isoSurface2::fixTetBasePtIs()
 {
     // Determine points used by two faces on the same cell
     const cellList& cells = mesh_.cells();
     const faceList& faces = mesh_.faces();
+    const labelList& faceOwner = mesh_.faceOwner();
+    const labelList& faceNeighbour = mesh_.faceNeighbour();
 
-    // Point to face lookup
-    Map<label> face0;
-    Map<label> face1;
-
-    labelHashSet cellPoints;
-    labelHashSet cornerPoints;
 
     // Get face triangulation base point
     tetBasePtIs_ = mesh_.tetBasePtIs();
 
-    forAll(cells, celli)
+
+    // Pre-filter: mark all cells with illegal base points
+    labelHashSet problemCells(cells.size()/128);
+    forAll(tetBasePtIs_, facei)
     {
-        const cell& cFaces = cells[celli];
-
-        face0.clear();
-        face1.clear();
-
-        cellPoints.clear();
-        cornerPoints.clear();
-
-        forAll(cFaces, i)
+        if (tetBasePtIs_[facei] == -1)
         {
-            const label facei = cFaces[i];
-            const face& f = faces[facei];
-            forAll(f, fp)
+            problemCells.insert(faceOwner[facei]);
+            if (mesh_.isInternalFace(facei))
             {
-                const label pointi = f[fp];
-
-                cellPoints.insert(pointi);
-
-                if (!face0.insert(pointi, facei))
-                {
-                    if (!face1.insert(pointi, facei))
-                    {
-                        // Third or more occurence of point. Mark as
-                        // 'normal'
-                        cornerPoints.insert(pointi);
-                    }
-                }
+                problemCells.insert(faceNeighbour[facei]);
             }
         }
+    }
 
 
-        // Remove corner points (used by three (or more?) faces)
-        cellPoints -= cornerPoints;
+    label nAdapted = 0;
 
-        if (cellPoints.size())
+
+    // Number of times a point occurs in a cell. Used to detect dangling
+    // vertices (count = 2)
+    Map<label> pointCount;
+
+    // Analyse problem cells for points shared by two faces only
+    forAll(cells, celli)
+    {
+        if (problemCells.found(celli))
         {
+            const cell& cFaces = cells[celli];
+
+            pointCount.clear();
+
             forAll(cFaces, i)
             {
                 const label facei = cFaces[i];
-                if (tetBasePtIs_[facei] == -1)
+                const face& f = faces[facei];
+                forAll(f, fp)
                 {
-                    const face& f = faces[facei];
-                    forAll(f, fp)
-                    {
-                        const label pointi = f[fp];
+                    const label pointi = f[fp];
 
-                        if (cellPoints.found(pointi))
+                    Map<label>::iterator pointFnd = pointCount.find(pointi);
+                    if (pointFnd == pointCount.end())
+                    {
+                        pointCount.insert(pointi, 1);
+                    }
+                    else
+                    {
+                        ++pointFnd();
+                    }
+                }
+            }
+
+            // Check for any points with count 2
+            bool haveDangling = false;
+            forAllConstIter(Map<label>, pointCount, iter)
+            {
+                if (iter() == 1)
+                {
+                    FatalErrorInFunction << "point:" << iter.key()
+                        << " at:" << mesh_.points()[iter.key()]
+                        << " only used by one face" << exit(FatalError);
+                }
+                else if (iter() == 2)
+                {
+                    haveDangling = true;
+                    break;
+                }
+            }
+
+            if (haveDangling)
+            {
+                // Any point next to a dangling point should not be used
+                // as the fan base since this would cause two duplicate
+                // triangles.
+                forAll(cFaces, i)
+                {
+                    const label facei = cFaces[i];
+                    if (tetBasePtIs_[facei] == -1)
+                    {
+                        const face& f = faces[facei];
+
+                        // All the possible base points cause negative tets.
+                        // Choose the least-worst one
+                        scalar maxQ = -GREAT;
+                        label maxFp = -1;
+
+                        label prevCount = pointCount[f.last()];
+                        forAll(f, fp)
                         {
-Pout<< "face:" << facei << " at:" << mesh_.faceCentres()[facei]
-    << " special point:" << pointi << " at:" << mesh_.points()[pointi]
-    << " at index:" << fp << endl;
-                            tetBasePtIs_[facei] = fp;
+                            label nextCount = pointCount[f[f.fcIndex(fp)]];
+
+                            if (prevCount > 2 && nextCount > 2)
+                            {
+                                const scalar q = minTetQ(facei, fp);
+                                if (q > maxQ)
+                                {
+                                    maxQ = q;
+                                    maxFp = fp;
+                                }
+                            }
+                            prevCount = pointCount[f[fp]];
                         }
+
+                        if (maxFp != -1)
+                        {
+                            // Least worst base point
+                            tetBasePtIs_[facei] = maxFp;
+                        }
+                        else
+                        {
+                            // No point found on face that would not result
+                            // in some duplicate triangle. Very rare. Do what?
+                            tetBasePtIs_[facei] = 0;
+                        }
+
+                        nAdapted++;
                     }
                 }
             }
         }
     }
+
+    if (debug)
+    {
+        Pout<< "isoSurface2 : adapted starting point of triangulation on "
+            << nAdapted << " faces." << endl;
+    }
+
     syncTools::syncFaceList(mesh_, tetBasePtIs_, maxEqOp<label>());
 }
+
 
 Foam::label Foam::isoSurface2::generatePoint
 (
@@ -707,7 +803,6 @@ void Foam::isoSurface2::generateTriPoints
 
 void Foam::isoSurface2::generateTriPoints
 (
-    const polyMesh& mesh,
     const label celli,
     const bool isTet,
 
@@ -720,7 +815,10 @@ void Foam::isoSurface2::generateTriPoints
     DynamicList<label>& faceLabels
 ) const
 {
-    const cell& cFaces = mesh.cells()[celli];
+    const faceList& faces = mesh_.faces();
+    const labelList& faceOwner = mesh_.faceOwner();
+    const pointField& points = mesh_.points();
+    const cell& cFaces = mesh_.cells()[celli];
 
     if (isTet)
     {
@@ -728,10 +826,10 @@ void Foam::isoSurface2::generateTriPoints
         // tet points and values
 
         label facei = cFaces[0];
-        const face& f0 = mesh_.faces()[facei];
+        const face& f0 = faces[facei];
 
         // Get the other point
-        const face& f1 = mesh_.faces()[cFaces[1]];
+        const face& f1 = faces[cFaces[1]];
         label oppositeI = -1;
         forAll(f1, fp)
         {
@@ -748,17 +846,17 @@ void Foam::isoSurface2::generateTriPoints
         label p2 = f0[2];
         FixedList<bool, 6> edgeIsDiag(false);
 
-        if (mesh.faceOwner()[facei] == celli)
+        if (faceOwner[facei] == celli)
         {
             Swap(p1, p2);
         }
 
         tetPointRef tet
         (
-            mesh.points()[p0],
-            mesh.points()[p1],
-            mesh.points()[p2],
-            mesh.points()[oppositeI]
+            points[p0],
+            points[p1],
+            points[p2],
+            points[oppositeI]
         );
 
         label startTrii = verts.size();
@@ -774,10 +872,10 @@ void Foam::isoSurface2::generateTriPoints
             }),
             FixedList<point, 4>
             ({
-                mesh.points()[p0],
-                mesh.points()[p1],
-                mesh.points()[p2],
-                mesh.points()[oppositeI]
+                points[p0],
+                points[p1],
+                points[p2],
+                points[oppositeI]
             }),
             FixedList<label, 4>
             ({
@@ -803,22 +901,20 @@ void Foam::isoSurface2::generateTriPoints
     }
     else
     {
+        const pointField& cellCentres = mesh_.cellCentres();
+
         forAll(cFaces, cFacei)
         {
             label facei = cFaces[cFacei];
-            const face& f = mesh.faces()[facei];
+            const face& f = faces[facei];
 
             label fp0 = tetBasePtIs_[facei];
 
             label startTrii = verts.size();
 
-            // Skip undefined tets
+            // Fallback
             if (fp0 < 0)
             {
-Pout<< "** problem for face:" << facei
-    << " at:" << mesh.faceCentres()[facei]
-    << " point:" << mesh.points()[f[0]]
-    << endl;
                 fp0 = 0;
             }
 
@@ -832,7 +928,7 @@ Pout<< "** problem for face:" << facei
                 label p0 = f[fp0];
                 label p1 = f[fp];
                 label p2 = f[nextFp];
-                if (mesh.faceOwner()[facei] == celli)
+                if (faceOwner[facei] == celli)
                 {
                     Swap(p1, p2);
                     if (i != 2) edgeIsDiag[1] = true;
@@ -846,10 +942,10 @@ Pout<< "** problem for face:" << facei
 
                 tetPointRef tet
                 (
-                    mesh.points()[p0],
-                    mesh.points()[p1],
-                    mesh.points()[p2],
-                    mesh.cellCentres()[celli]
+                    points[p0],
+                    points[p1],
+                    points[p2],
+                    cellCentres[celli]
                 );
 
                 generateTriPoints
@@ -864,17 +960,17 @@ Pout<< "** problem for face:" << facei
                     }),
                     FixedList<point, 4>
                     ({
-                        mesh.points()[p0],
-                        mesh.points()[p1],
-                        mesh.points()[p2],
-                        mesh.cellCentres()[celli]
+                        points[p0],
+                        points[p1],
+                        points[p2],
+                        cellCentres[celli]
                     }),
                     FixedList<label, 4>
                     ({
                         p0,
                         p1,
                         p2,
-                        mesh.nPoints()+celli
+                        mesh_.nPoints()+celli
                     }),
                     edgeIsDiag,
 
@@ -1109,11 +1205,10 @@ Foam::isoSurface2::isoSurface2
     for (label celli = 0; celli < mesh_.nCells(); celli++)
     {
         startTri[celli] = faceLabels.size();
-//        if (cellCutTypes[celli] != NOTCUT)
+        if (cellCutTypes[celli] != NOTCUT)
         {
             generateTriPoints
             (
-                mesh,
                 celli,
                 tet.isA(mesh_, celli),
 
@@ -1176,68 +1271,6 @@ Foam::isoSurface2::isoSurface2
         allTris.xfer(),
         allZones.xfer()
     );
-
-
-Pout<< "** dumping unfiltered to unfiltered.obj" << endl;
-    this->write("unfiltered.obj");
-
-
-// // Dump cell 7695
-// {
-//     const label celli = 7695;
-//     const label start = startTri[celli];
-//     const label size = startTri[celli+1]-start;
-//     DebugVar(start);
-//     DebugVar(size);
-// 
-//     SubList<label> cellFaces(faceLabels, size, start);
-//     DebugVar(cellFaces);
-// 
-//     DynamicList<label> tris;
-//     tris.append(start);
-//     for (label trii = start+1; trii < start+size; trii++)
-//     {
-//         const label currentFacei = faceLabels[tris.last()];
-//         if (faceLabels[trii] != currentFacei)
-//         {
-//             // Subset surface
-//             const fileName fName("face_" + Foam::name(currentFacei) + ".obj");
-//             Pout<< "Writing face:" << currentFacei
-//                 << " triangles:" << tris << " to file " << fName << endl;
-//             labelHashSet set(tris);
-//             MeshedSurface<face> subSurf(this->subsetMesh(set));
-//             subSurf.removeZones();
-//             subSurf.addZones
-//             (
-//                 labelList(1, subSurf.size()),
-//                 wordList(1, fName)
-//             );
-//             subSurf.write(fName);
-// 
-//             tris.clear();
-//         }
-//         tris.append(trii);
-//     }
-// 
-//     // Final triangles
-//     {
-//         // Subset surface
-//         const label currentFacei = faceLabels[tris.last()];
-//         const fileName fName("face_" + Foam::name(currentFacei) + ".obj");
-//         Pout<< "Writing face:" << currentFacei
-//             << " triangles:" << tris << " to file " << fName << endl;
-//         labelHashSet set(tris);
-//         MeshedSurface<face> subSurf(this->subsetMesh(set));
-//         subSurf.removeZones();
-//         subSurf.addZones
-//         (
-//             labelList(1, subSurf.size()),
-//             wordList(1, fName)
-//         );
-//         subSurf.write(fName);
-//     }
-// }
-
 
 
     // Now:

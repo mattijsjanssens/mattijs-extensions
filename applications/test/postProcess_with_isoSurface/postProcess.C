@@ -38,6 +38,7 @@ Description
 #include "surfaceFields.H"
 #include "pointFields.H"
 #include "uniformDimensionedFields.H"
+#include "polyMeshTetDecomposition.H"
 
 using namespace Foam;
 
@@ -149,6 +150,11 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     Foam::instantList timeDirs = Foam::timeSelector::select0(runTime, args);
     #include "createNamedMesh.H"
+
+
+DebugVar(polyMeshTetDecomposition::findFaceBasePts(mesh));
+
+
 
     // Initialize the set of selected fields from the command-line options
     HashSet<word> selectedFields;

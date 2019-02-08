@@ -106,6 +106,12 @@ private:
 
     // Private Member Functions
 
+        scalar minTetQ
+        (
+            const label facei,
+            const label faceBasePtI
+        ) const;
+
         void fixTetBasePtIs();
 
         //- Does any edge of triangle cross iso value?
@@ -162,7 +168,6 @@ private:
         //- Generate triangles from cell
         void generateTriPoints
         (
-            const polyMesh& mesh,
             const label celli,
             const bool isTet,
 
