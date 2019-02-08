@@ -73,6 +73,7 @@ class lduPrimitiveMesh
         //- Communicator to use for any parallel communication
         const label comm_;
 
+
     // Private Member Functions
 
         //- Get combined size of all meshes
@@ -84,12 +85,8 @@ class lduPrimitiveMesh
         //- Get combined size of all interfaces
         static label interfaceSize(const lduMesh& mesh);
 
-        static labelList upperTriOrder
-        (
-            const label nCells,
-            const labelUList& lower,
-            const labelUList& upper
-        );
+        //- Count number of occurrences
+        static label count(const labelUList&, const label val);
 
         //- Check if in upper-triangular ordering
         static void checkUpperTriangular
@@ -144,6 +141,24 @@ public:
             const label comm
         );
 
+        //- Construct as subset of existing mesh
+        lduPrimitiveMesh
+        (
+            const label comm,
+            const lduMesh& mesh,
+            const globalIndex& globalNumbering,
+            const lduInterfacePtrsList& interfaces,
+            const boolList& isGlobalInterface,// derive from interfaceNbrCells?
+            const PtrList<labelField>& interfaceNbrCells,
+
+            const labelList& region,
+            const label currentRegion,
+
+            labelList& cellMap,
+            labelList& faceMap,
+            labelList& patchMap
+        );
+
         //- Construct by combining multiple meshes. The meshes come from
         //  processors procIDs:
         //  procIDs[0] : local processor (myMesh)
@@ -186,6 +201,7 @@ public:
         //  holding the neighbouring processor+cell (as a global cell index).
         lduPrimitiveMesh
         (
+            const label comm,
             const globalIndex& globalCells,
             const UPtrList<const lduMesh>& meshes,
 
@@ -282,6 +298,12 @@ public:
             template<class ProcPatch>
             static lduSchedule nonBlockingSchedule(const lduInterfacePtrsList&);
 
+            static labelList upperTriOrder
+            (
+                const label nCells,
+                const labelUList& lower,
+                const labelUList& upper
+            );
 };
 
 

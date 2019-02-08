@@ -1,3 +1,5 @@
+lduPrimitiveMeshTools.C
+lduPrimitiveMesh.C
 lduPrimitiveInterface.C
 lduPrimitiveProcessorInterface.C
 lduPrimitiveProcessorInterfaceField.C

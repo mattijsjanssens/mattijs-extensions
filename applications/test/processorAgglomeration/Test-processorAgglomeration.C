@@ -41,6 +41,7 @@ Description
 #include "fvCFD.H"
 #include "processorGAMGInterface.H"
 #include "processorFvPatch.H"
+#include "lduPrimitiveMeshTools.H"
 //#include "UPtrList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -227,130 +228,7 @@ void printMeshInfo(const lduMesh& mesh)
     }
     Pout.prefix() = oldPrefix;
 }
-void sendMesh(const lduMesh& mesh, Ostream& os)
-{
-    const lduAddressing& addressing = mesh.lduAddr();
-    lduInterfacePtrsList interfaces(mesh.interfaces());
-    boolList validInterface(interfaces.size());
-    forAll(interfaces, intI)
-    {
-        validInterface[intI] = interfaces.set(intI);
-    }
 
-    os  << addressing.size()
-        << addressing.lowerAddr()
-        << addressing.upperAddr()
-        << validInterface;
-
-    forAll(interfaces, intI)
-    {
-        if (interfaces.set(intI))
-        {
-            os << interfaces[intI].type();
-            refCast<const lduPrimitiveInterface>(interfaces[intI]).write(os);
-        }
-    }
-}
-autoPtr<lduPrimitiveMesh> receiveMesh(const label comm, Istream& is)
-{
-    label nCells = readLabel(is);
-    labelList lowerAddr(is);
-    labelList upperAddr(is);
-    boolList validInterface(is);
-
-
-    // Construct mesh without interfaces
-    autoPtr<lduPrimitiveMesh> meshPtr
-    (
-        new lduPrimitiveMesh
-        (
-            nCells,
-            lowerAddr,
-            upperAddr,
-            comm,
-            true    // reuse
-        )
-    );
-
-    // Construct GAMGInterfaces
-    lduInterfacePtrsList newInterfaces(validInterface.size());
-    forAll(validInterface, intI)
-    {
-        if (validInterface[intI])
-        {
-            word coupleType(is);
-
-            Pout<< "Received coupleType:" << coupleType << endl;
-
-            newInterfaces.set
-            (
-                intI,
-                // GAMGInterface::New
-                // (
-                //     coupleType,
-                //     intI,
-                //     otherMeshes[i-1].rawInterfaces(),
-                //     is
-                // ).ptr()
-                new lduPrimitiveInterface(is)
-            );
-        }
-    }
-
-    meshPtr().addInterfaces
-    (
-        newInterfaces,
-        lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
-        (
-            newInterfaces
-        )
-    );
-
-    return meshPtr;
-}
-void swapCellData
-(
-    const lduInterfacePtrsList& ifs,
-    const labelUList& cellData,
-    PtrList<labelField>& nbrData
-)
-{
-    nbrData.setSize(ifs.size());
-
-    // Initialise transfer of global cells
-    forAll(ifs, patchi)
-    {
-        if (ifs.set(patchi))
-        {
-            ifs[patchi].initInternalFieldTransfer
-            (
-                Pstream::commsTypes::nonBlocking,
-                cellData
-            );
-        }
-    }
-
-    if (Pstream::parRun())
-    {
-        Pstream::waitRequests();
-    }
-
-    forAll(ifs, patchi)
-    {
-        if (ifs.set(patchi))
-        {
-            nbrData.set
-            (
-                patchi,
-                ifs[patchi].internalFieldTransfer
-                (
-                    Pstream::commsTypes::nonBlocking,
-                    cellData
-                )
-            );
-        }
-    }
-}
 //// Temporary replacement for lduPrimitiveMesh::gather
 //void gather
 //(
@@ -475,79 +353,6 @@ void swapCellData
 //}
 
 
-labelList upperTriOrder
-(
-    const label nCells,
-    const labelUList& lower,
-    const labelUList& upper
-)
-{
-    labelList nNbrs(nCells, 0);
-
-    // Count number of upper neighbours
-    forAll(lower, facei)
-    {
-        if (upper[facei] < lower[facei])
-        {
-            FatalErrorInFunction
-                << "Problem at face:" << facei
-                << " lower:" << lower[facei]
-                << " upper:" << upper[facei]
-                << exit(FatalError);
-        }
-        nNbrs[lower[facei]]++;
-    }
-
-    // Construct cell-upper cell addressing
-    labelList offsets(nCells+1);
-    offsets[0] = 0;
-    forAll(nNbrs, celli)
-    {
-        offsets[celli+1] = offsets[celli]+nNbrs[celli];
-    }
-
-    nNbrs = offsets;
-
-    labelList cellToFaces(offsets.last());
-    forAll(upper, facei)
-    {
-        label celli = lower[facei];
-        cellToFaces[nNbrs[celli]++] = facei;
-    }
-
-    // Sort
-
-    labelList oldToNew(lower.size());
-
-    labelList order;
-    labelList nbr;
-
-    label newFacei = 0;
-
-    for (label celli = 0; celli < nCells; celli++)
-    {
-        label startOfCell = offsets[celli];
-        label nNbr = offsets[celli+1] - startOfCell;
-
-        nbr.setSize(nNbr);
-        order.setSize(nNbr);
-        forAll(order, i)
-        {
-            nbr[i] = upper[cellToFaces[offsets[celli]+i]];
-        }
-        sortedOrder(nbr, order);
-
-        forAll(order, i)
-        {
-            label index = order[i];
-            oldToNew[cellToFaces[startOfCell + index]] = newFacei++;
-        }
-    }
-
-    return oldToNew;
-}
-
-
 // (local!) subsetting for lduPrimitiveMesh. Adds exposed faces
 // (from internal or from processor interfaces) to added lduInterface.
 autoPtr<lduPrimitiveMesh> subset
@@ -661,7 +466,7 @@ autoPtr<lduPrimitiveMesh> subset
 
     const labelList oldToNewFaces
     (
-        upperTriOrder
+        lduPrimitiveMesh::upperTriOrder
         (
             cellMap.size(),
             subLower,
@@ -821,7 +626,12 @@ int main(int argc, char *argv[])
         {
             globalCells[celli] = globalNumbering.toGlobal(celli);
         }
-        swapCellData(ifs, globalCells, interfaceNbrCells);
+        lduPrimitiveMeshTools::swapCellData
+        (
+            ifs,
+            globalCells,
+            interfaceNbrCells
+        );
     }
 
 
@@ -914,7 +724,7 @@ int main(int argc, char *argv[])
 
             // Send subMesh
             UOPstream toDest(destProcI, pBufs);
-            sendMesh(subMesh, toDest);
+            lduPrimitiveMeshTools::writeData(subMesh, toDest);
         }
     }
 
@@ -932,7 +742,11 @@ int main(int argc, char *argv[])
             UIPstream fromDest(procI, pBufs);
 
             // Receive mesh and global cell labels
-            otherMeshes.set(otherI++,  receiveMesh(lMesh.comm(), fromDest));
+            otherMeshes.set
+            (
+                otherI++,
+                lduPrimitiveMeshTools::readData(fromDest)
+            );
 
             {
                 const lduMesh& subMesh = otherMeshes[otherI-1];
@@ -966,6 +780,7 @@ int main(int argc, char *argv[])
     labelListListList boundaryFaceMap;
     lduPrimitiveMesh allMesh
     (
+        meshes[0].comm(),
         globalNumbering,
         meshes,
 

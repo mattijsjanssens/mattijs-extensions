@@ -124,6 +124,8 @@ Foam::label Foam::lduPrimitiveMesh::totalSize
     }
     return size;
 }
+
+
 Foam::label Foam::lduPrimitiveMesh::totalSize
 (
     const UPtrList<const lduMesh>& meshes
@@ -153,6 +155,24 @@ Foam::label Foam::lduPrimitiveMesh::interfaceSize(const lduMesh& mesh)
         }
     }
     return size;
+}
+
+
+Foam::label Foam::lduPrimitiveMesh::count
+(
+    const labelUList& elems,
+    const label val
+)
+{
+    label n = 0;
+    forAll(elems, i)
+    {
+        if (elems[i] == val)
+        {
+            n++;
+        }
+    }
+    return n;
 }
 
 
@@ -296,6 +316,192 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
             interfaces_.set(i, &primitiveInterfaces_[i]);
         }
     }
+}
+
+
+Foam::lduPrimitiveMesh::lduPrimitiveMesh
+(
+    const label comm,
+    const lduMesh& mesh,
+    const globalIndex& globalNumbering,
+    const lduInterfacePtrsList& interfaces,
+    const boolList& isGlobalInterface,
+    const PtrList<labelField>& interfaceNbrCells,
+
+    const labelList& region,
+    const label currentRegion,
+
+    labelList& cellMap,
+    labelList& faceMap,
+    labelList& patchMap
+)
+:
+    lduAddressing(count(region, currentRegion)),
+    comm_(comm)
+{
+    const labelUList& lower = mesh.lduAddr().lowerAddr();
+    const labelUList& upper = mesh.lduAddr().upperAddr();
+
+
+    // Assign coarse cell numbers. Assign in increasing cell numbering
+    // to keep orientation simple.
+
+    labelList reverseCellMap(mesh.lduAddr().size(), -1);
+    cellMap.setSize(mesh.lduAddr().size());
+
+    label coarseCellI = 0;
+    forAll(region, cellI)
+    {
+        if (region[cellI] == currentRegion)
+        {
+            reverseCellMap[cellI] = coarseCellI;
+            cellMap[coarseCellI++] = cellI;
+        }
+    }
+
+    cellMap.setSize(coarseCellI);
+
+
+    // Detect exposed faces
+
+    labelList reverseFaceMap(lower.size(), -1);
+    faceMap.setSize(lower.size());
+
+    DynamicList<label> exposedFaces(lower.size());
+    DynamicList<bool> exposedFaceFlips(lower.size());
+    DynamicList<label> exposedCells(lower.size());
+    DynamicList<label> exposedGlobalCells(lower.size());
+    DynamicList<label> exposedGlobalNbrCells(lower.size());
+
+    label coarseFaceI = 0;
+    forAll(lower, faceI)
+    {
+        label lRegion = region[lower[faceI]];
+        label uRegion = region[upper[faceI]];
+
+        if (lRegion == currentRegion)
+        {
+            if (uRegion == currentRegion)
+            {
+                // Keep face
+                reverseFaceMap[faceI] = coarseFaceI;
+                faceMap[coarseFaceI++] = faceI;
+            }
+            else
+            {
+                // Upper deleted
+                exposedFaces.append(faceI);
+                exposedFaceFlips.append(false);
+                exposedCells.append(reverseCellMap[lower[faceI]]);
+                exposedGlobalCells.append
+                (
+                    globalNumbering.toGlobal(lower[faceI])
+                );
+                exposedGlobalNbrCells.append
+                (
+                    globalNumbering.toGlobal(upper[faceI])
+                );
+            }
+        }
+        else if (uRegion == currentRegion)
+        {
+            // Lower deleted
+            exposedFaces.append(faceI);
+            exposedFaceFlips.append(true);
+            exposedCells.append(reverseCellMap[upper[faceI]]);
+            exposedGlobalCells.append
+            (
+                globalNumbering.toGlobal(upper[faceI])
+            );
+            exposedGlobalNbrCells.append
+            (
+                globalNumbering.toGlobal(lower[faceI])
+            );
+        }
+    }
+
+    faceMap.setSize(coarseFaceI);
+
+
+    labelList subLower(faceMap.size());
+    labelList subUpper(faceMap.size());
+    forAll(faceMap, subFaceI)
+    {
+        label faceI = faceMap[subFaceI];
+        subLower[subFaceI] = reverseCellMap[lower[faceI]];
+        subUpper[subFaceI] = reverseCellMap[upper[faceI]];
+    }
+
+    const labelList oldToNewFaces
+    (
+        upperTriOrder
+        (
+            cellMap.size(),
+            subLower,
+            subUpper
+        )
+    );
+
+    lowerAddr_ = UIndirectList<label>(subLower, oldToNewFaces);
+    upperAddr_ = UIndirectList<label>(subUpper, oldToNewFaces);
+
+
+    // Copy all global interfaces
+    label maxGlobal = -1;
+    forAll(isGlobalInterface, patchI)
+    {
+        if (isGlobalInterface[patchI])
+        {
+            maxGlobal = max(maxGlobal, patchI);
+        }
+    }
+
+    primitiveInterfaces_.setSize(maxGlobal+1+1);
+
+    patchMap.setSize(primitiveInterfaces_.size());
+    patchMap = -1;
+    forAll(interfaces, patchI)
+    {
+        if (isGlobalInterface[patchI])
+        {
+            //Pout<< "**** Should copy primitive interface at patch " << patchI
+            //    << " type:" << ifs[patchI].type() << endl;
+            //primitiveInterfaces_.set(ifs[patchI].clone());
+            patchMap[patchI] = patchI;
+        }
+    }
+
+    // Add a single interface for the exposed cells
+    primitiveInterfaces_.set
+    (
+        primitiveInterfaces_.size()-1,
+        new lduPrimitiveInterface
+        (
+            exposedCells,
+            exposedGlobalCells,
+            exposedGlobalNbrCells
+        )
+    );
+    Pout<< "Added exposedFaces patch " << primitiveInterfaces_.size()-1
+        << " with number of cells:" << exposedCells.size()
+        << " localCells:" << exposedCells
+        << " remoteGlobalCells:" << exposedGlobalNbrCells << endl;
+
+    interfaces_.setSize(primitiveInterfaces_.size());
+    forAll(primitiveInterfaces_, i)
+    {
+        if (primitiveInterfaces_.set(i))
+        {
+            interfaces_.set(i, &primitiveInterfaces_[i]);
+        }
+    }
+
+    //- Patch field evaluation schedule
+    patchSchedule_ = lduPrimitiveMesh::
+    nonBlockingSchedule<lduPrimitiveInterface>
+    (
+        interfaces_
+    );
 }
 
 
@@ -996,6 +1202,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
 
 Foam::lduPrimitiveMesh::lduPrimitiveMesh
 (
+    const label comm,
     const globalIndex& globalCells,
     const UPtrList<const lduMesh>& meshes,
 
@@ -1011,7 +1218,7 @@ Foam::lduPrimitiveMesh::lduPrimitiveMesh
     upperAddr_(0),
     interfaces_(0),
     patchSchedule_(0),
-    comm_(meshes[0].comm())
+    comm_(comm)
 {
     // Cells get added in order
 
