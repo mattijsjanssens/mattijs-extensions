@@ -37,6 +37,7 @@ SourceFiles
 #define lduPrimitiveProcessorInterface_H
 
 //#include "GAMGInterface.H"
+#include "lduInterface.H"
 #include "processorLduInterface.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -89,41 +90,6 @@ public:
 
     // Constructors
 
-//         //- Construct from fine-level interface,
-//         //  local and neighbour restrict addressing
-//         lduPrimitiveProcessorInterface
-//         (
-//             const label index,
-//             const lduInterfacePtrsList& coarseInterfaces,
-//             const lduInterface& fineInterface,
-//             const labelField& restrictAddressing,
-//             const labelField& neighbourRestrictAddressing,
-//             const label fineLevelIndex,
-//             const label coarseComm
-//         );
-// 
-//         //- Construct from components
-//         lduPrimitiveProcessorInterface
-//         (
-//             const label index,
-//             const lduInterfacePtrsList& coarseInterfaces,
-//             const labelUList& faceCells,
-//             const labelUList& faceRestrictAddresssing,
-//             const label coarseComm,
-//             const label myProcNo,
-//             const label neighbProcNo,
-//             const tensorField& forwardT,
-//             const int tag
-//         );
-// 
-//         //- Construct from Istream
-//         lduPrimitiveProcessorInterface
-//         (
-//             const label index,
-//             const lduInterfacePtrsList& coarseInterfaces,
-//             Istream& is
-//         );
-
         //- Construct from components
         lduPrimitiveProcessorInterface
         (
@@ -133,31 +99,42 @@ public:
             const label neighbProcNo,
             const tensorField& forwardT,
             const int tag
-        )
-        :
-            faceCells_(faceCells),
-            comm_(comm),
-            myProcNo_(myProcNo),
-            neighbProcNo_(neighbProcNo),
-            forwardT_(forwardT),
-            tag_(tag)
-        {}
+        );
 
         //- Construct from Istream
-        lduPrimitiveProcessorInterface(Istream& is)
-        :
-            faceCells_(is),
-            comm_(readLabel(is)),
-            myProcNo_(readLabel(is)),
-            neighbProcNo_(readLabel(is)),
-            forwardT_(is),
-            tag_(readInt(is))
-        {}
+        lduPrimitiveProcessorInterface(Istream& is);
+
+        //- Construct from dictionary
+        lduPrimitiveProcessorInterface
+        (
+            const dictionary& dict,
+            const label index
+        );
+
+        //- Construct given the original patch and a map
+        lduPrimitiveProcessorInterface
+        (
+            const lduPrimitiveProcessorInterface& pp,
+            const label index,
+            const labelUList& mapAddressing
+        );
+
+        //- Construct and return a subsetted clone
+        virtual autoPtr<lduInterface> clone
+        (
+            const label index,
+            const labelUList& mapAddressing
+        ) const
+        {
+            return autoPtr<lduInterface>
+            (
+                new lduPrimitiveProcessorInterface(*this, index, mapAddressing)
+            );
+        }
 
 
     //- Destructor
-    virtual ~lduPrimitiveProcessorInterface()
-    {}
+    virtual ~lduPrimitiveProcessorInterface();
 
 
     // Member Functions
@@ -244,16 +221,8 @@ public:
 
         // I/O
 
-            //- Write to stream
-            virtual void write(Ostream& os) const
-            {
-                os  << faceCells_ << token::SPACE
-                    << comm_ << token::SPACE
-                    << myProcNo_ << token::SPACE
-                    << neighbProcNo_ << token::SPACE
-                    << forwardT_ << token::SPACE
-                    << tag_;
-            }
+            //- Write as dictionary to stream
+            virtual Ostream& writeData(Ostream& os) const;
 };
 
 

@@ -33,4 +33,66 @@ defineTypeNameAndDebug(lduPrimitiveInterface, 0);
 }
 
 
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::lduPrimitiveInterface::lduPrimitiveInterface
+(
+    const labelUList& faceCells,
+    const labelUList& faceGlobalCells,
+    const labelUList& nbrFaceGlobalCells
+)
+:
+    faceCells_(faceCells),
+    faceGlobalCells_(faceGlobalCells),
+    nbrFaceGlobalCells_(nbrFaceGlobalCells)
+{}
+
+
+Foam::lduPrimitiveInterface::lduPrimitiveInterface(Istream& is)
+:
+    faceCells_(is),
+    faceGlobalCells_(is),
+    nbrFaceGlobalCells_(is)
+{}
+
+
+Foam::lduPrimitiveInterface::lduPrimitiveInterface
+(
+    const lduPrimitiveInterface& pp,
+    const label index,
+    const labelUList& mapAddressing
+)
+:
+    faceCells_(UIndirectList<label>(pp.faceCells_, mapAddressing)),
+    faceGlobalCells_(UIndirectList<label>(pp.faceGlobalCells_, mapAddressing)),
+    nbrFaceGlobalCells_
+    (
+        UIndirectList<label>(pp.nbrFaceGlobalCells_, mapAddressing)
+    )
+{}
+
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::lduPrimitiveInterface::~lduPrimitiveInterface()
+{}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::Ostream& Foam::lduPrimitiveInterface::write(Ostream& os) const
+{
+    return os
+        << faceCells_ << token::SPACE
+        << faceGlobalCells_ << token::SPACE
+        << nbrFaceGlobalCells_;
+}
+
+
+// * * * * * * * * * * * * * * * Member Operators  * * * * * * * * * * * * * //
+
+
+// * * * * * * * * * * * * * * * Friend Operators  * * * * * * * * * * * * * //
+
+
 // ************************************************************************* //

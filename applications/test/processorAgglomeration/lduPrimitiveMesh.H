@@ -65,7 +65,7 @@ class lduPrimitiveMesh
         lduInterfacePtrsList interfaces_;
 
         //- Concrete interfaces
-        PtrList<const lduInterface> primitiveInterfaces_;
+        PtrList<lduInterface> primitiveInterfaces_;
 
         //- Patch field evaluation schedule
         lduSchedule patchSchedule_;
@@ -123,11 +123,17 @@ public:
             bool reuse
         );
 
-        //- Add interfaces to a mesh constructed without
+        //- Add interfaces (steals storage) to a mesh constructed without
         void addInterfaces
         (
             lduInterfacePtrsList& interfaces,
             const lduSchedule& ps
+        );
+
+        //- Add interfaces (steals storage) to a mesh constructed without
+        void addInterfaces
+        (
+            PtrList<lduInterface>& primitiveInterfaces
         );
 
         //- Construct from components and re-use storage.
@@ -136,28 +142,28 @@ public:
             const label nCells,
             labelList& l,
             labelList& u,
-            PtrList<const lduInterface>& primitiveInterfaces,
+            PtrList<lduInterface>& primitiveInterfaces,
             const lduSchedule& ps,
             const label comm
         );
 
-        //- Construct as subset of existing mesh
-        lduPrimitiveMesh
-        (
-            const label comm,
-            const lduMesh& mesh,
-            const globalIndex& globalNumbering,
-            const lduInterfacePtrsList& interfaces,
-            const boolList& isGlobalInterface,// derive from interfaceNbrCells?
-            const PtrList<labelField>& interfaceNbrCells,
-
-            const labelList& region,
-            const label currentRegion,
-
-            labelList& cellMap,
-            labelList& faceMap,
-            labelList& patchMap
-        );
+//         //- Construct as subset of existing mesh
+//         lduPrimitiveMesh
+//         (
+//             const label comm,
+//             const lduMesh& mesh,
+//             const globalIndex& globalNumbering,
+//             const lduInterfacePtrsList& interfaces,
+//             const boolList& isGlobalInterface,// derive from interfaceNbrCells?
+//             const PtrList<labelField>& interfaceNbrCells,
+// 
+//             const labelList& region,
+//             const label currentRegion,
+// 
+//             labelList& cellMap,
+//             labelList& faceMap,
+//             labelList& patchMap
+//         );
 
         //- Construct by combining multiple meshes. The meshes come from
         //  processors procIDs:
@@ -241,6 +247,14 @@ public:
             const lduInterfacePtrsList& rawInterfaces() const
             {
                 return interfaces_;
+            }
+
+            //- Return a list of pointers for each patch
+            //  with only those pointing to interfaces being set
+            //  (reference to cached interfaces)
+            const PtrList<lduInterface>& primitiveInterfaces() const
+            {
+                return primitiveInterfaces_;
             }
 
             //- Return communicator used for parallel communication

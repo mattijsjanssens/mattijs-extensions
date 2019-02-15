@@ -33,10 +33,76 @@ defineTypeNameAndDebug(lduPrimitiveProcessorInterface, 0);
 }
 
 
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::lduPrimitiveProcessorInterface::lduPrimitiveProcessorInterface
+(
+    const labelUList& faceCells,
+    const label comm,
+    const label myProcNo,
+    const label neighbProcNo,
+    const tensorField& forwardT,
+    const int tag
+)
+:
+    faceCells_(faceCells),
+    comm_(comm),
+    myProcNo_(myProcNo),
+    neighbProcNo_(neighbProcNo),
+    forwardT_(forwardT),
+    tag_(tag)
+{}
+
+
+Foam::lduPrimitiveProcessorInterface::lduPrimitiveProcessorInterface
+(
+    Istream& is
+)
+:
+    faceCells_(is),
+    comm_(readLabel(is)),
+    myProcNo_(readLabel(is)),
+    neighbProcNo_(readLabel(is)),
+    forwardT_(is),
+    tag_(readInt(is))
+{}
+
+
+Foam::lduPrimitiveProcessorInterface::lduPrimitiveProcessorInterface
+(
+    const lduPrimitiveProcessorInterface& pp,
+    const label index,
+    const labelUList& mapAddressing
+)
+:
+    faceCells_(UIndirectList<label>(pp.faceCells_, mapAddressing)),
+    comm_(pp.comm_),
+    myProcNo_(pp.myProcNo_),
+    neighbProcNo_(pp.neighbProcNo_),
+    forwardT_(pp.forwardT_),
+    tag_(pp.tag_)
+{}
+
+
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-// Foam::lduInterface::~lduInterface()
-// {}
+Foam::lduPrimitiveProcessorInterface::~lduPrimitiveProcessorInterface()
+{}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::Ostream& Foam::lduPrimitiveProcessorInterface::write(Ostream& os) const
+{
+    return os
+        << faceCells_ << token::SPACE
+        << comm_ << token::SPACE
+        << myProcNo_ << token::SPACE
+        << neighbProcNo_ << token::SPACE
+        << forwardT_ << token::SPACE
+        << tag_;
+}
 
 
 // ************************************************************************* //

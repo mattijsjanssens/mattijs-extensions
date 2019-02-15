@@ -71,49 +71,41 @@ public:
 
     // Constructors
 
-//         //- Construct from components
-//         lduPrimitiveInterface
-//         (
-//             const globalIndex& globalIndex,
-//             const labelList& fc,
-//             const labelList& nbrFc
-//         )
-//         :
-//             faceCells_(fc),
-//             faceGlobalCells_(faceCells_.size()),
-//             nbrFaceGlobalCells_(nbrFc)
-//         {
-//             forAll(faceCells_, i)
-//             {
-//                 faceGlobalCells_[i] = globalIndex.toGlobal(faceCells_[i]);
-//             }
-//         }
         //- Construct from components
         lduPrimitiveInterface
         (
             const labelUList& faceCells,
             const labelUList& faceGlobalCells,
             const labelUList& nbrFaceGlobalCells
-        )
-        :
-            faceCells_(faceCells),
-            faceGlobalCells_(faceGlobalCells),
-            nbrFaceGlobalCells_(nbrFaceGlobalCells)
-        {
-        }
+        );
 
         //- Construct from Istream
-        lduPrimitiveInterface(Istream& is)
-        :
-            faceCells_(is),
-            faceGlobalCells_(is),
-            nbrFaceGlobalCells_(is)
-        {}
+        lduPrimitiveInterface(Istream& is);
+
+        //- Construct given the original patch and a map
+        lduPrimitiveInterface
+        (
+            const lduPrimitiveInterface& pp,
+            const label index,
+            const labelUList& mapAddressing
+        );
+
+        //- Construct and return a subsetted clone
+        virtual autoPtr<lduInterface> clone
+        (
+            const label index,
+            const labelUList& mapAddressing
+        ) const
+        {
+            return autoPtr<lduInterface>
+            (
+                new lduPrimitiveInterface(*this, index, mapAddressing)
+            );
+        }
 
 
     //- Destructor
-    virtual ~lduPrimitiveInterface()
-    {}
+    virtual ~lduPrimitiveInterface();
 
 
     // Member Functions
@@ -175,13 +167,7 @@ public:
 
         // I/O
 
-            virtual Ostream& write(Ostream& os) const
-            {
-                return os
-                    << faceCells_ << token::SPACE
-                    << faceGlobalCells_ << token::SPACE
-                    << nbrFaceGlobalCells_;
-            }
+            virtual Ostream& write(Ostream& os) const;
 };
 
 

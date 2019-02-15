@@ -45,14 +45,35 @@ bool Foam::lduPrimitiveMeshTools::writeData(const lduMesh& mesh, Ostream& os)
         << addressing.upperAddr()
         << validInterface;
 
+    // forAll(interfaces, intI)
+    // {
+    //     if (interfaces.set(intI))
+    //     {
+    //         os << interfaces[intI].type();
+    //         //refCast<const lduPrimitiveInterface>
+    //         //(interfaces[intI]).write(os);
+    //         interfaces[intI].write(os);
+    //     }
+    // }
+
+    os  << nl << token::BEGIN_LIST << incrIndent << nl;
+
     forAll(interfaces, intI)
     {
         if (interfaces.set(intI))
         {
-            os << interfaces[intI].type();
-            refCast<const lduPrimitiveInterface>(interfaces[intI]).write(os);
+            os  << indent << token::BEGIN_BLOCK << nl
+                << incrIndent;
+            interfaces[intI].write(os);
+            os  << decrIndent
+                << indent << token::END_BLOCK << endl;
         }
     }
+    os  << decrIndent << token::END_LIST;
+
+    // Check state of IOstream
+    os.check("polyBoundaryMesh::writeData(Ostream& os) const");
+
     return true;
 }
 
@@ -80,39 +101,58 @@ Foam::lduPrimitiveMeshTools::readData(Istream& is)
         )
     );
 
-    // Construct GAMGInterfaces
-    lduInterfacePtrsList newInterfaces(validInterface.size());
+    // // Construct GAMGInterfaces
+    // lduInterfacePtrsList newInterfaces(validInterface.size());
+    // forAll(validInterface, intI)
+    // {
+    //     if (validInterface[intI])
+    //     {
+    //         word coupleType(is);
+    // 
+    //         Pout<< "Received coupleType:" << coupleType << endl;
+    // 
+    //         newInterfaces.set
+    //         (
+    //             intI,
+    //             // GAMGInterface::New
+    //             // (
+    //             //     coupleType,
+    //             //     intI,
+    //             //     otherMeshes[i-1].rawInterfaces(),
+    //             //     is
+    //             // ).ptr()
+    //             new lduPrimitiveInterface(is)
+    //         );
+    //     }
+    // }
+    // 
+    // meshPtr().addInterfaces
+    // (
+    //     newInterfaces,
+    //     lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
+    //     (
+    //         newInterfaces
+    //     )
+    // );
+
+    PtrList<dictionary> patchEntries(is);
+    PtrList<lduInterface> newInterfaces(validInterface.size());
     forAll(validInterface, intI)
     {
         if (validInterface[intI])
         {
-            word coupleType(is);
-
-            Pout<< "Received coupleType:" << coupleType << endl;
-
             newInterfaces.set
             (
                 intI,
-                // GAMGInterface::New
-                // (
-                //     coupleType,
-                //     intI,
-                //     otherMeshes[i-1].rawInterfaces(),
-                //     is
-                // ).ptr()
-                new lduPrimitiveInterface(is)
+                lduInterface::New
+                (
+                    patchEntries[intI],
+                    intI
+                )
             );
         }
     }
-
-    meshPtr().addInterfaces
-    (
-        newInterfaces,
-        lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>
-        (
-            newInterfaces
-        )
-    );
+    meshPtr().addInterfaces(newInterfaces);
 
     return meshPtr;
 }
@@ -160,6 +200,202 @@ void Foam::lduPrimitiveMeshTools::swapCellData
             );
         }
     }
+}
+
+
+Foam::autoPtr<Foam::lduPrimitiveMesh>
+Foam::lduPrimitiveMeshTools::subset
+(
+    const label comm,
+    const lduMesh& mesh,
+    const globalIndex& globalNumbering,
+    const lduInterfacePtrsList& interfaces,
+    const boolList& isGlobalInterface,
+
+    const labelList& region,
+    const label currentRegion,
+
+    labelList& cellMap,
+    labelList& faceMap,
+    labelList& patchMap,
+    labelListList& patchFaceMap,
+    labelList& exposedFaceMap,
+    labelList& exposedFaceCells
+)
+{
+    const labelUList& lower = mesh.lduAddr().lowerAddr();
+    const labelUList& upper = mesh.lduAddr().upperAddr();
+
+
+    // Assign coarse cell numbers. Assign in increasing cell numbering
+    // to keep orientation simple.
+
+    labelList reverseCellMap(mesh.lduAddr().size(), -1);
+    cellMap.setSize(mesh.lduAddr().size());
+
+    label coarseCellI = 0;
+    forAll(region, cellI)
+    {
+        if (region[cellI] == currentRegion)
+        {
+            reverseCellMap[cellI] = coarseCellI;
+            cellMap[coarseCellI++] = cellI;
+        }
+    }
+    cellMap.setSize(coarseCellI);
+
+
+    // Detect exposed faces
+
+    labelList reverseFaceMap(lower.size(), -1);
+    faceMap.setSize(lower.size());
+    exposedFaceMap.setSize(lower.size());
+    exposedFaceCells.setSize(lower.size());
+    //DynamicList<label> exposedFaces(lower.size());
+    //DynamicList<bool> exposedFaceFlips(lower.size());
+    //DynamicList<label> exposedCells(lower.size());
+    //DynamicList<label> exposedGlobalCells(lower.size());
+    //DynamicList<label> exposedGlobalNbrCells(lower.size());
+
+    label coarseFaceI = 0;
+    label exposedFaceI = 0;
+
+    forAll(lower, faceI)
+    {
+        label lRegion = region[lower[faceI]];
+        label uRegion = region[upper[faceI]];
+
+        if (lRegion == currentRegion)
+        {
+            if (uRegion == currentRegion)
+            {
+                // Keep face
+                reverseFaceMap[faceI] = coarseFaceI;
+                faceMap[coarseFaceI++] = faceI;
+            }
+            else
+            {
+                // Upper deleted
+                exposedFaceMap[exposedFaceI] = faceI;
+                exposedFaceCells[exposedFaceI] = reverseCellMap[lower[faceI]];
+                exposedFaceI++;
+                //exposedFaces.append(faceI);
+                //exposedFaceFlips.append(false);
+                //exposedCells.append(reverseCellMap[lower[faceI]]);
+                //exposedGlobalCells.append
+                //(
+                //    globalNumbering.toGlobal(lower[faceI])
+                //);
+                //exposedGlobalNbrCells.append
+                //(
+                //    globalNumbering.toGlobal(upper[faceI])
+                //);
+            }
+        }
+        else if (uRegion == currentRegion)
+        {
+            // Lower deleted
+            exposedFaceMap[exposedFaceI] = faceI;
+            exposedFaceCells[exposedFaceI] = reverseCellMap[upper[faceI]];
+            exposedFaceI++;
+            //exposedFaces.append(faceI);
+            //exposedFaceFlips.append(true);
+            //exposedCells.append(reverseCellMap[upper[faceI]]);
+            //exposedGlobalCells.append
+            //(
+            //    globalNumbering.toGlobal(upper[faceI])
+            //);
+            //exposedGlobalNbrCells.append
+            //(
+            //    globalNumbering.toGlobal(lower[faceI])
+            //);
+        }
+    }
+
+    faceMap.setSize(coarseFaceI);
+    exposedFaceMap.setSize(exposedFaceI);
+    exposedFaceCells.setSize(exposedFaceI);
+
+
+    labelList subLower(faceMap.size());
+    labelList subUpper(faceMap.size());
+    forAll(faceMap, subFaceI)
+    {
+        label faceI = faceMap[subFaceI];
+        subLower[subFaceI] = reverseCellMap[lower[faceI]];
+        subUpper[subFaceI] = reverseCellMap[upper[faceI]];
+    }
+
+    const labelList oldToNewFaces
+    (
+        lduPrimitiveMesh::upperTriOrder
+        (
+            cellMap.size(),
+            subLower,
+            subUpper
+        )
+    );
+
+    labelList orderedLower(UIndirectList<label>(subLower, oldToNewFaces));
+    labelList orderedUpper(UIndirectList<label>(subUpper, oldToNewFaces));
+
+
+    // Map all the interfaces
+    patchFaceMap.setSize(interfaces.size());
+    PtrList<lduInterface> newInterfaces(interfaces.size());
+    label newInti = 0;
+
+    forAll(interfaces, inti)
+    {
+        const lduInterface& intf = interfaces[inti];
+        const labelUList& fc = intf.faceCells();
+
+        DynamicList<label> patchFaces(fc.size());
+        forAll(fc, i)
+        {
+            if (region[fc[i]] == currentRegion)
+            {
+                patchFaces.append(i);
+            }
+        }
+
+        if (isGlobalInterface[inti] || patchFaces.size())
+        {
+            newInterfaces.set(newInti, intf.clone(newInti, patchFaces));
+            patchFaceMap[newInti].transfer(patchFaces);
+            newInti++;
+        }
+    }
+    newInterfaces.setSize(newInti);
+    patchFaceMap.setSize(newInti);
+
+
+    lduInterfacePtrsList newIfs(newInterfaces.size());
+    forAll(newInterfaces, i)
+    {
+        if (newInterfaces.set(i))
+        {
+            newIfs.set(i, &newInterfaces[i]);
+        }
+    }
+
+    lduSchedule ps
+    (
+        lduPrimitiveMesh::nonBlockingSchedule<lduPrimitiveInterface>(newIfs)
+    );
+
+    return autoPtr<lduPrimitiveMesh>
+    (
+        new lduPrimitiveMesh
+        (
+            cellMap.size(),
+            orderedLower,
+            orderedUpper,
+            newInterfaces,
+            ps,
+            comm
+        )
+    );
 }
 
 

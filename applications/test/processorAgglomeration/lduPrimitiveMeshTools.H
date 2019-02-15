@@ -35,6 +35,7 @@ SourceFiles
 #ifndef lduPrimitiveMeshTools_H
 #define lduPrimitiveMeshTools_H
 
+#include "lduInterface.H"
 #include "lduPrimitiveMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -62,6 +63,31 @@ public:
         const lduInterfacePtrsList& ifs,
         const labelUList& cellData,
         PtrList<labelField>& nbrData
+    );
+
+    //- Subset:
+    //  - cell/face/patchMap : from submesh back to original
+    //  - patchFaceMap : per patch from patchface index back to original
+    //                   patchface index
+    //  - exposedFaceMap : original face index for every exposed face
+    //  - exposedFaceCells : current submesh cell for every exposed face
+    static autoPtr<lduPrimitiveMesh> subset
+    (
+        const label comm,
+        const lduMesh& mesh,
+        const globalIndex& globalNumbering,
+        const lduInterfacePtrsList& interfaces,
+        const boolList& isGlobalInterface,
+
+        const labelList& region,
+        const label currentRegion,
+
+        labelList& cellMap,
+        labelList& faceMap,
+        labelList& patchMap,
+        labelListList& patchFaceMap,
+        labelList& exposedFaceMap,
+        labelList& exposedFaceCells
     );
 };
 
