@@ -75,7 +75,7 @@ void readMatrixMarket
     label& nRows,
     labelList& lowerAddr,
     labelList& upperAddr,
-    PtrList<const lduInterface>& interfaces,
+    PtrList<lduInterface>& interfaces,
 
     scalarField& diag,
     scalarField& lower,
@@ -322,14 +322,17 @@ int main(int argc, char *argv[])
         const bool oldParRun = Pstream::parRun();
         Pstream::parRun() = false;
 
+        // Addressing
         label nCells;
         labelList lowerAddr;
         labelList upperAddr;
-        PtrList<const lduInterface> interfaces;
+        PtrList<lduInterface> interfaces;
 
+        // Coefficients
         scalarField diag;
         scalarField lower;
         scalarField upper;
+        scalarField source;
 
         // Read Matrix market
         {
@@ -350,9 +353,7 @@ int main(int argc, char *argv[])
             );
         }
 
-
         // Read source
-        scalarField totalSource;
         {
             const IOdictionary sourceDict
             (
@@ -366,7 +367,7 @@ int main(int argc, char *argv[])
                     false
                 )
             );
-            totalSource = scalarField("value", sourceDict, nCells);
+            source = scalarField("value", sourceDict, nCells);
         }
 
         // Construct addressing
@@ -396,6 +397,15 @@ int main(int argc, char *argv[])
         const FieldField<Field, scalar> interfaceBouCoeffs(0);
         const FieldField<Field, scalar> interfaceIntCoeffs(0);
 
+
+        // Matrix
+        // ~~~~~~
+        //
+        // At this point we have a mesh (lduPrimitiveMesh), matrix
+        // coefficients (lduMatrix) and source.
+        //
+
+
         // Solve
         {
             scalarField psi(nCells, 123.0);
@@ -408,7 +418,7 @@ int main(int argc, char *argv[])
                 interfaceIntCoeffs,
                 scalarInterfaces,
                 solverControls
-            )->solve(psi, totalSource);
+            )->solve(psi, source);
 
             solverPerf.print(Info.masterStream(mesh.comm()));
 
@@ -424,7 +434,7 @@ int main(int argc, char *argv[])
         if (Pstream::parRun())
         {
             labelList decomposition(decompose(nCells, Pstream::nProcs()));
-
+        
             // From processor+local cell to global cell
             List<DynamicList<label>> procCellMap(Pstream::nProcs());
             // Local cell number
@@ -434,10 +444,10 @@ int main(int argc, char *argv[])
                 localCell[celli] = procCellMap[decomposition[celli]].size();
                 procCellMap[decomposition[celli]].append(celli);
             }
-
+        
             // From my processor to global face
             List<DynamicList<label>> procFaceMap(Pstream::nProcs());
-
+        
             // From my processor and nbr processor to global faces
             List<List<DynamicList<label>>> procNbrFaces(Pstream::nProcs());
             List<List<DynamicList<label>>> procFaceCells(Pstream::nProcs());
@@ -446,7 +456,7 @@ int main(int argc, char *argv[])
                 procNbrFaces[proci].setSize(Pstream::nProcs());
                 procFaceCells[proci].setSize(Pstream::nProcs());
             }
-
+        
             forAll(mesh.lowerAddr(), facei)
             {
                 label ownCelli = mesh.lowerAddr()[facei];
@@ -455,7 +465,7 @@ int main(int argc, char *argv[])
                 label nbrCelli = mesh.upperAddr()[facei];
                 label nbrProc = decomposition[nbrCelli];
                 label nbrProcCelli = localCell[nbrCelli];
-
+        
                 if (ownProc == nbrProc)
                 {
                     // Internal face
@@ -470,18 +480,16 @@ int main(int argc, char *argv[])
                     procFaceCells[nbrProc][ownProc].append(nbrProcCelli);
                 }
             }
-
-
+        
+        
             // Send subset of mesh
             for (label proci = 0; proci < Pstream::nProcs(); proci++)
             {
-                UOPstream os(proci, pBufs);
-
                 const label nCells(procCellMap[proci].size());
-
+        
                 // Internal faces for proci
                 const labelList& procFaces = procFaceMap[proci];
-
+        
                 labelList subLower(procFaces.size());
                 labelList subUpper(procFaces.size());
                 forAll(procFaces, i)
@@ -490,11 +498,11 @@ int main(int argc, char *argv[])
                     subLower[i] = localCell[mesh.lowerAddr()[facei]];
                     subUpper[i] = localCell[mesh.upperAddr()[facei]];
                 }
-
+        
                 // Construct the interface only for its IO
                 const List<DynamicList<label>>& pFaceCells =
                     procFaceCells[proci];
-
+        
                 DynamicList<label> validNbrs(Pstream::nProcs());
                 forAll(pFaceCells, nbrProci)
                 {
@@ -503,7 +511,7 @@ int main(int argc, char *argv[])
                         validNbrs.append(nbrProci);
                     }
                 }
-                PtrList<lduPrimitiveProcessorInterface> interfaces
+                PtrList<lduInterface> interfaces
                 (
                     validNbrs.size()
                 );
@@ -524,22 +532,38 @@ int main(int argc, char *argv[])
                         )
                     );
                 }
+        
+        Pout<< "Sending to " << proci
+        << " nCells:" << nCells
+        << " lower:" << subLower
+        << " upper:" << subUpper
+        << " validNbrs:" << validNbrs
+        << endl;
+        
+                lduPrimitiveMesh procMesh
+                (
+                    nCells,
+                    subLower,
+                    subUpper,
+                    Pstream::worldComm,
+                    true
+                );
+                procMesh.addInterfaces(interfaces);
 
-Pout<< "Sending to " << proci
-    << " nCells:" << nCells
-    << " lower:" << subLower
-    << " upper:" << subUpper
-    << " validNbrs:" << validNbrs
-    << endl;
 
-                os  << nCells
-                    << subLower
-                    << subUpper
-                    << validNbrs;
-                forAll(interfaces, i)
-                {
-                    interfaces[i].write(os);
-                }
+                UOPstream os(proci, pBufs);
+        
+                //os  << nCells
+                //    << subLower
+                //    << subUpper
+                //    << validNbrs;
+                //forAll(interfaces, i)
+                //{
+                //    interfaces[i].write(os);
+                //}
+
+                lduPrimitiveMeshTools::writeData(procMesh, os);
+
             }
         }
     }
@@ -548,36 +572,37 @@ Pout<< "Sending to " << proci
     if (Pstream::parRun())
     {
         pBufs.finishedSends();
-
+    
         UIPstream is(Pstream::masterNo(), pBufs);
-
-        const label nCells(readLabel(is));
-        labelList lowerAddr(is);
-        labelList upperAddr(is);
-        labelList validNbrs(is);
-
-        PtrList<const lduInterface> interfaces(validNbrs.size());
-        forAll(validNbrs, i)
-        {
-            interfaces.set
-            (
-                i,
-                new lduPrimitiveProcessorInterface(is)
-            );
-        }
-
-        localMeshPtr.reset
-        (
-            new lduPrimitiveMesh
-            (
-                nCells,
-                lowerAddr,
-                upperAddr,
-                interfaces,
-                lduSchedule(0),
-                Pstream::worldComm
-            )
-        );
+    
+        //const label nCells(readLabel(is));
+        //labelList lowerAddr(is);
+        //labelList upperAddr(is);
+        //labelList validNbrs(is);
+        //
+        //PtrList<lduInterface> interfaces(validNbrs.size());
+        //forAll(validNbrs, i)
+        //{
+        //    interfaces.set
+        //    (
+        //        i,
+        //        new lduPrimitiveProcessorInterface(is)
+        //    );
+        //}
+        //
+        //localMeshPtr.reset
+        //(
+        //    new lduPrimitiveMesh
+        //    (
+        //        nCells,
+        //        lowerAddr,
+        //        upperAddr,
+        //        interfaces,
+        //        lduSchedule(0),
+        //        Pstream::worldComm
+        //    )
+        //);
+        localMeshPtr= lduPrimitiveMeshTools::readData(is);
         lduMesh::debug = 1;
         Pout<< localMeshPtr().info() << endl;
     }
@@ -590,6 +615,17 @@ Pout<< "Sending to " << proci
 
     if (Pstream::parRun())
     {
+        // Cell to original cell
+        labelListList procCellMap(Pstream::nProcs());
+        // Internal face to original face
+        labelListList procFaceMap(Pstream::nProcs());
+        // Interface back to original interface
+        labelListList procPatchMap(Pstream::nProcs());
+        // Per interface face original index in interface
+        labelListListList procPatchFaceMap(Pstream::nProcs());
+        // List of exposed internal faces
+        //labelListList procExposedFaceMap(Pstream::nProcs());
+
         pBufs.clear();
         if (Pstream::master())
         {
@@ -597,46 +633,104 @@ Pout<< "Sending to " << proci
             const label nCells = mesh.lduAddr().size();
 
             labelList offsets(Pstream::nProcs()+1, nCells);
+            offsets[0] = 0;
             const globalIndex globalCells(offsets.xfer());
 
             labelList decomposition(decompose(nCells, Pstream::nProcs()));
 
-            const lduInterfacePtrsList ifs(masterMeshPtr().interfaces());
+            const lduInterfacePtrsList ifs(mesh.interfaces());
             // Assume all interfaces are global ones ...
             boolList isGlobalInterface(ifs.size(), true);
 
-            PtrList<labelField> interfaceNbrCells(ifs.size());
-
-            labelListList procCellMap(Pstream::nProcs());
-            labelListList procFaceMap(Pstream::nProcs());
-            labelListList procPatchMap(Pstream::nProcs());
-
             for (label proci = 0; proci < Pstream::nProcs(); proci++)
             {
-                lduPrimitiveMesh procMesh
+                labelList exposedFaces;
+                labelList exposedCells;
+                autoPtr<lduPrimitiveMesh> procMeshPtr
                 (
-                    masterMeshPtr().comm(),
-                    masterMeshPtr(),
-                    globalCells,
-                    ifs,
-                    isGlobalInterface,
-                    interfaceNbrCells,
+                    lduPrimitiveMeshTools::subset
+                    (
+                        mesh.comm(),
+                        mesh,
+                        globalCells,
+                        ifs,
+                        isGlobalInterface,
 
-                    decomposition,
-                    proci,
+                        decomposition,
+                        proci,
 
-                    procCellMap[proci],
-                    procFaceMap[proci],
-                    procPatchMap[proci]
+                        procCellMap[proci],
+                        procFaceMap[proci],
+                        procPatchMap[proci],
+                        procPatchFaceMap[proci],
+
+                        exposedFaces, //procExposedFaceMap[proci],
+                        exposedCells
+                    )
                 );
+                lduPrimitiveMesh& procMesh = procMeshPtr();
 
-                // Adapt the exposed faces to be processor interfaces
-                const lduInterface& couples = procMesh.interfaces().last();
-                const lduPrimitiveInterface& lpi =
-                    refCast<const lduPrimitiveInterface>(couples);
+                // Add the exposed internal faces as an interface
 
-                List<DynamicList<label>> 
+                labelList exposedGlobalCells(exposedFaces.size());
+                labelList exposedGlobalNbrCells(exposedFaces.size());
 
+                const lduAddressing& addr = mesh.lduAddr();
+                forAll(exposedFaces, i)
+                {
+                    label facei = exposedFaces[i];
+                    label own = addr.lowerAddr()[facei];
+                    label nei = addr.upperAddr()[facei];
+                    label procCelli = exposedCells[i];
+
+                    if (procCelli == own)
+                    {
+                        exposedGlobalCells[i] = globalCells.toGlobal(own);
+                        exposedGlobalNbrCells[i] = globalCells.toGlobal(nei);
+                    }
+                    else if (procCelli == nei)
+                    {
+                        exposedGlobalCells[i] = globalCells.toGlobal(nei);
+                        exposedGlobalNbrCells[i] = globalCells.toGlobal(own);
+                    }
+                    else
+                    {
+                        FatalErrorInFunction << "problem" << exit(FatalError);
+                    }
+                }
+
+                // Append exposed faces to list of interfaces
+                PtrList<lduInterface>& procInterfaces =
+                    const_cast<PtrList<lduInterface>&>
+                    (
+                        procMesh.primitiveInterfaces()
+                    );
+                PtrList<lduInterface> newInterfaces(procInterfaces.size()+1);
+                forAll(procInterfaces, inti)
+                {
+                    if (procInterfaces.set(inti))
+                    {
+                        newInterfaces.set
+                        (
+                            inti,
+                            procInterfaces.set(inti, nullptr)
+                        );
+                    }
+                }
+                newInterfaces.set
+                (
+                    procInterfaces.size(),
+                    new lduPrimitiveInterface
+                    (
+                        exposedCells,
+                        exposedGlobalCells,
+                        exposedGlobalNbrCells
+                    )
+                );
+                procMesh.addInterfaces(newInterfaces);
+
+
+                // Stream mesh
 
                 UOPstream os(proci, pBufs);
                 lduPrimitiveMeshTools::writeData(procMesh, os);
@@ -645,13 +739,16 @@ Pout<< "Sending to " << proci
 
         pBufs.finishedSends();
 
-        UIPstream is(Pstream::masterNo(), pBufs);
-        localMeshPtr = lduPrimitiveMeshTools::readData(is);
 
+        // Receive my mesh
+        {
+            UIPstream is(Pstream::masterNo(), pBufs);
+            localMeshPtr = lduPrimitiveMeshTools::readData(is);
 
-        Pout<< "*** NOW:" << endl;
-        lduMesh::debug = 1;
-        Pout<< localMeshPtr().info() << endl;
+            Pout<< "*** NOW:" << endl;
+            lduMesh::debug = 1;
+            Pout<< localMeshPtr().info() << endl;
+        }
     }
 
 
