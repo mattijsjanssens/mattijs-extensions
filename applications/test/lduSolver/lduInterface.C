@@ -32,6 +32,7 @@ namespace Foam
 {
     defineTypeNameAndDebug(lduInterface, 0);
     defineRunTimeSelectionTable(lduInterface, dictionary);
+    defineRunTimeSelectionTable(lduInterface, Istream);
 }
 
 
@@ -72,6 +73,36 @@ Foam::autoPtr<Foam::lduInterface> Foam::lduInterface::New
     }
 
     return autoPtr<lduInterface>(cstrIter()(dict, index));
+}
+
+
+Foam::autoPtr<Foam::lduInterface> Foam::lduInterface::New
+(
+    const word& patchType
+    Istream& is
+)
+{
+    if (debug)
+    {
+        InfoInFunction << "Constructing lduInterface " << patchType << endl;
+    }
+
+    IstreamConstructorTable::iterator cstrIter =
+        IstreamConstructorTablePtr_->find(patchType);
+
+    if (cstrIter == IstreamConstructorTablePtr_->end())
+    {
+        FatalIOErrorInFunction
+        (
+            dict
+        )   << "Unknown lduInterface type "
+            << patchType << nl << nl
+            << "Valid lduInterface types are :" << endl
+            << IstreamConstructorTablePtr_->sortedToc()
+            << exit(FatalIOError);
+    }
+
+    return autoPtr<lduInterface>(cstrIter()(is));
 }
 
 

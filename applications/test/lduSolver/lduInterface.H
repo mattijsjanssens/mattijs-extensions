@@ -82,6 +82,17 @@ public:
             (dict, index)
         );
 
+        declareRunTimeSelectionTable
+        (
+            autoPtr,
+            lduInterface,
+            Istream,
+            (
+                Istream& is
+            ),
+            (is)
+        );
+
 
     // Constructors
 
@@ -109,6 +120,10 @@ public:
             const dictionary& dict,
             const label index
         );
+
+        //- Return a pointer to a new lduInterface created on freestore from
+        //  stream
+        static autoPtr<lduInterface> New(const word&, const Istream&);
 
 
     //- Destructor
@@ -148,10 +163,19 @@ public:
             ) const = 0;
 
 
+//        // Mapping functions
+//
+//            //- Map (and resize as needed) from self given a mapping object
+//            virtual void  autoMap(const FieldMapper&) = 0;
+
+
         // I/O
 
-            //- Write to stream
-            virtual Ostream& write(Ostream& os) const = 0;
+            //- Write the data as a dictionary
+            virtual void write(Ostream& os) const = 0;
+
+            //- Write the data as a dictionary
+            virtual void writeData(Ostream& os) const = 0;
 };
 
 

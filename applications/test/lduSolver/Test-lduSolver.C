@@ -297,6 +297,37 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
 
+//{
+//    PtrList<dictionary> dicts(1);
+//    dicts.set(0, new dictionary());
+//    dicts[0].add("type", "processor");
+//    DebugVar(dicts);
+//
+//    OStringStream os;
+//    os << dicts;
+//    {
+//        IStringStream is(os.str());
+//        PtrList<dictionary> entries(is);
+//        DebugVar(entries);
+//    }
+//
+//    {
+//        PstreamBuffers pBufs(Pstream::commsTypes::nonBlocking);
+//        {
+//            UOPstream os(Pstream::myProcNo(), pBufs);
+//            os << dicts;
+//        }
+//        pBufs.finishedSends();
+//        {
+//            UIPstream is(Pstream::myProcNo(), pBufs);
+//            PtrList<dictionary> entries(is);
+//            DebugVar(entries);
+//        }
+//    }
+//}
+
+
+
     fileName fName(args.args()[1]);
     fileName sourceName(args.args()[2]);
 
@@ -527,7 +558,7 @@ int main(int argc, char *argv[])
                             mesh.comm(),
                             proci,
                             nbrProci,
-                            tensorField(1, tensor::I),
+                            tensorField(0),     //tensorField(1, tensor::I),
                             Pstream::msgType()
                         )
                     );
@@ -562,8 +593,21 @@ int main(int argc, char *argv[])
                 //    interfaces[i].write(os);
                 //}
 
-                lduPrimitiveMeshTools::writeData(procMesh, os);
 
+Pout<< "** WRITING to " << proci << endl;
+lduPrimitiveMeshTools::writeData(procMesh, Pout);
+Pout<< endl << endl;
+{
+    OStringStream os(IOstream::BINARY);
+    lduPrimitiveMeshTools::writeData(procMesh, os);
+    IStringStream is(os, IOstream::BINARY);
+    PtrList<dictionary> patchEntries(is);
+    DebugVar(patchEntries);
+}
+
+
+
+                lduPrimitiveMeshTools::writeData(procMesh, os);
             }
         }
     }
@@ -613,7 +657,7 @@ int main(int argc, char *argv[])
     // Attempt 2: use the lduPrimitiveMesh functionality
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    if (Pstream::parRun())
+    if (false)  //(Pstream::parRun())
     {
         // Cell to original cell
         labelListList procCellMap(Pstream::nProcs());
