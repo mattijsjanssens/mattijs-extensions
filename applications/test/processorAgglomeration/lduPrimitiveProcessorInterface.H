@@ -221,8 +221,8 @@ public:
 
         // I/O
 
-            //- Write as dictionary to stream
-            virtual Ostream& writeData(Ostream& os) const;
+            //- Write to stream
+            virtual void write(Ostream& os) const;
 };
 
 

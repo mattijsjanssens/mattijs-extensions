@@ -24,12 +24,14 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "lduPrimitiveInterface.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-defineTypeNameAndDebug(lduPrimitiveInterface, 0);
+    defineTypeNameAndDebug(lduPrimitiveInterface, 0);
+    addToRunTimeSelectionTable(lduInterface, lduPrimitiveInterface, Istream);
 }
 
 
@@ -80,10 +82,9 @@ Foam::lduPrimitiveInterface::~lduPrimitiveInterface()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::Ostream& Foam::lduPrimitiveInterface::write(Ostream& os) const
+void Foam::lduPrimitiveInterface::write(Ostream& os) const
 {
-    return os
-        << faceCells_ << token::SPACE
+    os  << faceCells_ << token::SPACE
         << faceGlobalCells_ << token::SPACE
         << nbrFaceGlobalCells_;
 }

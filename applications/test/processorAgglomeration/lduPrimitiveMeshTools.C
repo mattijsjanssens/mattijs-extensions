@@ -45,31 +45,34 @@ bool Foam::lduPrimitiveMeshTools::writeData(const lduMesh& mesh, Ostream& os)
         << addressing.upperAddr()
         << validInterface;
 
-    // forAll(interfaces, intI)
-    // {
-    //     if (interfaces.set(intI))
-    //     {
-    //         os << interfaces[intI].type();
-    //         //refCast<const lduPrimitiveInterface>
-    //         //(interfaces[intI]).write(os);
-    //         interfaces[intI].write(os);
-    //     }
-    // }
-
-    os  << nl << token::BEGIN_LIST << incrIndent << nl;
-
+    // Write raw
     forAll(interfaces, intI)
     {
         if (interfaces.set(intI))
         {
-            os  << indent << token::BEGIN_BLOCK << nl
-                << incrIndent;
+            os << interfaces[intI].type();
+    //         //refCast<const lduPrimitiveInterface>
+    //         //(interfaces[intI]).write(os);
             interfaces[intI].write(os);
-            os  << decrIndent
-                << indent << token::END_BLOCK << endl;
         }
     }
-    os  << decrIndent << token::END_LIST;
+
+    // Write as dictionary
+    // {
+    //     os  << nl << token::BEGIN_LIST << incrIndent << nl;
+    //     forAll(interfaces, intI)
+    //     {
+    //         if (interfaces.set(intI))
+    //         {
+    //             os  << indent << token::BEGIN_BLOCK << nl
+    //                 << incrIndent;
+    //             interfaces[intI].write(os);
+    //             os  << decrIndent
+    //                 << indent << token::END_BLOCK << endl;
+    //         }
+    //     }
+    //     os  << decrIndent << token::END_LIST;
+    // }
 
     // Check state of IOstream
     os.check("polyBoundaryMesh::writeData(Ostream& os) const");
@@ -135,19 +138,20 @@ Foam::lduPrimitiveMeshTools::readData(Istream& is)
     //     )
     // );
 
-    PtrList<dictionary> patchEntries(is);
     PtrList<lduInterface> newInterfaces(validInterface.size());
     forAll(validInterface, intI)
     {
         if (validInterface[intI])
         {
+            word coupleType(is);
+            Pout<< "Received coupleType:" << coupleType << endl;
             newInterfaces.set
             (
                 intI,
                 lduInterface::New
                 (
-                    patchEntries[intI],
-                    intI
+                    coupleType,
+                    is
                 )
             );
         }
@@ -342,6 +346,7 @@ Foam::lduPrimitiveMeshTools::subset
 
     // Map all the interfaces
     patchFaceMap.setSize(interfaces.size());
+    patchMap.setSize(interfaces.size());
     PtrList<lduInterface> newInterfaces(interfaces.size());
     label newInti = 0;
 
@@ -363,12 +368,13 @@ Foam::lduPrimitiveMeshTools::subset
         {
             newInterfaces.set(newInti, intf.clone(newInti, patchFaces));
             patchFaceMap[newInti].transfer(patchFaces);
+            patchMap[newInti] = inti;
             newInti++;
         }
     }
     newInterfaces.setSize(newInti);
     patchFaceMap.setSize(newInti);
-
+    patchMap.setSize(newInti);
 
     lduInterfacePtrsList newIfs(newInterfaces.size());
     forAll(newInterfaces, i)
