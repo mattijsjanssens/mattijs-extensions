@@ -78,7 +78,7 @@ Foam::autoPtr<Foam::lduInterface> Foam::lduInterface::New
 
 Foam::autoPtr<Foam::lduInterface> Foam::lduInterface::New
 (
-    const word& patchType
+    const word& patchType,
     Istream& is
 )
 {
@@ -94,7 +94,7 @@ Foam::autoPtr<Foam::lduInterface> Foam::lduInterface::New
     {
         FatalIOErrorInFunction
         (
-            dict
+            is
         )   << "Unknown lduInterface type "
             << patchType << nl << nl
             << "Valid lduInterface types are :" << endl

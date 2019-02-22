@@ -123,7 +123,7 @@ public:
 
         //- Return a pointer to a new lduInterface created on freestore from
         //  stream
-        static autoPtr<lduInterface> New(const word&, const Istream&);
+        static autoPtr<lduInterface> New(const word&, Istream&);
 
 
     //- Destructor
@@ -171,11 +171,11 @@ public:
 
         // I/O
 
-            //- Write the data as a dictionary
+            //- Write the data
             virtual void write(Ostream& os) const = 0;
 
             //- Write the data as a dictionary
-            virtual void writeData(Ostream& os) const = 0;
+            //virtual void writeData(Ostream& os) const = 0;
 };
 
 

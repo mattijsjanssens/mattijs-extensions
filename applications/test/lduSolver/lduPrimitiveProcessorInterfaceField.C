@@ -30,20 +30,20 @@ License
 
 namespace Foam
 {
-defineTypeNameAndDebug(lduPrimitiveProcessorInterfaceField, 0);
+    defineTypeNameAndDebug(lduPrimitiveProcessorInterfaceField, 0);
 }
 
 // * * * * * * * * * * * * * * * * Constructors * * * * * * * * * * * * * * //
 
 Foam::lduPrimitiveProcessorInterfaceField::lduPrimitiveProcessorInterfaceField
 (
-    const lduPrimitiveProcessorInterface& interface
+    const lduInterface& interface
 )
 :
     lduInterfaceField(interface),
-    interface_(interface),
-    sendBuf_(interface.size()),
-    receiveBuf_(interface.size()),
+    interface_(refCast<const lduPrimitiveProcessorInterface>(interface)),
+    sendBuf_(interface.faceCells().size()),
+    receiveBuf_(interface.faceCells().size()),
     outstandingSendRequest_(-1),
     outstandingRecvRequest_(-1)
 {}

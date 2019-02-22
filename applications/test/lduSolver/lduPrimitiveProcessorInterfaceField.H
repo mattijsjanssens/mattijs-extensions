@@ -92,11 +92,8 @@ public:
 
     // Constructors
 
-        //- Construct from GAMG interface and fine level interface field
-        lduPrimitiveProcessorInterfaceField
-        (
-            const lduPrimitiveProcessorInterface& interface
-        );
+        //- Construct from interface
+        lduPrimitiveProcessorInterfaceField(const lduInterface& interface);
 
 
     //- Destructor
