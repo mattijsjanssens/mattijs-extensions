@@ -280,7 +280,7 @@ Foam::lduPrimitiveMeshTools::subset
             else
             {
                 // Upper deleted
-                exposedFaceMap[exposedFaceI] = faceI;
+                exposedFaceMap[exposedFaceI] = faceI+1;
                 exposedFaceCells[exposedFaceI] = reverseCellMap[lower[faceI]];
                 exposedFaceI++;
                 //exposedFaces.append(faceI);
@@ -299,7 +299,7 @@ Foam::lduPrimitiveMeshTools::subset
         else if (uRegion == currentRegion)
         {
             // Lower deleted
-            exposedFaceMap[exposedFaceI] = faceI;
+            exposedFaceMap[exposedFaceI] = -faceI-1;
             exposedFaceCells[exposedFaceI] = reverseCellMap[upper[faceI]];
             exposedFaceI++;
             //exposedFaces.append(faceI);

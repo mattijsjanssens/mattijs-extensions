@@ -69,7 +69,8 @@ public:
     //  - cell/face/patchMap : from submesh back to original
     //  - patchFaceMap : per patch from patchface index back to original
     //                   patchface index
-    //  - exposedFaceMap : original face index for every exposed face
+    //  - exposedFaceMap : original face index + turning flag for every exposed
+    //                     face (>0:unflipped face+1, <0:flipped -face-1)
     //  - exposedFaceCells : current submesh cell for every exposed face
     static autoPtr<lduPrimitiveMesh> subset
     (
