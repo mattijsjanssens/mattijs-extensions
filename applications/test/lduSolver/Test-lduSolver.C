@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
     // Set up solver to use
     dictionary solverControls("Test-lduSolver");
     solverControls.add("solver", "PBiCGStab");
-    solverControls.add("preconditioner", "DILU");
+    solverControls.add("preconditioner", "diagonal");
     solverControls.add("tolerance", 1e-06);
     solverControls.add("relTol", 0);
     solverControls.add("minIter", 10);
@@ -450,6 +450,13 @@ int main(int argc, char *argv[])
         masterMatrix.diag().transfer(diag);
         masterMatrix.lower().transfer(lower);
         masterMatrix.upper().transfer(upper);
+
+
+DebugVar(masterMatrix.diag());
+DebugVar(masterMatrix.lower());
+DebugVar(masterMatrix.upper());
+DebugVar(masterSourcePtr());
+
 
 
         // No boundary handling
@@ -673,18 +680,22 @@ int main(int argc, char *argv[])
             offsets[0] = 0;
             const globalIndex globalCells(offsets.xfer());
 
+            // Global cell to processor
             labelList decomposition(decompose(nCells, Pstream::nProcs()));
 
             const lduInterfacePtrsList ifs(mesh.interfaces());
             // Assume all interfaces are global ones ...
             boolList isGlobalInterface(ifs.size(), true);
 
+
+            PtrList<lduPrimitiveMesh> procMeshes(Pstream::nProcs());
+            labelListList exposedFaces(Pstream::nProcs());
+            labelListList exposedCells(Pstream::nProcs());
             for (label proci = 0; proci < Pstream::nProcs(); proci++)
             {
-                labelList exposedFaces;
-                labelList exposedCells;
-                autoPtr<lduPrimitiveMesh> procMeshPtr
+                procMeshes.set
                 (
+                    proci,
                     lduPrimitiveMeshTools::subset
                     (
                         mesh.comm(),
@@ -701,38 +712,54 @@ int main(int argc, char *argv[])
                         procPatchMap[proci],
                         procPatchFaceMap[proci],
 
-                        exposedFaces, //procExposedFaceMap[proci],
-                        exposedCells
+                        exposedFaces[proci], //procExposedFaceMap[proci],
+                        exposedCells[proci]
                     )
                 );
-                lduPrimitiveMesh& procMesh = procMeshPtr();
+            }
 
-                const lduAddressing& addr = mesh.lduAddr();
+            // Create global cell to local cell
+            labelList localCell(decomposition.size());
+            forAll(procCellMap, proci)
+            {
+                const labelList& globalCells = procCellMap[proci];
+                forAll(globalCells, procCelli)
+                {
+                    localCell[globalCells[procCelli]] = procCelli;
+                }
+            }
+
+
+            // Add processor-patch information and send
+            const lduAddressing& addr = mesh.lduAddr();
+            for (label proci = 0; proci < Pstream::nProcs(); proci++)
+            {
+                lduPrimitiveMesh& procMesh = procMeshes[proci];
 
                 // Sort exposed faces according to destination processor
                 List<DynamicList<label>> dynProcNbrFaces(Pstream::nProcs());
                 List<DynamicList<label>> dynProcFaceCells(Pstream::nProcs());
 
-                forAll(exposedFaces, i)
+                forAll(exposedFaces[proci], i)
                 {
-                    const label signedFace = exposedFaces[i];
+                    const label signedFace = exposedFaces[proci][i];
 
                     label facei;
                     label destProci;
-                    label celli;
+                    label nbrCelli;
                     if (signedFace > 0)
                     {
                         facei = signedFace-1;
-                        celli = addr.lowerAddr()[facei];
-                        destProci = decomposition[addr.upperAddr()[facei]];
+                        nbrCelli = addr.upperAddr()[facei];
+                        destProci = decomposition[nbrCelli];
                     }
                     else if (signedFace < 0)
                     {
                         facei = -signedFace-1;
-                        celli = addr.upperAddr()[facei];
-                        destProci = decomposition[addr.lowerAddr()[facei]];
+                        nbrCelli = addr.lowerAddr()[facei];
+                        destProci = decomposition[nbrCelli];
                     }
-                    dynProcFaceCells[destProci].append(celli);
+                    dynProcFaceCells[destProci].append(localCell[nbrCelli]);
                     dynProcNbrFaces[destProci].append(signedFace);
                 }
 
@@ -803,7 +830,8 @@ int main(int argc, char *argv[])
         {
             //const lduMesh& masterMesh = masterMeshPtr();
             const lduMatrix& masterMatrix = masterMatrixPtr();
-            //const lduInterfacePtrsList masterIfs(masterMesh.interfaces());
+            const lduMesh& localMesh = localMeshPtr();
+            const lduInterfacePtrsList localIfs(localMesh.interfaces());
 
             for (label proci = 0; proci < Pstream::nProcs(); proci++)
             {
@@ -818,12 +846,12 @@ int main(int argc, char *argv[])
                     << UIndirectList<scalar>(masterMatrix.upper(), procFaces)
                     << UIndirectList<scalar>(masterMatrix.lower(), procFaces);
 
-                boolList validInterfaces(masterInterfaces.size());
-                FieldField<Field, scalar> subBouCoeffs(masterInterfaces.size());
-                FieldField<Field, scalar> subIntCoeffs(masterInterfaces.size());
-                forAll(masterInterfaces, inti)
+                boolList validInterfaces(localIfs.size());
+                FieldField<Field, scalar> subBouCoeffs(localIfs.size());
+                FieldField<Field, scalar> subIntCoeffs(localIfs.size());
+                forAll(localIfs, inti)
                 {
-                    if (masterInterfaces.set(inti))
+                    if (localIfs.set(inti))
                     {
                         validInterfaces[inti] = true;
 
@@ -841,8 +869,7 @@ int main(int argc, char *argv[])
                         // else
                         {
                             // Processor patch (from internal faces)
-                            const label sz =
-                            masterInterfaces[inti].interface().faceCells().size();
+                            const label sz = localIfs[inti].faceCells().size();
                             subBouCoeffs.set(inti, new scalarField(sz));
                             scalarField& bCoeffs = subBouCoeffs[inti];
                             subIntCoeffs.set(inti, new scalarField(sz));
@@ -854,14 +881,14 @@ int main(int argc, char *argv[])
                                 if (fMap[i] > 0)
                                 {
                                     label facei = fMap[i]-1;
-                                    bCoeffs[i] = masterMatrix.upper()[facei];
-                                    iCoeffs[i] = masterMatrix.lower()[facei];
+                                    bCoeffs[i] = -masterMatrix.upper()[facei];
+                                    iCoeffs[i] = -masterMatrix.lower()[facei];
                                 }
                                 else
                                 {
                                     label facei = -fMap[i]-1;
-                                    bCoeffs[i] = masterMatrix.lower()[facei];
-                                    iCoeffs[i] = masterMatrix.upper()[facei];
+                                    bCoeffs[i] = -masterMatrix.lower()[facei];
+                                    iCoeffs[i] = -masterMatrix.upper()[facei];
                                 }
                             }
                         }
@@ -891,6 +918,11 @@ int main(int argc, char *argv[])
             localMatrixPtr().lower() = lower;
             localMatrixPtr().upper() = upper;
 
+DebugVar(localMatrixPtr().diag());
+DebugVar(localMatrixPtr().lower());
+DebugVar(localMatrixPtr().upper());
+
+
             boolList validNbrs(is);
 
             localInterfaces.setSize(validNbrs.size());
@@ -913,10 +945,17 @@ Pout<< "Allocating processor field for patch " << i
             PtrList<scalarField> intCoeffs(is, scalarFieldINew());
             localInterfaceIntCoeffs.transfer(intCoeffs);
 
+DebugVar(localInterfaceIntCoeffs);
+
+
             PtrList<scalarField> bouCoeffs(is, scalarFieldINew());
             localInterfaceBouCoeffs.transfer(bouCoeffs);
 
+DebugVar(localInterfaceBouCoeffs);
+
             localSourcePtr.reset(new scalarField(is));
+
+DebugVar(localSourcePtr());
         }
 
 
@@ -931,8 +970,6 @@ DebugVar(localMatrix.info());
 
             scalarField psi(localMatrix.diag().size(), 123.0);
 
-
-DebugVar(localSourcePtr());
 
             solverPerformance solverPerf = lduMatrix::solver::New
             (
