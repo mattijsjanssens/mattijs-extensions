@@ -374,18 +374,10 @@ Pout<< "** Found pointMesh" << endl;
         pointBoundaryMesh& pointPatches = *pointPatchesPtr;
 Pout<< "** Shuffling pointPatchesPtr:" << pointPatches.size() << endl;
 
+        pointPatches.reorder(oldToNew);
+
 //         // To be wrapper into:
 //         //pointPatches.reorder(oldToNew, validBoundary);
-// 
-//             // Adapt indices
-//             forAll(pointPatches, patchi)
-//             {
-//                 pointPatches[patchi].index() = patchi;
-//             }
-//             if (validBoundary)
-//             {
-//                 pointPatches.updateMesh();
-//             }
 
         forAll(pointPatches, patchi)
         {

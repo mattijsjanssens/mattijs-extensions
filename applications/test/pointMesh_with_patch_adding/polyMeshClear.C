@@ -57,15 +57,19 @@ void Foam::polyMesh::clearGeom()
         InfoInFunction << "Clearing geometric data" << endl;
     }
 
+DebugVar("here");
+
     // Clear all geometric mesh objects
     meshObject::clearUpto<pointMesh, GeometricMeshObject, MoveableMeshObject>
     (
         *this
     );
+DebugVar("here");
     meshObject::clearUpto<polyMesh, GeometricMeshObject, MoveableMeshObject>
     (
         *this
     );
+DebugVar("here");
 
     primitiveMesh::clearGeom();
 
@@ -90,6 +94,7 @@ void Foam::polyMesh::clearAddressing(const bool isMeshUpdate)
 
     if (isMeshUpdate)
     {
+DebugVar("here");
         // Part of a mesh update. Keep meshObjects that have an updateMesh
         // callback
         meshObject::clearUpto
@@ -101,6 +106,7 @@ void Foam::polyMesh::clearAddressing(const bool isMeshUpdate)
         (
             *this
         );
+DebugVar("here");
         meshObject::clearUpto
         <
             polyMesh,
@@ -110,11 +116,15 @@ void Foam::polyMesh::clearAddressing(const bool isMeshUpdate)
         (
             *this
         );
+DebugVar("here");
     }
     else
     {
+DebugVar("here");
         meshObject::clear<pointMesh, TopologicalMeshObject>(*this);
-        meshObject::clear<polyMesh, TopologicalMeshObject>(*this);
+DebugVar("here");
+//        meshObject::clear<polyMesh, TopologicalMeshObject>(*this);
+DebugVar("here");
     }
 
     primitiveMesh::clearAddressing();
