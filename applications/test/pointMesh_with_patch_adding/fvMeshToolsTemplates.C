@@ -33,20 +33,19 @@ License
 template<class GeoField>
 void Foam::fvMeshTools::addPatchFields
 (
-    fvMesh& mesh,
+    objectRegistry& obr,
     const dictionary& patchFieldDict,
     const word& defaultPatchFieldType,
     const typename GeoField::value_type& defaultPatchValue
 )
 {
-    HashTable<GeoField*> flds
-    (
-        mesh.objectRegistry::lookupClass<GeoField>()
-    );
+    HashTable<GeoField*> flds(obr.lookupClass<GeoField>());
 
-    forAllIter(typename HashTable<GeoField*>, flds, iter)
+    const wordList fldNames(flds.sortedToc());
+
+    forAll(fldNames, i)
     {
-        GeoField& fld = *iter();
+        GeoField& fld = *flds[fldNames[i]];
 
         typename GeoField::Boundary& bfld =
             fld.boundaryFieldRef();
@@ -61,7 +60,7 @@ void Foam::fvMeshTools::addPatchFields
                 sz,
                 GeoField::Patch::New
                 (
-                    mesh.boundary()[sz],
+                    fld.mesh().boundary()[sz],
                     fld(),
                     patchFieldDict.subDict(fld.name())
                 )
@@ -75,7 +74,7 @@ void Foam::fvMeshTools::addPatchFields
                 GeoField::Patch::New
                 (
                     defaultPatchFieldType,
-                    mesh.boundary()[sz],
+                    fld.mesh().boundary()[sz],
                     fld()
                 )
             );
@@ -88,19 +87,18 @@ void Foam::fvMeshTools::addPatchFields
 template<class GeoField>
 void Foam::fvMeshTools::setPatchFields
 (
-    fvMesh& mesh,
+    objectRegistry& obr,
     const label patchi,
     const dictionary& patchFieldDict
 )
 {
-    HashTable<GeoField*> flds
-    (
-        mesh.objectRegistry::lookupClass<GeoField>()
-    );
+    HashTable<GeoField*> flds(obr.lookupClass<GeoField>());
 
-    forAllIter(typename HashTable<GeoField*>, flds, iter)
+    const wordList fldNames(flds.sortedToc());
+
+    forAll(fldNames, i)
     {
-        GeoField& fld = *iter();
+        GeoField& fld = *flds[fldNames[i]];
 
         typename GeoField::Boundary& bfld =
             fld.boundaryFieldRef();
@@ -112,7 +110,7 @@ void Foam::fvMeshTools::setPatchFields
                 patchi,
                 GeoField::Patch::New
                 (
-                    mesh.boundary()[patchi],
+                    fld.mesh().boundary()[patchi],
                     fld(),
                     patchFieldDict.subDict(fld.name())
                 )
@@ -127,24 +125,19 @@ void Foam::fvMeshTools::setPatchFields
 template<class GeoField>
 void Foam::fvMeshTools::setPatchFields
 (
-    fvMesh& mesh,
+    objectRegistry& obr,
     const label patchi,
     const typename GeoField::value_type& value
 )
 {
-    HashTable<GeoField*> flds
-    (
-        mesh.objectRegistry::lookupClass<GeoField>()
-    );
+    HashTable<GeoField*> flds(obr.lookupClass<GeoField>());
 
-    forAllIter(typename HashTable<GeoField*>, flds, iter)
+    const wordList fldNames(flds.sortedToc());
+
+    forAll(fldNames, i)
     {
-        GeoField& fld = *iter();
-
-        typename GeoField::Boundary& bfld =
-            fld.boundaryFieldRef();
-
-        bfld[patchi] == value;
+        GeoField& fld = *flds[fldNames[i]];
+        fld.boundaryFieldRef()[patchi] == value;
     }
 }
 
@@ -159,9 +152,11 @@ void Foam::fvMeshTools::trimPatchFields
 {
     HashTable<GeoField*> flds(obr.lookupClass<GeoField>());
 
-    forAllIter(typename HashTable<GeoField*>, flds, iter)
+    const wordList fldNames(flds.sortedToc());
+
+    forAll(fldNames, i)
     {
-        GeoField& fld = *iter();
+        GeoField& fld = *flds[fldNames[i]];
         fld.boundaryFieldRef().setSize(nPatches);
     }
 }
@@ -177,14 +172,12 @@ void Foam::fvMeshTools::reorderPatchFields
 {
     HashTable<GeoField*> flds(obr.lookupClass<GeoField>());
 
-    forAllIter(typename HashTable<GeoField*>, flds, iter)
+    const wordList fldNames(flds.sortedToc());
+
+    forAll(fldNames, i)
     {
-        GeoField& fld = *iter();
-
-        typename GeoField::Boundary& bfld =
-            fld.boundaryFieldRef();
-
-        bfld.reorder(oldToNew);
+        GeoField& fld = *flds[fldNames[i]];
+        fld.boundaryFieldRef().reorder(oldToNew);
     }
 }
 

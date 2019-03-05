@@ -51,7 +51,7 @@ class fvMeshTools
     template<class GeoField>
     static void addPatchFields
     (
-        fvMesh&,
+        objectRegistry&,
         const dictionary& patchFieldDict,
         const word& defaultPatchFieldType,
         const typename GeoField::value_type& defaultPatchValue
@@ -61,7 +61,7 @@ class fvMeshTools
     template<class GeoField>
     static void setPatchFields
     (
-        fvMesh& mesh,
+        objectRegistry& mesh,
         const label patchi,
         const dictionary& patchFieldDict
     );
@@ -70,7 +70,7 @@ class fvMeshTools
     template<class GeoField>
     static void setPatchFields
     (
-        fvMesh& mesh,
+        objectRegistry& mesh,
         const label patchi,
         const typename GeoField::value_type& value
     );
@@ -87,6 +87,20 @@ class fvMeshTools
 
 
 public:
+
+    //- Insert patch add interPatchi.
+    //  Supply per field the new patchField per field as a
+    //  subdictionary or a default type. If validBoundary call is parallel
+    //  synced and all add the same patch with same settings.
+    static void addPatch
+    (
+        fvMesh& mesh,
+        const label insertPatchi,
+        const polyPatch& patch,
+        const dictionary& patchFieldDict,
+        const word& defaultPatchFieldType,
+        const bool validBoundary
+    );
 
     //- Add patch. Inserts patch before all processor patches.
     //  Supply per field the new patchField per field as a

@@ -1,3 +1,4 @@
+meshObject.C
 polyMeshClear.C
 fvMeshTools.C
 Test-pointMesh_with_patch_adding.C

@@ -25,13 +25,15 @@ License
 
 #include "fvMeshTools.H"
 #include "pointMesh.H"
+#include "facePointPatch.H"
+#include "pointFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// Adds patch if not yet there. Returns patchID.
-Foam::label Foam::fvMeshTools::addPatch
+void Foam::fvMeshTools::addPatch
 (
     fvMesh& mesh,
+    const label insertPatchi,
     const polyPatch& patch,
     const dictionary& patchFieldDict,
     const word& defaultPatchFieldType,
@@ -40,32 +42,19 @@ Foam::label Foam::fvMeshTools::addPatch
 {
     polyBoundaryMesh& polyPatches =
         const_cast<polyBoundaryMesh&>(mesh.boundaryMesh());
-
-    label patchi = polyPatches.findPatchID(patch.name());
-    if (patchi != -1)
+    fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh.boundary());
+    pointBoundaryMesh* pointPatchesPtr = nullptr;
+    if (mesh.objectRegistry::found(pointMesh::typeName))
     {
-        // Already there
-        return patchi;
+        const pointMesh& pMesh = pointMesh::New(mesh);
+        pointPatchesPtr = &const_cast<pointBoundaryMesh&>(pMesh.boundary());
     }
 
 
-    // Append at end unless there are processor patches
-    label insertPatchi = polyPatches.size();
     label startFacei = mesh.nFaces();
-
-    if (!isA<processorPolyPatch>(patch))
+    if (insertPatchi < polyPatches.size())
     {
-        forAll(polyPatches, patchi)
-        {
-            const polyPatch& pp = polyPatches[patchi];
-
-            if (isA<processorPolyPatch>(pp))
-            {
-                insertPatchi = patchi;
-                startFacei = pp.start();
-                break;
-            }
-        }
+        startFacei = polyPatches[insertPatchi].start();
     }
 
 
@@ -77,7 +66,7 @@ Foam::label Foam::fvMeshTools::addPatch
 
     label sz = polyPatches.size();
 
-    fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh.boundary());
+
 
     // Add polyPatch at the end
     polyPatches.setSize(sz+1);
@@ -102,6 +91,20 @@ Foam::label Foam::fvMeshTools::addPatch
             mesh.boundary()
         )
     );
+    if (pointPatchesPtr)
+    {
+        pointBoundaryMesh& pointPatches = *pointPatchesPtr;
+        pointPatches.setSize(sz+1);
+        pointPatches.set
+        (
+            sz,
+            facePointPatch::New
+            (
+                polyPatches[sz],  // point to newly added polyPatch
+                pointPatches
+            ).ptr()
+        );
+    }
 
     addPatchFields<volScalarField>
     (
@@ -176,6 +179,45 @@ Foam::label Foam::fvMeshTools::addPatch
         defaultPatchFieldType,
         Zero
     );
+    if (pointPatchesPtr)
+    {
+        addPatchFields<pointScalarField>
+        (
+            mesh,
+            patchFieldDict,
+            defaultPatchFieldType,
+            Zero
+        );
+        addPatchFields<pointVectorField>
+        (
+            mesh,
+            patchFieldDict,
+            defaultPatchFieldType,
+            Zero
+        );
+        addPatchFields<pointSphericalTensorField>
+        (
+            mesh,
+            patchFieldDict,
+            defaultPatchFieldType,
+            Zero
+        );
+        addPatchFields<pointSymmTensorField>
+        (
+            mesh,
+            patchFieldDict,
+            defaultPatchFieldType,
+            Zero
+        );
+        addPatchFields<pointTensorField>
+        (
+            mesh,
+            patchFieldDict,
+            defaultPatchFieldType,
+            Zero
+        );
+    }
+
 
     // Create reordering list
     // patches before insert position stay as is
@@ -192,20 +234,56 @@ Foam::label Foam::fvMeshTools::addPatch
     // appended patch gets moved to insert position
     oldToNew[sz] = insertPatchi;
 
-    // Shuffle into place
-    polyPatches.reorder(oldToNew, validBoundary);
-    fvPatches.reorder(oldToNew);
+    reorderPatches(mesh, oldToNew, polyPatches.size(), validBoundary);
+}
 
-    reorderPatchFields<volScalarField>(mesh, oldToNew);
-    reorderPatchFields<volVectorField>(mesh, oldToNew);
-    reorderPatchFields<volSphericalTensorField>(mesh, oldToNew);
-    reorderPatchFields<volSymmTensorField>(mesh, oldToNew);
-    reorderPatchFields<volTensorField>(mesh, oldToNew);
-    reorderPatchFields<surfaceScalarField>(mesh, oldToNew);
-    reorderPatchFields<surfaceVectorField>(mesh, oldToNew);
-    reorderPatchFields<surfaceSphericalTensorField>(mesh, oldToNew);
-    reorderPatchFields<surfaceSymmTensorField>(mesh, oldToNew);
-    reorderPatchFields<surfaceTensorField>(mesh, oldToNew);
+
+// Adds patch if not yet there. Returns patchID.
+Foam::label Foam::fvMeshTools::addPatch
+(
+    fvMesh& mesh,
+    const polyPatch& patch,
+    const dictionary& patchFieldDict,
+    const word& defaultPatchFieldType,
+    const bool validBoundary
+)
+{
+    const polyBoundaryMesh& polyPatches = mesh.boundaryMesh();
+
+    const label patchi = polyPatches.findPatchID(patch.name());
+    if (patchi != -1)
+    {
+        // Already there
+        return patchi;
+    }
+
+
+    // Append at end unless there are processor patches
+    label insertPatchi = polyPatches.size();
+
+    if (!isA<processorPolyPatch>(patch))
+    {
+        forAll(polyPatches, patchi)
+        {
+            const polyPatch& pp = polyPatches[patchi];
+
+            if (isA<processorPolyPatch>(pp))
+            {
+                insertPatchi = patchi;
+                break;
+            }
+        }
+    }
+
+    addPatch
+    (
+        mesh,
+        insertPatchi,
+        patch,
+        patchFieldDict,
+        defaultPatchFieldType,
+        validBoundary
+    );
 
     return insertPatchi;
 }
@@ -233,6 +311,15 @@ void Foam::fvMeshTools::setPatchFields
     );
     setPatchFields<surfaceSymmTensorField>(mesh, patchi, patchFieldDict);
     setPatchFields<surfaceTensorField>(mesh, patchi, patchFieldDict);
+
+    if (mesh.objectRegistry::found(pointMesh::typeName))
+    {
+        setPatchFields<pointScalarField>(mesh, patchi, patchFieldDict);
+        setPatchFields<pointVectorField>(mesh, patchi, patchFieldDict);
+        setPatchFields<pointSphericalTensorField>(mesh, patchi, patchFieldDict);
+        setPatchFields<pointSymmTensorField>(mesh, patchi, patchFieldDict);
+        setPatchFields<pointTensorField>(mesh, patchi, patchFieldDict);
+    }
 }
 
 
@@ -240,62 +327,48 @@ void Foam::fvMeshTools::zeroPatchFields(fvMesh& mesh, const label patchi)
 {
     setPatchFields<volScalarField>(mesh, patchi, Zero);
     setPatchFields<volVectorField>(mesh, patchi, Zero);
-    setPatchFields<volSphericalTensorField>
-    (
-        mesh,
-        patchi,
-        Zero
-    );
-    setPatchFields<volSymmTensorField>
-    (
-        mesh,
-        patchi,
-        Zero
-    );
+    setPatchFields<volSphericalTensorField>(mesh, patchi, Zero);
+    setPatchFields<volSymmTensorField>(mesh, patchi, Zero);
     setPatchFields<volTensorField>(mesh, patchi, Zero);
+
     setPatchFields<surfaceScalarField>(mesh, patchi, Zero);
     setPatchFields<surfaceVectorField>(mesh, patchi, Zero);
-    setPatchFields<surfaceSphericalTensorField>
-    (
-        mesh,
-        patchi,
-        Zero
-    );
-    setPatchFields<surfaceSymmTensorField>
-    (
-        mesh,
-        patchi,
-        Zero
-    );
+    setPatchFields<surfaceSphericalTensorField>(mesh, patchi, Zero);
+    setPatchFields<surfaceSymmTensorField>(mesh, patchi, Zero);
     setPatchFields<surfaceTensorField>(mesh, patchi, Zero);
+
+    if (mesh.objectRegistry::found(pointMesh::typeName))
+    {
+        setPatchFields<pointScalarField>(mesh, patchi, Zero);
+        setPatchFields<pointVectorField>(mesh, patchi, Zero);
+        setPatchFields<pointSphericalTensorField>(mesh, patchi, Zero);
+        setPatchFields<pointSymmTensorField>(mesh, patchi, Zero);
+        setPatchFields<pointTensorField>(mesh, patchi, Zero);
+    }
 }
 
 
 // Deletes last patch
 void Foam::fvMeshTools::trimPatches(fvMesh& mesh, const label nPatches)
 {
-    // Clear local fields and e.g. polyMesh globalMeshData.
-    mesh.clearOut();
-
     polyBoundaryMesh& polyPatches =
         const_cast<polyBoundaryMesh&>(mesh.boundaryMesh());
-    fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh.boundary());
 
-    // Check if pointMesh
+    if (polyPatches.size() == nPatches)
+    {
+        return;
+    }
+
+    fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh.boundary());
     pointBoundaryMesh* pointPatchesPtr = nullptr;
     if (mesh.objectRegistry::found(pointMesh::typeName))
     {
-Pout<< "** Found pointMesh" << endl;
         const pointMesh& pMesh = pointMesh::New(mesh);
         pointPatchesPtr = &const_cast<pointBoundaryMesh&>(pMesh.boundary());
     }
 
-    if (polyPatches.empty())
-    {
-        FatalErrorInFunction
-            << "No patches in mesh"
-            << abort(FatalError);
-    }
+    // Clear local fields and e.g. polyMesh globalMeshData.
+    mesh.clearOut();
 
     label nFaces = 0;
     for (label patchi = nPatches; patchi < polyPatches.size(); patchi++)
@@ -356,12 +429,9 @@ void Foam::fvMeshTools::reorderPatches
     polyBoundaryMesh& polyPatches =
         const_cast<polyBoundaryMesh&>(mesh.boundaryMesh());
     fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh.boundary());
-
-    // Check if pointMesh
     pointBoundaryMesh* pointPatchesPtr = nullptr;
     if (mesh.objectRegistry::found(pointMesh::typeName))
     {
-Pout<< "** Found pointMesh" << endl;
         const pointMesh& pMesh = pointMesh::New(mesh);
         pointPatchesPtr = &const_cast<pointBoundaryMesh&>(pMesh.boundary());
     }
@@ -372,18 +442,7 @@ Pout<< "** Found pointMesh" << endl;
     if (pointPatchesPtr)
     {
         pointBoundaryMesh& pointPatches = *pointPatchesPtr;
-Pout<< "** Shuffling pointPatchesPtr:" << pointPatches.size() << endl;
-
-        pointPatches.reorder(oldToNew);
-
-//         // To be wrapper into:
-//         //pointPatches.reorder(oldToNew, validBoundary);
-
-        forAll(pointPatches, patchi)
-        {
-            Pout<< " pointpatch:" << patchi
-                << " name:" << pointPatches[patchi].name() << endl;
-        }
+        pointPatches.reorder(oldToNew, validBoundary);
     }
 
     objectRegistry& obr = const_cast<objectRegistry&>(mesh.thisDb());
