@@ -185,6 +185,16 @@ public:
         template<class Mesh>
         static void updateMesh(objectRegistry&, const mapPolyMesh&);
 
+        template<class Mesh>
+        static void addPatch(objectRegistry&, const label patchi);
+        template<class Mesh>
+        static void reorderPatches
+        (
+            objectRegistry&,
+            const labelUList& newToOld,
+            const bool validBoundary
+        );
+
         template<class Mesh, template<class> class MeshObjectType>
         static void clear(objectRegistry&);
 
@@ -299,8 +309,7 @@ public:
     //  synced and all add the same patch with same settings
     virtual void reorderPatches
     (
-        const labelList& oldToNew,
-        const label nPatches,
+        const labelUList& newToOld,
         const bool validBoundary
     ) = 0;
 };

@@ -876,48 +876,43 @@ void Foam::fvMesh::addPatch
         validBoundary
     );
 
-    fvPatches.setSize(sz+1);
-    fvPatches.set
+    boundary_.setSize(sz+1);
+    boundary_.set
     (
         sz,
         fvPatch::New
         (
-            polyPatches[sz],  // point to newly added polyPatch
-            mesh.boundary()
+            boundaryMesh()[insertPatchi],
+            boundary_
         )
     );
 
     addPatchFields<volScalarField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<volVectorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<volSphericalTensorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<volSymmTensorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<volTensorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
@@ -927,35 +922,30 @@ void Foam::fvMesh::addPatch
 
     addPatchFields<surfaceScalarField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<surfaceVectorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<surfaceSphericalTensorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<surfaceSymmTensorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
     );
     addPatchFields<surfaceTensorField>
     (
-        mesh,
         patchFieldDict,
         defaultPatchFieldType,
         Zero
@@ -964,59 +954,48 @@ void Foam::fvMesh::addPatch
 
     // Create reordering list
     // patches before insert position stay as is
-    labelList oldToNew(sz+1);
+    // patches after insert position move one up
+    labelList newToOld(boundary_.size());
     for (label i = 0; i < insertPatchi; i++)
     {
-        oldToNew[i] = i;
+        newToOld[i] = i;
     }
-    // patches after insert position move one up
     for (label i = insertPatchi; i < sz; i++)
     {
-        oldToNew[i] = i+1;
+        newToOld[i+1] = i;
     }
-    // appended patch gets moved to insert position
-    oldToNew[sz] = insertPatchi;
+    newToOld[insertPatchi] = boundary_.size()-1;
 
-    reorderPatches(oldToNew, polyPatches.size(), validBoundary);
+    reorderPatches(newToOld, validBoundary);
 }
 
 
 void Foam::fvMesh::reorderPatches
 (
-    fvMesh& mesh,
-    const labelList& oldToNew,
-    const label nNewPatches,
+    const labelUList& newToOld,
     const bool validBoundary
 )
 {
+    polyMesh::reorderPatches(newToOld, validBoundary);
+
+    const labelList oldToNew(invert(boundary_.size(), newToOld));
+
     // Shuffle into place
     boundary_.reorder(oldToNew);
+    boundary_.setSize(newToOld.size());
 
-    reorderPatchFields<volScalarField>(obr, oldToNew);
-    reorderPatchFields<volVectorField>(obr, oldToNew);
-    reorderPatchFields<volSphericalTensorField>(obr, oldToNew);
-    reorderPatchFields<volSymmTensorField>(obr, oldToNew);
-    reorderPatchFields<volTensorField>(obr, oldToNew);
-    reorderPatchFields<surfaceScalarField>(obr, oldToNew);
-    reorderPatchFields<surfaceVectorField>(obr, oldToNew);
-    reorderPatchFields<surfaceSphericalTensorField>(obr, oldToNew);
-    reorderPatchFields<surfaceSymmTensorField>(obr, oldToNew);
-    reorderPatchFields<surfaceTensorField>(obr, oldToNew);
+    reorderPatchFields<volScalarField>(newToOld);
+    reorderPatchFields<volVectorField>(newToOld);
+    reorderPatchFields<volSphericalTensorField>(newToOld);
+    reorderPatchFields<volSymmTensorField>(newToOld);
+    reorderPatchFields<volTensorField>(newToOld);
 
-    if (pointPatchesPtr)
-    {
-        reorderPatchFields<pointScalarField>(obr, oldToNew);
-        reorderPatchFields<pointVectorField>(obr, oldToNew);
-        reorderPatchFields<pointSphericalTensorField>(obr, oldToNew);
-        reorderPatchFields<pointSymmTensorField>(obr, oldToNew);
-        reorderPatchFields<pointTensorField>(obr, oldToNew);
-    }
-
-    // Remove last.
-    trimPatches(mesh, nNewPatches);
+    reorderPatchFields<surfaceScalarField>(newToOld);
+    reorderPatchFields<surfaceVectorField>(newToOld);
+    reorderPatchFields<surfaceSphericalTensorField>(newToOld);
+    reorderPatchFields<surfaceSymmTensorField>(newToOld);
+    reorderPatchFields<surfaceTensorField>(newToOld);
 }
-
-
 
 
 bool Foam::fvMesh::writeObject

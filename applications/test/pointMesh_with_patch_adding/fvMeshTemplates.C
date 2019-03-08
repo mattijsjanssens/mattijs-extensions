@@ -24,6 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "fvMesh.H"
+#include "ListOps.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -50,7 +51,7 @@ void Foam::fvMesh::addPatchFields
     const typename GeoField::value_type& defaultPatchValue
 )
 {
-    HashTable<GeoField*> flds(thisDb().lookupClass<GeoField>());
+    HashTable<GeoField*> flds(objectRegistry::lookupClass<GeoField>());
 
     const wordList fldNames(flds.sortedToc());
 
@@ -95,95 +96,22 @@ void Foam::fvMesh::addPatchFields
 }
 
 
-//template<class GeoField>
-//void Foam::fvMesh::setPatchFields
-//(
-//    const label patchi,
-//    const dictionary& patchFieldDict
-//)
-//{
-//    HashTable<GeoField*> flds(thisDb().lookupClass<GeoField>());
-//
-//    const wordList fldNames(flds.sortedToc());
-//
-//    forAll(fldNames, i)
-//    {
-//        GeoField& fld = *flds[fldNames[i]];
-//
-//        typename GeoField::Boundary& bfld =
-//            fld.boundaryFieldRef();
-//
-//        if (patchFieldDict.found(fld.name()))
-//        {
-//            bfld.set
-//            (
-//                patchi,
-//                GeoField::Patch::New
-//                (
-//                    fld.mesh().boundary()[patchi],
-//                    fld(),
-//                    patchFieldDict.subDict(fld.name())
-//                )
-//            );
-//        }
-//    }
-//}
-//
-//
-//template<class GeoField>
-//void Foam::fvMeshTools::setPatchFields
-//(
-//    objectRegistry& obr,
-//    const label patchi,
-//    const typename GeoField::value_type& value
-//)
-//{
-//    HashTable<GeoField*> flds(obr.lookupClass<GeoField>());
-//
-//    const wordList fldNames(flds.sortedToc());
-//
-//    forAll(fldNames, i)
-//    {
-//        GeoField& fld = *flds[fldNames[i]];
-//        fld.boundaryFieldRef()[patchi] == value;
-//    }
-//}
-
-
-// Remove last patch field
 template<class GeoField>
-void Foam::fvMesh::trimPatchFields
+void Foam::fvMesh::reorderPatchFields
 (
-    const label nPatches
+    const labelUList& newToOld
 )
 {
-    HashTable<GeoField*> flds(thisDb().lookupClass<GeoField>());
+    HashTable<GeoField*> flds(objectRegistry::lookupClass<GeoField>());
 
     const wordList fldNames(flds.sortedToc());
-
-    forAll(fldNames, i)
-    {
-        GeoField& fld = *flds[fldNames[i]];
-        fld.boundaryFieldRef().setSize(nPatches);
-    }
-}
-
-
-// Reorder patch field
-template<class GeoField>
-void Foam::fvMeshTools::reorderPatchFields
-(
-    const labelList& oldToNew
-)
-{
-    HashTable<GeoField*> flds(thisDb().lookupClass<GeoField>());
-
-    const wordList fldNames(flds.sortedToc());
+    const labelList oldToNew(invert(boundary().size(), newToOld));
 
     forAll(fldNames, i)
     {
         GeoField& fld = *flds[fldNames[i]];
         fld.boundaryFieldRef().reorder(oldToNew);
+        fld.boundaryFieldRef().setSize(newToOld.size());
     }
 }
 

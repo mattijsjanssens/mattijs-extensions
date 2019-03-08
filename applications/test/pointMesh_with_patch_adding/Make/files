@@ -1,6 +1,11 @@
 meshObject.C
+polyMesh.C
 polyMeshClear.C
-fvMeshTools.C
+fvMesh.C
+
+/* fvMeshTools.C */
+/*
 Test-pointMesh_with_patch_adding.C
+*/
 
 EXE = $(FOAM_USER_APPBIN)/Test-pointMesh_with_patch_adding

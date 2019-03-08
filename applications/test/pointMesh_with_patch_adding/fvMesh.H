@@ -156,6 +156,23 @@ class fvMesh
             void makeCf() const;
 
 
+        // Mapping
+
+            //- Add single patch from patchFieldDict (if present) or of
+            //  default type
+            template<class GeoField>
+            void addPatchFields
+            (
+                const dictionary& patchFieldDict,
+                const word& defaultPatchFieldType,
+                const typename GeoField::value_type& defaultPatchValue
+            );
+
+            //- Reorder and trim patches
+            template<class GeoField>
+            void reorderPatchFields(const labelUList& newToOld);
+
+
         //- Disallow construct as copy
         fvMesh(const fvMesh&);
 
@@ -353,6 +370,14 @@ public:
                 const polyPatch& patch,
                 const dictionary& patchFieldDict,
                 const word& defaultPatchFieldType,
+                const bool validBoundary
+            );
+
+            //- Reorder and trim existing patches. If validBoundary the new
+            //  situation is consistent across processors
+            virtual void reorderPatches
+            (
+                const labelUList& newToOld,
                 const bool validBoundary
             );
 

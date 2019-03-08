@@ -589,6 +589,14 @@ public:
                 const bool validBoundary
             );
 
+            //- Reorder and trim existing patches. If validBoundary the new
+            //  situation is consistent across processors
+            virtual void reorderPatches
+            (
+                const labelUList& newToOld,
+                const bool validBoundary
+            );
+
             //- Update the mesh based on the mesh files saved in
             //  time directories
             virtual readUpdateState readUpdate();

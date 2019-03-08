@@ -1009,33 +1009,36 @@ void Foam::polyMesh::addPatch
     const bool validBoundary
 )
 {
-    polyBoundaryMesh& polyPatches =
-        const_cast<polyBoundaryMesh&>(boundaryMesh());
-//    fvBoundaryMesh& fvPatches = const_cast<fvBoundaryMesh&>(mesh.boundary());
-//    pointBoundaryMesh* pointPatchesPtr = nullptr;
-//    if (mesh.objectRegistry::found(pointMesh::typeName))
-//    {
-//        const pointMesh& pMesh = pointMesh::New(mesh);
-//        pointPatchesPtr = &const_cast<pointBoundaryMesh&>(pMesh.boundary());
-//    }
-
-
-    label startFacei = mesh.nFaces();
+    label startFacei = nFaces();
     if (insertPatchi < boundary_.size())
     {
         startFacei = boundary_[insertPatchi].start();
     }
 
-
-    // Below is all quite a hack. Feel free to change once there is a better
-    // mechanism to insert and reorder patches.
-
     // Clear local fields and e.g. polyMesh parallelInfo.
-    mesh.clearOut();
+    clearGeom();
+    clearAddressing(true);
+    // Clear all but PatchMeshObjects
+    meshObject::clearUpto
+    <
+        polyMesh,
+        TopologicalMeshObject,
+        PatchMeshObject
+    >
+    (
+        *this
+    );
+    meshObject::clearUpto
+    <
+        pointMesh,
+        TopologicalMeshObject,
+        PatchMeshObject
+    >
+    (
+        *this
+    );
 
-    label sz = boundary_.size();
-
-
+    const label sz = boundary_.size();
 
     // Add polyPatch at the end
     boundary_.setSize(sz+1);
@@ -1051,160 +1054,67 @@ void Foam::polyMesh::addPatch
         )
     );
 
-    fvPatches.setSize(sz+1);
-    fvPatches.set
-    (
-        sz,
-        fvPatch::New
-        (
-            polyPatches[sz],  // point to newly added polyPatch
-            mesh.boundary()
-        )
-    );
-    if (pointPatchesPtr)
-    {
-        pointBoundaryMesh& pointPatches = *pointPatchesPtr;
-        pointPatches.setSize(sz+1);
-        pointPatches.set
-        (
-            sz,
-            facePointPatch::New
-            (
-                polyPatches[sz],  // point to newly added polyPatch
-                pointPatches
-            ).ptr()
-        );
-    }
-
-    addPatchFields<volScalarField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<volVectorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<volSphericalTensorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<volSymmTensorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<volTensorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-
-    // Surface fields
-
-    addPatchFields<surfaceScalarField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<surfaceVectorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<surfaceSphericalTensorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<surfaceSymmTensorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    addPatchFields<surfaceTensorField>
-    (
-        mesh,
-        patchFieldDict,
-        defaultPatchFieldType,
-        Zero
-    );
-    if (pointPatchesPtr)
-    {
-        addPatchFields<pointScalarField>
-        (
-            mesh,
-            patchFieldDict,
-            defaultPatchFieldType,
-            Zero
-        );
-        addPatchFields<pointVectorField>
-        (
-            mesh,
-            patchFieldDict,
-            defaultPatchFieldType,
-            Zero
-        );
-        addPatchFields<pointSphericalTensorField>
-        (
-            mesh,
-            patchFieldDict,
-            defaultPatchFieldType,
-            Zero
-        );
-        addPatchFields<pointSymmTensorField>
-        (
-            mesh,
-            patchFieldDict,
-            defaultPatchFieldType,
-            Zero
-        );
-        addPatchFields<pointTensorField>
-        (
-            mesh,
-            patchFieldDict,
-            defaultPatchFieldType,
-            Zero
-        );
-    }
+    // Warn mesh objects
+    meshObject::addPatch<polyMesh>(*this, insertPatchi);
+    meshObject::addPatch<pointMesh>(*this, insertPatchi);
 
 
     // Create reordering list
     // patches before insert position stay as is
-    labelList oldToNew(sz+1);
+    // patches after insert position move one up
+    labelList newToOld(boundary_.size());
     for (label i = 0; i < insertPatchi; i++)
     {
-        oldToNew[i] = i;
+        newToOld[i] = i;
     }
-    // patches after insert position move one up
     for (label i = insertPatchi; i < sz; i++)
     {
-        oldToNew[i] = i+1;
+        newToOld[i+1] = i;
     }
-    // appended patch gets moved to insert position
-    oldToNew[sz] = insertPatchi;
+    newToOld[insertPatchi] = sz;
 
-    reorderPatches(mesh, oldToNew, polyPatches.size(), validBoundary);
+    reorderPatches(newToOld, validBoundary);
+}
+
+
+void Foam::polyMesh::reorderPatches
+(
+    const labelUList& newToOld,
+    const bool validBoundary
+)
+{
+    // Clear local fields and e.g. polyMesh parallelInfo.
+    clearGeom();
+    clearAddressing(true);
+    // Clear all but PatchMeshObjects
+    meshObject::clearUpto
+    <
+        polyMesh,
+        TopologicalMeshObject,
+        PatchMeshObject
+    >
+    (
+        *this
+    );
+    meshObject::clearUpto
+    <
+        pointMesh,
+        TopologicalMeshObject,
+        PatchMeshObject
+    >
+    (
+        *this
+    );
+
+    const labelList oldToNew(invert(boundary_.size(), newToOld));
+
+    // Shuffle into place and truncate
+    boundary_.reorder(oldToNew, validBoundary);
+    boundary_.setSize(boundary_.size());
+
+    // Warn mesh objects
+    meshObject::reorderPatches<polyMesh>(*this, newToOld, validBoundary);
+    meshObject::reorderPatches<pointMesh>(*this, newToOld, validBoundary);
 }
 
 
