@@ -2,8 +2,10 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2004-2010 OpenCFD Ltd.
      \\/     M anipulation  |
+-------------------------------------------------------------------------------
+                            | Copyright (C) 2011-2017 OpenFOAM Foundation
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -35,8 +37,8 @@ SourceFiles
 #ifndef scalarField_H
 #define scalarField_H
 
-#include "scalar.H"
 #include "Field.H"
+#include "scalar.H"
 
 #define TEMPLATE
 #include "FieldFunctionsM.H"
@@ -48,46 +50,15 @@ namespace Foam
 
 typedef Field<scalar> scalarField;
 typedef Field<solveScalar> solveScalarField;
-//class solveScalarField
-//:
-//    public Field<solveScalar>
-//{
-//    //- Copy construct
-//    //solveScalarField(constsolveScalarField& fld);
-//
-//    //- Conversion construct
-//    template<class Type2>
-//    explicit solveScalarField(const Field<Type2>& fld)
-//    {
-//        this->setSize(fld.size());
-//        forAll(fld, i)
-//        {
-//            this->operator[](i) = fld[i];
-//        }
-//    }
-//};
 
 
+//- A Field wrapper with possible data conversion
 template<class Type, class InputType>
 class FieldWrapper
 :
     public tmp<Field<Type>>
 {
-    static const Field<Type>& copy
-    (
-        const Field<InputType>& f,
-        Field<Type>& store
-    )
-    {
-        store.setSize(f.size());
-        forAll(store, i)
-        {
-            store[i] = f[i];
-        }
-        return store;
-    }
-
-    // Private data
+    // Private Data
 
         //- Reference to underlying field
         Field<InputType>& ref_;
@@ -97,104 +68,103 @@ public:
 
     // Constructors
 
-        //- Construct from Field<InputType>
-        FieldWrapper(Field<InputType>& f) = delete;
+        //- Construct from Field<InputType>, copying on input as required
+        FieldWrapper(Field<InputType>& input)
+        :
+            tmp<Field<Type>>(),
+            ref_(input)
+        {
+            if (std::is_same<Type, InputType>::value)
+            {
+                // Future
+                #if 0
+                this->cref(input);
+                #else
+                tmp<Field<Type>> other(reinterpret_cast<Field<Type>&>(input));
+                this->swap(other);
+                #endif
+            }
+            else
+            {
+                this->reset(new Field<Type>(input.size()));
+                std::copy(input.cbegin(), input.cend(), this->ref().begin());
+            }
+        }
 
 
-    //- Destructor
+    //- Destructor, copying on destroy
     ~FieldWrapper()
     {
         if (this->isTmp())
         {
             const Field<Type>& store = this->operator()();
             ref_.setSize(store.size());
-            forAll(ref_, i)
-            {
-                ref_[i] = store[i];
-            }
+            std::copy(store.cbegin(), store.cend(), ref_.begin());
+          
         }
     }
 };
 
-template<>
-FieldWrapper<scalar, scalar>::FieldWrapper(scalarField& f);
-template<>
-FieldWrapper<solveScalar, solveScalar>::FieldWrapper(solveScalarField& f);
-template<>
-FieldWrapper<solveScalar, scalar>::FieldWrapper(scalarField& f);
-template<>
-FieldWrapper<scalar, solveScalar>::FieldWrapper(solveScalarField& f);
 
-
+//- A Field wrapper with possible data conversion
 template<class Type, class InputType>
 class ConstFieldWrapper
 :
     public tmp<Field<Type>>
 {
-    static const Field<Type>& copy
-    (
-        const Field<InputType>& f,
-        Field<Type>& store
-    )
-    {
-        store.setSize(f.size());
-        forAll(store, i)
-        {
-            store[i] = f[i];
-        }
-        return store;
-    }
-
-
 public:
 
     // Constructors
 
         //- Construct from InputType
-        ConstFieldWrapper(const Field<InputType>& f) = delete;
+        ConstFieldWrapper(const Field<InputType>& input)
+        :
+            tmp<Field<Type>>()
+        {
+            if (std::is_same<Type, InputType>::value)
+            {
+                // Future
+                #if 0
+                this->cref(input);
+                #else
+                tmp<Field<Type>> other
+                (
+                    reinterpret_cast<const Field<Type>&>(input)
+                );
+                this->swap(other);
+                #endif
+            }
+            else
+            {
+                this->reset(new Field<Type>(input.size()));
+                std::copy(input.cbegin(), input.cend(), this->ref().begin());
+            }
+        }
 
 
-    // Member functions
+    // Member Functions
+
+       //- Return the field
 
         static const Field<Type>& get
         (
-            const Field<InputType>&,
-            Field<Type>&
-        ) = delete;
+            const Field<InputType>& input,
+            Field<Type>& dst
+        )
+        {
+            if (std::is_same<Type, InputType>::value)
+            {
+                return reinterpret_cast<const Field<Type>&>(input);
+            }
+            else
+            {
+                dst.setSize(input.size());
+                std::copy(input.cbegin(), input.cend(), dst.begin());
+                return dst;
+            }
+        }
 };
 
-template<>
-ConstFieldWrapper<scalar, scalar>::ConstFieldWrapper(const scalarField& f);
-template<>
-const scalarField&
-ConstFieldWrapper<scalar, scalar>::get(const scalarField& f, scalarField&);
-
-template<>
-ConstFieldWrapper<solveScalar, solveScalar>::ConstFieldWrapper
-(
-    const solveScalarField& f
-);
-template<>
-const solveScalarField& ConstFieldWrapper<solveScalar, solveScalar>::
-get(const solveScalarField& f, solveScalarField&);
-
-// Conversion specialisations
-template<>
-ConstFieldWrapper<solveScalar, scalar>::ConstFieldWrapper(const scalarField& f);
-template<>
-const solveScalarField&
-ConstFieldWrapper<solveScalar, scalar>::
-get(const scalarField& f, solveScalarField& store);
-
-template<>
-ConstFieldWrapper<scalar, solveScalar>::ConstFieldWrapper
-(
-    const solveScalarField& f
-);
-template<>
-const scalarField&
-ConstFieldWrapper<scalar, solveScalar>::
-get(const solveScalarField& f, scalarField& store);
 
 
 template<class Type>
@@ -208,7 +178,6 @@ template<>
 float solveVSmall<float>::value();
 template<>
 double solveVSmall<double>::value();
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -237,7 +206,10 @@ tmp<scalarField> stabilise(const tmp<scalarField>&, const scalar s);
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<>
-scalar sumProd(const UList<scalar>& f1, const UList<scalar>& f2);
+float sumProd(const UList<float>& f1, const UList<float>& f2);
+
+template<>
+double sumProd(const UList<double>& f1, const UList<double>& f2);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
