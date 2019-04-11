@@ -43,6 +43,8 @@ fvmLaplacian                                                                   \
 {                                                                              \
     const fvMesh& mesh = this->mesh();                                         \
                                                                                \
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> SType;            \
+                                                                               \
     GeometricField<scalar, fvsPatchField, surfaceMesh> gammaMagSf              \
     (                                                                          \
         gamma*mesh.magSf()                                                     \
@@ -58,18 +60,21 @@ fvmLaplacian                                                                   \
                                                                                \
     if (this->tsnGradScheme_().corrected())                                    \
     {                                                                          \
-        tmp<GeometricField<Type, fvsPatchField, surfaceMesh>>                  \
-        tfaceFluxCorrection(gammaMagSf*this->tsnGradScheme_().correction(vf)); \
+        tmp<SType> tfaceFluxCorrection                                         \
+        (                                                                      \
+            gammaMagSf                                                         \
+           *this->tsnGradScheme_().correction(vf)                              \
+        );                                                                     \
                                                                                \
-        GeometricField<Type, fvsPatchField, surfaceMesh> ffCorrection =        \
-            tfaceFluxCorrection();                                             \
+        tmp<SType> trelaxedCorrection(new SType(tfaceFluxCorrection()));       \
                                                                                \
         if (oldCorrection_.valid())                                            \
         {                                                                      \
+/* Pout<< "oldCorr:" << gAverage(oldCorrection_()) << " newCorr:" << gAverage(tfaceFluxCorrection()) << endl; */ \
             Pout<< "Underrelaxing " << vf.name()                               \
                 << " non-ortho by 0.5" << endl;                                \
-            tfaceFluxCorrection.ref() *= 0.5;                                  \
-            tfaceFluxCorrection.ref() += 0.5*oldCorrection_();                 \
+            trelaxedCorrection.ref() *= 0.5;                                   \
+            trelaxedCorrection.ref() += 0.5*oldCorrection_();                  \
         }                                                                      \
                                                                                \
         tmp<Field<Type>> tcorr                                                 \
@@ -77,18 +82,18 @@ fvmLaplacian                                                                   \
             mesh.V()                                                           \
            *fvc::div                                                           \
             (                                                                  \
-                tfaceFluxCorrection()                                          \
+                trelaxedCorrection()                                           \
             )().primitiveField()                                               \
         );                                                                     \
                                                                                \
         fvm.source() -= tcorr();                                               \
                                                                                \
 Pout<< "Transferring non-ortho " << vf.name() << endl;                         \
-        oldCorrection_.ref() = ffCorrection();                                        \
+        oldCorrection_ = tfaceFluxCorrection;                                  \
                                                                                \
         if (mesh.fluxRequired(vf.name()))                                      \
         {                                                                      \
-            fvm.faceFluxCorrectionPtr() = tfaceFluxCorrection.ptr();           \
+            fvm.faceFluxCorrectionPtr() = trelaxedCorrection.ptr();            \
         }                                                                      \
     }                                                                          \
                                                                                \
