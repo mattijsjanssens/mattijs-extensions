@@ -37,21 +37,126 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+template<class Container>
+label countChars(const Container& ll)
+{
+    label sz = 0;
+    forAll(ll, i)
+    {
+        sz += countChars(ll[i]) + 1;
+    }
+    return sz;
+}
+// Specialisation for labelList
+template<>
+label countChars(const labelList& ll)
+{
+    return ll.size()+1;
+}
+
+
+template<class Container>
+void printWithLines(const Container& l)
+{
+    // Write size and start delimiter
+    Pout<< nl << l.size() << nl << token::BEGIN_LIST;
+
+    // Write contents
+    forAll(l, i)
+    {
+        printWithLines(l[i]);
+        Pout<< nl;
+    }
+
+    // Write end delimiter
+    Pout<< token::END_LIST << nl;    
+}
+// Specialisation for label
+template<>
+void printWithLines(const label& l)
+{
+    Pout<< l;
+}
+
+
+void print(const labelListList& ll)
+{
+    // Check if fits on single line
+    const label nChars = countChars(ll);
+    DebugVar(nChars);
+
+    if (nChars > 10)
+    {
+        printWithLines(ll);
+    }
+    else
+    {
+        Pout<< ll << endl;
+    }
+}
+
+
+
+
+
 int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
 
     labelList a(identity(11));
 
-    {
-        Pout<< "a:" << (noNewlineOSstream(Pout) << a);
-    }
+//     {
+//         Pout<< "a:" << (noNewlineOSstream(Pout) << a);
+//     }
 
     Pout<< "here" << endl;
 
-//const noNewlineOSstream Pout2(Pout);
-//Pout2 << "a:" << a << endl;
+const noNewlineOSstream Pout2(Pout);
+Pout2 << "a:" << a << endl;
 
+
+{
+/*
+
+((1 3 4)(8 9 7 8))
+
+Count chars if printed on single line:
+    18
+If above limit decide to break:
+    (
+        (1 3 4)
+        (8 9 7 8 5)
+    )
+or
+    (
+        (1 3 4)
+        (
+            8
+            9
+            7
+            8
+            5
+        )
+    )
+or even
+    (
+        (1 3 4)
+        (
+            8 9
+            7 8
+            5
+        )
+    )
+*/
+    labelListList ll
+    (
+        {
+            {1, 3, 4},
+            {8, 9, 7, 8, 5}
+        }
+    );
+    print(ll);
+}
 
     Pout<< "End\n" << endl;
 
