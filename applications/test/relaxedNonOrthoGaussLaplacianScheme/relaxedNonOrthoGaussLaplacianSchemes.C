@@ -60,21 +60,37 @@ fvmLaplacian                                                                   \
                                                                                \
     if (this->tsnGradScheme_().corrected())                                    \
     {                                                                          \
-        tmp<SType> tfaceFluxCorrection                                         \
-        (                                                                      \
-            gammaMagSf                                                         \
-           *this->tsnGradScheme_().correction(vf)                              \
-        );                                                                     \
+        tmp<SType> tCorr(this->tsnGradScheme_().correction(vf));               \
+        const word corrName(tCorr().name());                                   \
+        tmp<SType> tfaceFluxCorrection(gammaMagSf*tCorr);                      \
                                                                                \
         tmp<SType> trelaxedCorrection(new SType(tfaceFluxCorrection()));       \
                                                                                \
-        if (oldCorrection_.valid())                                            \
+        const word oldName(corrName + "_0");                                   \
+        const scalar relax(vf.mesh().equationRelaxationFactor(corrName));      \
+        const objectRegistry& obr = vf.db();                                   \
+        if (obr.foundObject<SType>(oldName))                                   \
         {                                                                      \
-/* Pout<< "oldCorr:" << gAverage(oldCorrection_()) << " newCorr:" << gAverage(tfaceFluxCorrection()) << endl; */ \
-            Pout<< "Underrelaxing " << vf.name()                               \
-                << " non-ortho by 0.5" << endl;                                \
-            trelaxedCorrection.ref() *= 0.5;                                   \
-            trelaxedCorrection.ref() += 0.5*oldCorrection_();                  \
+            SType& oldCorrection = obr.lookupObjectRef<SType>(oldName);        \
+            /* Pout<< "Underrelaxing " << vf.name()  */                        \
+            /*    << " non-ortho by " << relax << endl; */                     \
+            trelaxedCorrection.ref() *= relax;                                 \
+            trelaxedCorrection.ref() += (1.0-relax)*oldCorrection;             \
+                                                                               \
+            Pout<< " new:" << gAverage(mag(tfaceFluxCorrection())())           \
+                << " old:" << gAverage(mag(oldCorrection)())                   \
+                << " relaxed:" << gAverage(mag(trelaxedCorrection())())        \
+                << endl;                                                       \
+            oldCorrection = tfaceFluxCorrection;                               \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            Pout<< "Initial scaling " << vf.name()                             \
+                << " non-ortho by " << relax << endl;                          \
+            /* trelaxedCorrection.ref() *= relax;    */                        \
+            SType* s = new SType(oldName, tfaceFluxCorrection);                \
+            Pout<< "Storing non-ortho correction " << s->name() << endl;       \
+            s->store();                                                        \
         }                                                                      \
                                                                                \
         tmp<Field<Type>> tcorr                                                 \
@@ -87,9 +103,6 @@ fvmLaplacian                                                                   \
         );                                                                     \
                                                                                \
         fvm.source() -= tcorr();                                               \
-                                                                               \
-Pout<< "Transferring non-ortho " << vf.name() << endl;                         \
-        oldCorrection_ = tfaceFluxCorrection;                                  \
                                                                                \
         if (mesh.fluxRequired(vf.name()))                                      \
         {                                                                      \

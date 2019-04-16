@@ -166,6 +166,7 @@ relaxedNonOrthoGaussLaplacianScheme<Type, GType>::fvmLaplacian
 {
     const fvMesh& mesh = this->mesh();
 DebugVar(vf.name());
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> SType;
 
     const surfaceVectorField Sn(mesh.Sf()/mesh.magSf());
 
@@ -184,8 +185,7 @@ DebugVar(vf.name());
     );
     fvMatrix<Type>& fvm = tfvm.ref();
 
-    tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> tfaceFluxCorrection
-        = gammaSnGradCorr(SfGammaCorr, vf);
+    tmp<SType> tfaceFluxCorrection = gammaSnGradCorr(SfGammaCorr, vf);
 
     if (this->tsnGradScheme_().corrected())
     {
@@ -193,41 +193,47 @@ DebugVar(vf.name());
             SfGammaSn*this->tsnGradScheme_().correction(vf);
     }
 
-    if (oldCorrection_.valid())
+    const word corrName(tfaceFluxCorrection().name());                                   \
+
+    tmp<SType> trelaxedCorrection(new SType(tfaceFluxCorrection()));
+
+    const word oldName(corrName + "_0");
+    const scalar relax(vf.mesh().equationRelaxationFactor(oldName));
+
+    DebugVar(oldName);
+    const objectRegistry& obr = vf.db();
+    if (obr.foundObject<SType>(oldName))
     {
-        Pout<< "Underrelaxing " << vf.name() << " non-ortho by 0.5" << endl;
+        SType& oldCorrection = obr.lookupObjectRef<SType>(oldName);
+        Pout<< "Underrelaxing " << vf.name()
+            << " non-ortho by " << relax << endl;
+        trelaxedCorrection.ref() *= relax;
+        trelaxedCorrection.ref() += (1.0-relax)*oldCorrection;
 
-        tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> tffCorrection =
-            0.5*tfaceFluxCorrection()+0.5*oldCorrection_();
-
-        fvm.source() -= 
-            mesh.V()
-           *fvc::div
-            (
-                tffCorrection()
-            )().primitiveField();
-
-        if (mesh.fluxRequired(vf.name()))
-        {
-            fvm.faceFluxCorrectionPtr() = tffCorrection.ptr();
-        }
         Pout<< "Transferring non-ortho correction " << vf.name() << endl;
-        oldCorrection_.ref() = tfaceFluxCorrection();
+
+        Pout<< "    old:" << gAverage(mag(oldCorrection)())
+            << " relaxed:" << gAverage(mag(trelaxedCorrection())()) << endl;
+
+        oldCorrection = tfaceFluxCorrection;
     }
     else
     {
-        Pout<< "Not underrelaxing " << vf.name() << endl;
+        SType* s = new SType(oldName, tfaceFluxCorrection);
+        Pout<< "Storing non-ortho correction " << s->name() << endl;
+        s->store();
+    }
 
-        fvm.source() -=
-            mesh.V()*fvc::div(tfaceFluxCorrection())().primitiveField();
+    fvm.source() -= 
+        mesh.V()
+       *fvc::div
+        (
+            trelaxedCorrection()
+        )().primitiveField();
 
-        Pout<< "Transferring non-ortho correction " << vf.name() << endl;
-        oldCorrection_.ref() = tfaceFluxCorrection();
-
-        if (mesh.fluxRequired(vf.name()))
-        {
-            fvm.faceFluxCorrectionPtr() = tfaceFluxCorrection.ptr();
-        }
+    if (mesh.fluxRequired(vf.name()))
+    {
+        fvm.faceFluxCorrectionPtr() = trelaxedCorrection.ptr();
     }
 
     return tfvm;

@@ -56,11 +56,6 @@ class relaxedNonOrthoGaussLaplacianScheme
 :
     public fv::laplacianScheme<Type, GType>
 {
-    // Private Member Data
-
-        tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> oldCorrection_;
-
-
     // Private Member Functions
 
         tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> gammaSnGradCorr
