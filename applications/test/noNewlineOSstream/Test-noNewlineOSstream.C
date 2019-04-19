@@ -59,23 +59,28 @@ template<class Container>
 void printWithLines(const Container& l)
 {
     // Write size and start delimiter
-    Pout<< nl << l.size() << nl << token::BEGIN_LIST;
+    Pout<< indent << l.size() << nl << indent << token::BEGIN_LIST;
 
     // Write contents
-    forAll(l, i)
+    if (l.size())
     {
-        printWithLines(l[i]);
-        Pout<< nl;
+        Pout<< incrIndent;
+        forAll(l, i)
+        {
+            Pout<< nl;
+            printWithLines(l[i]);
+        }
+        Pout<< decrIndent << nl;
     }
 
     // Write end delimiter
-    Pout<< token::END_LIST << nl;    
+    Pout<< indent << token::END_LIST; 
 }
 // Specialisation for label
 template<>
 void printWithLines(const label& l)
 {
-    Pout<< l;
+    Pout<< indent << l;
 }
 
 
@@ -111,8 +116,8 @@ int main(int argc, char *argv[])
 
     Pout<< "here" << endl;
 
-const noNewlineOSstream Pout2(Pout);
-Pout2 << "a:" << a << endl;
+//const noNewlineOSstream Pout2(Pout);
+//Pout2 << "a:" << a << endl;
 
 
 {

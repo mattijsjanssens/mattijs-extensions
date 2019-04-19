@@ -59,7 +59,7 @@ public:
     // Constructors
 
         //- Set stream status
-        noNewlineOSstream
+        explicit noNewlineOSstream
         (
             OSstream& os,
             const string& name = "noNewlineOSstream",
