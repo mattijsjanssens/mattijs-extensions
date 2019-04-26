@@ -58,48 +58,51 @@ label countChars(const labelList& ll)
 template<class Container>
 void printWithLines(const Container& l)
 {
-    // Write size and start delimiter
-    Pout<< indent << l.size() << nl << indent << token::BEGIN_LIST;
-
-    // Write contents
-    if (l.size())
+    const label nChars = countChars(l);
+    if (nChars > 10)
     {
-        Pout<< incrIndent;
+        // Write size and start delimiter
+        Pout<< l.size() << nl << indent << token::BEGIN_LIST;
+
+        // Write contents
+        if (l.size())
+        {
+            Pout<< incrIndent;
+            forAll(l, i)
+            {
+                Pout<< nl << indent;
+                printWithLines(l[i]);
+            }
+            Pout<< decrIndent << nl << indent << token::END_LIST;
+        }
+        else
+        {
+            // Write end delimiter
+            Pout<< token::END_LIST;
+        }
+    }
+    else
+    {
+        // Write size and start delimiter
+        Pout<< l.size() << token::BEGIN_LIST;
+
+        // Write contents
         forAll(l, i)
         {
-            Pout<< nl;
-            printWithLines(l[i]);
+            if (i > 0) Pout<< token::SPACE;
+            Pout<< l[i];
         }
-        Pout<< decrIndent << nl;
-    }
 
-    // Write end delimiter
-    Pout<< indent << token::END_LIST; 
+        // Write end delimiter
+        Pout<< token::END_LIST;
+    }
 }
 // Specialisation for label
 template<>
 void printWithLines(const label& l)
 {
-    Pout<< indent << l;
+    Pout << l;
 }
-
-
-void print(const labelListList& ll)
-{
-    // Check if fits on single line
-    const label nChars = countChars(ll);
-    DebugVar(nChars);
-
-    if (nChars > 10)
-    {
-        printWithLines(ll);
-    }
-    else
-    {
-        Pout<< ll << endl;
-    }
-}
-
 
 
 
@@ -157,10 +160,10 @@ or even
     (
         {
             {1, 3, 4},
-            {8, 9, 7, 8, 5}
+            {8, 9, 7, 8, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1}
         }
     );
-    print(ll);
+    printWithLines(ll);
 }
 
     Pout<< "End\n" << endl;
