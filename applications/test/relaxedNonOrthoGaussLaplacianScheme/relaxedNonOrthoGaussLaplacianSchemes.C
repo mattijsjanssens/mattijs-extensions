@@ -81,7 +81,7 @@ fvmLaplacian                                                                   \
                 << " old:" << gAverage(mag(oldCorrection)())                   \
                 << " relaxed:" << gAverage(mag(trelaxedCorrection())())        \
                 << endl;                                                       \
-            oldCorrection = tfaceFluxCorrection;                               \
+            oldCorrection = trelaxedCorrection(); /*tfaceFluxCorrection; */    \
         }                                                                      \
         else                                                                   \
         {                                                                      \
