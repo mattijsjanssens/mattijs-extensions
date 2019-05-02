@@ -22,10 +22,20 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    Test-parallel-communicators
+    Test-noNewlineOSstream
 
 Description
-    Checks communication using user-defined communicators
+    Multi-pass printing:
+
+    mpOSstream os;
+    os << dict;
+    Pout<< os.str() << endl; // but prints with ""
+
+
+    Or:
+
+    streamDecorator os(Pout);
+    os << dict;
 
 \*---------------------------------------------------------------------------*/
 
@@ -104,6 +114,14 @@ void printWithLines(const label& l)
     Pout << l;
 }
 
+
+
+void indent(const label indent, const string& s, label& index)
+{
+    if (s[index] == '(')
+    {
+        
+}
 
 
 
