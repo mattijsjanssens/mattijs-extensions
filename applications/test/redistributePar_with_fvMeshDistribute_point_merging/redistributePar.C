@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2011-2019 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -254,7 +254,7 @@ template<class GeoField>
 void readFields
 (
     const boolList& haveMesh,
-    const fvMesh& mesh,
+    const typename GeoField::Mesh& mesh,
     const autoPtr<fvMeshSubset>& subsetterPtr,
     IOobjectList& allObjects,
     PtrList<GeoField>& fields
@@ -335,8 +335,8 @@ void readFields
                     IOobject
                     (
                         name,
-                        mesh.time().timeName(),
-                        mesh,
+                        mesh.thisDb().time().timeName(),
+                        mesh.thisDb(),
                         IOobject::NO_READ,
                         IOobject::AUTO_WRITE
                     ),
@@ -346,7 +346,7 @@ void readFields
             );
 
             //// Write it for next time round (since mesh gets written as well)
-            //fields[i].write();
+            // fields[i].write();
         }
     }
     else
@@ -515,8 +515,9 @@ int main(int argc, char *argv[])
 
     fvMesh& mesh = meshPtr();
 
+
     // Print some statistics
-    Info<< "Before distribution:" << endl;
+    Pout<< "Before distribution:" << endl;
     printMeshData(mesh);
 
 
@@ -570,7 +571,7 @@ int main(int argc, char *argv[])
 
     // Create 0 sized mesh to do all the generation of zero sized
     // fields on processors that have zero sized meshes. Note that this is
-    // only nessecary on master but since polyMesh construction with
+    // only necessary on master but since polyMesh construction with
     // Pstream::parRun does parallel comms we have to do it on all
     // processors
     autoPtr<fvMeshSubset> subsetterPtr;
@@ -723,9 +724,71 @@ int main(int argc, char *argv[])
     );
 
 
+    // pointFields
+
+    pointMesh& pMesh =
+        const_cast<pointMesh&>(pointMesh::New(mesh));
+    PtrList<pointScalarField> pointScalarFields;
+    readFields
+    (
+        haveMesh,
+        pMesh,
+        subsetterPtr,
+        objects,
+        pointScalarFields
+    );
+
+    PtrList<pointVectorField> pointVectorFields;
+    readFields
+    (
+        haveMesh,
+        pMesh,
+        subsetterPtr,
+        objects,
+        pointVectorFields
+    );
+
+    PtrList<pointSphericalTensorField> pointSphereTensorFields;
+    readFields
+    (
+        haveMesh,
+        pMesh,
+        subsetterPtr,
+        objects,
+        pointSphereTensorFields
+    );
+
+    PtrList<pointSymmTensorField> pointSymmTensorFields;
+    readFields
+    (
+        haveMesh,
+        pMesh,
+        subsetterPtr,
+        objects,
+        pointSymmTensorFields
+    );
+
+    PtrList<pointTensorField> pointTensorFields;
+    readFields
+    (
+        haveMesh,
+        pMesh,
+        subsetterPtr,
+        objects,
+        pointTensorFields
+    );
+
     // Debugging: Create additional volField that will be mapped.
     // Used to test correctness of mapping
-    //volVectorField mapCc("mapCc", 1*mesh.C());
+    // volVectorField mapCc("mapCc", 1*mesh.C());
+
+Pout<< "** MOVEPOINTS" << endl;
+runTime++;
+// Force old-time volumes and mesh flux
+mesh.movePoints(pointField(mesh.points()));
+Pout<< "** END OF MOVEPOINTS" << endl;
+
+
 
     // Global matching tolerance
     const scalar tolDim = getMergeDistance
@@ -738,14 +801,14 @@ int main(int argc, char *argv[])
     // Mesh distribution engine
     fvMeshDistribute distributor(mesh, tolDim);
 
-    //Pout<< "Wanted distribution:"
+    // Pout<< "Wanted distribution:"
     //    << distributor.countCells(finalDecomp) << nl << endl;
 
     // Do actual sending/receiving of mesh
     autoPtr<mapDistributePolyMesh> map = distributor.distribute(finalDecomp);
 
     //// Distribute any non-registered data accordingly
-    //map().distributeFaceData(faceCc);
+    // map().distributeFaceData(faceCc);
 
 
     // Print some statistics
@@ -753,20 +816,20 @@ int main(int argc, char *argv[])
     printMeshData(mesh);
 
 
-    if (!overwrite)
-    {
-        runTime++;
-    }
-    else
-    {
-        mesh.setInstance(masterInstDir);
-    }
+//     if (!overwrite)
+//     {
+//         runTime++;
+//     }
+//     else
+//     {
+//         mesh.setInstance(masterInstDir);
+//     }
     Info<< "Writing redistributed mesh to " << runTime.timeName() << nl << endl;
     mesh.write();
 
 
     // Debugging: test mapped cellcentre field.
-    //compareFields(tolDim, mesh.C(), mapCc);
+    // compareFields(tolDim, mesh.C(), mapCc);
 
     // Print nice message
     // ~~~~~~~~~~~~~~~~~~
