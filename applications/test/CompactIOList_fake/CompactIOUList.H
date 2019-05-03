@@ -1,0 +1,121 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2011-2019 OpenFOAM Foundation
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+Class
+    Foam::CompactIOUList
+
+Description
+    A List of objects of type \<T\> with automated input and output using
+    a compact storage. Behaves like IOList except when binary output in
+    case it writes a CompactListList.
+
+    Useful for lists of small sublists e.g. faceList, cellList.
+
+SourceFiles
+    CompactIOUList.C
+
+\*---------------------------------------------------------------------------*/
+
+#ifndef CompactIOUList_H
+#define CompactIOUList_H
+
+#include "UListCompactIO.H"
+#include "regIOobject.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+
+/*---------------------------------------------------------------------------*\
+                           Class CompactIOUList Declaration
+\*---------------------------------------------------------------------------*/
+
+template<class T, class BaseType>
+class CompactIOUList
+:
+    public regIOobject,
+    public UListCompactIO<T, BaseType>
+{
+    // Private Member Functions
+
+        //- Read according to header type
+        void readFromStream();
+
+public:
+
+    //- Runtime type information
+    TypeName("CompactList");
+
+
+    // Constructors
+
+        //- Construct from IOobject
+        CompactIOUList(const IOobject&);
+
+        //- Construct from IOobject and size of CompactIOUList
+        CompactIOUList(const IOobject&, const label);
+
+        //- Construct from IOobject and a List
+        CompactIOUList(const IOobject&, const List<T>&);
+
+
+    // Destructor
+
+        virtual ~CompactIOUList();
+
+
+    // Member functions
+
+//         virtual bool writeObject
+//         (
+//             IOstream::streamFormat,
+//             IOstream::versionNumber,
+//             IOstream::compressionType,
+//             const bool write
+//         ) const;
+
+        virtual bool writeData(Ostream&) const;
+
+
+    // Member operators
+
+        void operator=(const CompactIOUList<T, BaseType>&);
+};
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "CompactIOUList.C"
+#endif
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
+
+// ************************************************************************* //
