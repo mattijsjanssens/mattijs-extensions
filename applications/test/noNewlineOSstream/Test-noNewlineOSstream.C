@@ -27,15 +27,20 @@ Application
 Description
     Multi-pass printing:
 
-    mpOSstream os;
-    os << dict;
-    Pout<< os.str() << endl; // but prints with ""
+        mpOSstream os;
+        os << dict;
+        Pout<< os.str() << endl; // but prints with ""
+    Or:
 
+        OStringStream os;
+        os << dict;
+        stringFormatter bla(os.str());
+        Pout<< bla.str() << endl;
 
     Or:
 
-    streamDecorator os(Pout);
-    os << dict;
+        streamFormatter os(Pout);
+        os << dict;
 
 \*---------------------------------------------------------------------------*/
 
