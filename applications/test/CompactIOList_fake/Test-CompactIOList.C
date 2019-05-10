@@ -40,6 +40,18 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+typedef CompactIOUList<face, label> faceCompactIOUList;
+
+namespace Foam
+{
+    defineTemplateTypeNameAndDebugWithName
+    (
+        faceCompactIOUList,
+        "faceCompactIOUList",
+        0
+    );
+}
+
 
 //  Main program:
 
@@ -64,11 +76,11 @@ DebugVar(fcs);
 
     {
         // Read
-        CompactIOUList<face, label> faces3
+        faceCompactIOUList faces3
         (
             IOobject
             (
-                "faces2",
+                "faces",
                 runTime.constant(),
                 polyMesh::meshSubDir,
                 runTime,
@@ -77,6 +89,11 @@ DebugVar(fcs);
                 false
             )
         );
+
+        forAll(faces3, i)
+        {
+            DebugVar(faces3[i]);
+        }
 
         Info<< "Read new format " << faces3.size() << " faceList in = "
             << runTime.cpuTimeIncrement() << " s" << nl << endl;
