@@ -24,7 +24,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "functionEntry.H"
-#include "DynamicList.H"
 #include "IOstreams.H"
 #include "ISstream.H"
 
@@ -169,10 +168,13 @@ void Foam::functionEntry::write(Ostream& os) const
     const token& t = operator[](0);
     const string& s = t.stringToken();
 
+    os.indent();
     for (size_t i = 0; i < s.size(); i++)
     {
         os.write(s[i]);
     }
+
+    os << endl;
 }
 
 

@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2016 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2016-2019 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -42,6 +42,12 @@ Usage
 
       - \par -set \<value\>
         Adds or replaces the entry
+
+      - \par -merge \<value\>
+        Merges the entry
+
+      - \par -dict
+        Set, add or merge entry from a dictionary
 
       - \par -remove
         Remove the selected entry
@@ -112,7 +118,8 @@ Usage
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
-#include "Time.H"
+#include "IOobject.H"
+#include "Pair.H"
 #include "IFstream.H"
 #include "OFstream.H"
 #include "includeEntry.H"
@@ -120,6 +127,42 @@ Usage
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//- Read dictionary from file and return
+//  Sets stream to binary mode if specified in the optional header
+IOstream::streamFormat readDict(dictionary& dict, const fileName& dictFileName)
+{
+    IOstream::streamFormat dictFormat = IOstream::ASCII;
+
+    IFstream dictFile(dictFileName);
+    if (!dictFile().good())
+    {
+        FatalErrorInFunction
+            << "Cannot open file " << dictFileName
+            << exit(FatalError, 1);
+    }
+
+    // Read the first entry from the dictionary
+    autoPtr<entry> firstEntry(entry::New(dictFile()));
+
+    // If the first entry is the "FoamFile" header dictionary
+    // read and set the stream format
+    if (firstEntry->isDict() && firstEntry->keyword() == "FoamFile")
+    {
+        dictFormat = IOstream::formatEnum(firstEntry->dict().lookup("format"));
+        dictFile().format(dictFormat);
+    }
+
+    // Add the first entry to the dictionary
+    dict.add(firstEntry);
+
+    // Read and add the rest of the dictionary entries
+    // preserving the "FoamFile" header dictionary if present
+    dict.read(dictFile(), true);
+
+    return dictFormat;
+}
+
 
 //- Converts old scope syntax to new syntax
 word scope(const fileName& entryName)
@@ -236,12 +279,235 @@ void remove(dictionary& dict, const dictionary& removeDict)
 }
 
 
+//XXXXXXX
+// // Does parent dictionary contains all of dict
+// bool contains(const dictionary& parentDict, const dictionary& dict)
+// {
+//     forAllConstIter(dictionary, dict, iter)
+//     {
+//         const entry* ePtr = parentDict.lookupEntryPtr
+//         (
+//             iter.keyword(),
+//             false,
+//             false
+//         );
+// 
+//         if (!ePtr)
+//         {
+//             return false;
+//         }
+//         else if (iter() != *ePtr)
+//         {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+
+bool unexpandVars
+(
+    dictionary& dict,
+    const dictionary& table
+)
+{
+    forAllConstIter(dictionary, table, tableIter)
+    {
+        const entry* entPtr = dict.lookupEntryPtr
+        (
+            tableIter().keyword(),
+            false,
+            false
+        );
+
+        if (entPtr)
+        {
+            const entry& e = *entPtr;
+
+            if (e.isDict() && tableIter().isDict())
+            {
+                unexpandVars
+                (
+                    const_cast<dictionary&>(e.dict()),
+                    tableIter().dict()
+                );
+            }
+            else if (e.isStream() && tableIter().isStream())
+            {
+                const ITstream& tableStream = tableIter().stream();
+                ITstream& dictStream = e.stream();
+
+                for
+                (
+                    label i = 0;
+                    i < min(tableStream.size(), dictStream.size());
+                    i++
+                )
+                {
+                    const token& tableT = tableStream[i];
+                    const token& dictT = dictStream[i];
+                    if (tableT.isWord() && tableT.wordToken()[0] == '$')
+                    {
+                        DebugVar(tableT.info());
+
+                        const word& keyword = tableT.wordToken();
+                        word varName = keyword(1, keyword.size()-1);
+
+                        // Lookup the variable name in the given dictionary
+                        const entry* ePtr = dict.lookupScopedEntryPtr
+                        (
+                            varName,
+                            true,
+                            true
+                        );
+
+                        // If defined unexpand
+                        if (ePtr != nullptr && *ePtr == dictStream[i])
+                        {
+                            dictStream[i] = tableT;
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+
+bool unexpand
+(
+    const dictionary& table,
+    const dictionary& dict,
+    dictionary& unexpanded
+)
+{
+DebugVar(table);
+DebugVar(dict);
+
+    bool changed = false;
+    forAllConstIter(dictionary, table, iter)
+    {
+        const entry& e = iter();
+
+        if (isA<functionEntry>(e))
+        {
+            const token& t = e.stream()[0];
+            const string& s = t.stringToken();
+            IStringStream is(s);
+            const word keyword(is);
+            const word functionName(keyword(1, keyword.size()-1));
+            DebugVar(functionName);
+
+            dictionary expandedEntry;
+            functionEntry::execute(functionName, expandedEntry, is);
+            DebugVar(expandedEntry);
+
+            // Remove all entries added through #function
+            remove(unexpanded, expandedEntry);
+            // And replace with #function entry
+            is.rewind();
+            const word keyword2(is);
+            unexpanded.add
+            (
+                new functionEntry
+                (
+                    keyword2,
+                    table,
+                    is
+                )
+            );
+            DebugVar(unexpanded);
+            changed = true;
+        }
+        else if (e.isDict())
+        {
+            const entry* ePtr = dict.lookupEntryPtr
+            (
+                e.keyword(),
+                false,
+                false
+            );
+            if (ePtr && ePtr->isDict())
+            {
+                Pout<< incrIndent;
+
+                changed =
+                    unexpand
+                    (
+                        ePtr->dict(),
+                        e.dict(),
+                        unexpanded.subDict(e.keyword())
+                    )
+                && changed;
+
+                Pout<< decrIndent;
+            }
+        }
+    }
+    DebugVar(unexpanded);
+    return changed;
+}
+
+// void write
+// (
+//     Ostream& os,
+//     const dictionary& dict,
+//     const dictionary& expandedDict,
+//     bool subDict
+// )
+// {
+//     dictionary newDict(dict);
+//     if (subDict)
+//     {
+//         os  << nl << indent << token::BEGIN_BLOCK << incrIndent << nl;
+//     }
+// 
+//     forAllConstIter(dictionary, dict, iter)
+//     {
+//         const entry& e = iter();
+// 
+//         if (isA<functionEntry>(e))
+//         {
+//             os<< "e:" << e << endl;
+//             os<< "stream:" << e.stream() << endl;
+// 
+//             const token& t = e.stream()[0];
+//             const string& s = t.stringToken();
+//             IStringStream is(s);
+//             const word keyword(is);
+//             const word functionName(keyword(1, keyword.size()-1));
+//             DebugVar(functionName);
+// 
+//             dictionary expandedEntry;
+//             functionEntry::execute(functionName, expandedEntry, is);
+//             DebugVar(expandedEntry);
+// 
+//             // Check that all of expansion is present in the expandedDict
+//             dictionary printDict(expandedDict);
+//             if (contains(expandedDict, expandedEntry))
+//             {
+//                 os << "--> e:" << e << endl;
+//             }
+//             const entry& 
+//         }
+//     }
+// 
+//     if (subDict)
+//     {
+//         os  << decrIndent << indent << token::END_BLOCK << endl;
+//     }
+// }
+
+
 int main(int argc, char *argv[])
 {
-    argList::addNote("manipulates dictionaries");
+    #include "removeCaseOptions.H"
 
-    argList::noBanner();
-    argList::validArgs.append("dictionary");
+    writeInfoHeader = false;
+
+    argList::addNote("manipulates dictionaries");
+    argList::validArgs.append("dictionary file");
     argList::addBoolOption("keywords", "list keywords");
     argList::addOption("entry", "name", "report/select the named entry");
     argList::addBoolOption
@@ -260,6 +526,17 @@ int main(int argc, char *argv[])
         "add",
         "value",
         "Add a new entry"
+    );
+    argList::addOption
+    (
+        "merge",
+        "value",
+        "Merge entry"
+    );
+    argList::addBoolOption
+    (
+        "dict",
+        "Set, add or merge entry from a dictionary."
     );
     argList::addBoolOption
     (
@@ -298,31 +575,35 @@ int main(int argc, char *argv[])
         Foam::functionEntries::includeEntry::log = true;
     }
 
-    const bool disableEntries = args.optionFound("disableFunctionEntries");
-    if (disableEntries)
+    const fileName dictFileName(args[1]);
+    dictionary dict;
+    IOstream::streamFormat dictFormat = readDict(dict, dictFileName);
+
+
+    const bool oldDisable = entry::disableFunctionEntries;
+    entry::disableFunctionEntries = true;
+    dictionary rawDict;
+    readDict(rawDict, dictFileName);
+    entry::disableFunctionEntries = oldDisable;
+//    dictionary unexpanded(dict);
+//    unexpand(rawDict, dict, unexpanded);
+//DebugVar(unexpanded);
+
+
+    unexpandVars(dict, rawDict);
+    DebugVar(dict);
+
+
+
+return 0;
+
+    if (args.optionFound("disableFunctionEntries"))
     {
-        Info<< "Not expanding variables or dictionary directives"
-            << endl;
-        entry::disableFunctionEntries = true;
-    }
-
-
-    fileName dictFileName(args[1]);
-
-    autoPtr<IFstream> dictFile(new IFstream(dictFileName));
-    if (!dictFile().good())
-    {
-        FatalErrorInFunction
-            << "Cannot open file " << dictFileName
-            << exit(FatalError, 1);
+        dict = rawDict;
     }
 
 
     bool changed = false;
-
-    // Read but preserve headers
-    dictionary dict;
-    dict.read(dictFile(), true);
 
     if (listIncludes)
     {
@@ -340,20 +621,12 @@ int main(int argc, char *argv[])
 
 
     // Second dictionary for -diff
-    dictionary diffDict;
     fileName diffFileName;
+    dictionary diffDict;
+
     if (args.optionReadIfPresent("diff", diffFileName))
     {
-        autoPtr<IFstream> diffFile(new IFstream(diffFileName));
-        if (!diffFile().good())
-        {
-            FatalErrorInFunction
-                << "Cannot open file " << diffFileName
-                << exit(FatalError, 1);
-        }
-
-        // Read but preserve headers
-        diffDict.read(diffFile(), true);
+        readDict(diffDict, diffFileName);
     }
 
 
@@ -367,15 +640,48 @@ int main(int argc, char *argv[])
         (
             args.optionReadIfPresent("set", newValue)
          || args.optionReadIfPresent("add", newValue)
+         || args.optionReadIfPresent("merge", newValue)
         )
         {
-            bool overwrite = args.optionFound("set");
+            const bool overwrite = args.optionFound("set");
+            const bool merge = args.optionFound("merge");
 
             Pair<word> dAk(dictAndKeyword(scopedName));
-
-            IStringStream str(string(dAk.second()) + ' ' + newValue + ';');
-            entry* ePtr(entry::New(str).ptr());
             const dictionary& d(lookupScopedDict(dict, dAk.first()));
+
+            entry* ePtr = nullptr;
+
+            if (args.optionFound("dict"))
+            {
+                const fileName fromDictFileName(newValue);
+                dictionary fromDict;
+                readDict(fromDict, fromDictFileName);
+
+                const entry* fePtr
+                (
+                    fromDict.lookupScopedEntryPtr
+                    (
+                        scopedName,
+                        false,
+                        true            // Support wildcards
+                    )
+                );
+
+                if (!fePtr)
+                {
+                    FatalErrorInFunction
+                        << "Cannot find entry " << entryName
+                        << " in file " << fromDictFileName
+                        << exit(FatalError, 1);
+                }
+
+                ePtr = fePtr->clone().ptr();
+            }
+            else
+            {
+                IStringStream str(string(dAk.second()) + ' ' + newValue + ';');
+                ePtr = entry::New(str).ptr();
+            }
 
             if (overwrite)
             {
@@ -383,21 +689,21 @@ int main(int argc, char *argv[])
             }
             else
             {
-                const_cast<dictionary&>(d).add(ePtr, false);
+                const_cast<dictionary&>(d).add(ePtr, merge);
             }
             changed = true;
 
             // Print the changed entry
-            const entry* entPtr = dict.lookupScopedEntryPtr
-            (
-                scopedName,
-                false,
-                true            // Support wildcards
-            );
-            if (entPtr)
-            {
-                Info<< *entPtr << endl;
-            }
+            // const entry* entPtr = dict.lookupScopedEntryPtr
+            // (
+            //     scopedName,
+            //     false,
+            //     true            // Support wildcards
+            // );
+            // if (entPtr)
+            // {
+            //     Info<< *entPtr;
+            // }
         }
         else if (args.optionFound("remove"))
         {
@@ -467,7 +773,11 @@ int main(int argc, char *argv[])
                             const tokenList& tokens = entPtr->stream();
                             forAll(tokens, i)
                             {
-                                Info<< tokens[i] << token::SPACE;
+                                Info<< tokens[i];
+                                if (i < tokens.size() - 1)
+                                {
+                                    Info<< token::SPACE;
+                                }
                             }
                             Info<< endl;
                         }
@@ -478,13 +788,13 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        Info<< *entPtr << endl;
+                        Info<< *entPtr;
                     }
                 }
             }
             else
             {
-                FatalIOErrorInFunction(dictFile)
+                FatalIOErrorInFunction(dict)
                     << "Cannot find entry " << entryName
                     << exit(FatalIOError, 2);
             }
@@ -509,8 +819,7 @@ int main(int argc, char *argv[])
 
     if (changed)
     {
-        dictFile.clear();
-        OFstream os(dictFileName);
+        OFstream os(dictFileName, dictFormat);
         IOobject::writeBanner(os);
         dict.write(os, false);
         IOobject::writeEndDivider(os);
