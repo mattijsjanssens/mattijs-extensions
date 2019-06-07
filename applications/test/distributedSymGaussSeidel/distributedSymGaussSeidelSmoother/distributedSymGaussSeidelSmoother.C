@@ -44,6 +44,24 @@ namespace Foam
 
 // * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * * //
 
+//void Foam::distributedSymGaussSeidelSmoother::receive
+//(
+//    const boolList& validInterface,
+//    const FieldField<Field, scalar>& coupleCoeffs,
+//    const lduInterfaceFieldPtrsList& interfaces,
+//    const scalarField& psiif,
+//    scalarField& result,
+//    const direction cmpt,
+//    labelList& outstandinRecvRequest
+//)
+//{
+//    forAll(interfaces, interfacei)
+//    {
+//        if (interfaces.set(interfacei) && validInterface[interfacei])
+//        {
+//            UPstream::waitRequest(outstandinRecvRequest[interfacei]);
+
+
 void Foam::distributedSymGaussSeidelSmoother::initMatrixInterfaces
 (
     const boolList& validInterface,
@@ -89,6 +107,7 @@ void Foam::distributedSymGaussSeidelSmoother::updateMatrixInterfaces
     {
         if (interfaces.set(interfacei) && validInterface[interfacei])
         {
+            // Processor: receive and add to result
             interfaces[interfacei].updateInterfaceMatrix
             (
                 result,
@@ -331,24 +350,6 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
     {
         bPrime = source;
 
-        matrix_.initMatrixInterfaces
-        (
-            mBouCoeffs,
-            interfaces_,
-            psi,
-            bPrime,
-            cmpt
-        );
-
-        matrix_.updateMatrixInterfaces
-        (
-            mBouCoeffs,
-            interfaces_,
-            psi,
-            bPrime,
-            cmpt
-        );
-
         // Forward solve on interior nodes
         for (label celli=0; celli<nCells; celli++)
         {
@@ -357,6 +358,26 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
                 forward(psi, celli, matrix_, bPrime);
             }
         }
+
+        //matrix_.initMatrixInterfaces
+        //(
+        //    mBouCoeffs,
+        //    interfaces_,
+        //    psi,
+        //    bPrime,
+        //    cmpt
+        //);
+        //
+        //matrix_.updateMatrixInterfaces
+        //(
+        //    mBouCoeffs,
+        //    interfaces_,
+        //    psi,
+        //    bPrime,
+        //    cmpt
+        //);
+
+        // Receive 
         for
 
 

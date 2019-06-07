@@ -344,7 +344,7 @@ bool unexpandVars
                 )
                 {
                     const token& tableT = tableStream[i];
-                    const token& dictT = dictStream[i];
+                    //const token& dictT = dictStream[i];
                     if (tableT.isWord() && tableT.wordToken()[0] == '$')
                     {
                         DebugVar(tableT.info());
@@ -361,11 +361,33 @@ bool unexpandVars
                         );
 
                         // If defined unexpand
-                        if (ePtr != nullptr && *ePtr == dictStream[i])
+                        if (ePtr != nullptr)
                         {
-                            dictStream[i] = tableT;
-                        }
+                            const ITstream& eTokens = ePtr->stream();
+                            bool isSame = true;
+                            label dicti = i;
+                            forAll(eTokens, ei)
+                            {
 
+                                Pout<< "Comparing token:" << eTokens[ei].info()
+                                    << nl
+                                    << "And token      :"
+                                    << dictStream[dicti].info()
+                                    << endl;
+
+                                if (eTokens[ei] != dictStream[dicti])
+                                {
+                                    isSame = false;
+                                    break;
+                                }
+                                dicti++;
+                            }
+
+                            if (isSame)
+                            {
+                                dictStream[i] = tableT;
+                            }
+                        }
                     }
                 }
             }
@@ -378,7 +400,7 @@ bool unexpandVars
 bool unexpand
 (
     const dictionary& table,
-    const dictionary& dict,
+    dictionary& dict,
     dictionary& unexpanded
 )
 {
@@ -404,7 +426,7 @@ DebugVar(dict);
             DebugVar(expandedEntry);
 
             // Remove all entries added through #function
-            remove(unexpanded, expandedEntry);
+            remove(dict, expandedEntry);
             // And replace with #function entry
             is.rewind();
             const word keyword2(is);
@@ -422,7 +444,7 @@ DebugVar(dict);
         }
         else if (e.isDict())
         {
-            const entry* ePtr = dict.lookupEntryPtr
+            entry* ePtr = dict.lookupEntryPtr
             (
                 e.keyword(),
                 false,
@@ -436,7 +458,7 @@ DebugVar(dict);
                     unexpand
                     (
                         ePtr->dict(),
-                        e.dict(),
+                        const_cast<dictionary&>(e.dict()),
                         unexpanded.subDict(e.keyword())
                     )
                 && changed;
@@ -445,6 +467,7 @@ DebugVar(dict);
             }
         }
     }
+    unexpanded.merge(dict);
     DebugVar(unexpanded);
     return changed;
 }
@@ -585,13 +608,12 @@ int main(int argc, char *argv[])
     dictionary rawDict;
     readDict(rawDict, dictFileName);
     entry::disableFunctionEntries = oldDisable;
-//    dictionary unexpanded(dict);
-//    unexpand(rawDict, dict, unexpanded);
-//DebugVar(unexpanded);
+    dictionary unexpanded(rawDict);
+    unexpand(rawDict, dict, unexpanded);
+    DebugVar(unexpanded);
 
-
-    unexpandVars(dict, rawDict);
-    DebugVar(dict);
+//    unexpandVars(dict, rawDict);
+//    DebugVar(dict);
 
 
 
