@@ -1,0 +1,5 @@
+// BLA
+application     icoFoam;
+
+// moreBLA
+startFrom       startTime;
