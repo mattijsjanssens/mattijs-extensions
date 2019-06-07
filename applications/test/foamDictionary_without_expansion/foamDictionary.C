@@ -369,7 +369,8 @@ bool unexpandVars
                             forAll(eTokens, ei)
                             {
 
-                                Pout<< "Comparing token:" << eTokens[ei].info()
+                                Pout<< indent
+                                    << "Comparing token:" << eTokens[ei].info()
                                     << nl
                                     << "And token      :"
                                     << dictStream[dicti].info()
@@ -397,13 +398,45 @@ bool unexpandVars
 }
 
 
+void expand
+(
+    const word& functionName,
+    const dictionary& topDict,
+    const word& scopedKeyword,
+    Istream& is
+)
+{
+    //if(debug)
+    if (!topDict.lookupScopedEntryPtr(scopedKeyword, false, false))
+    {
+        FatalIOErrorInFunction(topDict)
+            << "Cannot find scoped entry " << scopedKeyword
+            << exit(FatalIOError);
+    }
+
+    dictionary work(topDict);
+    entry* ePtr = const_cast<entry*>
+    (
+        work.lookupScopedEntryPtr(scopedKeyword, false, false)
+    );
+    dictionary& subDict = ePtr->dict();
+    const dictionary oldSubDict(subDict);
+    functionEntry::execute(functionName, subDict, is);
+Pout<< "WAS:" << oldSubDict << endl;
+Pout<< "NOW:" << subDict << endl;
+}
+
+
 bool unexpand
 (
+    const dictionary& topDict,
+    const word& scopedKeyword,
     const dictionary& table,
     dictionary& dict,
     dictionary& unexpanded
 )
 {
+DebugVar(scopedKeyword);
 DebugVar(table);
 DebugVar(dict);
 
@@ -422,24 +455,33 @@ DebugVar(dict);
             DebugVar(functionName);
 
             dictionary expandedEntry;
-            functionEntry::execute(functionName, expandedEntry, is);
-            DebugVar(expandedEntry);
+            //functionEntry::execute(functionName, expandedEntry, is);
+            //DebugVar(expandedEntry);
+            expand
+            (
+                functionName,
+                topDict,
+                scopedKeyword,
+                is
+            );
+
 
             // Remove all entries added through #function
+Pout<< indent<< "Removing expanded:" << expandedEntry << endl;
             remove(dict, expandedEntry);
-            // And replace with #function entry
-            is.rewind();
-            const word keyword2(is);
-            unexpanded.add
-            (
-                new functionEntry
-                (
-                    keyword2,
-                    table,
-                    is
-                )
-            );
-            DebugVar(unexpanded);
+//             // And replace with #function entry
+//             is.rewind();
+//             const word keyword2(is);
+//             unexpanded.add
+//             (
+//                 new functionEntry
+//                 (
+//                     keyword2,
+//                     table,
+//                     is
+//                 )
+//             );
+//             DebugVar(unexpanded);
             changed = true;
         }
         else if (e.isDict())
@@ -452,13 +494,21 @@ DebugVar(dict);
             );
             if (ePtr && ePtr->isDict())
             {
+                Pout<< indent << "**REcursing for entry " << e.keyword()
+                    << endl;
                 Pout<< incrIndent;
 
                 changed =
                     unexpand
                     (
-                        ePtr->dict(),
-                        const_cast<dictionary&>(e.dict()),
+                        topDict,
+                        (
+                            scopedKeyword.size()
+                          ? scopedKeyword + '.' + e.keyword()
+                          : word(':') + e.keyword()
+                        ),
+                        e.dict(),
+                        const_cast<dictionary&>(ePtr->dict()),
                         unexpanded.subDict(e.keyword())
                     )
                 && changed;
@@ -467,6 +517,7 @@ DebugVar(dict);
             }
         }
     }
+Pout<< indent<< "LEFT OVER:" << dict << endl;
     unexpanded.merge(dict);
     DebugVar(unexpanded);
     return changed;
@@ -608,8 +659,11 @@ int main(int argc, char *argv[])
     dictionary rawDict;
     readDict(rawDict, dictFileName);
     entry::disableFunctionEntries = oldDisable;
+
+    //- Walk through dictionary
+    const dictionary topDict(rawDict);
     dictionary unexpanded(rawDict);
-    unexpand(rawDict, dict, unexpanded);
+    unexpand(topDict, word::null, rawDict, dict, unexpanded);
     DebugVar(unexpanded);
 
 //    unexpandVars(dict, rawDict);

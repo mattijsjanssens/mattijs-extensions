@@ -1,1 +1,1 @@
-EXE_INC =
+EXE_INC = -DFULLDEBUG -g -O0
