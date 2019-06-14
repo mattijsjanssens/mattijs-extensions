@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -24,9 +24,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "GAMGSolver.H"
-#include "ICCG.H"
-#include "BICCG.H"
-#include "smoothSolver.H"
+// #include "ICCG.H"
+// #include "BICCG.H"
+//#include "smoothSolver.H"
 #include "SubField.H"
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -165,7 +165,7 @@ void Foam::GAMGSolver::Vcycle
     const direction cmpt
 ) const
 {
-    //debug = 2;
+    // debug = 2;
 
     const label coarsestLevel = matrixLevels_.size() - 1;
 
@@ -520,6 +520,34 @@ void Foam::GAMGSolver::initVcycle
 }
 
 
+Foam::dictionary Foam::GAMGSolver::PCGsolverDict
+(
+    const scalar tol,
+    const scalar relTol
+) const
+{
+    dictionary dict(IStringStream("solver PCG; preconditioner DIC;")());
+    dict.add("tolerance", tol);
+    dict.add("relTol", relTol);
+
+    return dict;
+}
+
+
+Foam::dictionary Foam::GAMGSolver::PBiCGStabSolverDict
+(
+    const scalar tol,
+    const scalar relTol
+) const
+{
+    dictionary dict(IStringStream("solver PBiCGStab; preconditioner DILU;")());
+    dict.add("tolerance", tol);
+    dict.add("relTol", relTol);
+
+    return dict;
+}
+
+
 void Foam::GAMGSolver::solveCoarsestLevel
 (
     scalarField& coarsestCorrField,
@@ -585,15 +613,14 @@ void Foam::GAMGSolver::solveCoarsestLevel
     //
     //            if (allMatrix.asymmetric())
     //            {
-    //                coarseSolverPerf = BICCG
+    //                coarseSolverPerf = PBiCGStab
     //                (
     //                    "coarsestLevelCorr",
     //                    allMatrix,
     //                    procInterfaceLevelsBouCoeffs_[coarsestLevel],
     //                    procInterfaceLevelsIntCoeffs_[coarsestLevel],
     //                    procInterfaceLevels_[coarsestLevel],
-    //                    tolerance_,
-    //                    relTol_
+    //                    PBiCGStabSolverDict(tolerance_, relTol_)
     //                ).solve
     //                (
     //                    coarsestCorrField,
@@ -602,15 +629,14 @@ void Foam::GAMGSolver::solveCoarsestLevel
     //            }
     //            else
     //            {
-    //                coarseSolverPerf = ICCG
+    //                coarseSolverPerf = PCG
     //                (
     //                    "coarsestLevelCorr",
     //                    allMatrix,
     //                    procInterfaceLevelsBouCoeffs_[coarsestLevel],
     //                    procInterfaceLevelsIntCoeffs_[coarsestLevel],
     //                    procInterfaceLevels_[coarsestLevel],
-    //                    tolerance_,
-    //                    relTol_
+    //                    PCGsolverDict(tolerance_, relTol_)
     //                ).solve
     //                (
     //                    coarsestCorrField,
@@ -624,8 +650,8 @@ void Foam::GAMGSolver::solveCoarsestLevel
     //    Pout<< "done master solve." << endl;
     //
     //    //// Scatter to all processors
-    //    //coarsestCorrField.setSize(coarsestSource.size());
-    //    //cellOffsets.scatter
+    //    // coarsestCorrField.setSize(coarsestSource.size());
+    //    // cellOffsets.scatter
     //    //(
     //    //    coarseComm,
     //    //    agglomProcIDs,
@@ -645,67 +671,68 @@ void Foam::GAMGSolver::solveCoarsestLevel
     {
         coarsestCorrField = 0;
         solverPerformance coarseSolverPerf;
+        coarsestSolverPtr_->solve(coarsestCorrField, coarsestSource);
 
-        if (matrixLevels_[coarsestLevel].asymmetric())
-        {
-//             coarseSolverPerf = BICCG
+//         if (matrixLevels_[coarsestLevel].asymmetric())
+//         {
+// //             coarseSolverPerf = BICCG
+// //             (
+// //                 "coarsestLevelCorr",
+// //                 matrixLevels_[coarsestLevel],
+// //                 interfaceLevelsBouCoeffs_[coarsestLevel],
+// //                 interfaceLevelsIntCoeffs_[coarsestLevel],
+// //                 interfaceLevels_[coarsestLevel],
+// //                 tolerance_,
+// //                 relTol_
+// //             ).solve
+// //             (
+// //                 coarsestCorrField,
+// //                 coarsestSource
+// //             );
+//             coarseSolverPerf = smoothSolver
 //             (
 //                 "coarsestLevelCorr",
 //                 matrixLevels_[coarsestLevel],
 //                 interfaceLevelsBouCoeffs_[coarsestLevel],
 //                 interfaceLevelsIntCoeffs_[coarsestLevel],
 //                 interfaceLevels_[coarsestLevel],
-//                 tolerance_,
-//                 relTol_
+//                 controlDict_.subDict("smoothSolver")
 //             ).solve
 //             (
 //                 coarsestCorrField,
 //                 coarsestSource
 //             );
-            coarseSolverPerf = smoothSolver
-            (
-                "coarsestLevelCorr",
-                matrixLevels_[coarsestLevel],
-                interfaceLevelsBouCoeffs_[coarsestLevel],
-                interfaceLevelsIntCoeffs_[coarsestLevel],
-                interfaceLevels_[coarsestLevel],
-                controlDict_.subDict("smoothSolver")
-            ).solve
-            (
-                coarsestCorrField,
-                coarsestSource
-            );
-        }
-        else
-        {
-//             coarseSolverPerf = ICCG
+//         }
+//         else
+//         {
+// //             coarseSolverPerf = ICCG
+// //             (
+// //                 "coarsestLevelCorr",
+// //                 matrixLevels_[coarsestLevel],
+// //                 interfaceLevelsBouCoeffs_[coarsestLevel],
+// //                 interfaceLevelsIntCoeffs_[coarsestLevel],
+// //                 interfaceLevels_[coarsestLevel],
+// //                 tolerance_,
+// //                 relTol_
+// //             ).solve
+// //             (
+// //                 coarsestCorrField,
+// //                 coarsestSource
+// //             );
+//             coarseSolverPerf = smoothSolver
 //             (
 //                 "coarsestLevelCorr",
 //                 matrixLevels_[coarsestLevel],
 //                 interfaceLevelsBouCoeffs_[coarsestLevel],
 //                 interfaceLevelsIntCoeffs_[coarsestLevel],
 //                 interfaceLevels_[coarsestLevel],
-//                 tolerance_,
-//                 relTol_
+//                 controlDict_.subDict("smoothSolver")
 //             ).solve
 //             (
 //                 coarsestCorrField,
 //                 coarsestSource
 //             );
-            coarseSolverPerf = smoothSolver
-            (
-                "coarsestLevelCorr",
-                matrixLevels_[coarsestLevel],
-                interfaceLevelsBouCoeffs_[coarsestLevel],
-                interfaceLevelsIntCoeffs_[coarsestLevel],
-                interfaceLevels_[coarsestLevel],
-                controlDict_.subDict("smoothSolver")
-            ).solve
-            (
-                coarsestCorrField,
-                coarsestSource
-            );
-        }
+//         }
 
         if (debug >= 2)
         {
