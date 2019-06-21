@@ -43,6 +43,11 @@ Description
 #include "surfaceFields.H"
 #include "pointFields.H"
 
+#include "fvMeshTools.H"
+#include "zeroGradientFvPatchFields.H"
+#include "wallPolyPatch.H"
+#include "processorFvPatch.H"
+
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -124,45 +129,136 @@ int main(int argc, char *argv[])
     Info<< endl;
 
 
-    // Topo changes container
-    polyTopoChange meshMod(mesh);
-
-    // Insert mesh refinement into polyTopoChange.
-    faceRemover.setRefinement
-    (
-        facesToRemove,
-        cellRegion,
-        cellRegionMaster,
-        meshMod
-    );
-
-    // Creatr a meshPhi
-    mesh.movePoints(pointField(mesh.points()));
-    Pout<< "BEFORE: Is mesh moving:" << mesh.moving() << endl;
+    runTime++;
 
 
-    autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
-
-    mesh.updateMesh(morphMap);
-
-    // Move mesh (since morphing does not do this)
-    if (morphMap().hasMotionPoints())
+    // Mesh topology change
+    // ~~~~~~~~~~~~~~~~~~~~
     {
-        mesh.movePoints(morphMap().preMotionPoints());
+        // Topo changes container
+        polyTopoChange meshMod(mesh);
+
+        // Insert mesh refinement into polyTopoChange.
+        faceRemover.setRefinement
+        (
+            facesToRemove,
+            cellRegion,
+            cellRegionMaster,
+            meshMod
+        );
+
+        // Create a meshPhi
+        mesh.movePoints(pointField(mesh.points()));
+        Pout<< "BEFORE: Is mesh moving:" << mesh.moving() << endl;
+        Pout<< "BEFORE: oldPoints:" << mesh.oldPoints().size() << endl;
+        Pout<< "BEFORE: V:" << mesh.V().size() << endl;
+        Pout<< "BEFORE: V0:" << mesh.V0() << endl;
+        Pout<< "BEFORE: V00:" << mesh.V00() << endl;
+        Pout<< "BEFORE: phi:" << mesh.phi() << endl;
+
+        autoPtr<mapPolyMesh> morphMap = meshMod.changeMesh(mesh, false);
+
+        mesh.updateMesh(morphMap);
+
+        // Move mesh (since morphing does not do this)
+        if (morphMap().hasMotionPoints())
+        {
+            mesh.movePoints(morphMap().preMotionPoints());
+        }
+
+        // Update numbering of cells/vertices.
+        faceRemover.updateMesh(morphMap);
+
+        if (!overwrite)
+        {
+            runTime++;
+        }
+        else
+        {
+            mesh.setInstance(oldInstance);
+        }
+
+        Pout<< "AFTER: Is mesh moving:" << mesh.moving() << endl;
+        Pout<< "AFTER: Is mesh topoChanging:" << mesh.topoChanging() << endl;
+        Pout<< "AFTER: oldPoints:" << mesh.oldPoints().size() << endl;
+        Pout<< "AFTER: V:" << mesh.V().size() << endl;
+        Pout<< "AFTER: V0:" << mesh.V0() << endl;
+        Pout<< "AFTER: V00:" << mesh.V00() << endl;
+        Pout<< "AFTER: phi:" << mesh.phi() << endl;
     }
 
-    // Update numbering of cells/vertices.
-    faceRemover.updateMesh(morphMap);
 
-    if (!overwrite)
+    // Patch manipluation
+    // ~~~~~~~~~~~~~~~~~~
     {
-        runTime++;
+        mesh.movePoints(pointField(mesh.points()));
+
+        wallPolyPatch pp
+        (
+            "newPatch",
+            0,          // size
+            0,          // start
+            0,          // index
+            mesh.boundaryMesh(),
+            wallPolyPatch::typeName
+        );
+
+        label insertPatchi = mesh.boundary().size();
+        forAll(mesh.boundary(), patchi)
+        {
+            if (isA<processorFvPatch>(mesh.boundary()[patchi]))
+            {
+                insertPatchi = patchi;
+                break;
+            }
+        }
+
+        mesh.addPatch
+        (
+            insertPatchi,
+            pp,
+            dictionary::null,
+            zeroGradientFvPatchScalarField::typeName,
+            true            // validBoundary
+        );
+
+        Pout<< "AFTER: insertPatchi:" << insertPatchi << endl;
+        Pout<< "AFTER: Is mesh moving:" << mesh.moving() << endl;
+        Pout<< "AFTER: Is mesh topoChanging:" << mesh.topoChanging() << endl;
+        Pout<< "AFTER: oldPoints:" << mesh.oldPoints().size() << endl;
+        Pout<< "AFTER: V:" << mesh.V().size() << endl;
+        Pout<< "AFTER: V0:" << mesh.V0() << endl;
+        Pout<< "AFTER: V00:" << mesh.V00() << endl;
+        //Pout<< "AFTER: phi:" << mesh.phi() << endl;
+
+
+        labelList newToOld(mesh.boundary().size()-1);
+        label newPatchi = 0;
+        for (label patchi = 0; patchi < insertPatchi; patchi++)
+        {
+            newToOld[newPatchi++] = patchi;
+        }
+        for
+        (
+            label patchi = insertPatchi+1;
+            patchi < mesh.boundary().size();
+            patchi++
+        )
+        {
+            newToOld[newPatchi++] = patchi;
+        }
+        DebugVar(newToOld);
+        mesh.reorderPatches(newToOld, true);
+
+        Pout<< "AFTER: Is mesh moving:" << mesh.moving() << endl;
+        Pout<< "AFTER: Is mesh topoChanging:" << mesh.topoChanging() << endl;
+        Pout<< "AFTER: oldPoints:" << mesh.oldPoints().size() << endl;
+        Pout<< "AFTER: V:" << mesh.V().size() << endl;
+        Pout<< "AFTER: V0:" << mesh.V0() << endl;
+        Pout<< "AFTER: V00:" << mesh.V00() << endl;
+        //Pout<< "AFTER: phi:" << mesh.phi() << endl;
     }
-    else
-    {
-        mesh.setInstance(oldInstance);
-    }
-    Pout<< "AFTER: Is mesh moving:" << mesh.moving() << endl;
+
 
     // Take over refinement levels and write to new time directory.
     Pout<< "Writing mesh to time " << runTime.timeName() << endl;

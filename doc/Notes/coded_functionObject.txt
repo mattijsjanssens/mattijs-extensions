@@ -1,0 +1,19 @@
+// Write directed phi field for postprocessing
+functions
+{
+    phiS
+    {
+        type            coded;
+        libs            ("libutilityFunctionObjects.so");
+        name            phiS;
+
+        codeExecute
+        #{
+            const surfaceScalarField& phi =
+                mesh().lookupObject<surfaceScalarField>("phi");
+            surfaceVectorField phiS("phiS", phi*mesh().Sf()/mesh().magSf());
+            phiS.write();
+        #};
+    }
+
+}

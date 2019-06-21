@@ -9,3 +9,19 @@
   will it work.
 - and this means that you have to 'extend' the specification of the
   partial boundaries to be fully 1D.
+
+Mesh mapping
+------------
+Upon mesh motion/changeTopo/redistribution : all the state information
+needs to be preserved or mapped:
+
+polyMesh:
+                            changeTopo  patchmanip  redistributePar     restart
+- moving_/topoChanging_ :   ok          ok          
+- oldPointsPtr_         :   ok          ok
+- oldCellCentresPtr_    :   ?           ?
+
+fvMesh:
+- V0Ptr_                :   ok          ok
+- V00Ptr_               :   ok          ok
+- meshPhi               :   ok          cleared
