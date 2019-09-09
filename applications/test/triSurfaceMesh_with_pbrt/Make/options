@@ -1,0 +1,25 @@
+PBRTSRC = /home/mattijs/pub/pbrt/pbrt-v3/src
+GLOGSRC = $(HOME)/pub/pbrt/build/src/ext/glog
+
+EXE_INC = \
+    /* -g -DFULLDEBUG -O0 */ \
+    -I$(PBRTSRC)/core \
+    -I$(PBRTSRC) \
+    -I$(GLOGSRC) \
+    -I$(LIB_SRC)/mesh/snappyHexMesh/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/fileFormats/lnInclude \
+    -I$(LIB_SRC)/triSurface/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -ldecompositionMethods \
+    -L$(FOAM_LIBBIN)/dummy -lscotchDecomp -lptscotchDecomp \
+    -lmeshTools \
+    -lsurfMesh \
+    -lfileFormats \
+    -ldynamicMesh \
+    -lsnappyHexMesh
