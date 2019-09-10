@@ -39,6 +39,9 @@ Usage
 //#include "searchableSurfaces.H"
 //#include "IOdictionary.H"
 
+#define PBRT_CONSTEXPR constexpr
+#define PBRT_THREAD_LOCAL thread_local
+
 // core/api.cpp*
 #include "api.h"
 #include "parallel.h"
@@ -334,15 +337,38 @@ int main(int argc, char *argv[])
         )
     );
 
-    std::shared_ptr<Primitive> accel
+    std::vector<std::shared_ptr<pbrt::Primitive>> prims;
+    pbrt::ParamSet paramSet;
+    //int isectCost = paramSet.FindOneInt("intersectcost", 80);
+    //int travCost = paramSet.FindOneInt("traversalcost", 1);
+    //Float emptyBonus = paramSet.FindOneFloat("emptybonus", 0.5f);
+    //int maxPrims = paramSet.FindOneInt("maxprims", 1);
+    //int maxDepth = paramSet.FindOneInt("maxdepth", -1);
+
+    std::shared_ptr<pbrt::Primitive> accel
     (
-        CreateKdTreeAccelerator
+        pbrt::CreateKdTreeAccelerator
         (
             std::move(prims),
             paramSet
         )
     );
 
+
+    pbrt::Ray ray
+    (
+        Point3f(0.0, 0.0, 0.0),
+        Point3f(1.0, 1.0, 1.0)
+    );
+
+    pbrt::Float tHit;
+    pbrt::SurfaceInteraction isect;
+    bool intersects = accel.Intersect(ray, &tHit, &isect, false);
+
+    DebugVar(intersects);
+    DebugVar(tHit);
+    DebugVar(isect.p);
+    DebugVar(isect.n);
 
     Info<< "\nEnd\n" << endl;
 

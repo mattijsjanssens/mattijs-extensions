@@ -1,11 +1,19 @@
-PBRTSRC = /home/mattijs/pub/pbrt/pbrt-v3/src
-GLOGSRC = $(HOME)/pub/pbrt/build/src/ext/glog
+PBRT = /home/mattijs/pub/pbrt
+PBRTSRC = $(PBRT)/pbrt-v3/src
+EXTSRC = $(PBRT)/pbrt-v3/src/ext
+GLOGSRC = $(EXTSRC)/glog/src
+
+EXTBUILD = /home/mattijs/pub/pbrt/build/src/ext
+GLOGBUILD = $(EXTBUILD)/glog
 
 EXE_INC = \
+    -Wno-old-style-cast \
     /* -g -DFULLDEBUG -O0 */ \
     -I$(PBRTSRC)/core \
     -I$(PBRTSRC) \
+    -I$(EXTSRC) \
     -I$(GLOGSRC) \
+    -I$(GLOGBUILD) \
     -I$(LIB_SRC)/mesh/snappyHexMesh/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/fileFormats/lnInclude \
