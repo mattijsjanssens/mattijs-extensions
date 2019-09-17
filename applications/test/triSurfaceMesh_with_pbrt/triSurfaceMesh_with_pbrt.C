@@ -355,15 +355,14 @@ int main(int argc, char *argv[])
     );
 
 
-    pbrt::Ray ray
-    (
-        Point3f(0.0, 0.0, 0.0),
-        Point3f(1.0, 1.0, 1.0)
-    );
+    const pbrt::Point3f o(0.0, 0.0, 0.0);
+    const pbrt::Vector3f d(1.0, 1.0, 1.0);
+    pbrt::Ray ray(o, d);
 
     pbrt::Float tHit;
     pbrt::SurfaceInteraction isect;
-    bool intersects = accel.Intersect(ray, &tHit, &isect, false);
+    //bool intersects = accel->Intersect(ray, &tHit, &isect, false);
+    bool intersects = accel->Intersect(ray, &isect);
 
     DebugVar(intersects);
     DebugVar(tHit);
