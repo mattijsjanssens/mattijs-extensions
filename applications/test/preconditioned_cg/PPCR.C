@@ -23,22 +23,31 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "PPCG.H"
+#include "PPCR.H"
+#include <mpi.h>
+
+#if defined(WM_SP)
+    #define MPI_SCALAR MPI_FLOAT
+#elif defined(WM_DP)
+    #define MPI_SCALAR MPI_DOUBLE
+#elif defined(WM_LP)
+    #define MPI_SCALAR MPI_LONG_DOUBLE
+#endif
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(PPCG, 0);
+    defineTypeNameAndDebug(PPCR, 0);
 
-    lduMatrix::solver::addsymMatrixConstructorToTable<PPCG>
-        addPPCGSymMatrixConstructorToTable_;
+    lduMatrix::solver::addsymMatrixConstructorToTable<PPCR>
+        addPPCRSymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::PPCG::PPCG
+Foam::PPCR::PPCR
 (
     const word& fieldName,
     const lduMatrix& matrix,
@@ -62,7 +71,7 @@ Foam::PPCG::PPCG
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::solverPerformance Foam::PPCG::solve
+Foam::solverPerformance Foam::PPCR::solve
 (
     scalarField& psi,
     const scalarField& source,
@@ -76,28 +85,19 @@ Foam::solverPerformance Foam::PPCG::solve
         fieldName_
     );
 
-    label nCells = psi.size();
-
-    scalar* __restrict__ psiPtr = psi.begin();
-
-    scalarField pA(nCells);
-    scalar* __restrict__ pAPtr = pA.begin();
-
+    const label comm = matrix().mesh().comm();
+    const label nCells = psi.size();
+    scalarField p(nCells);
     scalarField wA(nCells);
-    scalar* __restrict__ wAPtr = wA.begin();
-
-    scalar wArA = solverPerf.great_;
-    scalar wArAold = wArA;
 
     // --- Calculate A.psi
     matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
 
     // --- Calculate initial residual field
-    scalarField rA(source - wA);
-    scalar* __restrict__ rAPtr = rA.begin();
+    scalarField r(source - wA);
 
     // --- Calculate normalisation factor
-    scalar normFactor = this->normFactor(psi, source, wA, pA);
+    scalar normFactor = this->normFactor(psi, source, wA, p);
 
     if (lduMatrix::debug >= 2)
     {
@@ -105,9 +105,7 @@ Foam::solverPerformance Foam::PPCG::solve
     }
 
     // --- Calculate normalised residual norm
-    solverPerf.initialResidual() =
-        gSumMag(rA, matrix().mesh().comm())
-       /normFactor;
+    solverPerf.initialResidual() = gSumMag(r, comm)/normFactor;
     solverPerf.finalResidual() = solverPerf.initialResidual();
 
     // --- Check convergence, solve if not converged
@@ -128,7 +126,7 @@ Foam::solverPerformance Foam::PPCG::solve
 
         // --- Precondition residual (= u0)
         scalarField u(nCells);
-        preconPtr->precondition(u, rA, cmpt);
+        preconPtr->precondition(u, r, cmpt);
 
         // --- Calculate A*u
         scalarField w(nCells);
@@ -136,23 +134,85 @@ Foam::solverPerformance Foam::PPCG::solve
 
 
         scalarField m(nCells);
+        scalarField n(nCells);
+        scalarField q(nCells);
+        scalarField z(nCells);
+
+        scalar gamma = 0.0;
+        scalar gammaOld;
+        scalar alpha = 0.0;
+        scalar alphaOld;
+
+        DynamicList<MPI_Request> outstandingRequests(2);
 
         // --- Solver iteration
         do
         {
-            // --- Store previous wArA
-            wArAold = wArA;
-
             // --- Precondition residual
             preconPtr->precondition(m, w, cmpt);
 
             // --- Update search directions:
-            const scalar gamma = gSumProd(w, u, matrix().mesh().comm());
-            const scalar delta = gSumProd(m, w, matrix().mesh().comm());
+            gammaOld = gamma;
+            gamma = gSumProd(w, u, comm);
+
+            //outstandingRequests.clear();
+            //gamma = sumProd(w, u);
+            //if (Pstream::parRun())
+            //{
+            //    scalar gammaLocal = gamma;
+            //    MPI_Request request;
+            //    MPI_Iallreduce
+            //    (
+            //        &gammaLocal,
+            //        &gamma,
+            //        int(1),     //MPICount,
+            //        MPI_SCALAR, //MPIType,
+            //        MPI_SUM,    //MPIOp,
+            //        MPI_COMM_WORLD,          //TBD. comm,
+            //        &request
+            //    );
+            //    outstandingRequests.append(request);
+            //}
+
+            const scalar delta = gSumProd(m, w, comm);
+            //scalar delta = sumProd(m, w);
+            //if (Pstream::parRun())
+            //{
+            //    scalar deltaLocal = delta;
+            //    MPI_Request request;
+            //    MPI_Iallreduce
+            //    (
+            //        &deltaLocal,
+            //        &delta,
+            //        int(1),     //MPICount,
+            //        MPI_SCALAR, //MPIType,
+            //        MPI_SUM,    //MPIOp,
+            //        MPI_COMM_WORLD,          //comm,
+            //        &request
+            //    );
+            //    outstandingRequests.append(request);
+            //}
+            //DebugVar(outstandingRequests.size());
 
             matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
 
-            scalar alpha;
+            // Make sure gamma,delta are available
+            if (outstandingRequests.size())
+            {
+                MPI_Waitall
+                (
+                    outstandingRequests.size(),
+                    outstandingRequests.begin(),
+                    MPI_STATUSES_IGNORE
+                );
+            }
+DebugVar(gSumProd(w, u, comm));
+DebugVar(gamma);
+DebugVar(gSumProd(m, w, comm));
+DebugVar(delta);
+
+
+            alphaOld = alpha;
             if (solverPerf.nIterations() == 0)
             {
                 alpha = gamma/delta;
@@ -162,8 +222,8 @@ Foam::solverPerformance Foam::PPCG::solve
             }
             else
             {
-                const scalar beta = gamma/gammaold;
-                alpha = gamma/(delta-beta*gamma/alphaold);
+                const scalar beta = gamma/gammaOld;
+                alpha = gamma/(delta-beta*gamma/alphaOld);
 
                 z = n + beta*z;
                 q = m + beta*q;
@@ -172,13 +232,15 @@ Foam::solverPerformance Foam::PPCG::solve
 
             for (label cell=0; cell<nCells; cell++)
             {
-                psiPtr[cell] += alpha*pAPtr[cell];
+                psi[cell] += alpha*p[cell];
                 u[cell] -= alpha*q[cell];
                 w[cell] -= alpha*z[cell];
             }
 
+            matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
+            r = source - wA;
             solverPerf.finalResidual() =
-                gSumMag(rA, matrix().mesh().comm())
+                gSumMag(r, comm)
                /normFactor;
 
         } while

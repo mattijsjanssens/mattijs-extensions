@@ -22,19 +22,23 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::PPCG
+    Foam::PPCR
 
 Description
-    Preconditioned conjugate gradient solver for symmetric lduMatrices
-    using a run-time selectable preconditioner.
+    Preconditioned pipelined conjugate residuals solver for symmetric
+    lduMatrices using a run-time selectable preconditioner.
+
+See
+    "Hiding global synchronization latency in the preconditioned Conjugate
+     Gradient algorithm", P. Ghysels, W. Vanroose
 
 SourceFiles
-    PPCG.C
+    PPCR.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef PPCG_H
-#define PPCG_H
+#ifndef PPCR_H
+#define PPCR_H
 
 #include "lduMatrix.H"
 
@@ -44,32 +48,32 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class PPCG Declaration
+                           Class PPCR Declaration
 \*---------------------------------------------------------------------------*/
 
-class PPCG
+class PPCR
 :
     public lduMatrix::solver
 {
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        PPCG(const PPCG&);
+        PPCR(const PPCR&);
 
         //- Disallow default bitwise assignment
-        void operator=(const PPCG&);
+        void operator=(const PPCR&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("PPCG");
+    TypeName("PPCR");
 
 
     // Constructors
 
         //- Construct from matrix components and solver controls
-        PPCG
+        PPCR
         (
             const word& fieldName,
             const lduMatrix& matrix,
@@ -81,7 +85,7 @@ public:
 
 
     //- Destructor
-    virtual ~PPCG()
+    virtual ~PPCR()
     {}
 
 
