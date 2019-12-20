@@ -337,6 +337,28 @@ int main(int argc, char *argv[])
         )
     );
 
+
+    const labelledTri& f = surf[0];
+
+    pbrt::Transform o2w;
+    pbrt::Transform w2o;
+
+
+    std::vector<std::shared_ptr<pbrt::Shape>> shapes
+    (
+        CreateTriangleMesh
+        (
+            &o2w,
+            &w2o,
+            false,  // bool reverseOrientation,
+            surf.size(),    //int nTriangles, 
+            const int *vertexIndices, int nVertices, const Point3f *p,
+    const Vector3f *s, const Normal3f *n, const Point2f *uv,
+    const std::shared_ptr<Texture<Float>> &alphaTexture,
+    const std::shared_ptr<Texture<Float>> &shadowAlphaTexture,
+    const int *faceIndices = nullptr)
+
+
     std::vector<std::shared_ptr<pbrt::Primitive>> prims;
     pbrt::ParamSet paramSet;
     //int isectCost = paramSet.FindOneInt("intersectcost", 80);
