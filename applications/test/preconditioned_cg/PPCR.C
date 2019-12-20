@@ -143,7 +143,9 @@ Foam::solverPerformance Foam::PPCR::solve
         scalar alpha = 0.0;
         scalar alphaOld;
 
-        DynamicList<MPI_Request> outstandingRequests(2);
+        scalarField localGammaDelta(2);
+        scalarField gammaDelta(2);
+        MPI_Request outstandingRequest;
 
         // --- Solver iteration
         do
@@ -153,64 +155,47 @@ Foam::solverPerformance Foam::PPCR::solve
 
             // --- Update search directions:
             gammaOld = gamma;
-            gamma = gSumProd(w, u, comm);
 
-            //outstandingRequests.clear();
-            //gamma = sumProd(w, u);
-            //if (Pstream::parRun())
-            //{
-            //    scalar gammaLocal = gamma;
-            //    MPI_Request request;
-            //    MPI_Iallreduce
-            //    (
-            //        &gammaLocal,
-            //        &gamma,
-            //        int(1),     //MPICount,
-            //        MPI_SCALAR, //MPIType,
-            //        MPI_SUM,    //MPIOp,
-            //        MPI_COMM_WORLD,          //TBD. comm,
-            //        &request
-            //    );
-            //    outstandingRequests.append(request);
-            //}
+            //gamma = gSumProd(w, u, comm);
+            localGammaDelta[0] = sumProd(w, u);
+            localGammaDelta[1] = sumProd(m, w);
 
-            const scalar delta = gSumProd(m, w, comm);
-            //scalar delta = sumProd(m, w);
-            //if (Pstream::parRun())
-            //{
-            //    scalar deltaLocal = delta;
-            //    MPI_Request request;
-            //    MPI_Iallreduce
-            //    (
-            //        &deltaLocal,
-            //        &delta,
-            //        int(1),     //MPICount,
-            //        MPI_SCALAR, //MPIType,
-            //        MPI_SUM,    //MPIOp,
-            //        MPI_COMM_WORLD,          //comm,
-            //        &request
-            //    );
-            //    outstandingRequests.append(request);
-            //}
-            //DebugVar(outstandingRequests.size());
+            if (Pstream::parRun())
+            {
+                const int err = MPI_Iallreduce
+                (
+                    localGammaDelta.cbegin(),
+                    gammaDelta.begin(),
+                    int(2),     //MPICount,
+                    MPI_SCALAR, //MPIType,
+                    MPI_SUM,    //MPIOp,
+                    MPI_COMM_WORLD,          //TBD. comm,
+                    &outstandingRequest
+                );
+                if (err)
+                {
+                    FatalErrorInFunction<< "Failed MPI_Iallreduce for "
+                        << localGammaDelta << exit(FatalError);
+                }
+            }
+            else
+            {
+                gammaDelta = localGammaDelta;
+            }
 
             matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
 
             // Make sure gamma,delta are available
-            if (outstandingRequests.size())
+            if (Pstream::parRun())
             {
-                MPI_Waitall
-                (
-                    outstandingRequests.size(),
-                    outstandingRequests.begin(),
-                    MPI_STATUSES_IGNORE
-                );
+                if (MPI_Wait(&outstandingRequest, MPI_STATUS_IGNORE))
+                {
+                    FatalErrorInFunction<< "Failed waiting for"
+                        << " MPI_Iallreduce request" << exit(FatalError);
+                }
             }
-DebugVar(gSumProd(w, u, comm));
-DebugVar(gamma);
-DebugVar(gSumProd(m, w, comm));
-DebugVar(delta);
-
+            gamma = gammaDelta[0];
+            const scalar delta = gammaDelta[1];
 
             alphaOld = alpha;
             if (solverPerf.nIterations() == 0)
