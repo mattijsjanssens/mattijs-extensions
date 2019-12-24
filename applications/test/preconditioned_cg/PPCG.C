@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "PPCR.H"
+#include "PPCG.H"
 #include <mpi.h>
 
 #if defined(WM_SP)
@@ -38,16 +38,16 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(PPCR, 0);
+    defineTypeNameAndDebug(PPCG, 0);
 
-    lduMatrix::solver::addsymMatrixConstructorToTable<PPCR>
-        addPPCRSymMatrixConstructorToTable_;
+    lduMatrix::solver::addsymMatrixConstructorToTable<PPCG>
+        addPPCGSymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::PPCR::PPCR
+Foam::PPCG::PPCG
 (
     const word& fieldName,
     const lduMatrix& matrix,
@@ -71,7 +71,7 @@ Foam::PPCR::PPCR
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::solverPerformance Foam::PPCR::solve
+Foam::solverPerformance Foam::PPCG::solve
 (
     scalarField& psi,
     const scalarField& source,
@@ -87,7 +87,6 @@ Foam::solverPerformance Foam::PPCR::solve
 
     const label comm = matrix().mesh().comm();
     const label nCells = psi.size();
-    scalarField p(nCells);
     scalarField wA(nCells);
 
     // --- Calculate A.psi
@@ -97,6 +96,7 @@ Foam::solverPerformance Foam::PPCR::solve
     scalarField r(source - wA);
 
     // --- Calculate normalisation factor
+    scalarField p(nCells);
     scalar normFactor = this->normFactor(psi, source, wA, p);
 
     if (lduMatrix::debug >= 2)
@@ -123,27 +123,9 @@ Foam::solverPerformance Foam::PPCR::solve
             controlDict_
         );
 
-
         // --- Precondition residual (= u0)
         scalarField u(nCells);
         preconPtr->precondition(u, r, cmpt);
-
-        scalar normFactor2;
-        {
-            scalarField psi2(nCells);
-            preconPtr->precondition(psi2, psi, cmpt);
-            scalarField source2(nCells);
-            preconPtr->precondition(source2, source, cmpt);
-            scalarField wA2(nCells);
-            matrix_.Amul(wA2, psi2, interfaceBouCoeffs_, interfaces_, cmpt);
-            normFactor2 = this->normFactor(psi2, source2, wA2, p);
-        }
-
-
-        Pout<< "Initial residual:" << nl
-            << "    residual:" << gSumMag(r, comm)/normFactor << nl
-            << "    precoditioned residual:" << gSumMag(u, comm)/normFactor2
-            << endl;
 
         // --- Calculate A*u
         scalarField w(nCells);
@@ -152,6 +134,9 @@ Foam::solverPerformance Foam::PPCR::solve
 
         scalarField m(nCells);
         scalarField n(nCells);
+
+
+        scalarField s(nCells);
         scalarField q(nCells);
         scalarField z(nCells);
 
@@ -165,15 +150,9 @@ Foam::solverPerformance Foam::PPCR::solve
         // --- Solver iteration
         do
         {
-            // --- Precondition residual
-            preconPtr->precondition(m, w, cmpt);
-
-            // --- Update search directions:
-            //gammaOld = gamma;
             //gamma = gSumProd(w, u, comm);
-            localGammaDelta[0] = sumProd(w, u);
-            localGammaDelta[1] = sumProd(m, w);
-
+            localGammaDelta[0] = sumProd(r, u);
+            localGammaDelta[1] = sumProd(w, u);
             if (Pstream::parRun())
             {
                 const int err = MPI_Iallreduce
@@ -197,6 +176,10 @@ Foam::solverPerformance Foam::PPCR::solve
                 gammaDelta = localGammaDelta;
             }
 
+            // --- Precondition residual
+            preconPtr->precondition(m, w, cmpt);
+
+            // --- Calculate A*m
             matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
 
             // Make sure gamma,delta are available
@@ -217,6 +200,7 @@ Foam::solverPerformance Foam::PPCR::solve
                 alpha = gamma/delta;
                 z = n;
                 q = m;
+                s = w;
                 p = u;
             }
             else
@@ -226,26 +210,19 @@ Foam::solverPerformance Foam::PPCR::solve
 
                 z = n + beta*z;
                 q = m + beta*q;
+                s = w + beta*s;
                 p = u + beta*p;
             }
 
             for (label cell=0; cell<nCells; cell++)
             {
                 psi[cell] += alpha*p[cell];
+                r[cell] -= alpha*s[cell];
                 u[cell] -= alpha*q[cell];
                 w[cell] -= alpha*z[cell];
             }
 
-            matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
-            r = source - wA;
-            solverPerf.finalResidual() =
-                gSumMag(r, comm)
-               /normFactor;
-
-            Pout<< "Final residual:" << nl
-                << "    residual:" << gSumMag(r, comm)/normFactor << nl
-                << "    precoditioned residual:"
-                << gSumMag(u, comm)/normFactor2 << endl;
+            solverPerf.finalResidual() = gSumMag(r, comm)/normFactor;
 
         } while
         (
