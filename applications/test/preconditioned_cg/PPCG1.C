@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "PPCG.H"
+#include "PPCG1.H"
 #include <mpi.h>
 
 #if defined(WM_SP)
@@ -38,16 +38,16 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(PPCG, 0);
+    defineTypeNameAndDebug(PPCG1, 0);
 
-    lduMatrix::solver::addsymMatrixConstructorToTable<PPCG>
-        addPPCGSymMatrixConstructorToTable_;
+    lduMatrix::solver::addsymMatrixConstructorToTable<PPCG1>
+        addPPCG1SymMatrixConstructorToTable_;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::PPCG::calcDirections
+void Foam::PPCG1::calcDirections
 (
     FixedList<scalar, 3>& globalSum,
     const scalarField& r,
@@ -63,14 +63,18 @@ void Foam::PPCG::calcDirections
     {
         globalSum[0] += w[cell]*u[cell];
         globalSum[1] += r[cell]*u[cell];
-        globalSum[2] += mag(u[cell]);
+
+        //- Convergence based on preconditioned residual
+        //globalSum[2] += mag(u[cell]);
+        //- Convergence based on non-preconditioned residual
+        globalSum[2] += mag(r[cell]);
     }
 
     if (Pstream::parRun())
     {
         const int err = MPI_Iallreduce
         (
-            MPI_IN_PLACE,   //globalSum.cbegin(),
+            MPI_IN_PLACE,       //globalSum.cbegin(),
             globalSum.begin(),
             globalSum.size(),   //MPICount,
             MPI_SCALAR,         //MPIType,
@@ -89,7 +93,7 @@ void Foam::PPCG::calcDirections
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::PPCG::PPCG
+Foam::PPCG1::PPCG1
 (
     const word& fieldName,
     const lduMatrix& matrix,
@@ -113,7 +117,7 @@ Foam::PPCG::PPCG
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::solverPerformance Foam::PPCG::solve
+Foam::solverPerformance Foam::PPCG1::solve
 (
     scalarField& psi,
     const scalarField& source,
@@ -168,36 +172,9 @@ Foam::solverPerformance Foam::PPCG::solve
     scalarField z(nCells);
 
 
+    // --- Start global reductions for inner products
     FixedList<scalar, 3> globalSum;
     MPI_Request outstandingRequest;
-
-//    globalSum = 0;
-//    for (label cell=0; cell<nCells; cell++)
-//    {
-//        globalSum[0] += w[cell]*u[cell];
-//        globalSum[1] += r[cell]*u[cell];
-//        globalSum[2] += mag(u[cell]);
-//    }
-//
-//    MPI_Request outstandingRequest;
-//    if (Pstream::parRun())
-//    {
-//        const int err = MPI_Iallreduce
-//        (
-//            MPI_IN_PLACE,   //globalSum.cbegin(),
-//            globalSum.begin(),
-//            globalSum.size(),   //MPICount,
-//            MPI_SCALAR,         //MPIType,
-//            MPI_SUM,            //MPIOp,
-//            MPI_COMM_WORLD,     //TBD. comm,
-//            &outstandingRequest
-//        );
-//        if (err)
-//        {
-//            FatalErrorInFunction<< "Failed MPI_Iallreduce for "
-//                << globalSum << exit(FatalError);
-//        }
-//    }
     calcDirections(globalSum, r, u, w, outstandingRequest);
 
     scalar alpha = 0.0;
@@ -230,7 +207,6 @@ Foam::solverPerformance Foam::PPCG::solve
                     << " MPI_Iallreduce request" << exit(FatalError);
             }
         }
-DebugVar(globalSum);
 
         const scalar delta = globalSum[0];
         const scalar gammaOld = gamma;
@@ -255,9 +231,8 @@ DebugVar(globalSum);
 
         if (solverPerf.nIterations() == 0)
         {
-DebugVar(gamma);
-DebugVar(delta);
             alpha = gamma/delta;
+
             z = n;
             q = m;
             s = w;
@@ -265,11 +240,7 @@ DebugVar(delta);
         }
         else
         {
-DebugVar(gammaOld);
-DebugVar(gamma);
-
             const scalar beta = gamma/gammaOld;
-DebugVar(beta);
             alpha = gamma/(delta-beta*gamma/alpha);
 
             for (label cell=0; cell<nCells; cell++)
@@ -289,32 +260,7 @@ DebugVar(beta);
             w[cell] -= alpha*z[cell];
         }
 
-        //globalSum = 0.0;
-        //for (label cell=0; cell<nCells; cell++)
-        //{
-        //    globalSum[0] += w[cell]*u[cell];
-        //    globalSum[1] += r[cell]*u[cell];
-        //    globalSum[2] += mag(u[cell]);
-        //}
-        //
-        //if (Pstream::parRun())
-        //{
-        //    const int err = MPI_Iallreduce
-        //    (
-        //        MPI_IN_PLACE,   //globalSum.cbegin(),
-        //        globalSum.begin(),
-        //        globalSum.size(),   //MPICount,
-        //        MPI_SCALAR,         //MPIType,
-        //        MPI_SUM,            //MPIOp,
-        //        MPI_COMM_WORLD,     //TBD. comm,
-        //        &outstandingRequest
-        //    );
-        //    if (err)
-        //    {
-        //        FatalErrorInFunction<< "Failed MPI_Iallreduce for "
-        //            << globalSum << exit(FatalError);
-        //    }
-        //}
+        // --- Start global reductions for inner products
         calcDirections(globalSum, r, u, w, outstandingRequest);
 
         // --- Precondition residual

@@ -198,6 +198,10 @@ Foam::solverPerformance Foam::PPCG::solve
             if (solverPerf.nIterations() == 0)
             {
                 alpha = gamma/delta;
+
+Pout<< "gamma:" << gamma << " delta:" << delta
+    << " alpha:" << alpha << endl;
+
                 z = n;
                 q = m;
                 s = w;
@@ -207,6 +211,12 @@ Foam::solverPerformance Foam::PPCG::solve
             {
                 const scalar beta = gamma/gammaOld;
                 alpha = gamma/(delta-beta*gamma/alpha);
+
+Pout<< "gamma:" << gamma << " gammaOld:" << gammaOld
+    << " delta:" << delta
+    << " alpha:" << alpha
+    << " beta:" << beta
+    << endl;
 
                 z = n + beta*z;
                 q = m + beta*q;

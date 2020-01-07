@@ -22,7 +22,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::PPCG
+    Foam::PPCG1
 
 Description
     Preconditioned pipelined conjugate gradient solver for symmetric
@@ -33,12 +33,12 @@ See
      Gradient algorithm", P. Ghysels, W. Vanroose
 
 SourceFiles
-    PPCG.C
+    PPCG1.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef PPCG_H
-#define PPCG_H
+#ifndef PPCG1_H
+#define PPCG1_H
 
 #include "lduMatrix.H"
 #include <mpi.h>
@@ -57,32 +57,41 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class PPCG Declaration
+                           Class PPCG1 Declaration
 \*---------------------------------------------------------------------------*/
 
-class PPCG
+class PPCG1
 :
     public lduMatrix::solver
 {
     // Private Member Functions
 
+        void calcDirections
+        (
+            FixedList<scalar, 3>& globalSum,
+            const scalarField& r,
+            const scalarField& u,
+            const scalarField& w,
+            MPI_Request& outstandingRequest
+        ) const;
+
         //- Disallow default bitwise copy construct
-        PPCG(const PPCG&);
+        PPCG1(const PPCG1&);
 
         //- Disallow default bitwise assignment
-        void operator=(const PPCG&);
+        void operator=(const PPCG1&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("PPCG");
+    TypeName("PPCG1");
 
 
     // Constructors
 
         //- Construct from matrix components and solver controls
-        PPCG
+        PPCG1
         (
             const word& fieldName,
             const lduMatrix& matrix,
@@ -94,7 +103,7 @@ public:
 
 
     //- Destructor
-    virtual ~PPCG()
+    virtual ~PPCG1()
     {}
 
 
