@@ -41,15 +41,15 @@ SourceFiles
 #define PPCG1_H
 
 #include "lduMatrix.H"
-#include <mpi.h>
-
-#if defined(WM_SP)
-    #define MPI_SCALAR MPI_FLOAT
-#elif defined(WM_DP)
-    #define MPI_SCALAR MPI_DOUBLE
-#elif defined(WM_LP)
-    #define MPI_SCALAR MPI_LONG_DOUBLE
-#endif
+//#include <mpi.h>
+//
+//#if defined(WM_SP)
+//    #define MPI_SCALAR MPI_FLOAT
+//#elif defined(WM_DP)
+//    #define MPI_SCALAR MPI_DOUBLE
+//#elif defined(WM_LP)
+//    #define MPI_SCALAR MPI_LONG_DOUBLE
+//#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -72,7 +72,8 @@ class PPCG1
             const scalarField& r,
             const scalarField& u,
             const scalarField& w,
-            MPI_Request& outstandingRequest
+            label& outstandingRequest,
+            const label comm
         ) const;
 
         //- Disallow default bitwise copy construct

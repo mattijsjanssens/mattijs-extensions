@@ -45,6 +45,52 @@ namespace Foam
 }
 
 
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::PPCG::calcDirections
+(
+    FixedList<scalar, 3>& globalSum,
+    const scalarField& r,
+    const scalarField& u,
+    const scalarField& w,
+    MPI_Request& outstandingRequest
+) const
+{
+    const label nCells = r.size();
+
+    globalSum = 0.0;
+    for (label cell=0; cell<nCells; cell++)
+    {
+        globalSum[0] += w[cell]*u[cell];
+        globalSum[1] += r[cell]*u[cell];
+
+        //- Convergence based on preconditioned residual
+        //globalSum[2] += mag(u[cell]);
+        //- Convergence based on non-preconditioned residual
+        globalSum[2] += mag(r[cell]);
+    }
+
+    if (Pstream::parRun())
+    {
+        const int err = MPI_Iallreduce
+        (
+            MPI_IN_PLACE,       //globalSum.cbegin(),
+            globalSum.begin(),
+            globalSum.size(),   //MPICount,
+            MPI_SCALAR,         //MPIType,
+            MPI_SUM,            //MPIOp,
+            MPI_COMM_WORLD,     //TBD. comm,
+            &outstandingRequest
+        );
+        if (err)
+        {
+            FatalErrorInFunction<< "Failed MPI_Iallreduce for "
+                << globalSum << exit(FatalError);
+        }
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::PPCG::PPCG
@@ -85,7 +131,6 @@ Foam::solverPerformance Foam::PPCG::solve
         fieldName_
     );
 
-    const label comm = matrix().mesh().comm();
     const label nCells = psi.size();
     scalarField wA(nCells);
 
@@ -97,151 +142,132 @@ Foam::solverPerformance Foam::PPCG::solve
 
     // --- Calculate normalisation factor
     scalarField p(nCells);
-    scalar normFactor = this->normFactor(psi, source, wA, p);
+    const scalar normFactor = this->normFactor(psi, source, wA, p);
 
     if (lduMatrix::debug >= 2)
     {
         Info<< "   Normalisation factor = " << normFactor << endl;
     }
 
-    // --- Calculate normalised residual norm
-    solverPerf.initialResidual() = gSumMag(r, comm)/normFactor;
-    solverPerf.finalResidual() = solverPerf.initialResidual();
-
-    // --- Check convergence, solve if not converged
-    if
+    // --- Select and construct the preconditioner
+    autoPtr<lduMatrix::preconditioner> preconPtr =
+    lduMatrix::preconditioner::New
     (
-        minIter_ > 0
-     || !solverPerf.checkConvergence(tolerance_, relTol_)
+        *this,
+        controlDict_
+    );
+
+    // --- Precondition residual (= u0)
+    scalarField u(nCells);
+    preconPtr->precondition(u, r, cmpt);
+
+    // --- Calculate A*u
+    scalarField w(nCells);
+    matrix_.Amul(w, u, interfaceBouCoeffs_, interfaces_, cmpt);
+
+
+    // State
+    scalarField s(nCells);
+    scalarField q(nCells);
+    scalarField z(nCells);
+
+
+    // --- Start global reductions for inner products
+    FixedList<scalar, 3> globalSum;
+    MPI_Request outstandingRequest;
+    calcDirections(globalSum, r, u, w, outstandingRequest);
+
+    scalar alpha = 0.0;
+
+
+    // --- Precondition residual
+    scalarField m(nCells);
+    preconPtr->precondition(m, w, cmpt);
+
+    // --- Calculate A*m
+    scalarField n(nCells);
+    matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
+
+    scalar gamma = 0.0;
+
+    // --- Solver iteration
+    for
+    (
+        solverPerf.nIterations() = 0;
+        solverPerf.nIterations() < maxIter_;
+        solverPerf.nIterations()++
     )
     {
-        // --- Select and construct the preconditioner
-        autoPtr<lduMatrix::preconditioner> preconPtr =
-        lduMatrix::preconditioner::New
-        (
-            *this,
-            controlDict_
-        );
-
-        // --- Precondition residual (= u0)
-        scalarField u(nCells);
-        preconPtr->precondition(u, r, cmpt);
-
-        // --- Calculate A*u
-        scalarField w(nCells);
-        matrix_.Amul(w, u, interfaceBouCoeffs_, interfaces_, cmpt);
-
-
-        scalarField m(nCells);
-        scalarField n(nCells);
-
-
-        scalarField s(nCells);
-        scalarField q(nCells);
-        scalarField z(nCells);
-
-        scalar gamma = 0.0;
-        scalar alpha = 0.0;
-
-        FixedList<scalar, 2> localGammaDelta(2);
-        FixedList<scalar, 2> gammaDelta(2);
-        MPI_Request outstandingRequest;
-
-        // --- Solver iteration
-        do
+        // Make sure gamma,delta are available
+        if (Pstream::parRun())
         {
-            //gamma = gSumProd(w, u, comm);
-            localGammaDelta[0] = sumProd(r, u);
-            localGammaDelta[1] = sumProd(w, u);
-            if (Pstream::parRun())
+            if (MPI_Wait(&outstandingRequest, MPI_STATUS_IGNORE))
             {
-                const int err = MPI_Iallreduce
-                (
-                    localGammaDelta.cbegin(),
-                    gammaDelta.begin(),
-                    int(2),     //MPICount,
-                    MPI_SCALAR, //MPIType,
-                    MPI_SUM,    //MPIOp,
-                    MPI_COMM_WORLD,          //TBD. comm,
-                    &outstandingRequest
-                );
-                if (err)
-                {
-                    FatalErrorInFunction<< "Failed MPI_Iallreduce for "
-                        << localGammaDelta << exit(FatalError);
-                }
+                FatalErrorInFunction<< "Failed waiting for"
+                    << " MPI_Iallreduce request" << exit(FatalError);
             }
-            else
-            {
-                gammaDelta = localGammaDelta;
-            }
+        }
 
-            // --- Precondition residual
-            preconPtr->precondition(m, w, cmpt);
+        const scalar delta = globalSum[0];
+        const scalar gammaOld = gamma;
+        gamma = globalSum[1];
 
-            // --- Calculate A*m
-            matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
+        solverPerf.finalResidual() = globalSum[2]/normFactor;
+        if (solverPerf.nIterations() == 0)
+        {
+            solverPerf.initialResidual() = solverPerf.finalResidual();
+        }
 
-            // Make sure gamma,delta are available
-            if (Pstream::parRun())
-            {
-                if (MPI_Wait(&outstandingRequest, MPI_STATUS_IGNORE))
-                {
-                    FatalErrorInFunction<< "Failed waiting for"
-                        << " MPI_Iallreduce request" << exit(FatalError);
-                }
-            }
-            const scalar gammaOld = gamma;
-            gamma = gammaDelta[0];
-            const scalar delta = gammaDelta[1];
+        // Check convergence (bypass if not enough iterations yet)
+        if
+        (
+            (minIter_ <= 0 || solverPerf.nIterations() >= minIter_)
+         && solverPerf.checkConvergence(tolerance_, relTol_)
+        )
+        {
+            break;
+        }
 
-            if (solverPerf.nIterations() == 0)
-            {
-                alpha = gamma/delta;
 
-Pout<< "gamma:" << gamma << " delta:" << delta
-    << " alpha:" << alpha << endl;
+        if (solverPerf.nIterations() == 0)
+        {
+            alpha = gamma/delta;
 
-                z = n;
-                q = m;
-                s = w;
-                p = u;
-            }
-            else
-            {
-                const scalar beta = gamma/gammaOld;
-                alpha = gamma/(delta-beta*gamma/alpha);
-
-Pout<< "gamma:" << gamma << " gammaOld:" << gammaOld
-    << " delta:" << delta
-    << " alpha:" << alpha
-    << " beta:" << beta
-    << endl;
-
-                z = n + beta*z;
-                q = m + beta*q;
-                s = w + beta*s;
-                p = u + beta*p;
-            }
+            z = n;
+            q = m;
+            s = w;
+            p = u;
+        }
+        else
+        {
+            const scalar beta = gamma/gammaOld;
+            alpha = gamma/(delta-beta*gamma/alpha);
 
             for (label cell=0; cell<nCells; cell++)
             {
-                psi[cell] += alpha*p[cell];
-                r[cell] -= alpha*s[cell];
-                u[cell] -= alpha*q[cell];
-                w[cell] -= alpha*z[cell];
+                z[cell] = n[cell] + beta*z[cell];
+                q[cell] = m[cell] + beta*q[cell];
+                s[cell] = w[cell] + beta*s[cell];
+                p[cell] = u[cell] + beta*p[cell];
             }
+        }
 
-            solverPerf.finalResidual() = gSumMag(r, comm)/normFactor;
+        for (label cell=0; cell<nCells; cell++)
+        {
+            psi[cell] += alpha*p[cell];
+            r[cell] -= alpha*s[cell];
+            u[cell] -= alpha*q[cell];
+            w[cell] -= alpha*z[cell];
+        }
 
-        } while
-        (
-            (
-              ++solverPerf.nIterations() < maxIter_
-            && !solverPerf.checkConvergence(tolerance_, relTol_)
-            )
-         || solverPerf.nIterations() < minIter_
-        );
+        // --- Start global reductions for inner products
+        calcDirections(globalSum, r, u, w, outstandingRequest);
+
+        // --- Precondition residual
+        preconPtr->precondition(m, w, cmpt);
+
+        // --- Calculate A*m
+        matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
     }
 
     return solverPerf;

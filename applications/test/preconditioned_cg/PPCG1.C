@@ -24,15 +24,15 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "PPCG1.H"
-#include <mpi.h>
-
-#if defined(WM_SP)
-    #define MPI_SCALAR MPI_FLOAT
-#elif defined(WM_DP)
-    #define MPI_SCALAR MPI_DOUBLE
-#elif defined(WM_LP)
-    #define MPI_SCALAR MPI_LONG_DOUBLE
-#endif
+//#include <mpi.h>
+//
+//#if defined(WM_SP)
+//    #define MPI_SCALAR MPI_FLOAT
+//#elif defined(WM_DP)
+//    #define MPI_SCALAR MPI_DOUBLE
+//#elif defined(WM_LP)
+//    #define MPI_SCALAR MPI_LONG_DOUBLE
+//#endif
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -53,7 +53,8 @@ void Foam::PPCG1::calcDirections
     const scalarField& r,
     const scalarField& u,
     const scalarField& w,
-    MPI_Request& outstandingRequest
+    label& outstandingRequest,
+    const label comm
 ) const
 {
     const label nCells = r.size();
@@ -72,21 +73,29 @@ void Foam::PPCG1::calcDirections
 
     if (Pstream::parRun())
     {
-        const int err = MPI_Iallreduce
+//        const int err = MPI_Iallreduce
+//        (
+//            MPI_IN_PLACE,       //globalSum.cbegin(),
+//            globalSum.begin(),
+//            globalSum.size(),   //MPICount,
+//            MPI_SCALAR,         //MPIType,
+//            MPI_SUM,            //MPIOp,
+//            MPI_COMM_WORLD,     //TBD. comm,
+//            &outstandingRequest
+//        );
+//        if (err)
+//        {
+//            FatalErrorInFunction<< "Failed MPI_Iallreduce for "
+//                << globalSum << exit(FatalError);
+//        }
+        Foam::reduce
         (
-            MPI_IN_PLACE,       //globalSum.cbegin(),
             globalSum.begin(),
-            globalSum.size(),   //MPICount,
-            MPI_SCALAR,         //MPIType,
-            MPI_SUM,            //MPIOp,
-            MPI_COMM_WORLD,     //TBD. comm,
-            &outstandingRequest
+            globalSum.size(),
+            Pstream::msgType(),
+            comm,
+            outstandingRequest
         );
-        if (err)
-        {
-            FatalErrorInFunction<< "Failed MPI_Iallreduce for "
-                << globalSum << exit(FatalError);
-        }
     }
 }
 
@@ -131,6 +140,7 @@ Foam::solverPerformance Foam::PPCG1::solve
         fieldName_
     );
 
+    const label comm = matrix().mesh().comm();
     const label nCells = psi.size();
     scalarField wA(nCells);
 
@@ -174,8 +184,8 @@ Foam::solverPerformance Foam::PPCG1::solve
 
     // --- Start global reductions for inner products
     FixedList<scalar, 3> globalSum;
-    MPI_Request outstandingRequest;
-    calcDirections(globalSum, r, u, w, outstandingRequest);
+    label outstandingRequest;
+    calcDirections(globalSum, r, u, w, outstandingRequest, comm);
 
     scalar alpha = 0.0;
 
@@ -201,11 +211,7 @@ Foam::solverPerformance Foam::PPCG1::solve
         // Make sure gamma,delta are available
         if (Pstream::parRun())
         {
-            if (MPI_Wait(&outstandingRequest, MPI_STATUS_IGNORE))
-            {
-                FatalErrorInFunction<< "Failed waiting for"
-                    << " MPI_Iallreduce request" << exit(FatalError);
-            }
+            Pstream::waitRequest(outstandingRequest);
         }
 
         const scalar delta = globalSum[0];
@@ -261,7 +267,7 @@ Foam::solverPerformance Foam::PPCG1::solve
         }
 
         // --- Start global reductions for inner products
-        calcDirections(globalSum, r, u, w, outstandingRequest);
+        calcDirections(globalSum, r, u, w, outstandingRequest, comm);
 
         // --- Precondition residual
         preconPtr->precondition(m, w, cmpt);

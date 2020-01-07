@@ -66,6 +66,15 @@ class PPCG
 {
     // Private Member Functions
 
+        void calcDirections
+        (
+            FixedList<scalar, 3>& globalSum,
+            const scalarField& r,
+            const scalarField& u,
+            const scalarField& w,
+            MPI_Request& outstandingRequest
+        ) const;
+
         //- Disallow default bitwise copy construct
         PPCG(const PPCG&);
 
