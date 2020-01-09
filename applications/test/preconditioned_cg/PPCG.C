@@ -177,9 +177,6 @@ Foam::solverPerformance Foam::PPCG::solve
     MPI_Request outstandingRequest;
     calcDirections(globalSum, r, u, w, outstandingRequest);
 
-    scalar alpha = 0.0;
-
-
     // --- Precondition residual
     scalarField m(nCells);
     preconPtr->precondition(m, w, cmpt);
@@ -188,6 +185,7 @@ Foam::solverPerformance Foam::PPCG::solve
     scalarField n(nCells);
     matrix_.Amul(n, m, interfaceBouCoeffs_, interfaces_, cmpt);
 
+    scalar alpha = 0.0;
     scalar gamma = 0.0;
 
     // --- Solver iteration
@@ -232,7 +230,6 @@ Foam::solverPerformance Foam::PPCG::solve
         if (solverPerf.nIterations() == 0)
         {
             alpha = gamma/delta;
-
             z = n;
             q = m;
             s = w;

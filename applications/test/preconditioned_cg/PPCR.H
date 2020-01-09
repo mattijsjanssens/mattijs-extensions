@@ -41,6 +41,15 @@ SourceFiles
 #define PPCR_H
 
 #include "lduMatrix.H"
+#include <mpi.h>
+
+#if defined(WM_SP)
+    #define MPI_SCALAR MPI_FLOAT
+#elif defined(WM_DP)
+    #define MPI_SCALAR MPI_DOUBLE
+#elif defined(WM_LP)
+    #define MPI_SCALAR MPI_LONG_DOUBLE
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,6 +65,16 @@ class PPCR
     public lduMatrix::solver
 {
     // Private Member Functions
+
+        void calcDirections
+        (
+            FixedList<scalar, 3>& globalSum,
+            const scalarField& m,
+            const scalarField& r,
+            const scalarField& u,
+            const scalarField& w,
+            MPI_Request& outstandingRequest
+        ) const;
 
         //- Disallow default bitwise copy construct
         PPCR(const PPCR&);
