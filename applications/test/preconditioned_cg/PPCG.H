@@ -28,9 +28,12 @@ Description
     Preconditioned pipelined conjugate gradient solver for symmetric
     lduMatrices using a run-time selectable preconditioner.
 
-See
-    "Hiding global synchronization latency in the preconditioned Conjugate
-     Gradient algorithm", P. Ghysels, W. Vanroose
+    Reference:
+    \verbatim
+        P. Ghysels, W. Vanroose.
+        "Hiding global synchronization latency in the
+         preconditioned Conjugate Gradient algorithm"
+    \endverbatim
 
 SourceFiles
     PPCG.C
@@ -66,20 +69,46 @@ class PPCG
 {
     // Private Member Functions
 
-        void calcDirections
+        ////- Non-blocking version of sum(a*b), sum(a*c), sum(mag(sumMag))
+        void gSumMagProd
         (
             FixedList<scalar, 3>& globalSum,
-            const scalarField& r,
-            const scalarField& u,
-            const scalarField& w,
+            const scalarField& a,
+            const scalarField& b,
+            const scalarField& c,
+            const scalarField& sumMag,
             MPI_Request& outstandingRequest
         ) const;
+        //- Non-blocking version of sum(a*b), sum(a*c), sum(mag(sumMag))
+        //void gSumMagProd
+        //(
+        //    FixedList<scalar, 3>& globalSum,
+        //    const scalarField& a,
+        //    const scalarField& b,
+        //    const scalarField& c,
+        //    const scalarField& sumMag,
+        //    label& outstandingRequest,
+        //    const label comm
+        //) const;
 
         //- Disallow default bitwise copy construct
         PPCG(const PPCG&);
 
         //- Disallow default bitwise assignment
         void operator=(const PPCG&);
+
+
+protected:
+
+        //- CG solver. Operates either in conjugate-gradient mode or
+        //  conjugate residual
+        solverPerformance solve
+        (
+            scalarField& psi,
+            const scalarField& source,
+            const direction cmpt,
+            const bool cgMode
+        ) const;
 
 
 public:
