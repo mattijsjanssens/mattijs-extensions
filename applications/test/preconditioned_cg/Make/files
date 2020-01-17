@@ -1,5 +1,13 @@
-PPCR.C
+/*
+GAMGSolverAgglomerateMatrix.C
+GAMGSolver.C
+GAMGSolverInterpolate.C
+GAMGSolverScale.C
+GAMGSolverSolve.C
+*/
+
 PPCG.C
-PPCG1.C
+PPCR.C
+/* PPCG_mpi.C */
 
 LIB = $(FOAM_USER_LIBBIN)/libPPCR

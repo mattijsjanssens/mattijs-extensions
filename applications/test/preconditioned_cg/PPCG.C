@@ -24,15 +24,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "PPCG.H"
-//#include <mpi.h>
-//
-//#if defined(WM_SP)
-//    #define MPI_SCALAR MPI_FLOAT
-//#elif defined(WM_DP)
-//    #define MPI_SCALAR MPI_DOUBLE
-//#elif defined(WM_LP)
-//    #define MPI_SCALAR MPI_LONG_DOUBLE
-//#endif
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -54,7 +45,8 @@ void Foam::PPCG::gSumMagProd
     const scalarField& b,
     const scalarField& c,
     const scalarField& sumMag,
-    MPI_Request& outstandingRequest
+    label& outstandingRequest,
+    const label comm
 ) const
 {
     const label nCells = a.size();
@@ -69,21 +61,14 @@ void Foam::PPCG::gSumMagProd
 
     if (Pstream::parRun())
     {
-        const int err = MPI_Iallreduce
+        Foam::reduce
         (
-            MPI_IN_PLACE,       //globalSum.cbegin(),
             globalSum.begin(),
-            globalSum.size(),   //MPICount,
-            MPI_SCALAR,         //MPIType,
-            MPI_SUM,            //MPIOp,
-            MPI_COMM_WORLD,     //TBD. comm,
-            &outstandingRequest
+            globalSum.size(),
+            Pstream::msgType(),
+            comm,
+            outstandingRequest
         );
-        if (err)
-        {
-            FatalErrorInFunction<< "Failed MPI_Iallreduce for "
-                << globalSum << exit(FatalError);
-        }
     }
 }
 
@@ -99,22 +84,23 @@ Foam::solverPerformance Foam::PPCG::solve
     // --- Setup class containing solver performance data
     solverPerformance solverPerf
     (
-        lduMatrix::preconditioner::getName(controlDict_) + typeName,
+        lduMatrix::preconditioner::getName(controlDict_) + type(),
         fieldName_
     );
 
+    const label comm = matrix().mesh().comm();
     const label nCells = psi.size();
-    scalarField wA(nCells);
+    scalarField w(nCells);
 
     // --- Calculate A.psi
-    matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
+    matrix_.Amul(w, psi, interfaceBouCoeffs_, interfaces_, cmpt);
 
     // --- Calculate initial residual field
-    scalarField r(source - wA);
+    scalarField r(source - w);
 
     // --- Calculate normalisation factor
     scalarField p(nCells);
-    const scalar normFactor = this->normFactor(psi, source, wA, p);
+    const scalar normFactor = this->normFactor(psi, source, w, p);
 
     if (lduMatrix::debug >= 2)
     {
@@ -133,8 +119,7 @@ Foam::solverPerformance Foam::PPCG::solve
     scalarField u(nCells);
     preconPtr->precondition(u, r, cmpt);
 
-    // --- Calculate A*u
-    scalarField w(nCells);
+    // --- Calculate A*u - reuse w
     matrix_.Amul(w, u, interfaceBouCoeffs_, interfaces_, cmpt);
 
 
@@ -146,11 +131,11 @@ Foam::solverPerformance Foam::PPCG::solve
     scalarField m(nCells);
 
     FixedList<scalar, 3> globalSum;
-    MPI_Request outstandingRequest;
+    label outstandingRequest = -1;
     if (cgMode)
     {
         // --- Start global reductions for inner products
-        gSumMagProd(globalSum, u, r, w, r, outstandingRequest);
+        gSumMagProd(globalSum, u, r, w, r, outstandingRequest, comm);
 
         // --- Precondition residual
         preconPtr->precondition(m, w, cmpt);
@@ -161,7 +146,7 @@ Foam::solverPerformance Foam::PPCG::solve
         preconPtr->precondition(m, w, cmpt);
 
         // --- Start global reductions for inner products
-        gSumMagProd(globalSum, w, u, m, r, outstandingRequest);
+        gSumMagProd(globalSum, w, u, m, r, outstandingRequest, comm);
     }
 
     // --- Calculate A*m
@@ -182,11 +167,8 @@ Foam::solverPerformance Foam::PPCG::solve
         // Make sure gamma,delta are available
         if (Pstream::parRun())
         {
-            if (MPI_Wait(&outstandingRequest, MPI_STATUS_IGNORE))
-            {
-                FatalErrorInFunction<< "Failed waiting for"
-                    << " MPI_Iallreduce request" << exit(FatalError);
-            }
+            Pstream::waitRequest(outstandingRequest);
+            outstandingRequest = -1;
         }
 
         const scalar gammaOld = gamma;
@@ -243,7 +225,7 @@ Foam::solverPerformance Foam::PPCG::solve
         if (cgMode)
         {
             // --- Start global reductions for inner products
-            gSumMagProd(globalSum, u, r, w, r, outstandingRequest);
+            gSumMagProd(globalSum, u, r, w, r, outstandingRequest, comm);
 
             // --- Precondition residual
             preconPtr->precondition(m, w, cmpt);
@@ -254,7 +236,7 @@ Foam::solverPerformance Foam::PPCG::solve
             preconPtr->precondition(m, w, cmpt);
 
             // --- Start global reductions for inner products
-            gSumMagProd(globalSum, w, u, m, r, outstandingRequest);
+            gSumMagProd(globalSum, w, u, m, r, outstandingRequest, comm);
         }
 
         // --- Calculate A*m

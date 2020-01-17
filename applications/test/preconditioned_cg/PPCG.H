@@ -44,15 +44,6 @@ SourceFiles
 #define PPCG_H
 
 #include "lduMatrix.H"
-#include <mpi.h>
-
-#if defined(WM_SP)
-    #define MPI_SCALAR MPI_FLOAT
-#elif defined(WM_DP)
-    #define MPI_SCALAR MPI_DOUBLE
-#elif defined(WM_LP)
-    #define MPI_SCALAR MPI_LONG_DOUBLE
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -69,7 +60,7 @@ class PPCG
 {
     // Private Member Functions
 
-        ////- Non-blocking version of sum(a*b), sum(a*c), sum(mag(sumMag))
+        //- Non-blocking version of sum(a*b), sum(a*c), sum(mag(sumMag))
         void gSumMagProd
         (
             FixedList<scalar, 3>& globalSum,
@@ -77,19 +68,9 @@ class PPCG
             const scalarField& b,
             const scalarField& c,
             const scalarField& sumMag,
-            MPI_Request& outstandingRequest
+            label& outstandingRequest,
+            const label comm
         ) const;
-        //- Non-blocking version of sum(a*b), sum(a*c), sum(mag(sumMag))
-        //void gSumMagProd
-        //(
-        //    FixedList<scalar, 3>& globalSum,
-        //    const scalarField& a,
-        //    const scalarField& b,
-        //    const scalarField& c,
-        //    const scalarField& sumMag,
-        //    label& outstandingRequest,
-        //    const label comm
-        //) const;
 
         //- Disallow default bitwise copy construct
         PPCG(const PPCG&);
