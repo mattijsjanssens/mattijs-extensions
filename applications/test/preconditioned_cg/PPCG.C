@@ -104,17 +104,17 @@ Foam::solverPerformance Foam::PPCG::solve
     );
 
     const label nCells = psi.size();
-    scalarField wA(nCells);
+    scalarField w(nCells);
 
     // --- Calculate A.psi
-    matrix_.Amul(wA, psi, interfaceBouCoeffs_, interfaces_, cmpt);
+    matrix_.Amul(w, psi, interfaceBouCoeffs_, interfaces_, cmpt);
 
     // --- Calculate initial residual field
-    scalarField r(source - wA);
+    scalarField r(source - w);
 
     // --- Calculate normalisation factor
     scalarField p(nCells);
-    const scalar normFactor = this->normFactor(psi, source, wA, p);
+    const scalar normFactor = this->normFactor(psi, source, w, p);
 
     if (lduMatrix::debug >= 2)
     {
@@ -133,8 +133,7 @@ Foam::solverPerformance Foam::PPCG::solve
     scalarField u(nCells);
     preconPtr->precondition(u, r, cmpt);
 
-    // --- Calculate A*u
-    scalarField w(nCells);
+    // --- Calculate A*u - reuse w
     matrix_.Amul(w, u, interfaceBouCoeffs_, interfaces_, cmpt);
 
 
