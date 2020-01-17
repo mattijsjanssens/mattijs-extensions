@@ -1,13 +1,10 @@
-/*
 GAMGSolverAgglomerateMatrix.C
 GAMGSolver.C
 GAMGSolverInterpolate.C
 GAMGSolverScale.C
 GAMGSolverSolve.C
-*/
 
 PPCG.C
 PPCR.C
-/* PPCG_mpi.C */
 
 LIB = $(FOAM_USER_LIBBIN)/libPPCR

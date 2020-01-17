@@ -23,16 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "PPCG.H"
-//#include <mpi.h>
-//
-//#if defined(WM_SP)
-//    #define MPI_SCALAR MPI_FLOAT
-//#elif defined(WM_DP)
-//    #define MPI_SCALAR MPI_DOUBLE
-//#elif defined(WM_LP)
-//    #define MPI_SCALAR MPI_LONG_DOUBLE
-//#endif
+#include "PPCG_Pstream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
