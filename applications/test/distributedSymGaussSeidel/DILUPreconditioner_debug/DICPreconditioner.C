@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
+   \\    /   O peration     | Website:  https://openfoam.org
     \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
@@ -24,6 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "DICPreconditioner.H"
+#include "processorLduInterface.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -48,7 +49,105 @@ Foam::DICPreconditioner_debug::DICPreconditioner_debug
     lduMatrix::preconditioner(sol),
     rD_(sol.matrix().diag())
 {
-    calcReciprocalD(rD_, sol.matrix());
+    const lduInterfaceFieldPtrsList& interfaces = sol.interfaces();
+    const FieldField<Field, scalar>& interfaceBouCoeffs =
+        sol.interfaceBouCoeffs();
+
+    // Pre-calculate 'left' and 'right' processor interfaces
+    DynamicList<label> lowerInterfaces(interfaces.size());
+    DynamicList<label> upperInterfaces(interfaces.size());
+    {
+        forAll(interfaces, inti)
+        {
+            if
+            (
+                interfaces.set(inti)
+             && isA<processorLduInterface>(interfaces[inti].interface())
+            )
+            {
+                const processorLduInterface& procInt =
+                refCast<const processorLduInterface>
+                (
+                    interfaces[inti].interface()
+                );
+
+                Pout<< "    interface:" << inti
+                    << " type:" << interfaces[inti].interface().type()
+                    << " myProcNo:" << procInt.myProcNo()
+                    << " neighbProcNo:" << procInt.neighbProcNo()
+                    << endl;
+
+                if (procInt.neighbProcNo() > procInt.myProcNo())
+                {
+                    upperInterfaces.append(inti);
+                }
+                else
+                {
+                    lowerInterfaces.append(inti);
+                }
+            }
+        }
+        Pout<< "lowerInterfaces:" << lowerInterfaces << endl;
+        Pout<< "upperInterfaces:" << upperInterfaces << endl;
+    }
+
+
+    calcReciprocalD
+    (
+        rD_,
+        sol.matrix(),
+        interfaces,
+        interfaceBouCoeffs,
+        lowerInterfaces,
+        upperInterfaces,
+        direction(0)                   //cmpt
+    );
+
+
+    // Calculate coefficients for only including lower/upper processors
+    
+    lowerCoeffs_.setSize(interfaceBouCoeffs.size());
+    upperCoeffs_.setSize(interfaceBouCoeffs.size());
+    for (const label inti : lowerInterfaces)
+    {
+        lowerCoeffs_.set
+        (
+            inti,
+            new scalarField(-1.0*interfaceBouCoeffs[inti])
+        );
+        lowerCoeffs_[inti] *=
+            scalarField
+            (
+                rD_,
+                interfaces[inti].interface().faceCells()
+            );
+
+        upperCoeffs_.set
+        (
+            inti,
+            new scalarField(-1.0*interfaceBouCoeffs[inti])
+        );
+        upperCoeffs_[inti] *=
+            scalarField
+            (
+                rD_,
+                interfaces[inti].interface().faceCells()
+            );                        
+    }
+    for (const label inti : upperInterfaces)
+    {
+        lowerCoeffs_.set
+        (
+            inti,
+            new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
+        );
+
+        upperCoeffs_.set
+        (
+            inti,
+            new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
+        );
+    }
 }
 
 
@@ -57,7 +156,12 @@ Foam::DICPreconditioner_debug::DICPreconditioner_debug
 void Foam::DICPreconditioner_debug::calcReciprocalD
 (
     scalarField& rD,
-    const lduMatrix& matrix
+    const lduMatrix& matrix,
+    const lduInterfaceFieldPtrsList& interfaces,
+    const FieldField<Field, scalar>& interfaceBouCoeffs,
+    const labelList& lowerInterfaces,
+    const labelList& upperInterfaces,
+    const direction cmpt
 )
 {
     scalar* __restrict__ rDPtr = rD.begin();
@@ -66,18 +170,63 @@ void Foam::DICPreconditioner_debug::calcReciprocalD
     const label* const __restrict__ lPtr = matrix.lduAddr().lowerAddr().begin();
     const scalar* const __restrict__ upperPtr = matrix.upper().begin();
 
+    // Subtract coupled contributions to the DIC diagonal
+    {
+        scalarField invRd(matrix.diag());
+        forAll(invRd, cell)
+        {
+            invRd[cell] = 1.0/invRd[cell];
+        }
+
+        FieldField<Field, scalar> coeffs(interfaceBouCoeffs.size());
+        for (const label inti : lowerInterfaces)
+        {
+            coeffs.set
+            (
+                inti,
+                new scalarField
+                (
+                    1.0
+                   *interfaceBouCoeffs[inti]
+                   *interfaceBouCoeffs[inti]
+                )
+            );
+        }
+        for (const label inti : upperInterfaces)
+        {
+            coeffs.set
+            (
+                inti,
+                new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
+            );
+        }
+
+        const label startRequest = Pstream::nRequests();
+        matrix.initMatrixInterfaces
+        (
+            coeffs,
+            interfaces,
+            invRd,
+            rD,
+            cmpt                
+        );
+        matrix.updateMatrixInterfaces
+        (
+            coeffs,
+            interfaces,
+            invRd,
+            rD,
+            cmpt,
+            startRequest              
+        );
+    }
+
+
     // Calculate the DIC diagonal
     const label nFaces = matrix.upper().size();
     for (label face=0; face<nFaces; face++)
     {
-        Pout<< "For face:" << face
-            << " adapting diagonal for cell:" << uPtr[face]
-            << " contributions from cell:" << lPtr[face]
-            << " from " << rDPtr[uPtr[face]];
-
         rDPtr[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rDPtr[lPtr[face]];
-
-        Pout<< " to " << rDPtr[uPtr[face]] << endl;
     }
 
 
@@ -91,13 +240,11 @@ void Foam::DICPreconditioner_debug::calcReciprocalD
 }
 
 
-
-// Calculate P^-1*rA
 void Foam::DICPreconditioner_debug::precondition
 (
     scalarField& wA,
     const scalarField& rA,
-    const direction
+    const direction cmpt
 ) const
 {
     scalar* __restrict__ wAPtr = wA.begin();
@@ -111,6 +258,8 @@ void Foam::DICPreconditioner_debug::precondition
     const scalar* const __restrict__ upperPtr =
         solver_.matrix().upper().begin();
 
+    const lduInterfaceFieldPtrsList& interfaces = solver_.interfaces();
+
     label nCells = wA.size();
     label nFaces = solver_.matrix().upper().size();
     label nFacesM1 = nFaces - 1;
@@ -120,23 +269,57 @@ void Foam::DICPreconditioner_debug::precondition
         wAPtr[cell] = rDPtr[cell]*rAPtr[cell];
     }
 
+    // Do contributions from lower processors
+    {
+        const label startRequest = Pstream::nRequests();
+        solver_.matrix().initMatrixInterfaces
+        (
+            lowerCoeffs_,
+            interfaces,
+            wA,
+            wA,
+            cmpt                
+        );
+        solver_.matrix().updateMatrixInterfaces
+        (
+            lowerCoeffs_,
+            interfaces,
+            wA,
+            wA,
+            cmpt,
+            startRequest              
+        );
+    }
+
     for (label face=0; face<nFaces; face++)
     {
-        Pout<< "For face:" << face
-            << " adapting cell:" << uPtr[face]
-            << " for contributions from:" << lPtr[face]
-            << endl;
-
         wAPtr[uPtr[face]] -= rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
+    }
+
+    // Do contributions from higher processors
+    {
+        const label startRequest = Pstream::nRequests();
+        solver_.matrix().initMatrixInterfaces
+        (
+            upperCoeffs_,
+            interfaces,
+            wA,
+            wA,
+            cmpt                
+        );
+        solver_.matrix().updateMatrixInterfaces
+        (
+            upperCoeffs_,
+            interfaces,
+            wA,
+            wA,
+            cmpt,
+            startRequest              
+        );
     }
 
     for (label face=nFacesM1; face>=0; face--)
     {
-        Pout<< "For face:" << face
-            << " adapting cell:" << lPtr[face]
-            << " for contributions from:" << uPtr[face]
-            << endl;
-
         wAPtr[lPtr[face]] -= rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
     }
 }

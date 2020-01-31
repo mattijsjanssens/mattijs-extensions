@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
+   \\    /   O peration     | Website:  https://openfoam.org
     \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
@@ -57,6 +57,12 @@ class DICPreconditioner_debug
         //- The reciprocal preconditioned diagonal
         scalarField rD_;
 
+        //- Boundary coefficients from lower numbered processors
+        FieldField<Field, scalar> lowerCoeffs_;
+
+        //- Boundary coefficients from higher numbered processors
+        FieldField<Field, scalar> upperCoeffs_;
+
 
 public:
 
@@ -82,7 +88,16 @@ public:
     // Member Functions
 
         //- Calculate the reciprocal of the preconditioned diagonal
-        static void calcReciprocalD(scalarField& rD, const lduMatrix& matrix);
+        static void calcReciprocalD
+        (
+            scalarField& rD,
+            const lduMatrix& matrix,
+            const lduInterfaceFieldPtrsList& interfaces,
+            const FieldField<Field, scalar>& interfaceBouCoeffs,
+            const labelList& lowerInterfaces,
+            const labelList& upperInterfaces,
+            const direction cmpt
+        );
 
         //- Return wA the preconditioned form of residual rA
         virtual void precondition

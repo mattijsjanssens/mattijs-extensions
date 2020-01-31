@@ -19,7 +19,7 @@ solvers
 {
     T
     {
-        solver          PCG_debug;
+        solver          PCG;    //PCG_debug;
         preconditioner  DIC_debug;
         tolerance       1e-06;
         relTol          0.05;

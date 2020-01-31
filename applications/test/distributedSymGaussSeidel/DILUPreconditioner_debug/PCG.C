@@ -37,51 +37,63 @@ namespace Foam
 }
 
 
-void Foam::PCG_debug::updateMatrixInterfaces
-(
-    const FieldField<Field, scalar>& coupleCoeffs,
-    const lduInterfaceFieldPtrsList& interfaces,
-    const labelUList& selectedInterfaces,
-    const scalarField& psiif,
-    scalarField& result,
-    const direction cmpt
-) const
-{
-    forAll(selectedInterfaces, i)
-    {
-        label interfacei = selectedInterfaces[i];
-
-        interfaces[interfacei].initInterfaceMatrixUpdate
-        (
-            result,
-            psiif,
-            coupleCoeffs[interfacei],
-            cmpt,
-            Pstream::defaultCommsType
-        );
-    }
-
-    // Block for all requests and remove storage
-    UPstream::waitRequests();
-
-    forAll(selectedInterfaces, i)
-    {
-        label interfacei = selectedInterfaces[i];
-        interfaces[interfacei].updateInterfaceMatrix
-        (
-            result,
-            psiif,
-            coupleCoeffs[interfacei],
-            cmpt,
-            Pstream::defaultCommsType
-        );
-
-        Pout<< "   interface:" << interfacei
-            << " adding contributions with weigts:" << coupleCoeffs[interfacei]
-            << " to cells:" << interfaces[interfacei].interface().faceCells()
-            << endl;
-    }
-}
+//void Foam::PCG_debug::updateMatrixInterfaces
+//(
+//    const FieldField<Field, scalar>& coupleCoeffs,
+//    const lduInterfaceFieldPtrsList& interfaces,
+//    const labelUList& selectedInterfaces,
+//    const scalarField& psiif,
+//    scalarField& result,
+//    const direction cmpt
+//) const
+//{
+//    forAll(selectedInterfaces, i)
+//    {
+//        label interfacei = selectedInterfaces[i];
+//
+//        if (interfaces.set(interfacei))
+//        {
+//            Pout<< "   interface:" << interfacei
+//                << " sending fCells of " << psiif
+//                << endl;
+//
+//            interfaces[interfacei].initInterfaceMatrixUpdate
+//            (
+//                result,
+//                psiif,
+//                coupleCoeffs[interfacei],
+//                cmpt,
+//                Pstream::defaultCommsType
+//            );
+//        }
+//    }
+//
+//    // Block for all requests and remove storage
+//    UPstream::waitRequests();
+//
+//    forAll(selectedInterfaces, i)
+//    {
+//        label interfacei = selectedInterfaces[i];
+//        if (interfaces.set(interfacei))
+//        {
+//            interfaces[interfacei].updateInterfaceMatrix
+//            (
+//                result,
+//                psiif,
+//                coupleCoeffs[interfacei],
+//                cmpt,
+//                Pstream::defaultCommsType
+//            );
+//
+//            Pout<< "   interface:" << interfacei
+//                << " adding " << psiif
+//                << " with weigts:" << coupleCoeffs[interfacei]
+//                << " to cells:"
+//                << interfaces[interfacei].interface().faceCells()
+//                << endl;
+//        }
+//    }
+//}
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -160,8 +172,8 @@ Foam::solverPerformance Foam::PCG_debug::solve
             }
         }
     }
-    Pout<< "lowerInterfaces:" << lowerInterfaces << endl;
-    Pout<< "upperInterfaces:" << upperInterfaces << endl;
+    //Pout<< "lowerInterfaces:" << lowerInterfaces << endl;
+    //Pout<< "upperInterfaces:" << upperInterfaces << endl;
 
     scalar* __restrict__ psiPtr = psi.begin();
 
@@ -230,18 +242,48 @@ DebugVar(interfaceBouCoeffs_);
             {
                 invRd[cell] = 1.0/invRd[cell];
             }
-            FieldField<Field, scalar> coeffs
-            (
-                1.0*interfaceBouCoeffs_*interfaceBouCoeffs_
-            );
-            updateMatrixInterfaces
+DebugVar(invRd);
+
+            FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
+            for (const label inti : lowerInterfaces)
+            {
+                coeffs.set
+                (
+                    inti,
+                    new scalarField
+                    (
+                        1.0
+                       *interfaceBouCoeffs_[inti]
+                       *interfaceBouCoeffs_[inti]
+                    )
+                );
+            }
+            for (const label inti : upperInterfaces)
+            {
+                coeffs.set
+                (
+                    inti,
+                    new scalarField(interfaceBouCoeffs_[inti].size(), 0.0)
+                );
+            }
+
+            const label startRequest = Pstream::nRequests();
+            matrix().initMatrixInterfaces
             (
                 coeffs,
                 interfaces_,
-                lowerInterfaces,
                 invRd,
                 rD_,
-                cmpt
+                cmpt                
+            );
+            matrix().updateMatrixInterfaces
+            (
+                coeffs,
+                interfaces_,
+                invRd,
+                rD_,
+                cmpt,
+                startRequest              
             );
 
             forAll(rD_, cell)
@@ -254,8 +296,11 @@ DebugVar(interfaceBouCoeffs_);
             for (label face=0; face<nFaces; face++)
             {
                 Pout<< "For face:" << face
-                    << " adapting diagonal for cell:" << uPtr[face]
-                    << " contributions from cell:" << lPtr[face]
+                    << " adapting diagonal for uppercell:" << uPtr[face]
+                    << " weight:" << upperPtr[face]
+                    << " contributions from lowercell:" << lPtr[face]
+                    << " lowerContrib:"
+                    << upperPtr[face]*upperPtr[face]/rD_[lPtr[face]]
                     << " from " << rD_[uPtr[face]];
 
                 rD_[uPtr[face]] -=
@@ -305,31 +350,48 @@ DebugVar(interfaceBouCoeffs_);
                 }
 
 
-                // Calculate coupled contributions
-                //if (false)
+                // Calculate coupled contributions from lower processors
                 {
-                    FieldField<Field, scalar> coeffs
-                    (
-                        1.0*interfaceBouCoeffs_
-                    );
-                    forAll(lowerInterfaces, i)
+                    FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
+                    for (const label inti : lowerInterfaces)
                     {
-                        label inti = lowerInterfaces[i];
+                        coeffs.set
+                        (
+                            inti,
+                            new scalarField(-1.0*interfaceBouCoeffs_[inti])
+                        );
                         coeffs[inti] *=
                             scalarField
                             (
                                 rD_,
                                 interfaces_[inti].interface().faceCells()
-                            );
+                            );                        
                     }
-                    updateMatrixInterfaces
+                    for (const label inti : upperInterfaces)
+                    {
+                        coeffs.set
+                        (
+                            inti,
+                            new scalarField(interfaceBouCoeffs_[inti].size(), 0.0)
+                        );
+                    }
+                    const label startRequest = Pstream::nRequests();
+                    matrix().initMatrixInterfaces
                     (
                         coeffs,
                         interfaces_,
-                        lowerInterfaces,
                         wA,
                         wA,
-                        cmpt
+                        cmpt                
+                    );
+                    matrix().updateMatrixInterfaces
+                    (
+                        coeffs,
+                        interfaces_,
+                        wA,
+                        wA,
+                        cmpt,
+                        startRequest              
                     );
                 }
 
@@ -346,30 +408,51 @@ DebugVar(interfaceBouCoeffs_);
 
                     Pout<< " to " << wAPtr[uPtr[face]] << endl;
                 }
+Pout<< "** after lower proc wA:" << wA << endl;
 
+
+                // Calculate coupled contributions from higher processors
                 {
-                    FieldField<Field, scalar> coeffs
-                    (
-                        1.0*interfaceBouCoeffs_
-                    );
-                    forAll(upperInterfaces, i)
+                    FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
+                    for (const label inti : upperInterfaces)
                     {
-                        label inti = upperInterfaces[i];
+                        coeffs.set
+                        (
+                            inti,
+                            new scalarField(-1.0*interfaceBouCoeffs_[inti])
+                        );
                         coeffs[inti] *=
                             scalarField
                             (
                                 rD_,
                                 interfaces_[inti].interface().faceCells()
-                            );
+                            );                        
                     }
-                    updateMatrixInterfaces
+                    for (const label inti : lowerInterfaces)
+                    {
+                        coeffs.set
+                        (
+                            inti,
+                            new scalarField(interfaceBouCoeffs_[inti].size(), 0.0)
+                        );
+                    }
+                    const label startRequest = Pstream::nRequests();
+                    matrix().initMatrixInterfaces
                     (
                         coeffs,
                         interfaces_,
-                        upperInterfaces,
                         wA,
                         wA,
-                        cmpt
+                        cmpt                
+                    );
+                    matrix().updateMatrixInterfaces
+                    (
+                        coeffs,
+                        interfaces_,
+                        wA,
+                        wA,
+                        cmpt,
+                        startRequest              
                     );
                 }
 
@@ -386,6 +469,7 @@ DebugVar(interfaceBouCoeffs_);
 
                     Pout<< " to " << wAPtr[lPtr[face]] << endl;
                 }
+Pout<< "** after higher proc wA:" << wA << endl;
             }
 
             // --- Update search directions:
