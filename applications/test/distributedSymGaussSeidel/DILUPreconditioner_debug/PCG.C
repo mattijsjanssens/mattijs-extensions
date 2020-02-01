@@ -375,6 +375,17 @@ DebugVar(invRd);
                             new scalarField(interfaceBouCoeffs_[inti].size(), 0.0)
                         );
                     }
+
+forAll(coeffs, inti)
+{
+    if (coeffs.set(inti))
+    {
+        Pout<< "    int:" << inti
+            << " lowercoeffs:" << coeffs[inti] << endl;
+    }
+}
+
+
                     const label startRequest = Pstream::nRequests();
                     matrix().initMatrixInterfaces
                     (
@@ -436,6 +447,14 @@ Pout<< "** after lower proc wA:" << wA << endl;
                             new scalarField(interfaceBouCoeffs_[inti].size(), 0.0)
                         );
                     }
+forAll(coeffs, inti)
+{
+    if (coeffs.set(inti))
+    {
+        Pout<< "    int:" << inti
+            << " uppercoeffs:" << coeffs[inti] << endl;
+    }
+}
                     const label startRequest = Pstream::nRequests();
                     matrix().initMatrixInterfaces
                     (

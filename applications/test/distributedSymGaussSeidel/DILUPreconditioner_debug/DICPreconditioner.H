@@ -29,6 +29,9 @@ Description
     matrices (symmetric equivalent of DILU).  The reciprocal of the
     preconditioned diagonal is calculated and stored.
 
+    See "Parallel Preconditioners", Chapter 12. Algorithm 12.7.
+
+
 SourceFiles
     DICPreconditioner.C
 

@@ -71,11 +71,10 @@ Foam::DICPreconditioner_debug::DICPreconditioner_debug
                     interfaces[inti].interface()
                 );
 
-                Pout<< "    interface:" << inti
-                    << " type:" << interfaces[inti].interface().type()
-                    << " myProcNo:" << procInt.myProcNo()
-                    << " neighbProcNo:" << procInt.neighbProcNo()
-                    << endl;
+                //Pout<< "    interface:" << inti
+                //    << " type:" << interfaces[inti].interface().type()
+                //    << " myProcNo:" << procInt.myProcNo()
+                //    << " neighbProcNo:" << procInt.neighbProcNo() << endl;
 
                 if (procInt.neighbProcNo() > procInt.myProcNo())
                 {
@@ -87,8 +86,6 @@ Foam::DICPreconditioner_debug::DICPreconditioner_debug
                 }
             }
         }
-        Pout<< "lowerInterfaces:" << lowerInterfaces << endl;
-        Pout<< "upperInterfaces:" << upperInterfaces << endl;
     }
 
 
@@ -122,6 +119,22 @@ Foam::DICPreconditioner_debug::DICPreconditioner_debug
                 interfaces[inti].interface().faceCells()
             );
 
+        // Zero out upper coeffs
+        upperCoeffs_.set
+        (
+            inti,
+            new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
+        );
+    }
+    for (const label inti : upperInterfaces)
+    {
+        // Zero out lower coeffs
+        lowerCoeffs_.set
+        (
+            inti,
+            new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
+        );
+
         upperCoeffs_.set
         (
             inti,
@@ -133,20 +146,6 @@ Foam::DICPreconditioner_debug::DICPreconditioner_debug
                 rD_,
                 interfaces[inti].interface().faceCells()
             );                        
-    }
-    for (const label inti : upperInterfaces)
-    {
-        lowerCoeffs_.set
-        (
-            inti,
-            new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
-        );
-
-        upperCoeffs_.set
-        (
-            inti,
-            new scalarField(interfaceBouCoeffs[inti].size(), 0.0)
-        );
     }
 }
 
@@ -229,6 +228,11 @@ void Foam::DICPreconditioner_debug::calcReciprocalD
         rDPtr[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rDPtr[lPtr[face]];
     }
 
+    //forAll(rD, cell)
+    //{
+    //    Pout<< "diag:" << matrix.diag()[cell]
+    //        << " rD:" << rD[cell] << endl;
+    //}
 
     // Calculate the reciprocal of the preconditioned diagonal
     const label nCells = rD.size();
