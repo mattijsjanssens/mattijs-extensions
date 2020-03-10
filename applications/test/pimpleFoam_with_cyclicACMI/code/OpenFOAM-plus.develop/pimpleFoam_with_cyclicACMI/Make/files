@@ -1,0 +1,30 @@
+pimpleFoam.C
+
+/**** meshTools ****/
+AMI=meshTools/AMIInterpolation
+$(AMI)/GAMG/interfaces/cyclicACMIGAMGInterface/cyclicACMIGAMGInterface.C
+$(AMI)/GAMG/interfaceFields/cyclicACMIGAMGInterfaceField/cyclicACMIGAMGInterfaceField.C
+
+ACMICycPatches=meshTools/cyclicACMI
+$(ACMICycPatches)/cyclicACMILduInterfaceField/cyclicACMILduInterface.C
+$(ACMICycPatches)/cyclicACMILduInterfaceField/cyclicACMILduInterfaceField.C
+$(ACMICycPatches)/cyclicACMIPolyPatch/cyclicACMIPolyPatch.C
+$(ACMICycPatches)/cyclicACMIPointPatch/cyclicACMIPointPatch.C
+$(ACMICycPatches)/cyclicACMIPointPatchField/cyclicACMIPointPatchFields.C
+
+
+/**** finiteVolume ****/
+fvPatches = finiteVolume/fvMesh/fvPatches
+constraintFvPatches = $(fvPatches)/constraint
+$(constraintFvPatches)/cyclicACMI/cyclicACMIFvPatch.C
+
+fvPatchFields = finiteVolume/fields/fvPatchFields
+constraintFvPatchFields = $(fvPatchFields)/constraint
+$(constraintFvPatchFields)/cyclicACMI/cyclicACMIFvPatchFields.C
+
+fvsPatchFields = finiteVolume/fields/fvsPatchFields
+constraintFvsPatchFields = $(fvsPatchFields)/constraint
+$(constraintFvsPatchFields)/cyclicACMI/cyclicACMIFvsPatchFields.C
+
+
+EXE = $(FOAM_USER_APPBIN)/pimpleFoam_with_cyclicACMI
