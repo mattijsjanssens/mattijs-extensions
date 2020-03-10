@@ -294,11 +294,7 @@ void Foam::cyclicACMIFvPatchField<Type>::updateCoeffs()
     // Pass in (1 - mask) to give non-overlap patch the chance to do
     // manipulation of non-face based data
 
-DebugVar(cyclicACMIPatch_.cyclicACMIPatch().name());
-
     const scalarField& mask = cyclicACMIPatch_.cyclicACMIPatch().mask();
-DebugVar(mask);
-
     const fvPatchField<Type>& npf = nonOverlapPatchField();
     const_cast<fvPatchField<Type>&>(npf).updateWeightedCoeffs(1.0 - mask);
 }

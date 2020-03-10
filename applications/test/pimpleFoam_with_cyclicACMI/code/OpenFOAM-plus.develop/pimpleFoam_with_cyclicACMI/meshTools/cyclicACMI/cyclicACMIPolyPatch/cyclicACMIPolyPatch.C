@@ -155,29 +155,20 @@ void Foam::cyclicACMIPolyPatch::resetAMI
 
         const scalar t = boundaryMesh().mesh().time().timeOutputValue();
 
-        const scalarField& srcSum = AMI.srcWeightsSum();
-        const scalarField& tgtSum = AMI.tgtWeightsSum();
-
-DebugVar(srcWeight_.valid());
-DebugVar(srcSum);
+        srcMask_ = AMI.srcWeightsSum();
+        tgtMask_ = AMI.tgtWeightsSum();
 
         if (srcWeight_.valid())
         {
 Pout<< "Weighting source overlaps with " << srcWeight_->value(t) << endl;
 
-            srcMask_ = srcWeight_->value(t)*srcSum;
-
+            srcMask_ *= srcWeight_->value(t);
             if (!tgtWeight_.valid())
             {
 Pout<< "** Allocating tgt" << endl;
                 tgtWeight_= srcWeight_.clone(neighbPatch());
             }
-            tgtMask_ = tgtWeight_->value(t)*tgtSum;
-        }
-        else
-        {
-            srcMask_ = srcSum;
-            tgtMask_ = tgtSum;
+            tgtMask_ *= tgtWeight_->value(t);
         }
         srcMask_ =
             min
