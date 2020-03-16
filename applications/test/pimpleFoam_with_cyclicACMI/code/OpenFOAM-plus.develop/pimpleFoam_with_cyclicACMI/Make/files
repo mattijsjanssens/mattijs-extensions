@@ -1,5 +1,7 @@
 pimpleFoam.C
 
+dummyMotionSolver.C
+
 /**** meshTools ****/
 AMI=meshTools/AMIInterpolation
 $(AMI)/GAMG/interfaces/cyclicACMIGAMGInterface/cyclicACMIGAMGInterface.C

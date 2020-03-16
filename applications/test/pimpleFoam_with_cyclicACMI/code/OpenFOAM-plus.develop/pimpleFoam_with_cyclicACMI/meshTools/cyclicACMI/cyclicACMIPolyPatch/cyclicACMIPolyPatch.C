@@ -45,6 +45,117 @@ const Foam::scalar Foam::cyclicACMIPolyPatch::tolerance_ = 1e-10;
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
+bool Foam::cyclicACMIPolyPatch::updateAreas() const
+{
+    const polyMesh& mesh = boundaryMesh().mesh();
+
+    bool updated = false;
+
+    // Check if underlying AMI up to date
+    if (!mesh.upToDatePoints(AMITime_))
+    {
+        // This should not happen normally since resetAMI is triggered
+        // by any point motion.
+        resetAMI();
+
+        updated = true;
+    }
+
+
+    // Check if scaling enabled (and necessary)
+    if
+    (
+        srcScalePtr_.valid()
+     && (updated || prevTimeIndex_ != mesh.time().timeIndex())
+    )
+    {
+        const scalar t = boundaryMesh().mesh().time().timeOutputValue();
+
+Pout<< "** scaling since prevTime:" << prevTimeIndex_
+    << " current:" << mesh.time().timeIndex() << endl;
+
+Pout<< "Weighting source overlaps with " << srcScalePtr_->value(t) << endl;
+
+        srcScaledMask_ =
+            min
+            (
+                scalar(1) - tolerance_,
+                max(tolerance_, srcScalePtr_->value(t)*srcMask_)
+            );
+DebugVar(srcScaledMask_);
+
+        if (!tgtScalePtr_.valid())
+        {
+Pout<< "** Allocating tgt" << endl;
+            tgtScalePtr_= srcScalePtr_.clone(neighbPatch());
+        }
+        tgtScaledMask_ =
+            min
+            (
+                scalar(1) - tolerance_,
+                max(tolerance_, tgtScalePtr_->value(t)*tgtMask_)
+            );
+DebugVar(tgtScaledMask_);
+
+        // Calculate areas from the masks
+        updateArea(*this, srcScaledMask_, thisSf_, thisNoSf_);
+        updateArea(neighbPatch(), tgtScaledMask_, nbrSf_, nbrNoSf_);
+
+        prevTimeIndex_ = mesh.time().timeIndex();
+        updated = true;
+    }
+
+    return updated;
+}
+
+
+void Foam::cyclicACMIPolyPatch::updateArea
+(
+    const cyclicACMIPolyPatch& pp,
+    const scalarField& mask,
+    const vectorField& faceArea,
+    const vectorField& noFaceArea
+) const
+{
+    if (mask.size())
+    {
+        vectorField::subField Sf = pp.faceAreas();
+        vectorField::subField noSf = pp.nonOverlapPatch().faceAreas();
+
+        forAll(Sf, facei)
+        {
+            Sf[facei] = faceArea[facei]*mask[facei];
+            noSf[facei] = noFaceArea[facei]*(1.0 - mask[facei]);
+        }
+DebugVar(Sf);
+DebugVar(noSf);
+    }
+}
+
+
+void Foam::cyclicACMIPolyPatch::normaliseWeights
+(
+    scalarListList& srcWeights,
+    scalarField& srcWeightsSum
+) const
+{
+    forAll(srcWeights, i)
+    {
+        scalarList& wghts = srcWeights[i];
+        if (wghts.size())
+        {
+            scalar& sum = srcWeightsSum[i];
+
+            forAll(wghts, j)
+            {
+                wghts[j] /= sum;
+            }
+            sum = 1.0;
+        }
+    }
+}
+
+
 void Foam::cyclicACMIPolyPatch::resetAMI
 (
     const AMIPatchToPatchInterpolation::interpolationMethod&
@@ -53,6 +164,8 @@ void Foam::cyclicACMIPolyPatch::resetAMI
     if (owner())
     {
         const polyPatch& nonOverlapPatch = this->nonOverlapPatch();
+        const cyclicACMIPolyPatch& cp =
+            refCast<const cyclicACMIPolyPatch>(this->neighbPatch());
 
         if (debug)
         {
@@ -153,110 +266,45 @@ void Foam::cyclicACMIPolyPatch::resetAMI
                 << ", " << nCovered << endl;
         }
 
-        const scalar t = boundaryMesh().mesh().time().timeOutputValue();
-
         srcMask_ = AMI.srcWeightsSum();
         tgtMask_ = AMI.tgtWeightsSum();
 
-        if (srcWeight_.valid())
-        {
-Pout<< "Weighting source overlaps with " << srcWeight_->value(t) << endl;
-
-            srcMask_ *= srcWeight_->value(t);
-            if (!tgtWeight_.valid())
-            {
-Pout<< "** Allocating tgt" << endl;
-                tgtWeight_= srcWeight_.clone(neighbPatch());
-            }
-            tgtMask_ *= tgtWeight_->value(t);
-        }
-        srcMask_ =
-            min
-            (
-                scalar(1) - tolerance_,
-                max(tolerance_, srcMask_)
-            );
 DebugVar(srcMask_);
-        tgtMask_ =
-            min
-            (
-                scalar(1) - tolerance_,
-                max(tolerance_, tgtMask_)
-            );
 DebugVar(tgtMask_);
 
-
-
-        // Adapt owner side areas. Note that in uncoupled situations (e.g.
-        // decomposePar) srcMask, tgtMask can be zero size.
-        if (srcMask_.size())
+        if (srcScalePtr_.valid())
         {
-            vectorField::subField Sf = faceAreas();
-            vectorField::subField noSf = nonOverlapPatch.faceAreas();
+            // Save overlap geometry for later scaling
 
-            forAll(Sf, facei)
-            {
-                Sf[facei] *= srcMask_[facei];
-                noSf[facei] *= 1.0 - srcMask_[facei];
-            }
+            thisSf_ = faceAreas();
+            thisNoSf_ = nonOverlapPatch.faceAreas();
+            nbrSf_ = cp.faceAreas();
+            nbrNoSf_ = cp.nonOverlapPatch().faceAreas();
         }
-        // Adapt slave side areas
-        if (tgtMask_.size())
-        {
-            const cyclicACMIPolyPatch& cp =
-                refCast<const cyclicACMIPolyPatch>(this->neighbPatch());
-            const polyPatch& pp = cp.nonOverlapPatch();
 
-            vectorField::subField Sf = cp.faceAreas();
-            vectorField::subField noSf = pp.faceAreas();
-
-            forAll(Sf, facei)
-            {
-                Sf[facei] *= tgtMask_[facei];
-                noSf[facei] *= 1.0 - tgtMask_[facei];
-            }
-        }
+        // Calculate areas from the masks
+        updateArea
+        (
+            *this,
+            srcMask_,
+            this->faceAreas(),
+            nonOverlapPatch.faceAreas()
+        );
+        updateArea
+        (
+            cp,
+            tgtMask_,
+            cp.faceAreas(),
+            cp.nonOverlapPatch().faceAreas()
+        );
 
         // Re-normalise the weights since the effect of overlap is already
         // accounted for in the area.
-        {
-            scalarListList& srcWeights = AMI.srcWeights();
-            scalarField& srcWeightsSum = AMI.srcWeightsSum();
-            forAll(srcWeights, i)
-            {
-                scalarList& wghts = srcWeights[i];
-                if (wghts.size())
-                {
-                    scalar& sum = srcWeightsSum[i];
+        normaliseWeights(AMI.srcWeights(), AMI.srcWeightsSum());
+        normaliseWeights(AMI.tgtWeights(), AMI.tgtWeightsSum());
 
-                    forAll(wghts, j)
-                    {
-                        wghts[j] /= sum;
-                    }
-                    sum = 1.0;
-                }
-            }
-        }
-        {
-            scalarListList& tgtWeights = AMI.tgtWeights();
-            scalarField& tgtWeightsSum = AMI.tgtWeightsSum();
-            forAll(tgtWeights, i)
-            {
-                scalarList& wghts = tgtWeights[i];
-                if (wghts.size())
-                {
-                    scalar& sum = tgtWeightsSum[i];
-                    forAll(wghts, j)
-                    {
-                        wghts[j] /= sum;
-                    }
-                    sum = 1.0;
-                }
-            }
-        }
-
-        // Set the updated flag
-        updated_ = true;
+        // Mark current AMI as up to date with points
+        boundaryMesh().mesh().setUpToDatePoints(AMITime_);
     }
 }
 
@@ -352,13 +400,27 @@ void Foam::cyclicACMIPolyPatch::clearGeom()
 
 const Foam::scalarField& Foam::cyclicACMIPolyPatch::srcMask() const
 {
-    return srcMask_;
+    if (srcScalePtr_.valid())
+    {
+        return srcScaledMask_;
+    }
+    else
+    {
+        return srcMask_;
+    }
 }
 
 
 const Foam::scalarField& Foam::cyclicACMIPolyPatch::tgtMask() const
 {
-    return tgtMask_;
+    if (tgtScalePtr_.valid())
+    {
+        return tgtScaledMask_;
+    }
+    else
+    {
+        return tgtMask_;
+    }
 }
 
 
@@ -379,8 +441,45 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
     nonOverlapPatchName_(word::null),
     nonOverlapPatchID_(-1),
     srcMask_(),
+//    (
+//        IOobject
+//        (
+//            "srcMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
     tgtMask_(),
-    updated_(false)
+//    (
+//        IOobject
+//        (
+//            "tgtMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
+    AMITime_
+    (
+        IOobject
+        (
+            "AMITime",
+            boundaryMesh().mesh().pointsInstance(),
+            boundaryMesh().mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        dimensionedScalar("time", dimTime, -GREAT)
+    ),
+    prevTimeIndex_(-1)
 {
     AMIRequireMatch_ = false;
 
@@ -400,23 +499,53 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
 :
     cyclicAMIPolyPatch(name, dict, index, bm, patchType),
     nonOverlapPatchName_(dict.lookup("nonOverlapPatch")),
-    srcWeight_
-    (
-        dict.found("srcWeight")
-      ? PatchFunction1<scalar>::New(*this, "srcWeight", dict)
-      : nullptr
-    ),
-    tgtWeight_
-    (
-//        dict.found("tgtWeight")
-//      ? PatchFunction1<scalar>::New(*this, "tgtWeight", dict)
-//      : nullptr
-        nullptr
-    ),
     nonOverlapPatchID_(-1),
     srcMask_(),
+//    (
+//        IOobject
+//        (
+//            "srcMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
     tgtMask_(),
-    updated_(false)
+//    (
+//        IOobject
+//        (
+//            "tgtMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
+    srcScalePtr_
+    (
+        dict.found("scale")
+      ? PatchFunction1<scalar>::New(*this, "scale", dict)
+      : nullptr
+    ),
+    AMITime_
+    (
+        IOobject
+        (
+            "AMITime",
+            boundaryMesh().mesh().pointsInstance(),
+            boundaryMesh().mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        dimensionedScalar("time", dimTime, -GREAT)
+    ),
+    prevTimeIndex_(-1)
 {
     AMIRequireMatch_ = false;
 
@@ -441,12 +570,53 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
 :
     cyclicAMIPolyPatch(pp, bm),
     nonOverlapPatchName_(pp.nonOverlapPatchName_),
-    srcWeight_(pp.srcWeight_.valid() ? pp.srcWeight_.clone(*this) : nullptr),
-    tgtWeight_(pp.tgtWeight_.valid() ? pp.tgtWeight_.clone(*this) : nullptr),
     nonOverlapPatchID_(-1),
     srcMask_(),
+//    (
+//        IOobject
+//        (
+//            "srcMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
     tgtMask_(),
-    updated_(false)
+//    (
+//        IOobject
+//        (
+//            "tgtMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
+    srcScalePtr_
+    (
+        pp.srcScalePtr_.valid()
+      ? pp.srcScalePtr_.clone(*this)
+      : nullptr
+    ),
+    AMITime_
+    (
+        IOobject
+        (
+            "AMITime",
+            boundaryMesh().mesh().pointsInstance(),
+            boundaryMesh().mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        dimensionedScalar("time", dimTime, -GREAT)
+    ),
+    prevTimeIndex_(-1)
 {
     AMIRequireMatch_ = false;
 
@@ -468,12 +638,53 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
 :
     cyclicAMIPolyPatch(pp, bm, index, newSize, newStart, nbrPatchName),
     nonOverlapPatchName_(nonOverlapPatchName),
-    srcWeight_(pp.srcWeight_.valid() ? pp.srcWeight_.clone(*this) : nullptr),
-    tgtWeight_(pp.tgtWeight_.valid() ? pp.tgtWeight_.clone(*this) : nullptr),
     nonOverlapPatchID_(-1),
     srcMask_(),
+//    (
+//        IOobject
+//        (
+//            "srcMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
     tgtMask_(),
-    updated_(false)
+//    (
+//        IOobject
+//        (
+//            "tgtMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
+    srcScalePtr_
+    (
+        pp.srcScalePtr_.valid()
+      ? pp.srcScalePtr_.clone(*this)
+      : nullptr
+    ),
+    AMITime_
+    (
+        IOobject
+        (
+            "AMITime",
+            boundaryMesh().mesh().pointsInstance(),
+            boundaryMesh().mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        dimensionedScalar("time", dimTime, -GREAT)
+    ),
+    prevTimeIndex_(-1)
 {
     AMIRequireMatch_ = false;
 
@@ -501,12 +712,53 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
 :
     cyclicAMIPolyPatch(pp, bm, index, mapAddressing, newStart),
     nonOverlapPatchName_(pp.nonOverlapPatchName_),
-    srcWeight_(pp.srcWeight_.valid() ? pp.srcWeight_.clone(*this) : nullptr),
-    tgtWeight_(pp.tgtWeight_.valid() ? pp.tgtWeight_.clone(*this) : nullptr),
     nonOverlapPatchID_(-1),
     srcMask_(),
+//    (
+//        IOobject
+//        (
+//            "srcMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
     tgtMask_(),
-    updated_(false)
+//    (
+//        IOobject
+//        (
+//            "tgtMask",
+//            boundaryMesh().mesh().pointsInstance(),
+//            boundaryMesh().mesh(),
+//            IOobject::NO_READ,
+//            IOobject::NO_WRITE,
+//            false
+//        ),
+//        0
+//    ),
+    srcScalePtr_
+    (
+        pp.srcScalePtr_.valid()
+      ? pp.srcScalePtr_.clone(*this)
+      : nullptr
+    ),
+    AMITime_
+    (
+        IOobject
+        (
+            "AMITime",
+            boundaryMesh().mesh().pointsInstance(),
+            boundaryMesh().mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        dimensionedScalar("time", dimTime, -GREAT)
+    ),
+    prevTimeIndex_(-1)
 {
     AMIRequireMatch_ = false;
 }
@@ -523,6 +775,17 @@ Foam::cyclicACMIPolyPatch::~cyclicACMIPolyPatch()
 const Foam::cyclicACMIPolyPatch& Foam::cyclicACMIPolyPatch::neighbPatch() const
 {
     const polyPatch& pp = this->boundaryMesh()[neighbPatchID()];
+
+    // Bit of checking now we know neighbour patch
+    if (!owner() && srcScalePtr_.valid())
+    {
+        WarningInFunction
+            << "Ignoring \"scale\" setting in slave patch " << name()
+            << endl;
+        srcScalePtr_.clear();
+        tgtScalePtr_.clear();
+    }
+
     return refCast<const cyclicACMIPolyPatch>(pp);
 }
 
@@ -621,13 +884,9 @@ void Foam::cyclicACMIPolyPatch::write(Ostream& os) const
 
     os.writeEntry("nonOverlapPatch", nonOverlapPatchName_);
 
-    if (srcWeight_.valid())
+    if (owner() && srcScalePtr_.valid())
     {
-        srcWeight_->writeData(os);
-    }
-    if (tgtWeight_.valid())
-    {
-        tgtWeight_->writeData(os);
+        srcScalePtr_->writeData(os);
     }
 }
 

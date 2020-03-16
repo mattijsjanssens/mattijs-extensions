@@ -65,8 +65,9 @@ protected:
 
     // Protected Member functions
 
-        //- Update the patch areas after AMI update
-        void updateAreas() const;
+        //- Update the patch areas after AMI update. Return true if anything
+        //  updated.
+        bool updateAreas() const;
 
         //- Make patch weighting factors
         void makeWeights(scalarField&) const;

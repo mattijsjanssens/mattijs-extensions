@@ -41,9 +41,11 @@ namespace Foam
 
 // * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
 
-void Foam::cyclicACMIFvPatch::updateAreas() const
+bool Foam::cyclicACMIFvPatch::updateAreas() const
 {
-    if (cyclicACMIPolyPatch_.updated())
+    bool updated = cyclicACMIPolyPatch_.updateAreas();
+
+    if (updated)
     {
         if (debug)
         {
@@ -76,10 +78,8 @@ void Foam::cyclicACMIFvPatch::updateAreas() const
             nbrNonOverlapPatch.patch().faceAreas();
         const_cast<scalarField&>(nbrNonOverlapPatch.magSf()) =
             mag(nbrNonOverlapPatch.patch().faceAreas());
-
-        // set the updated flag
-        cyclicACMIPolyPatch_.setUpdated(false);
     }
+    return updated;
 }
 
 
