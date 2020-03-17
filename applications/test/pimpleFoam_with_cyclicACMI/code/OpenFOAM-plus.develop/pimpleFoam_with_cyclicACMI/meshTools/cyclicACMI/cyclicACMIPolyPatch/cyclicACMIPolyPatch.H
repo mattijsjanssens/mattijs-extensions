@@ -357,6 +357,14 @@ public:
 
         //- Write the polyPatch data as a dictionary
         virtual void write(Ostream&) const;
+
+        //- Return true if given object is up to date with *this
+        //  (note : like regIOobject::upToDate but operates on object)
+        bool upToDate(const regIOobject&) const;
+
+        //- Set object up to date with *this
+        //  (note : like regIOobject::setUpToDate but operates on object)
+        void setUpToDate(regIOobject&) const;
 };
 
 

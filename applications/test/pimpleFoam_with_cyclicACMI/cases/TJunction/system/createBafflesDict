@@ -1,0 +1,280 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1906                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      createBafflesDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Whether to convert internal faces only (so leave boundary faces intact).
+// This is only relevant if your face selection type can pick up boundary
+// faces.
+internalFacesOnly false;
+
+
+// Baffles to create.
+baffles
+{
+    inlet_central
+    {
+        //- Use predefined faceZone to select faces and orientation.
+        type        faceZone;
+        zoneName    inlet_central_faces;
+
+        patches
+        {
+            master
+            {
+                //- Master side patch
+                name            inlet_central_couple;
+                type            cyclicACMI;
+                neighbourPatch  central_inlet_couple;
+                nonOverlapPatch inlet_central_blockage;
+                transform       noOrdering;
+            }
+            slave // not used since we're manipulating a boundary patch
+            {
+                name            inlet_central_couple;
+                type            patch;
+            }
+            master2
+            {
+                //- Master side patch
+                name            inlet_central_blockage;
+                type            wall;
+            }
+            slave2 // not used since we're manipulating a boundary patch
+            {
+                //- Slave side patch
+                name            inlet_central_blockage;
+                type            wall;
+            }
+        }
+    }
+    central_inlet
+    {
+        //- Use predefined faceZone to select faces and orientation.
+        type        faceZone;
+        zoneName    central_inlet_faces;
+
+        patches
+        {
+            master
+            {
+                //- Master side patch
+                name            central_inlet_couple;
+                type            cyclicACMI;
+                neighbourPatch  inlet_central_couple;
+                nonOverlapPatch central_inlet_blockage;
+                transform       noOrdering;
+
+                scale           table
+                (
+                    (0.00   1.0)
+                );
+            }
+            slave // not used since we're manipulating a boundary patch
+            {
+                name            central_inlet_couple;
+                type            patch;
+            }
+            master2
+            {
+                //- Master side patch
+                name            central_inlet_blockage;
+                type            wall;
+            }
+            slave2 // not used since we're manipulating a boundary patch
+            {
+                //- Slave side patch
+                name            central_inlet_blockage;
+                type            wall;
+            }
+        }
+    }
+
+
+    bottom_central
+    {
+        //- Use predefined faceZone to select faces and orientation.
+        type        faceZone;
+        zoneName    bottom_central_faces;
+
+        patches
+        {
+            master
+            {
+                //- Master side patch
+                name            bottom_central_couple;
+                type            cyclicACMI;
+                neighbourPatch  central_bottom_couple;
+                nonOverlapPatch bottom_central_blockage;
+                transform       noOrdering;
+
+                scale           table
+                (
+                    (0.00   1.0)
+                );
+            }
+            slave // not used since we're manipulating a boundary patch
+            {
+                name            bottom_central_couple;
+                type            patch;
+            }
+            master2
+            {
+                //- Master side patch
+                name            bottom_central_blockage;
+                type            wall;
+            }
+            slave2 // not used since we're manipulating a boundary patch
+            {
+                //- Slave side patch
+                name            bottom_central_blockage;
+                type            wall;
+            }
+        }
+    }
+    central_bottom
+    {
+        //- Use predefined faceZone to select faces and orientation.
+        type        faceZone;
+        zoneName    central_bottom_faces;
+
+        patches
+        {
+            master
+            {
+                //- Master side patch
+                name            central_bottom_couple;
+                type            cyclicACMI;
+                neighbourPatch  bottom_central_couple;
+                nonOverlapPatch central_bottom_blockage;
+                transform       noOrdering;
+
+                scale           table
+                (
+                    (0.00   1.0)
+                    (0.01   1.0)
+                    (0.0101 0.0)
+                );
+            }
+            slave // not used since we're manipulating a boundary patch
+            {
+                name            central_bottom_couple;
+                type            patch;
+            }
+            master2
+            {
+                //- Master side patch
+                name            central_bottom_blockage;
+                type            wall;
+            }
+            slave2 // not used since we're manipulating a boundary patch
+            {
+                //- Slave side patch
+                name            central_bottom_blockage;
+                type            wall;
+            }
+        }
+    }
+
+
+    top_central
+    {
+        //- Use predefined faceZone to select faces and orientation.
+        type        faceZone;
+        zoneName    top_central_faces;
+
+        patches
+        {
+            master
+            {
+                //- Master side patch
+                name            top_central_couple;
+                type            cyclicACMI;
+                neighbourPatch  central_top_couple;
+                nonOverlapPatch top_central_blockage;
+                transform       noOrdering;
+
+                scale           table
+                (
+                    (0.00   1.0)
+                    (0.01   1.0)
+                    (0.0101 0.0)
+                );
+            }
+            slave // not used since we're manipulating a boundary patch
+            {
+                name            top_central_couple;
+                type            patch;
+            }
+            master2
+            {
+                //- Master side patch
+                name            top_central_blockage;
+                type            wall;
+            }
+            slave2 // not used since we're manipulating a boundary patch
+            {
+                //- Slave side patch
+                name            top_central_blockage;
+                type            wall;
+            }
+        }
+    }
+    central_top
+    {
+        //- Use predefined faceZone to select faces and orientation.
+        type        faceZone;
+        zoneName    central_top_faces;
+
+        patches
+        {
+            master
+            {
+                //- Master side patch
+                name            central_top_couple;
+                type            cyclicACMI;
+                neighbourPatch  top_central_couple;
+                nonOverlapPatch central_top_blockage;
+                transform       noOrdering;
+
+                scale           table
+                (
+                    (0.00   1.0)
+                    (0.01   1.0)
+                    (0.0101 0.0)
+                );
+            }
+            slave // not used since we're manipulating a boundary patch
+            {
+                name            central_top_couple;
+                type            patch;
+            }
+            master2
+            {
+                //- Master side patch
+                name            central_top_blockage;
+                type            wall;
+            }
+            slave2 // not used since we're manipulating a boundary patch
+            {
+                //- Slave side patch
+                name            central_top_blockage;
+                type            wall;
+            }
+        }
+    }
+}
+
+
+// ************************************************************************* //

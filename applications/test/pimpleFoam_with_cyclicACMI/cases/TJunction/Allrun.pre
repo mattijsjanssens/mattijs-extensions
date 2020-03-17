@@ -1,0 +1,17 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+runApplication blockMesh
+
+runApplication topoSet -constant
+
+# Split the mesh to generate the ACMI coupled patches
+runApplication createBaffles -overwrite
+
+# Add the scale by hand
+
+restore0Dir
+
+#------------------------------------------------------------------------------

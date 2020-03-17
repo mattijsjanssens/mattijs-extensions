@@ -1,0 +1,182 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1906                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+actions
+(
+    // inlet - central
+    // ~~~~~~~~~~~~~~~
+
+    {
+        name    inlet_central_faceSet;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   inlet_central;
+    }
+    {
+        name    inlet_central_cellSet;
+        type    cellSet;
+        action  new;
+        source  zoneToCell;
+        zone    central;
+    }
+    {
+        name    inlet_central_faces;
+        type    faceZoneSet;
+        action  new;
+        source  setsToFaceZone;
+        faceSet inlet_central_faceSet;
+        cellSet inlet_central_cellSet;
+    }
+
+
+    // central - inlet
+    // ~~~~~~~~~~~~~~~
+
+    {
+        name    central_inlet_faceSet;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   central_inlet;
+    }
+    {
+        name    central_inlet_cellSet;
+        type    cellSet;
+        action  new;
+        source  zoneToCell;
+        zone    central;
+    }
+    {
+        name    central_inlet_faces;
+        type    faceZoneSet;
+        action  new;
+        source  setsToFaceZone;
+        faceSet central_inlet_faceSet;
+        cellSet central_inlet_cellSet;
+    }
+
+
+    // bottom - central
+    // ~~~~~~~~~~~~~~~
+
+    {
+        name    bottom_central_faceSet;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   bottom_central;
+    }
+    {
+        name    bottom_central_cellSet;
+        type    cellSet;
+        action  new;
+        source  zoneToCell;
+        zone    central;
+    }
+    {
+        name    bottom_central_faces;
+        type    faceZoneSet;
+        action  new;
+        source  setsToFaceZone;
+        faceSet bottom_central_faceSet;
+        cellSet bottom_central_cellSet;
+    }
+
+
+    // central - bottom
+    // ~~~~~~~~~~~~~~~~
+
+    {
+        name    central_bottom_faceSet;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   central_bottom;
+    }
+    {
+        name    central_bottom_cellSet;
+        type    cellSet;
+        action  new;
+        source  zoneToCell;
+        zone    central;
+    }
+    {
+        name    central_bottom_faces;
+        type    faceZoneSet;
+        action  new;
+        source  setsToFaceZone;
+        faceSet central_bottom_faceSet;
+        cellSet central_bottom_cellSet;
+    }
+
+
+    // top - central
+    // ~~~~~~~~~~~~~
+
+    {
+        name    top_central_faceSet;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   top_central;
+    }
+    {
+        name    top_central_cellSet;
+        type    cellSet;
+        action  new;
+        source  zoneToCell;
+        zone    central;
+    }
+    {
+        name    top_central_faces;
+        type    faceZoneSet;
+        action  new;
+        source  setsToFaceZone;
+        faceSet top_central_faceSet;
+        cellSet top_central_cellSet;
+    }
+
+
+    // central - top
+    // ~~~~~~~~~~~~~
+
+    {
+        name    central_top_faceSet;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+        patch   central_top;
+    }
+    {
+        name    central_top_cellSet;
+        type    cellSet;
+        action  new;
+        source  zoneToCell;
+        zone    central;
+    }
+    {
+        name    central_top_faces;
+        type    faceZoneSet;
+        action  new;
+        source  setsToFaceZone;
+        faceSet central_top_faceSet;
+        cellSet central_top_cellSet;
+    }
+);
+
+// ************************************************************************* //

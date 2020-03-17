@@ -51,6 +51,14 @@ bool Foam::cyclicACMIPolyPatch::updateAreas() const
 
     bool updated = false;
 
+    //Pout<< "cyclicACMIPolyPatch::updateAreas() :"
+    //    << " AMITime_:" << AMITime_.eventNo()
+    //    << " uptodate:" << mesh.upToDatePoints(AMITime_)
+    //    << " mesh.time().timeIndex():" << mesh.time().timeIndex()
+    //    << " prevTimeIndex_:" << prevTimeIndex_
+    //    << endl;
+
+
     // Check if underlying AMI up to date
     if (!mesh.upToDatePoints(AMITime_))
     {
@@ -71,10 +79,7 @@ bool Foam::cyclicACMIPolyPatch::updateAreas() const
     {
         const scalar t = boundaryMesh().mesh().time().timeOutputValue();
 
-Pout<< "** scaling since prevTime:" << prevTimeIndex_
-    << " current:" << mesh.time().timeIndex() << endl;
-
-Pout<< "Weighting source overlaps with " << srcScalePtr_->value(t) << endl;
+        // Note: ideally preserve src/tgtMask before clipping to tolerance ...
 
         srcScaledMask_ =
             min
@@ -82,11 +87,9 @@ Pout<< "Weighting source overlaps with " << srcScalePtr_->value(t) << endl;
                 scalar(1) - tolerance_,
                 max(tolerance_, srcScalePtr_->value(t)*srcMask_)
             );
-DebugVar(srcScaledMask_);
 
         if (!tgtScalePtr_.valid())
         {
-Pout<< "** Allocating tgt" << endl;
             tgtScalePtr_= srcScalePtr_.clone(neighbPatch());
         }
         tgtScaledMask_ =
@@ -95,17 +98,40 @@ Pout<< "** Allocating tgt" << endl;
                 scalar(1) - tolerance_,
                 max(tolerance_, tgtScalePtr_->value(t)*tgtMask_)
             );
-DebugVar(tgtScaledMask_);
+
+        if (debug)
+        {
+            Pout<< "cyclicACMIPolyPatch::updateAreas : scaling masks"
+                << " for " << name() << " mask " << gAverage(srcScaledMask_)
+                << " and " << nonOverlapPatch().name()
+                << " mask " << gAverage(srcScaledMask_) << endl;
+        }
 
         // Calculate areas from the masks
         updateArea(*this, srcScaledMask_, thisSf_, thisNoSf_);
         updateArea(neighbPatch(), tgtScaledMask_, nbrSf_, nbrNoSf_);
 
         prevTimeIndex_ = mesh.time().timeIndex();
+        AMITime_.setUpToDate();
         updated = true;
     }
 
     return updated;
+}
+
+
+bool Foam::cyclicACMIPolyPatch::upToDate(const regIOobject& io) const
+{
+    // Is io up to date with
+    // - underlying AMI
+    // - scaling
+    return io.upToDate(AMITime_);
+}
+
+
+void Foam::cyclicACMIPolyPatch::setUpToDate(regIOobject& io) const
+{
+    io.setUpToDate();
 }
 
 
@@ -127,8 +153,6 @@ void Foam::cyclicACMIPolyPatch::updateArea
             Sf[facei] = faceArea[facei]*mask[facei];
             noSf[facei] = noFaceArea[facei]*(1.0 - mask[facei]);
         }
-DebugVar(Sf);
-DebugVar(noSf);
     }
 }
 
@@ -266,11 +290,12 @@ void Foam::cyclicACMIPolyPatch::resetAMI
                 << ", " << nCovered << endl;
         }
 
-        srcMask_ = AMI.srcWeightsSum();
-        tgtMask_ = AMI.tgtWeightsSum();
+        srcMask_ =
+            min(scalar(1) - tolerance_, max(tolerance_, AMI.srcWeightsSum()));
 
-DebugVar(srcMask_);
-DebugVar(tgtMask_);
+        tgtMask_ =
+            min(scalar(1) - tolerance_, max(tolerance_, AMI.tgtWeightsSum()));
+
 
         if (srcScalePtr_.valid())
         {
@@ -290,6 +315,7 @@ DebugVar(tgtMask_);
             this->faceAreas(),
             nonOverlapPatch.faceAreas()
         );
+
         updateArea
         (
             cp,

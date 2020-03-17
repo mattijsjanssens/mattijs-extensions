@@ -41,6 +41,7 @@ SourceFiles
 #include "cyclicACMILduInterface.H"
 #include "cyclicACMIPolyPatch.H"
 #include "fvBoundaryMesh.H"
+#include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -59,6 +60,9 @@ class cyclicACMIFvPatch
     // Private data
 
         const cyclicACMIPolyPatch& cyclicACMIPolyPatch_;
+
+        //- Flag to detect whether AMI is up to date with mesh points
+        mutable uniformDimensionedScalarField areaTime_;
 
 
 protected:
@@ -82,12 +86,7 @@ public:
     // Constructors
 
         //- Construct from polyPatch
-        cyclicACMIFvPatch(const polyPatch& patch, const fvBoundaryMesh& bm)
-        :
-            coupledFvPatch(patch, bm),
-            cyclicACMILduInterface(),
-            cyclicACMIPolyPatch_(refCast<const cyclicACMIPolyPatch>(patch))
-        {}
+        cyclicACMIFvPatch(const polyPatch& patch, const fvBoundaryMesh& bm);
 
 
     // Member functions

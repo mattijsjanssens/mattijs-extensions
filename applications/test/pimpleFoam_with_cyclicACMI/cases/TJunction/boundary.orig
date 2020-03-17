@@ -1,0 +1,176 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  com                                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "constant/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+17
+(
+    inlet
+    {
+        type            patch;
+        nFaces          5;
+        startFace       1375;
+    }
+    outlet1
+    {
+        type            patch;
+        nFaces          5;
+        startFace       1380;
+    }
+    outlet2
+    {
+        type            patch;
+        nFaces          5;
+        startFace       1385;
+    }
+    walls
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          300;
+        startFace       1390;
+    }
+    defaultFaces
+    {
+        type            empty;
+        inGroups        1(empty);
+        nFaces          1555;
+        startFace       1690;
+    }
+    inlet_central_couple
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI inlet_central);
+        nFaces          5;
+        startFace       3245;
+        matchTolerance  0.0001;
+        transform       noOrdering;
+        neighbourPatch  central_inlet_couple;
+        nonOverlapPatch inlet_central_blockage;
+    }
+    inlet_central_blockage
+    {
+        type            wall;
+        inGroups        2(wall inlet_central);
+        nFaces          5;
+        startFace       3250;
+    }
+    central_inlet_couple
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI central_inlet);
+        nFaces          5;
+        startFace       3255;
+        matchTolerance  0.0001;
+        transform       noOrdering;
+        neighbourPatch  inlet_central_couple;
+        nonOverlapPatch central_inlet_blockage;
+    }
+    central_inlet_blockage
+    {
+        type            wall;
+        inGroups        2(wall central_inlet);
+        nFaces          5;
+        startFace       3260;
+    }
+    bottom_central_couple
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI bottom_central);
+        nFaces          5;
+        startFace       3265;
+        matchTolerance  0.0001;
+        transform       noOrdering;
+        neighbourPatch  central_bottom_couple;
+        nonOverlapPatch bottom_central_blockage;
+
+        scale           table
+        (
+            (0.00   1.0)
+            (0.20   1.0)
+            (0.30   0.0)
+        );
+    }
+    bottom_central_blockage
+    {
+        type            wall;
+        inGroups        2(wall bottom_central);
+        nFaces          5;
+        startFace       3270;
+    }
+    central_bottom_couple
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI central_bottom);
+        nFaces          5;
+        startFace       3275;
+        matchTolerance  0.0001;
+        transform       noOrdering;
+        neighbourPatch  bottom_central_couple;
+        nonOverlapPatch central_bottom_blockage;
+    }
+    central_bottom_blockage
+    {
+        type            wall;
+        inGroups        2(wall central_bottom);
+        nFaces          5;
+        startFace       3280;
+    }
+    top_central_couple
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI top_central);
+        nFaces          5;
+        startFace       3285;
+        matchTolerance  0.0001;
+        transform       noOrdering;
+        neighbourPatch  central_top_couple;
+        nonOverlapPatch top_central_blockage;
+
+        scale           table
+        (
+            (0.00   0.0)
+            (0.20   0.0)
+            (0.30   1.0)
+        );
+    }
+    top_central_blockage
+    {
+        type            wall;
+        inGroups        2(wall top_central);
+        nFaces          5;
+        startFace       3290;
+    }
+    central_top_couple
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI central_top);
+        nFaces          5;
+        startFace       3295;
+        matchTolerance  0.0001;
+        transform       noOrdering;
+        neighbourPatch  top_central_couple;
+        nonOverlapPatch central_top_blockage;
+    }
+    central_top_blockage
+    {
+        type            wall;
+        inGroups        2(wall central_top);
+        nFaces          5;
+        startFace       3300;
+    }
+)
+
+// ************************************************************************* //

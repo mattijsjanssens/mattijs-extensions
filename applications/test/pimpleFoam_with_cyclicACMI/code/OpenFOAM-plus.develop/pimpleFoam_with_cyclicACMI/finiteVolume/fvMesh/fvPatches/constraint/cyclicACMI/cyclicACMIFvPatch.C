@@ -45,7 +45,7 @@ bool Foam::cyclicACMIFvPatch::updateAreas() const
 {
     bool updated = cyclicACMIPolyPatch_.updateAreas();
 
-    if (updated)
+    if (updated || !cyclicACMIPolyPatch_.upToDate(areaTime_))
     {
         if (debug)
         {
@@ -78,6 +78,9 @@ bool Foam::cyclicACMIFvPatch::updateAreas() const
             nbrNonOverlapPatch.patch().faceAreas();
         const_cast<scalarField&>(nbrNonOverlapPatch.magSf()) =
             mag(nbrNonOverlapPatch.patch().faceAreas());
+
+        // Mark my data to be up to date with ACMI polyPatch level
+        cyclicACMIPolyPatch_.setUpToDate(areaTime_);
     }
     return updated;
 }
@@ -126,6 +129,35 @@ void Foam::cyclicACMIFvPatch::makeWeights(scalarField& w) const
         // Behave as uncoupled patch
         fvPatch::makeWeights(w);
     }
+}
+
+
+// * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * * * //
+
+Foam::cyclicACMIFvPatch::cyclicACMIFvPatch
+(
+    const polyPatch& patch,
+    const fvBoundaryMesh& bm
+)
+:
+    coupledFvPatch(patch, bm),
+    cyclicACMILduInterface(),
+    cyclicACMIPolyPatch_(refCast<const cyclicACMIPolyPatch>(patch)),
+    areaTime_
+    (
+        IOobject
+        (
+            "areaTime",
+            boundaryMesh().mesh().pointsInstance(),
+            boundaryMesh().mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        dimensionedScalar("time", dimTime, -GREAT)
+    )
+{
+    areaTime_.eventNo() = -1;
 }
 
 
