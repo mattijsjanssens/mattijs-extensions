@@ -283,11 +283,6 @@ void Foam::polyMesh::setTopology
         }
     }
 
-
-Pout<< "Internal faces:" << nFaces << endl;
-DebugVar(cells);
-
-
     // Do boundary faces
 
     patchSizes.setSize(boundaryFaces.size(), -1);
@@ -295,12 +290,6 @@ DebugVar(cells);
 
     forAll(boundaryFaces, patchi)
     {
-Pout<< "-- doing patch " << patchi
-    << " named " << boundaryPatchNames[patchi]
-    << " with faces:" << boundaryFaces[patchi]
-    << endl;
-
-
         const faceList& patchFaces = boundaryFaces[patchi];
 
         labelList curPatchFaceCells =
@@ -315,6 +304,9 @@ Pout<< "-- doing patch " << patchi
         // Grab the start label
         label curPatchStart = nFaces;
 
+        // Suppress multiple warnings per patch
+        bool patchWarned = false;
+
         forAll(patchFaces, facei)
         {
             const face& curFace = patchFaces[facei];
@@ -326,72 +318,55 @@ Pout<< "-- doing patch " << patchi
 
             bool found = false;
 
-            // Counter of cell-to-faces addressing. This is usually same
-            // as the index in the hex shape except if there are duplicate
-            // baffles.
-            label polyFacei = 0;
-
             forAll(facesOfCellInside, cellFacei)
             {
                 if (face::sameVertices(facesOfCellInside[cellFacei], curFace))
                 {
+                    found = true;
+
                     if (cells[cellInside][cellFacei] >= 0)
                     {
+                        // This can happen for duplicate faces. It might be
+                        // an error or explicitly desired (e.g. duplicate
+                        // baffles or acmi). Either
+                        // - exit with error
+                        // - or warn and append face to addressing
+
+
                         //FatalErrorInFunction
-                        WarningInFunction
-                            << "Trying to specify a boundary face " << curFace
-                            << " on the face on cell " << cellInside
-                            << " which is either an internal face or already "
-                            << "belongs to some other patch.  This is face "
-                            << facei << " of patch "
-                            << patchi << " named "
-                            << boundaryPatchNames[patchi] << "."
-                            //<< abort(FatalError);
-                            << endl;
+                        if (!patchWarned)
+                        {
+                            WarningInFunction
+                                << "Trying to specify a boundary face "
+                                << curFace
+                                << " on the face on cell " << cellInside
+                                << " which is either an internal face"
+                                << " or already belongs to some other patch."
+                                << " This is face " << facei << " of patch "
+                                << patchi << " named "
+                                << boundaryPatchNames[patchi] << "."
+                                //<< abort(FatalError);
+                                << endl;
+                            patchWarned = true;
+                        }
 
-
-                        found = true;
-
-                        Pout<< "** GROWING faces from " << faces_.size();
                         faces_.setSize(faces_.size()+1);
-                        Pout<< "** to " << faces_.size() << endl;
-
-                        label nFacesOnCell = cells[cellInside].size();
-                        Pout<< "** GROWING cells from " << nFacesOnCell;
-                        cells[cellInside].setSize(nFacesOnCell+1);
-                        Pout<< "** to " << cells[cellInside].size() << endl;
-
-                        Pout<< "Storing face " << facesOfCellInside[cellFacei]
-                            << " as face:" << nFaces << endl;
-
 
                         // Set the patch face to corresponding cell-face
                         faces_[nFaces] = facesOfCellInside[cellFacei];
 
-                        Pout<< "Storing DUP cell-to-face into slot " << nFacesOnCell
-                            << " of cell:" << cells[cellInside] << endl;
-
-                        cells[cellInside][nFacesOnCell] = nFaces;
-
-                        break;
-
+                        cells[cellInside].append(nFaces);
                     }
                     else
                     {
-                        found = true;
-
                         // Set the patch face to corresponding cell-face
                         faces_[nFaces] = facesOfCellInside[cellFacei];
 
-                        Pout<< "Storing NORMAL cell-to-face into slot " << cellFacei
-                            << " of cell:" << cells[cellInside] << endl;
-
                         cells[cellInside][cellFacei] = nFaces;
-
-                        break;
                     }
+
+                    break;
                 }
-                polyFacei++;
             }
 
             if (!found)
@@ -410,15 +385,6 @@ Pout<< "-- doing patch " << patchi
 
         patchSizes[patchi] = nFaces - curPatchStart;
         patchStarts[patchi] = curPatchStart;
-
-
-Pout<< "-- doing patch " << patchi
-    << " named " << boundaryPatchNames[patchi]
-    << " with faces:" << boundaryFaces[patchi]
-    << " size:" << patchSizes[patchi]
-    << " start:" << patchStarts[patchi]
-    << endl;
-
     }
 
     // Grab "non-existing" faces and put them into a default patch
