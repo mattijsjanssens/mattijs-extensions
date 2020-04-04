@@ -48,6 +48,7 @@ Description
 #include "polyMeshTetDecomposition.H"
 #include "particleMacros.H"
 #include "vectorTensorTransform.H"
+#include "triFaceList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -133,7 +134,8 @@ public:
     };
 
 
-private:
+//private:
+public:
 
     // Private data
 
@@ -546,7 +548,11 @@ public:
         scalar trackToFace
         (
             const vector& displacement,
-            const scalar fraction
+            const scalar fraction,
+
+            const pointField& immPoints,
+            const triFaceList& immFaces,
+            const labelUList& cellTriangles
         );
 
         //- As particle::trackToFace, but also stops on tet triangles. On
@@ -556,8 +562,38 @@ public:
         (
             const vector& displacement,
             const scalar fraction,
-            label& tetTriI
+            label& tetTriI,
+
+            const pointField& immPoints,
+            const triFaceList& immFaces,
+            const labelUList& cellTriangles
         );
+
+static scalar trackToStationaryTri
+(
+    const bool debug,
+
+    //- Current tet
+    const point& centre,
+    const point& base,
+    const point& v1,
+    const point& v2,
+
+    //- Particle
+    const label origId,
+    const barycentric& coordinates,
+
+    //- Track
+    const vector& displacement, // total displacement
+    const scalar fraction,      // current fraction
+    const scalar stepFraction,  // starting fraction
+
+    //- Result from tracking
+    label& tetTriI,             // new tetIndex
+    barycentric& newCoordinates,// new coordinates
+    scalar& newStepFraction     // new fraction
+);
+
 
         //- As particle::trackToTri, but for stationary meshes
         scalar trackToStationaryTri

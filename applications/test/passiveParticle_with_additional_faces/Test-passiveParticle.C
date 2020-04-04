@@ -33,6 +33,7 @@ Description
 
 #include "fvCFD.H"
 #include "passiveParticleCloud.H"
+#include "OBJstream.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -71,8 +72,67 @@ int main(int argc, char *argv[])
     runTime.printExecutionTime(Info);
 
     //++runTime;
-    Pout<< "Writing particles to time " << runTime.timeName() << endl;
-    particles.write();
+    //Pout<< "Writing particles to time " << runTime.timeName() << endl;
+    //particles.write();
+
+    const pointField immPoints
+    ({
+        point(0, 0, 0.99),
+        point(1, 0, 0.99),
+        point(0, 1, 0.99),
+        point(1, 1, 0.99)
+    });
+    const triFaceList immFaces
+    ({
+        triFace(0, 1, 2),
+        triFace(2, 1, 3)
+    });
+    labelListList cellTriangles(2);
+    cellTriangles[0] = labelList({0, 1});
+
+    {
+        OBJstream os(runTime.path()/"cellTriangles.obj");
+        Pout<< "Writing immersed triangles to " << os.name() << endl;
+        for (const labelList& cTris : cellTriangles)
+        {
+            for (const label triI : cTris)
+            {
+                os.write(immFaces[triI].tri(immPoints), false);
+            }
+        }
+    }
+
+
+    // Track the particles to the next face
+    for (passiveParticle& p : particles)
+    {
+        const point start(p.position());
+        const point end(0.1, 0.01, 1.03);
+
+        Pout<< "Tracking " << start << " cell:" << p.cell()
+            << " origProc:" << p.origProc()
+            << " origId:" << p.origId()
+            << " to:" << end
+            << " coord:" << p.coordinates()
+            << " transform:" << p.currentTetTransform()
+            << endl;
+
+        const scalar s = p.trackToFace
+        (
+            end-start,
+            1.0,
+            immPoints,
+            immFaces,
+            cellTriangles[p.cell()]
+        );
+
+        Pout<< "    After:" << " cell:" << p.cell()
+            << " pos:" << p.position()
+            << " fraction:" << s
+            << " coord:" << p.coordinates()
+            << " transform:" << p.currentTetTransform()
+            << endl;
+    }
 
     Info<< "End\n" << endl;
 

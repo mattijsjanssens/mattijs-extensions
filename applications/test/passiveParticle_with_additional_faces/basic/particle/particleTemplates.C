@@ -369,7 +369,14 @@ void Foam::particle::trackToAndHitFace
     trackingData& td
 )
 {
-    trackToFace(direction, fraction);
+    trackToFace
+    (
+        direction,
+        fraction,
+        pointField::null(),
+        triFaceList::null(),
+        labelList::null()
+    );
 
     hitFace(direction, cloud, td);
 }
