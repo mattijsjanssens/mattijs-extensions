@@ -77,18 +77,18 @@ int main(int argc, char *argv[])
 
     const pointField immPoints
     ({
-        point(0, 0, 0.99),
-        point(1, 0, 0.99),
-        point(0, 1, 0.99),
-        point(1, 1, 0.99)
+        point(0, 0, 0.93),
+        point(1, 0, 0.93),
+        point(0, 1, 0.93),
+        point(1, 1, 0.93)
     });
     const triFaceList immFaces
     ({
-        triFace(0, 1, 2),
-        triFace(2, 1, 3)
+        triFace(0, 1, 2)
+        //triFace(2, 1, 3)
     });
     labelListList cellTriangles(2);
-    cellTriangles[0] = labelList({0, 1});
+    cellTriangles[0] = labelList({0});
 
     {
         OBJstream os(runTime.path()/"cellTriangles.obj");
@@ -101,6 +101,24 @@ int main(int argc, char *argv[])
             }
         }
     }
+    {
+        OBJstream os(runTime.path()/"cellTets.obj");
+        Pout<< "Writing immersed tets to " << os.name() << endl;
+        forAll(cellTriangles, celli)
+        {
+            const point& cc = mesh.cellCentres()[celli];
+            const labelList& cTris = cellTriangles[celli];
+            for (const label triI : cTris)
+            {
+                const triFace& f = immFaces[triI];
+                const triPointRef p(f.tri(immPoints));
+                os.write(p, false);
+                os.write(triPointRef(p.b(), p.a(), cc), false);
+                os.write(triPointRef(p.c(), p.b(), cc), false);
+                os.write(triPointRef(p.a(), p.c(), cc), false);
+            }
+        }
+    }
 
 
     // Track the particles to the next face
@@ -109,7 +127,7 @@ int main(int argc, char *argv[])
         const point start(p.position());
         const point end(0.1, 0.01, 1.03);
 
-        Pout<< "Tracking " << start << " cell:" << p.cell()
+        Pout<< "** NORMAL Tracking " << start << " cell:" << p.cell()
             << " origProc:" << p.origProc()
             << " origId:" << p.origId()
             << " to:" << end

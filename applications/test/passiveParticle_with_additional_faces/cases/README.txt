@@ -22,3 +22,11 @@ E.g. on two_tets
     0.4*centroid + 0.6*vertex0
 transform:(0.25 0 1 0 0.25 0 0 0 0.25 0 0 1)
 coord    :(0.4 0.6 0 2.68882e-17)
+
+
+20200405: two_hex/
+- problem: individual tets from hex decomposition should not have coincident
+faces
+- problem: cannot re-use tet-intersection since starting point might not
+be inside the tet. Instead just use face/triangle intersection in absolute
+coordinates?

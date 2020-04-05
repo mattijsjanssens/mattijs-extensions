@@ -782,7 +782,8 @@ Foam::scalar Foam::particle::trackToStationaryTri
     if (debug)
     {
         const point x0 = (A & coordinates);
-        Info<< "Particle " << origId << endl << "Tracking from " << x0
+        Pout<< indent << "Particle " << origId << endl
+            << indent << "Tracking from " << x0
             << " along " << displacement << " to " << x0 + displacement << endl;
      }
 //MEJ
@@ -790,10 +791,10 @@ Foam::scalar Foam::particle::trackToStationaryTri
 
     if (debug)
     {
-        Info<< "Tet points o=" << centre << ", b=" << base
+        Pout<< indent << "Tet points o=" << centre << ", b=" << base
             << ", v1=" << v1 << ", v2=" << v2 << endl
-            << "Tet determinant = " << detA << endl
-            << "Start local coordinates = " << coordinates << endl;
+            << indent << "Tet determinant = " << detA << endl
+            << indent << "Start local coordinates = " << coordinates << endl;
     }
 
     // Get the factor by which the displacement is increased
@@ -804,7 +805,7 @@ Foam::scalar Foam::particle::trackToStationaryTri
 
     if (debug)
     {
-        Info<< "Local displacement = " << Tx1 << "/" << detA << endl;
+        Pout<< indent << "Local displacement = " << Tx1 << "/" << detA << endl;
     }
 
     // Calculate the hit fraction
@@ -818,7 +819,8 @@ Foam::scalar Foam::particle::trackToStationaryTri
 
             if (debug)
             {
-                Info<< "Hit on tet face " << i << " at local coordinate "
+                Pout<< indent
+                    << "Hit on tet face " << i << " at local coordinate "
                     << coordinates + mu*Tx1 << ", " << mu*detA*100
                     << "% of the way along the track" << endl;
             }
@@ -854,19 +856,20 @@ Foam::scalar Foam::particle::trackToStationaryTri
     {
         if (iH != -1)
         {
-            Info<< "Track hit tet face " << iH << " first" << endl;
+            Pout<< indent << "Track hit tet face " << iH << " first" << endl;
         }
         else
         {
-            Info<< "Track hit no tet faces" << endl;
+            Pout<< indent << "Track hit no tet faces" << endl;
         }
         const point x0 = (A & coordinates);
         const point x1 = (A & newCoordinates);
 
-        Info<< "End local coordinates = " << yH << endl
-            << "End global coordinates = " << x1 << endl
-            << "Tracking displacement = " << x1 - x0 << endl
-            << muH*detA*100 << "% of the step completed" << endl << endl;
+        Pout<< indent << "End local coordinates = " << yH << endl
+            << indent << "End global coordinates = " << x1 << endl
+            << indent << "Tracking displacement = " << x1 - x0 << endl
+            << indent << muH*detA*100 << "% of the step completed" << endl
+            << endl;
     }
 
     // Set the proportion of the track that has been completed
@@ -902,8 +905,11 @@ Foam::scalar Foam::particle::trackToStationaryTri
     {
         vector o, b, v1, v2;
         stationaryTetGeometry(o, b, v1, v2);
-        Info<< "Tet points o=" << o << ", b=" << b
-            << ", v1=" << v1 << ", v2=" << v2 << endl
+        Info<< "Tet points:" << nl
+            << "v " << o << nl
+            << "v " << b << nl
+            << "v " << v1 << nl
+            << "v " << v2 << endl
             << "Tet determinant = " << detA << endl
             << "Start local coordinates = " << y0 << endl;
     }
@@ -1163,6 +1169,7 @@ Foam::scalar Foam::particle::trackToTri
             newStepFraction // new fraction
         );
 
+        Pout<< incrIndent;
         const point p0(position());
         for (const label triI : cellTriangles)
         {
@@ -1171,13 +1178,26 @@ Foam::scalar Foam::particle::trackToTri
             const point& v1 = immPoints[tri[1]];
             const point& v2 = immPoints[tri[2]];
 
-            Pout<< "** immersed triangle " << tri
-                << " with tet coords:"
-                << centre
-                << base
-                << v1
-                << v2
-                << endl;
+//Note: will not work. Tet might not contain starting point (p0).
+// Instead move checks as additional faces into trackToStationaryTri
+
+            Pout<< indent
+                << "** immersed triangle " << tri
+                << " with tet coords:" << nl
+                << indent
+                << "v " << centre << nl
+                << indent
+                << "v " << base << nl
+                << indent
+                << "v " << v1 << nl
+                << indent
+                << "v " << v2 << endl;
+
+            if (tetPointRef(centre, base, v2, v1).inside(p0))
+            {
+                Pout<< indent
+                    << "p0 is inside!!" << endl;
+            }
 
             //- replacement of stationaryTetReverseTransform
             const barycentricTensor A(centre, base, v1, v2);
@@ -1206,7 +1226,8 @@ Foam::scalar Foam::particle::trackToTri
                 (p0 & T)/detA
             );
 
-            Pout<< "Immersed tet:"
+            Pout<< indent
+                << "Immersed tet:"
                 << " detA:" << detA
                 << " position:" << p0
                 << " coordinates:" << coordinates
@@ -1242,15 +1263,16 @@ Foam::scalar Foam::particle::trackToTri
                 immStepFraction // new fraction
             );
 
-            Pout<< "    exited with"
+            Pout<< indent << "exited with"
                 << " immTetTriI:" << immTetTriI
                 << " immCoordinates:" << immCoordinates
+                << " immPosition:" << (A&immCoordinates)
                 << " immStepFraction:" << immStepFraction
                 << " immFraction:" << immFraction
                 << endl;
-            Pout<< "** ENDOF immersed triangle " << tri << endl;
+            Pout<< indent << "** ENDOF immersed triangle " << tri << endl;
         }
-
+        Pout<< decrIndent;
 
         coordinates_ = newCoordinates;
         stepFraction_ = newStepFraction;
