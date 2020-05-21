@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2018 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2020 M. Janssens
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
 
 
-    if (UPstream::worlds().size() != 2)
+    if (UPstream::allWorlds().size() != 2)
     {
         FatalErrorInFunction << "Only can use two worlds" << exit(FatalError);
     }
@@ -101,9 +101,9 @@ int main(int argc, char *argv[])
 //    vfld == mag(mesh.C());
 
 
-    const world remotePatch("movingWall");
-    world remoteWorld;
-    for (const word& world : UPstream::worlds())
+    const word remotePatch("movingWall");
+    word remoteWorld;
+    for (const word& world : UPstream::allWorlds())
     {
         if (world != UPstream::myWorld())
         {
@@ -111,6 +111,12 @@ int main(int argc, char *argv[])
             break;
         }
     }
+
+DebugVar(UPstream::myWorldID());
+DebugVar(remotePatch);
+DebugVar(remoteWorld);
+DebugVar(mesh.name());
+
 
     // Get remote world/region/patch database
     const objectRegistry& obj = patchData
@@ -122,7 +128,7 @@ int main(int argc, char *argv[])
     );
 
     // Put some data into obj
-    if (
+    if (UPstream::myWorldID() == 0)
     {
         autoPtr<IOField<scalar>> fldPtr
         (
@@ -138,16 +144,21 @@ int main(int argc, char *argv[])
                 )
             )
         );
-        IOField<scalar>::store(fldPtr);
-
         IOField<scalar>& fld = fldPtr();
         fld.setSize(3, 123.0);
+
+        IOField<scalar>::store(fldPtr);
     }
 
     DebugVar(obj.sortedToc());
 
 
-    // Send over data to correct
+    // Send over data to correct world
+    {
+        PstreamBuffers pBufs(Pstream::commsTypes::nonBlocking);
+
+
+    }
 
     return 0;
 }
