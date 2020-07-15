@@ -555,6 +555,25 @@ public:
             const labelUList& cellTriangles
         );
 
+       //- As particle::track, but also stops on internal faces.
+        scalar trackToFace
+        (
+            const vector& displacement,
+            const scalar fraction
+        )
+        {
+            return trackToFace
+            (
+                displacement,
+                fraction,
+                pointField::null(),
+                triFaceList::null(),
+                labelList::null()
+            );
+        }
+
+
+
         //- As particle::trackToFace, but also stops on tet triangles. On
         //  exit, tetTriI is set to the index of the tet triangle that was
         //  hit, or -1 if the end position was reached.

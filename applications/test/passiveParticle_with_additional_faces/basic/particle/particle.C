@@ -619,28 +619,13 @@ Foam::scalar Foam::particle::track
     const scalar fraction
 )
 {
-    scalar f = trackToFace
-    (
-        displacement,
-        fraction,
-        pointField::null(),
-        triFaceList::null(),
-        labelList::null()
-    );
+    scalar f = trackToFace(displacement, fraction);
 
     while (onInternalFace())
     {
         changeCell();
 
-        f *=
-            trackToFace
-            (
-                f*displacement,
-                f*fraction,
-                pointField::null(),
-                triFaceList::null(),
-                labelList::null()
-            );
+        f *= trackToFace(f*displacement, f*fraction);
     }
 
     return f;
@@ -891,7 +876,7 @@ Foam::scalar Foam::particle::trackToStationaryTri
 
     if (debug)
     {
-        Info<< "Particle " << origId() << endl << "Tracking from " << x0
+        Pout<< "Particle " << origId() << endl << "Tracking from " << x0
             << " along " << x1 << " to " << x0 + x1 << endl;
     }
 
@@ -905,11 +890,8 @@ Foam::scalar Foam::particle::trackToStationaryTri
     {
         vector o, b, v1, v2;
         stationaryTetGeometry(o, b, v1, v2);
-        Info<< "Tet points:" << nl
-            << "v " << o << nl
-            << "v " << b << nl
-            << "v " << v1 << nl
-            << "v " << v2 << endl
+        Pout<< "Tet points o=" << o << ", b=" << b
+            << ", v1=" << v1 << ", v2=" << v2 << endl
             << "Tet determinant = " << detA << endl
             << "Start local coordinates = " << y0 << endl;
     }
@@ -922,7 +904,7 @@ Foam::scalar Foam::particle::trackToStationaryTri
 
     if (debug)
     {
-        Info<< "Local displacement = " << Tx1 << "/" << detA << endl;
+        Pout<< "Local displacement = " << Tx1 << "/" << detA << endl;
     }
 
     // Calculate the hit fraction
@@ -936,7 +918,7 @@ Foam::scalar Foam::particle::trackToStationaryTri
 
             if (debug)
             {
-                Info<< "Hit on tet face " << i << " at local coordinate "
+                Pout<< "Hit on tet face " << i << " at local coordinate "
                     << y0 + mu*Tx1 << ", " << mu*detA*100 << "% of the "
                     << "way along the track" << endl;
             }
@@ -972,13 +954,13 @@ Foam::scalar Foam::particle::trackToStationaryTri
     {
         if (iH != -1)
         {
-            Info<< "Track hit tet face " << iH << " first" << endl;
+            Pout<< "Track hit tet face " << iH << " first" << endl;
         }
         else
         {
-            Info<< "Track hit no tet faces" << endl;
+            Pout<< "Track hit no tet faces" << endl;
         }
-        Info<< "End local coordinates = " << yH << endl
+        Pout<< "End local coordinates = " << yH << endl
             << "End global coordinates = " << position() << endl
             << "Tracking displacement = " << position() - x0 << endl
             << muH*detA*100 << "% of the step from " << stepFraction_ << " to "
@@ -1005,7 +987,7 @@ Foam::scalar Foam::particle::trackToMovingTri
 
     if (debug)
     {
-        Info<< "Particle " << origId() << endl << "Tracking from " << x0
+        Pout<< "Particle " << origId() << endl << "Tracking from " << x0
             << " along " << x1 << " to " << x0 + x1 << endl;
     }
 
@@ -1106,13 +1088,13 @@ Foam::scalar Foam::particle::trackToMovingTri
     {
         if (iH != -1)
         {
-            Info<< "Track hit tet face " << iH << " first" << endl;
+            Pout<< "Track hit tet face " << iH << " first" << endl;
         }
         else
         {
-            Info<< "Track hit no tet faces" << endl;
+            Pout<< "Track hit no tet faces" << endl;
         }
-        Info<< "End local coordinates = " << yH << endl
+        Pout<< "End local coordinates = " << yH << endl
             << "End global coordinates = " << position() << endl;
     }
 

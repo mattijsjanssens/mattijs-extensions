@@ -123,11 +123,11 @@ void findPositions
         map.constructMap(),
         false,
         cellPositions,
-        pointList(),                            // nullValue
         ListOps::appendEqOp<point>(),
         flipOp(),                               // negateOp
-        UPstream::msgType(),
-        map.comm()
+        pointList(),                            // nullValue
+        UPstream::msgType()
+        //map.comm()
     );
 
 
@@ -178,11 +178,11 @@ void findPositions
         map.subMap(),
         false,
         cellDestinations,
-        labelList(),                            // nullValue
         ListOps::appendEqOp<label>(),
         flipOp(),                               // negateOp
-        UPstream::msgType(),
-        map.comm()
+        labelList(),                            // nullValue
+        UPstream::msgType()
+        //map.comm()
     );
 }
 
