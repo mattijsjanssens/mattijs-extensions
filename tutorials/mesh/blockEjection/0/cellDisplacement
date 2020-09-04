@@ -1,0 +1,91 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2006                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      cellDisplacement;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    //// Moving block; prescribed motion on pointDisplacement
+    //group_moving
+    //{
+    //    type            uniformFixedValue;
+    //    uniformValue    (0 0 0);
+    //}
+
+    group_inlet
+    {
+        // Interpolate from pointDisplacement or prescribe?
+        type            cellMotion;
+        value           uniform (0 0 0);
+    }
+    group_outlet
+    {
+        // Interpolate from pointDisplacement or prescribe?
+        type            cellMotion;
+        value           uniform (0 0 0);
+    }
+
+    // Moving block; prescribed motion on pointDisplacement
+    group_moving
+    {
+        type            cellMotion;
+        value           uniform (0 0 0);
+    }
+
+    group_slip
+    {
+        type            slip;
+    }
+
+    // no-slip on stationay walls
+    group_stationary
+    {
+        type            uniformFixedValue;
+        uniformValue    (0 0 0);
+    }
+
+    // Allow slipping on central
+    central_bottom_couple
+    {
+        patchType       cyclicACMI;
+        type            slip;
+    }
+    central_top_couple
+    {
+        patchType       cyclicACMI;
+        type            slip;
+    }
+
+    // Top/bottom AMI are no-slip
+    bottom_central_couple
+    {
+        patchType       cyclicACMI;
+        type            cellMotion;
+        value           uniform (0 0 0);
+    }
+    top_central_couple
+    {
+        patchType       cyclicACMI;
+        type            cellMotion;
+        value           uniform (0 0 0);
+    }
+}
+
+// ************************************************************************* //
