@@ -258,17 +258,21 @@ void Foam::volPointInterpolation::makeWeights()
 
 
     // Running sum of weights
-    pointScalarField sumWeights
+    tmp<pointScalarField> tsumWeights
     (
-        IOobject
+        new pointScalarField
         (
-            "volPointSumWeights",
-            mesh().polyMesh::instance(),
-            mesh()
-        ),
-        pMesh,
-        dimensionedScalar(dimless, Zero)
+            IOobject
+            (
+                "volPointSumWeights",
+                mesh().polyMesh::instance(),
+                mesh()
+            ),
+            pMesh,
+            dimensionedScalar(dimless, Zero)
+        )
     );
+    pointScalarField& sumWeights = tsumWeights.ref();
 
 
     // Create internal weights; add to sumWeights
@@ -376,8 +380,7 @@ void Foam::volPointInterpolation::makeWeights()
         const scalar m(mag(pointOne[pointi]));
         if (m > ROOTVSMALL)
         {
-            const scalar relDiff = (pointOne[pointi]-sumWeights[pointi])/m;
-
+            const scalar relDiff = (pointOne[pointi]-scalar(1.0))/m;
             if (mag(relDiff) > relTol)
             {
                 isEqual = false;
@@ -396,21 +399,13 @@ void Foam::volPointInterpolation::makeWeights()
                 << endl;
         }
 
-        normalisationPtr_ = new pointScalarField
-        (
-            IOobject
-            (
-                "pointOne",
-                mesh().polyMesh::instance(),
-                mesh(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            pMesh,
-            dimensionedScalar(dimless, scalar(1.0))
-        );
+        normalisationPtr_ = tsumWeights;
+        normalisationPtr_.ref() = scalar(1.0);
         normalisationPtr_.ref() /= tpointOne;
+    }
+    else
+    {
+        normalisationPtr_.clear();
     }
 
     if (debug)
