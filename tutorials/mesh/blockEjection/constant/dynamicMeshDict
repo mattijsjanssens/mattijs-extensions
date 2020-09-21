@@ -21,8 +21,8 @@ motionSolverLibs (fvMotionSolvers);
 
 motionSolver    displacementLaplacian;
 
-//diffusivity     uniform;
-diffusivity  directional (100 0 0) 1(group_moving);
+diffusivity     uniform;
+//diffusivity  directional (100 0 0) 1(group_moving);
 
 
 // ************************************************************************* //

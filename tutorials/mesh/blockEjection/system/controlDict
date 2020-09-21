@@ -15,20 +15,28 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+DebugSwitches
+{
+    volPointInterpolation   1;
+    //cyclicAMI               1;
+    //cyclicACMI              1;
+    //polyMesh                1;    // For showing when movePoints is called
+}
+
 application     moveDynamicMesh;
 
 startFrom       startTime;
 
 startTime       0;
 
-stopAt          writeNow;   //endTime;
+stopAt          endTime;
 
-endTime         0.4;
+endTime         0.01;
 
 deltaT          0.001;
 
-writeControl    adjustableRunTime;
-writeInterval   0.01;
+writeControl    timeStep;
+writeInterval   1;
 
 purgeWrite      0;
 

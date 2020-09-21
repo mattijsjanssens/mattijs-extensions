@@ -261,6 +261,8 @@ Foam::displacementLaplacianFvMotionSolver::diffusivity()
 Foam::tmp<Foam::pointField>
 Foam::displacementLaplacianFvMotionSolver::curPoints() const
 {
+DebugVar("displacementLaplacianFvMotionSolver::curPoints()");
+
     interpolationPtr_->interpolate
     (
         cellDisplacement_,
@@ -291,6 +293,10 @@ Foam::displacementLaplacianFvMotionSolver::curPoints() const
 
         if (patchTypeOverride)
         {
+
+Pout<< "** displacementLaplacianFvMotionSolver::curPoints **" << endl;
+
+
             // Re-normalise the weights. Done by seeing what a 'one' field
             // (with same bcs as pointDisplacement) would get interpolated as.
 

@@ -1,3 +1,7 @@
+./motionInterpolation/motionInterpolation/motionInterpolation.C
+./motionInterpolation/patchCorrected/patchCorrectedInterpolation.C
+./motionInterpolation/patchTransformed/patchTransformedInterpolation.C
+
 volPointInterpolation.C
 displacementLaplacianFvMotionSolver.C
 moveDynamicMesh.C

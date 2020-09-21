@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2017 OpenFOAM Foundation
-    Copyright (C) 2016-2019 OpenCFD Ltd.
+    Copyright (C) 2016-2020 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -125,6 +125,117 @@ void Foam::volPointInterpolation::addSeparated
                 );
         }
     }
+}
+
+
+template<class Type>
+bool Foam::volPointInterpolation::hasConstraintOverride
+(
+    const GeometricField<Type, pointPatchField, pointMesh>& pf
+) const
+{
+    // Check if any override. We are conservative and assume if any override
+    // that means the interpolation has been overridden
+    const auto& bfld = pf.boundaryField();
+
+    bool patchTypeOverride = false;
+    for (const auto& pfld : bfld)
+    {
+        if (pfld.type() != pfld.patch().constraintType())
+        {
+            patchTypeOverride = true;
+            break;
+        }
+    }
+    reduce(patchTypeOverride, orOp<bool>());
+
+    return patchTypeOverride;
+}
+
+
+template<class Type>
+void Foam::volPointInterpolation::normalise
+(
+    GeometricField<Type, pointPatchField, pointMesh>& pf
+) const
+{
+    if (debug)
+    {
+        Pout<< "volPointInterpolation::normalise("
+            << "GeometricField<Type, pointPatchField, pointMesh>&) : "
+            << "detected constraint patch override for field "
+            << pf.name() << endl;
+    }
+
+    // Re-normalise the weights. Done by seeing what a 'one' field
+    // (with same bcs as pf) would get interpolated as.
+
+    const pointMesh& pMesh = pf.mesh();
+
+    //const volScalarField cellOne
+    //(
+    //    IOobject
+    //    (
+    //        "cellOne",
+    //        pMesh().polyMesh::instance(),
+    //        pMesh.thisDb(),
+    //        IOobject::NO_READ,
+    //        IOobject::NO_WRITE,
+    //        false
+    //    ),
+    //    mesh(),
+    //    dimensionedScalar(dimless, scalar(1.0))
+    //);
+
+    const auto& bfld = pf.boundaryField();
+
+    // Make 'calculated' on all non-constraint patches.
+    wordList wantedBCs(bfld.types());
+    wordList patchTypes(bfld.size());
+    forAll(bfld, patchi)
+    {
+        patchTypes[patchi] = bfld[patchi].patch().constraintType();
+        if
+        (
+            (patchTypes[patchi] == word::null)
+         || (patchTypes[patchi] != bfld[patchi].type())
+        )
+        {
+            wantedBCs[patchi] =
+                pointPatchField<scalar>::calculatedType();
+        }
+    }   
+
+    // Generate field with same constraint patch override
+    pointScalarField pointOne
+    (
+        IOobject
+        (
+            "pointOne",
+            pMesh().polyMesh::instance(),
+            pMesh.thisDb(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        pMesh,
+        dimensionedScalar(dimless, Zero),
+        wantedBCs,
+        patchTypes
+    );
+
+    // Sum up effect of interpolating one (on boundary points only)
+    interpolateOne(tmp<scalarField>(), pointOne);
+
+    // Normalise (boundary points only)
+    const labelList& mp = boundaryPtr_().meshPoints();
+    for (const label pointi : mp)
+    {
+        pf[pointi] /= pointOne[pointi];
+    }
+
+    //interpolate(cellOne, pointOne);
+    //pf /= pointOne;
 }
 
 
@@ -291,9 +402,11 @@ void Foam::volPointInterpolation::interpolateBoundaryField
     // Do points on 'normal' patches from the surrounding patch faces
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    forAll(boundary.meshPoints(), i)
+    const labelList& mp = boundary.meshPoints();
+
+    forAll(mp, i)
     {
-        label pointi = boundary.meshPoints()[i];
+        label pointi = mp[i];
 
         if (isPatchPoint_[pointi])
         {
@@ -320,10 +433,15 @@ void Foam::volPointInterpolation::interpolateBoundaryField
     addSeparated(pf);
 
     // Optionally normalise
-    if (normalisationPtr_.valid())
+    if (normalisationPtr_)
     {
-        pf *= normalisationPtr_();
+        const scalarField& normalisation = normalisationPtr_();
+        forAll(mp, i)
+        {
+            pfi[mp[i]] *= normalisation[i];
+        }
     }
+
 
     // Push master data to slaves. It is possible (not sure how often) for
     // a coupled point to have its master on a different patch so
@@ -353,7 +471,8 @@ template<class Type>
 void Foam::volPointInterpolation::interpolate
 (
     const GeometricField<Type, fvPatchField, volMesh>& vf,
-    GeometricField<Type, pointPatchField, pointMesh>& pf
+    GeometricField<Type, pointPatchField, pointMesh>& pf,
+    const bool autoNormalise
 ) const
 {
     if (debug)
@@ -369,6 +488,16 @@ void Foam::volPointInterpolation::interpolate
 
     // Interpolate to the patches preserving fixed value BCs
     interpolateBoundaryField(vf, pf, false);
+
+DebugVar(pf.name());
+DebugVar(autoNormalise);
+    const bool overrideConstraints = hasConstraintOverride(pf);
+DebugVar(overrideConstraints);
+
+    if (autoNormalise && overrideConstraints)
+    {
+        normalise(pf);
+    }
 }
 
 
@@ -382,7 +511,7 @@ Foam::volPointInterpolation::interpolate
 {
     const pointMesh& pm = pointMesh::New(vf.mesh());
 
-    // Construct tmp<pointField>
+    // Construct tmp<pointField> so no override of constraints
     auto tpf = tmp<GeometricField<Type, pointPatchField, pointMesh>>::New
     (
         IOobject
