@@ -13,3 +13,15 @@ and phi and for very small time steps these are apples and
 pears. So either
 - use velocity transported-to-face (so Co=0.5) to compare
 - or scale ddtCorr with time step
+
+
+2) pitzDaily with high-aspect-ratio cells.
+If mitre around corner:
+- pressure between cells around corner is related
+- but velocity is not!
+so how do you choose discretisation? Better
+is not to mitre but have a corner cell?
+
+
+
+
