@@ -1,0 +1,5 @@
+linear solver:
+- gSum is the bottleneck
+- can it be approximated with weighted average of neighbours?
+- this assumes all neighbours always do a similar contribution
+- first check if PCG converges with just local sum ...

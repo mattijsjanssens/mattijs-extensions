@@ -1,0 +1,6 @@
+- parallel reduction
+- parallel writing / collating
+- automatic decompose
+- overlapping cellZones in polyTopoChange
+- dlopen with local file system
+- linear solvers: parallel preconditioning, reordering before solving, multiple masters

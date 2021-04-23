@@ -65,3 +65,66 @@
        so picks up e.g. faces at 90 degrees to source face.
     -> uses 'fan' decomposition but face-centre area normalisation.
     -> normalisation has to move into AMIMethod.
+
+
+- adding physics to AMI coupled bit. Like jump cyclic?
+
+            //- Return the "jump" across the patch as a "half" field
+            virtual tmp<Field<Type>> jump()
+            {
+                return tmp<Field<Type>>::null;
+            }
+
+- having multiple coupled bits, multiple wall bits
+- use cyclicACMI machinery to scale areas&weights according to overlap
+
+    ACMI_A
+    {
+        type                cyclicACMI;
+        neighbourPatches    (ACMI_B ACMI_C);
+        AMIMethod           partialFaceAreaWeightAMI;
+        nonOverlapPatch     ACMI_A_blockage0;
+    }
+    ACMI_A_blockage0
+    {
+        type                wall;
+    }
+    ACMI_B
+    {
+        type                cyclicACMI;
+        neighbourPatches    (ACMI_A);
+        AMIMethod           partialFaceAreaWeightAMI;
+        nonOverlapPatch     ACMI_B_blockage;
+    }
+    ACMI_B_blockage
+    {
+        type                wall;
+    }
+    ACMI_C
+    {
+        type                cyclicACMI;
+        neighbourPatches    (ACMI_C);
+        AMIMethod           partialFaceAreaWeightAMI;
+        nonOverlapPatch     ACMI_C_blockage;
+    }
+    ACMI_C_blockage
+    {
+        type                wall;
+    }
+
+So now
+- still only set of duplicate patches, B,C do not overlap on another. Just
+  that A now partially overlaps B, partially C, partially blockage0, partially 
+- use AMIInterpolation between A-B, A-C to determine
+  areas to those (and to B-A, C-A) and to A_blockage
+- same for B-C (also gives C-B)
+- make sure A_blockage, B_blockage, C_blockage is all correct
+  (should be 1-sum(overlap))
+- cyclicAMI now has single AMIInterpolation covering all neighbour patches
+  so there is still full overlap
+- problem are interpolation functions (cyclicAMIPolyPatchTemplates.C)
+  which get called from a single patch and use either interpolateToSource
+  (so require all fields combined) or interpolateToTarget (so would
+  require unpacking into bits for the current patch.
+- could cache complete result but probably easier to have separate
+  AMIs for every slave patch instead.
