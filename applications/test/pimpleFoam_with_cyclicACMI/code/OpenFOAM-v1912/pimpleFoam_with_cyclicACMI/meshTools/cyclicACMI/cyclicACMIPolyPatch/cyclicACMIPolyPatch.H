@@ -28,30 +28,7 @@ Class
     Foam::cyclicACMIPolyPatch
 
 Description
-    Cyclic patch for Arbitrarily Coupled Mesh Interface (ACMI).
-
-    Mixes cyclicAMI behaviour with non-coupled patch behaviour using
-    the overlap area fraction. The non-coupled patch is specified through
-    the nonOverlapPatch keyword.
-
-Usage
-    Example of the patch specification:
-
-        type            cyclicACMI;
-        neighbourPatch  ACMI2_couple;       // cyclicAMI neighbour patch
-        nonOverlapPatch ACMI1_blockage;     // patch for uncoupled faces
-
-        // Optional time-dependent scaling (PatchFunction1)
-        scale           table
-        (
-            (0.00   1.0)
-            (0.02   1.0)
-            (0.0201 0.0)
-        );
-
-
-See also
-    cyclicAMIPolyPatch.C
+    Cyclic patch for Arbitrarily Coupled Mesh Interface (ACMI)
 
 SourceFiles
     cyclicACMIPolyPatch.C
@@ -64,8 +41,6 @@ SourceFiles
 #include "cyclicAMIPolyPatch.H"
 #include "AMIPatchToPatchInterpolation.H"
 #include "polyBoundaryMesh.H"
-#include "PatchFunction1.H"
-#include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -95,59 +70,18 @@ private:
         mutable label nonOverlapPatchID_;
 
         //- Mask/weighting for source patch
-        mutable scalarField srcMask_;
+        mutable List<scalarField> srcMasks_;
 
         //- Mask/weighting for target patch
-        mutable scalarField tgtMask_;
+        mutable List<scalarField> tgtMasks_;
 
-
-        // Scaling of overlap (optional)
-
-            //- Weighting for source mask
-            mutable autoPtr<PatchFunction1<scalar>> srcScalePtr_;
-
-            //- Weighting for target mask
-            mutable autoPtr<PatchFunction1<scalar>> tgtScalePtr_;
-
-            //- Stored face areas
-            mutable vectorField thisSf_;
-            mutable vectorField thisNoSf_;
-            mutable vectorField nbrSf_;
-            mutable vectorField nbrNoSf_;
-
-            //- Scaled version of source mask
-            mutable scalarField srcScaledMask_;
-
-            //- Scaled version of target mask
-            mutable scalarField tgtScaledMask_;
-
-            //- Flag to detect whether AMI is up to date with mesh points
-            mutable uniformDimensionedScalarField AMITime_;
-
-            //- Flag to detect whether scaled masks are up to date with
-            //  current time
-            mutable label prevTimeIndex_;
+        //- Flag to indicate that AMI has been updated
+        mutable bool updated_;
 
 
 protected:
 
     // Protected Member Functions
-
-        //- Update pp areas according to weights
-        virtual void updateArea
-        (
-            const cyclicACMIPolyPatch& pp,
-            const scalarField& mask,
-            const vectorField& faceArea,
-            const vectorField& noFaceArea
-        ) const;
-
-        //- Normalise weights
-        virtual void normaliseWeights
-        (
-            scalarListList& srcWeights,
-            scalarField& srcWeightsSum
-        ) const;
 
         //- Reset the AMI interpolator
         virtual void resetAMI
@@ -178,10 +112,10 @@ protected:
         virtual void clearGeom();
 
         //- Return the mask/weighting for the source patch
-        virtual const scalarField& srcMask() const;
+        virtual const scalarField& srcMask(const label index) const;
 
         //- Return the mask/weighting for the target patch
-        virtual const scalarField& tgtMask() const;
+        virtual const scalarField& tgtMask(const label index) const;
 
 
 public:
@@ -230,7 +164,7 @@ public:
             const label index,
             const label newSize,
             const label newStart,
-            const word& nbrPatchName,
+            const wordList& nbrPatchNames,
             const word& nonOverlapPatchName
         );
 
@@ -270,7 +204,7 @@ public:
                     index,
                     newSize,
                     newStart,
-                    neighbPatchName(),
+                    nbrPatchNames_,
                     nonOverlapPatchName_
                 )
             );
@@ -308,8 +242,17 @@ public:
 
         // Access
 
+            //- Reset the updated flag
+            inline void setUpdated(bool flag) const;
+
+            //- Return access to the updated flag
+            inline bool updated() const;
+
             //- Return a reference to the neighbour patch
-            virtual const cyclicACMIPolyPatch& neighbPatch() const;
+            virtual const cyclicACMIPolyPatch& neighbPatch
+            (
+                const label index = 0
+            ) const;
 
             //- Non-overlapping patch name
             inline const word& nonOverlapPatchName() const;
@@ -324,7 +267,7 @@ public:
             inline polyPatch& nonOverlapPatch();
 
             //- Mask field where 1 = overlap, 0 = no-overlap
-            inline const scalarField& mask() const;
+            inline const scalarField& mask(const label index = 0) const;
 
             //- Overlap tolerance
             inline static scalar tolerance();
@@ -351,20 +294,8 @@ public:
             labelList& rotation
         ) const;
 
-        //- Update the AMI and patch areas. Return true if anything
-        //  updated
-        virtual bool updateAreas() const;
-
         //- Write the polyPatch data as a dictionary
         virtual void write(Ostream&) const;
-
-        //- Return true if given object is up to date with *this
-        //  (note : like regIOobject::upToDate but operates on object)
-        bool upToDate(const regIOobject&) const;
-
-        //- Set object up to date with *this
-        //  (note : like regIOobject::setUpToDate but operates on object)
-        void setUpToDate(regIOobject&) const;
 };
 
 

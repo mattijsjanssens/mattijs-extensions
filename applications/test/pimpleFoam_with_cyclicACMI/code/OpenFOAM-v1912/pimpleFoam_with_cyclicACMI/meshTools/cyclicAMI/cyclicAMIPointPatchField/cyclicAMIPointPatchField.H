@@ -96,7 +96,7 @@ class cyclicAMIPointPatchField
                 (
                     new PrimitivePatchInterpolation<primitivePatch>
                     (
-                        cyclicAMIPatch_.cyclicAMIPatch().neighbPatch()
+                        cyclicAMIPatch_.cyclicAMIPatch().neighbPatch(0)
                     )
                 );
             }

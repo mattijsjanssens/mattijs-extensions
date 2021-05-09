@@ -179,8 +179,8 @@ public:
             //- Return neighbour coupled internal cell data
             virtual tmp<Field<Type>> patchNeighbourField() const;
 
-            //- Return reference to neighbour patchField
-            const cyclicAMIFvPatchField<Type>& neighbourPatchField() const;
+//            //- Return reference to neighbour patchField
+//            const cyclicAMIFvPatchField<Type>& neighbourPatchField() const;
 
             //- Update result field based on interface functionality
             virtual void updateInterfaceMatrix

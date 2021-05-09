@@ -113,6 +113,20 @@ Foam::cyclicAMIGAMGInterface::cyclicAMIGAMGInterface
         // do it so it the exact loop above using neighbourRestrictAddressing
         // instead of localRestrictAddressing)
 
+        // Note that for multiple nbrs the input is assembled in nbr order
+        // (see internalFieldTransfer below)
+
+        const labelList& nbrIds = fineCyclicAMIInterface_.neighbPatchIDs();
+
+        amiPtrs_.setSize(nbrIds.size());
+
+        label n = 0;
+        forAll(nbrIds, nbri)
+        {
+XXXXXX
+LOOK AT slice (n..n+size()) only !!!
+XXXXXX
+
         labelList nbrFaceRestrictAddressing;
         {
             // From face to coarse face
@@ -144,15 +158,22 @@ Foam::cyclicAMIGAMGInterface::cyclicAMIGAMGInterface
             nbrFaceRestrictAddressing.transfer(dynNbrFaceRestrictAddressing);
         }
 
-        amiPtr_.reset
-        (
-            new AMIPatchToPatchInterpolation
+        const labelList& nbrIds = fineCyclicAMIInterface_.neighbPatchIDs();
+
+        amiPtrs_.setSize(nbrIds.size());
+        forAll(nbrIds, nbri)
+        {
+            amiPtrs_.set
             (
-                fineCyclicAMIInterface_.AMI(),
-                faceRestrictAddressing_,
-                nbrFaceRestrictAddressing
-            )
-        );
+                nbri,
+                new AMIPatchToPatchInterpolation
+                (
+                    fineCyclicAMIInterface_.AMI(nbri),
+                    faceRestrictAddressing_,
+                    nbrFaceRestrictAddressing
+                )
+            );
+        }
     }
 }
 
@@ -171,16 +192,32 @@ Foam::tmp<Foam::labelField> Foam::cyclicAMIGAMGInterface::internalFieldTransfer
     const labelUList& iF
 ) const
 {
-    const cyclicAMIGAMGInterface& nbr =
-        dynamic_cast<const cyclicAMIGAMGInterface&>(neighbPatch());
-    const labelUList& nbrFaceCells = nbr.faceCells();
+    // Return internal field (e.g. cell agglomeration) in nbr patch index
+    const labelList& nbrIds = neighbPatchIDs();
 
-    tmp<labelField> tpnf(new labelField(nbrFaceCells.size()));
+    label n = 0;
+    forAll(nbrIds, nbri)
+    {
+        const cyclicAMIGAMGInterface& nbr =
+            dynamic_cast<const cyclicAMIGAMGInterface&>(neighbPatch(nbri));
+        n += nbr.size();
+    }
+
+    tmp<labelField> tpnf(new labelField(n));
     labelField& pnf = tpnf.ref();
 
-    forAll(pnf, facei)
+    n = 0;
+
+    forAll(nbrIds, nbri)
     {
-        pnf[facei] = iF[nbrFaceCells[facei]];
+        const cyclicAMIGAMGInterface& nbr =
+            dynamic_cast<const cyclicAMIGAMGInterface&>(neighbPatch(nbri));
+        const labelUList& nbrFaceCells = nbr.faceCells();
+
+        forAll(pnf, facei)
+        {
+            pnf[n++] = iF[nbrFaceCells[facei]];
+        }
     }
 
     return tpnf;

@@ -73,15 +73,24 @@ public:
 
         // Access
 
+            //- Neighbour patch ID
+            virtual const labelList& neighbPatchIDs() const = 0;
+
             //- Return neighbour
-            virtual label neighbPatchID() const = 0;
+            virtual label neighbPatchID(const label index) const = 0;
 
             virtual bool owner() const = 0;
 
             //- Return processor number
-            virtual const cyclicAMILduInterface& neighbPatch() const = 0;
+            virtual const cyclicAMILduInterface& neighbPatch
+            (
+                const label index
+            ) const = 0;
 
-            virtual const AMIPatchToPatchInterpolation& AMI() const = 0;
+            virtual const AMIPatchToPatchInterpolation& AMI
+            (
+                const label index
+            ) const = 0;
 
             //- Return face transformation tensor
             virtual const tensorField& forwardT() const = 0;

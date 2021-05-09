@@ -4,10 +4,13 @@ dummyMotionSolver.C
 
 /**** meshTools ****/
 AMI=meshTools/AMIInterpolation
+
+/*
 $(AMI)/GAMG/interfaces/cyclicAMIGAMGInterface/cyclicAMIGAMGInterface.C
 $(AMI)/GAMG/interfaces/cyclicACMIGAMGInterface/cyclicACMIGAMGInterface.C
 $(AMI)/GAMG/interfaceFields/cyclicAMIGAMGInterfaceField/cyclicAMIGAMGInterfaceField.C
 $(AMI)/GAMG/interfaceFields/cyclicACMIGAMGInterfaceField/cyclicACMIGAMGInterfaceField.C
+*/
 
 AMICycPatches=meshTools/cyclicAMI
 $(AMICycPatches)/cyclicAMILduInterfaceField/cyclicAMILduInterface.C
@@ -25,6 +28,7 @@ $(ACMICycPatches)/cyclicACMIPointPatchField/cyclicACMIPointPatchFields.C
 
 
 /**** finiteVolume ****/
+
 fvPatches = finiteVolume/fvMesh/fvPatches
 constraintFvPatches = $(fvPatches)/constraint
 $(constraintFvPatches)/cyclicAMI/cyclicAMIFvPatch.C
@@ -39,6 +43,5 @@ fvsPatchFields = finiteVolume/fields/fvsPatchFields
 constraintFvsPatchFields = $(fvsPatchFields)/constraint
 $(constraintFvsPatchFields)/cyclicAMI/cyclicAMIFvsPatchFields.C
 $(constraintFvsPatchFields)/cyclicACMI/cyclicACMIFvsPatchFields.C
-
 
 EXE = $(FOAM_USER_APPBIN)/pimpleFoam_with_cyclicACMI

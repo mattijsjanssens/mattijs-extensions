@@ -25,7 +25,6 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "cyclicACMIPolyPatch.H"
 #include "cyclicACMIPointPatch.H"
 #include "pointBoundaryMesh.H"
 #include "addToRunTimeSelectionTable.H"

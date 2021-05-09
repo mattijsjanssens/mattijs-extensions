@@ -106,7 +106,7 @@ void Foam::cyclicAMIGAMGInterfaceField::updateInterfaceMatrix
     // Get neighbouring field
     solveScalarField pnf
     (
-        cyclicAMIInterface_.neighbPatch().interfaceInternalField(psiInternal)
+        cyclicAMIInterface_.neighbPatch(0).interfaceInternalField(psiInternal)
     );
 
     // Transform according to the transformation tensors
@@ -114,11 +114,12 @@ void Foam::cyclicAMIGAMGInterfaceField::updateInterfaceMatrix
 
     if (cyclicAMIInterface_.owner())
     {
-        pnf = cyclicAMIInterface_.AMI().interpolateToSource(pnf);
+        pnf = cyclicAMIInterface_.AMI(0).interpolateToSource(pnf);
     }
     else
     {
-        pnf = cyclicAMIInterface_.neighbPatch().AMI().interpolateToTarget(pnf);
+        pnf =
+            cyclicAMIInterface_.neighbPatch(0).AMI(0).interpolateToTarget(pnf);
     }
 
     this->addToInternalField(result, !add, coeffs, pnf);

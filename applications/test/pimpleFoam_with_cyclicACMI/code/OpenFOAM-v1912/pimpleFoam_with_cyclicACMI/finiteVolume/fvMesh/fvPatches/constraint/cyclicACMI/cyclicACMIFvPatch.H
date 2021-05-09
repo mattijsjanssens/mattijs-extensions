@@ -41,7 +41,6 @@ SourceFiles
 #include "cyclicACMILduInterface.H"
 #include "cyclicACMIPolyPatch.H"
 #include "fvBoundaryMesh.H"
-#include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -61,17 +60,13 @@ class cyclicACMIFvPatch
 
         const cyclicACMIPolyPatch& cyclicACMIPolyPatch_;
 
-        //- Flag to detect whether AMI is up to date with mesh points
-        mutable uniformDimensionedScalarField areaTime_;
-
 
 protected:
 
     // Protected Member functions
 
-        //- Update the patch areas after AMI update. Return true if anything
-        //  updated.
-        bool updateAreas() const;
+        //- Update the patch areas after AMI update
+        void updateAreas() const;
 
         //- Make patch weighting factors
         void makeWeights(scalarField&) const;
@@ -86,7 +81,12 @@ public:
     // Constructors
 
         //- Construct from polyPatch
-        cyclicACMIFvPatch(const polyPatch& patch, const fvBoundaryMesh& bm);
+        cyclicACMIFvPatch(const polyPatch& patch, const fvBoundaryMesh& bm)
+        :
+            coupledFvPatch(patch, bm),
+            cyclicACMILduInterface(),
+            cyclicACMIPolyPatch_(refCast<const cyclicACMIPolyPatch>(patch))
+        {}
 
 
     // Member functions
@@ -99,10 +99,22 @@ public:
                 return cyclicACMIPolyPatch_;
             }
 
+            ////- Return neighbour
+            //virtual label neighbPatchID() const
+            //{
+            //    return cyclicACMIPolyPatch_.neighbPatchID();
+            //}
+
             //- Return neighbour
-            virtual label neighbPatchID() const
+            virtual const labelList& neighbPatchIDs() const
             {
-                return cyclicACMIPolyPatch_.neighbPatchID();
+                return cyclicACMIPolyPatch_.neighbPatchIDs();
+            }
+
+            //- Return neighbour
+            virtual label neighbPatchID(const label index) const
+            {
+                return cyclicACMIPolyPatch_.neighbPatchIDs()[index];
             }
 
             virtual bool owner() const
@@ -111,11 +123,17 @@ public:
             }
 
             //- Return neighbour fvPatch
-            virtual const cyclicACMIFvPatch& neighbPatch() const
+            virtual const cyclicACMIFvPatch& neighbPatch
+            (
+                const label index
+            ) const
             {
                 return refCast<const cyclicACMIFvPatch>
                 (
-                    this->boundaryMesh()[cyclicACMIPolyPatch_.neighbPatchID()]
+                    this->boundaryMesh()
+                    [
+                        cyclicACMIPolyPatch_.neighbPatchIDs()[index]
+                    ]
                 );
             }
 
@@ -132,10 +150,13 @@ public:
             }
 
             //- Return a reference to the AMI interpolator
-            virtual const AMIPatchToPatchInterpolation& AMI() const
+            virtual const AMIPatchToPatchInterpolation& AMI
+            (
+                const label index
+            ) const
             {
                 const AMIPatchToPatchInterpolation& AMI =
-                    cyclicACMIPolyPatch_.AMI();
+                    cyclicACMIPolyPatch_.AMI(index);
 
                 updateAreas();
 
@@ -160,11 +181,14 @@ public:
                 return cyclicACMIPolyPatch_.reverseT();
             }
 
-            const cyclicACMIFvPatch& neighbFvPatch() const
+            const cyclicACMIFvPatch& neighbFvPatch(const label index) const
             {
                 return refCast<const cyclicACMIFvPatch>
                 (
-                    this->boundaryMesh()[cyclicACMIPolyPatch_.neighbPatchID()]
+                    this->boundaryMesh()
+                    [
+                        cyclicACMIPolyPatch_.neighbPatchIDs()[index]
+                    ]
                 );
             }
 

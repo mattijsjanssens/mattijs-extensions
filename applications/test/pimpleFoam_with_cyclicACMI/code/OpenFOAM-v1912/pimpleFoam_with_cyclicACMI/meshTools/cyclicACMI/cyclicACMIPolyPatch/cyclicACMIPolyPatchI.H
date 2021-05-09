@@ -27,6 +27,18 @@ License
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+inline void Foam::cyclicACMIPolyPatch::setUpdated(const bool flag) const
+{
+    updated_ = flag;
+}
+
+
+inline bool Foam::cyclicACMIPolyPatch::updated() const
+{
+    return updated_;
+}
+
+
 inline const Foam::word& Foam::cyclicACMIPolyPatch::nonOverlapPatchName() const
 {
     return nonOverlapPatchName_;
@@ -51,15 +63,18 @@ inline Foam::polyPatch& Foam::cyclicACMIPolyPatch::nonOverlapPatch()
 }
 
 
-inline const Foam::scalarField& Foam::cyclicACMIPolyPatch::mask() const
+inline const Foam::scalarField& Foam::cyclicACMIPolyPatch::mask
+(
+    const label index
+) const
 {
     if (owner())
     {
-        return srcMask();
+        return srcMasks_[index];
     }
     else
     {
-        return neighbPatch().tgtMask();
+        return neighbPatch(index).tgtMask(index);
     }
 }
 

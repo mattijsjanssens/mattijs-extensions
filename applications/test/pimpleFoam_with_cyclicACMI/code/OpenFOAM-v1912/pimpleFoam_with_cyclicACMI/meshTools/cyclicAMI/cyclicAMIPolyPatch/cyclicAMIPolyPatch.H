@@ -108,8 +108,8 @@ protected:
 
 
         //- AMI interpolation class
-        //mutable PtrList<AMIPatchToPatchInterpolation> AMIPtrs_;
-        mutable autoPtr<AMIPatchToPatchInterpolation> AMIPtr_;
+        mutable PtrList<AMIPatchToPatchInterpolation> AMIPtrs_;
+        //mutable autoPtr<AMIPatchToPatchInterpolation> AMIPtr_;
 
         //- AMI method
         const AMIPatchToPatchInterpolation::interpolationMethod AMIMethod_;
@@ -206,7 +206,7 @@ public:
             const label index,
             const label newSize,
             const label newStart,
-            const word& nbrPatchName
+            const wordList& nbrPatchNames
         );
 
         //- Construct given the original patch and a map
@@ -245,7 +245,7 @@ public:
                     index,
                     newSize,
                     newStart,
-                    nbrPatchNames_[0]
+                    nbrPatchNames_
                 )
             );
         }
@@ -295,6 +295,13 @@ public:
             //- Neighbour patch ID
             virtual labelList& neighbPatchIDs() const;
 
+            //- Total neighbour size
+            virtual label neighbSize() const;
+
+            //- Return neighbour internal cell data (in neighbPatchIDs order)
+            template<class Type>
+            tmp<Field<Type>> patchNeighbourField(const UList<Type>& iF) const;
+
 
             //- Backwards compatibility
 
@@ -307,7 +314,7 @@ public:
                 //- Return a reference to the neighbour patch
                 virtual const cyclicAMIPolyPatch& neighbPatch
                 (
-                    const label index = 0
+                    const label index
                 ) const;
 
 
@@ -318,7 +325,10 @@ public:
             const autoPtr<searchableSurface>& surfPtr() const;
 
             //- Return a reference to the AMI interpolator
-            const AMIPatchToPatchInterpolation& AMI() const;
+            const AMIPatchToPatchInterpolation& AMI
+            (
+                const label index
+            ) const;
 
 
             //- Return true if applying the low weight correction
@@ -379,15 +389,15 @@ public:
                     const UList<Type>& defaultValues = UList<Type>()
                 ) const;
 
-                //- Low-level interpolate List
-                template<class Type, class CombineOp>
-                void interpolate
-                (
-                    const UList<Type>& fld,
-                    const CombineOp& cop,
-                    List<Type>& result,
-                    const UList<Type>& defaultValues = UList<Type>()
-                ) const;
+//                //- Low-level interpolate List
+//                template<class Type, class CombineOp>
+//                void interpolate
+//                (
+//                    const UList<Type>& fld,
+//                    const CombineOp& cop,
+//                    List<Type>& result,
+//                    const UList<Type>& defaultValues = UList<Type>()
+//                ) const;
 
 
         //- Calculate the patch geometry

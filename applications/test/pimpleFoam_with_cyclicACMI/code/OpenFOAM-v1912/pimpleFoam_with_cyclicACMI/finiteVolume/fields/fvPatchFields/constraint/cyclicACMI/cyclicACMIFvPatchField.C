@@ -161,17 +161,48 @@ Foam::cyclicACMIFvPatchField<Type>::patchNeighbourField() const
 {
     const Field<Type>& iField = this->primitiveField();
     const cyclicACMIPolyPatch& cpp = cyclicACMIPatch_.cyclicACMIPatch();
+
+    //tmp<Field<Type>> tpnf
+    //(
+    //    cyclicACMIPatch_.interpolate
+    //    (
+    //        Field<Type>
+    //        (
+    //            iField,
+    //            cpp.neighbPatch().faceCells()
+    //        )
+    //    )
+    //);
+
+//MEJ
+    // Get all remote data local
+    //const labelList& nbrIds = cyclicACMIPatch_.neighbPatchIDs();
+    //
+    //Field<Type> pnf(cpp.neighbSize());
+    //
+    //label n = 0;
+    //forAll(nbrIds, nbri)
+    //{
+    //    const cyclicACMIFvPatch& nbr = cyclicACMIPatch_.neighbFvPatch(nbri);
+    //    const labelUList& nbrFaceCells = nbr.faceCells();
+    //
+    //    for (const auto celli : nbrFaceCells)
+    //    {
+    //        pnf[n++] = iField[celli];
+    //    }
+    //}
+    //tmp<Field<Type>> tpnf(cyclicACMIPatch_.interpolate(pnf));
     tmp<Field<Type>> tpnf
     (
         cyclicACMIPatch_.interpolate
         (
-            Field<Type>
+            cpp.patchNeighbourField
             (
-                iField,
-                cpp.neighbPatch().faceCells()
+                iField
             )
         )
     );
+//MEJ
 
     if (doTransform())
     {
@@ -182,21 +213,21 @@ Foam::cyclicACMIFvPatchField<Type>::patchNeighbourField() const
 }
 
 
-template<class Type>
-const Foam::cyclicACMIFvPatchField<Type>&
-Foam::cyclicACMIFvPatchField<Type>::neighbourPatchField() const
-{
-    const GeometricField<Type, fvPatchField, volMesh>& fld =
-        static_cast<const GeometricField<Type, fvPatchField, volMesh>&>
-        (
-            this->primitiveField()
-        );
-
-    return refCast<const cyclicACMIFvPatchField<Type>>
-    (
-        fld.boundaryField()[cyclicACMIPatch_.neighbPatchID()]
-    );
-}
+//template<class Type>
+//const Foam::cyclicACMIFvPatchField<Type>&
+//Foam::cyclicACMIFvPatchField<Type>::neighbourPatchField() const
+//{
+//    const GeometricField<Type, fvPatchField, volMesh>& fld =
+//        static_cast<const GeometricField<Type, fvPatchField, volMesh>&>
+//        (
+//            this->primitiveField()
+//        );
+//
+//    return refCast<const cyclicACMIFvPatchField<Type>>
+//    (
+//        fld.boundaryField()[cyclicACMIPatch_.neighbPatchID()]
+//    );
+//}
 
 
 template<class Type>
@@ -228,10 +259,29 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
 
     // note: only applying coupled contribution
 
-    const labelUList& nbrFaceCellsCoupled =
-        cpp.neighbPatch().faceCells();
+    //const labelUList& nbrFaceCellsCoupled =
+    //    cpp.neighbPatch().faceCells();
+    //
+    //solveScalarField pnf(psiInternal, nbrFaceCellsCoupled);
 
-    solveScalarField pnf(psiInternal, nbrFaceCellsCoupled);
+//MEJ
+    //const labelList& nbrIds = cyclicACMIPatch_.neighbPatchIDs();
+    //
+    //solveScalarField pnf(cyclicACMIPatch_.cyclicACMIPatch().neighbSize());
+    //
+    //label n = 0;
+    //forAll(nbrIds, nbri)
+    //{
+    //    const cyclicACMIFvPatch& nbr = cyclicACMIPatch_.neighbFvPatch(nbri);
+    //    const labelUList& nbrFaceCells = nbr.faceCells();
+    //
+    //    for (const auto celli : nbrFaceCells)
+    //    {
+    //        pnf[n++] = psiInternal[celli];
+    //    }
+    //}
+    solveScalarField pnf(cpp.patchNeighbourField(psiInternal));
+//MEJ
 
     // Transform according to the transformation tensors
     transformCoupleField(pnf, cmpt);
@@ -256,9 +306,13 @@ void Foam::cyclicACMIFvPatchField<Type>::updateInterfaceMatrix
 
     // note: only applying coupled contribution
 
-    const labelUList& nbrFaceCellsCoupled = cpp.neighbPatch().faceCells();
+    //const labelUList& nbrFaceCellsCoupled = cpp.neighbPatch().faceCells();
+    //
+    //Field<Type> pnf(psiInternal, nbrFaceCellsCoupled);
 
-    Field<Type> pnf(psiInternal, nbrFaceCellsCoupled);
+//MEJ
+    Field<Type> pnf(cpp.patchNeighbourField(psiInternal));
+//MEJ
 
     // Transform according to the transformation tensors
     transformCoupleField(pnf);

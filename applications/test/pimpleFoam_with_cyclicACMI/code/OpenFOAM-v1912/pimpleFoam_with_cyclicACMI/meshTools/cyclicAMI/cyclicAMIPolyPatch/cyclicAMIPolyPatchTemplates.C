@@ -25,7 +25,39 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "SubField.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+template<class Type>
+Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::patchNeighbourField
+(
+    const UList<Type>& iF
+) const
+{
+    const labelList& nbrIds = neighbPatchIDs();
+
+    label n = 0;
+    for (const label nbrId : nbrIds)
+    {
+        n += this->boundaryMesh()[nbrId].size();
+    }
+
+    tmp<Field<Type>> tresult(new Field<Type>(n));
+    Field<Type>& result = tresult.ref();
+
+    n = 0;
+    for (const label nbrId : nbrIds)
+    {
+        const labelUList& nbrCells = this->boundaryMesh()[nbrId].faceCells();
+        for (const auto celli : nbrCells)
+        {
+            result[n++] = iF[celli];
+        }
+    }
+    return tresult;
+}
+
 
 template<class Type>
 Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
@@ -34,14 +66,81 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
     const UList<Type>& defaultValues
 ) const
 {
+//    const cyclicAMIPolyPatch& ownPatch
+//    (
+//        owner()
+//      ? *this
+//      : neighbPatch()
+//    );
+//
+//    const labelList& nbrIds = ownPatch.neighbPatchIDs();
+    const labelList& nbrIds = neighbPatchIDs();
+
+    // fld = nbr values
+    // defaultValues = local fall-back values
+
+    if
+    (
+        fld.size() != neighbSize()
+     || (defaultValues.size() && defaultValues.size() != size())
+    )
+    {
+        FatalErrorInFunction << "Field size:" << fld.size()
+            << " neighbour patches:" << neighbPatchIDs()
+            << " total size:" << neighbSize()
+            << " defaultValues:" << defaultValues.size()
+            << " local size:" << size()
+            << exit(FatalError);
+    }
+
+    tmp<Field<Type>> tresult(new Field<Type>(this->size(), Zero));
+    Field<Type>& result = tresult.ref();
+
     if (owner())
     {
-        return AMI().interpolateToSource(fld, defaultValues);
+        //return AMI().interpolateToSource(fld, defaultValues);
+
+        label n = 0;
+        forAll(nbrIds, nbri)
+        {
+            const cyclicAMIPolyPatch& nbr = neighbPatch(nbri);
+
+            // Interpolate nbr data to here and accumulate
+            AMI(nbri).interpolateToSource
+            (
+                SubField<Type>(fld, nbr.size(), n),
+                multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
+                result,
+                defaultValues
+            );
+            n += nbr.size();
+        }
     }
     else
     {
-        return neighbPatch().AMI().interpolateToTarget(fld, defaultValues);
+        //return neighbPatch().AMI().interpolateToTarget(fld, defaultValues);
+
+        label n = 0;
+        forAll(nbrIds, nbri)
+        {
+            const cyclicAMIPolyPatch& nbr = neighbPatch(nbri);
+
+            // Find the AMI that points to me
+            label myId = nbr.neighbPatchIDs().find(this->index());
+
+            // Interpolate nbr data to here and accumulate
+            nbr.AMI(myId).interpolateToTarget
+            (
+                SubField<Type>(fld, nbr.size(), n),
+                multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
+                result,
+                defaultValues
+            );
+            n += nbr.size();
+        }
     }
+
+    return tresult;
 }
 
 
@@ -56,36 +155,36 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
 }
 
 
-template<class Type, class CombineOp>
-void Foam::cyclicAMIPolyPatch::interpolate
-(
-    const UList<Type>& fld,
-    const CombineOp& cop,
-    List<Type>& result,
-    const UList<Type>& defaultValues
-) const
-{
-    if (owner())
-    {
-        AMI().interpolateToSource
-        (
-            fld,
-            cop,
-            result,
-            defaultValues
-        );
-    }
-    else
-    {
-        neighbPatch().AMI().interpolateToTarget
-        (
-            fld,
-            cop,
-            result,
-            defaultValues
-        );
-    }
-}
+//template<class Type, class CombineOp>
+//void Foam::cyclicAMIPolyPatch::interpolate
+//(
+//    const UList<Type>& fld,
+//    const CombineOp& cop,
+//    List<Type>& result,
+//    const UList<Type>& defaultValues
+//) const
+//{
+//    if (owner())
+//    {
+//        AMI().interpolateToSource
+//        (
+//            fld,
+//            cop,
+//            result,
+//            defaultValues
+//        );
+//    }
+//    else
+//    {
+//        neighbPatch().AMI().interpolateToTarget
+//        (
+//            fld,
+//            cop,
+//            result,
+//            defaultValues
+//        );
+//    }
+//}
 
 
 // ************************************************************************* //

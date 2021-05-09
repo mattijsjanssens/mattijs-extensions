@@ -61,7 +61,7 @@ class cyclicAMIGAMGInterface
         const cyclicAMILduInterface& fineCyclicAMIInterface_;
 
         //- AMI interface
-        autoPtr<AMIPatchToPatchInterpolation> amiPtr_;
+        PtrList<AMIPatchToPatchInterpolation> amiPtrs_;
 
 
     // Private Member Functions
@@ -113,10 +113,17 @@ public:
 
         //- Cyclic interface functions
 
-            //- Return neighbour processor number
-            virtual label neighbPatchID() const
+            //- Return neighbour patch numbers
+            virtual const labelList& neighbPatchIDs() const
             {
-                return fineCyclicAMIInterface_.neighbPatchID();
+                return fineCyclicAMIInterface_.neighbPatchIDs();
+            }
+
+            //- Return neighbour processor number
+            virtual label neighbPatchID(const label index) const
+            {
+                //return fineCyclicAMIInterface_.neighbPatchID(index);
+                return fineCyclicAMIInterface_.neighbPatchIDs()[index];
             }
 
             virtual bool owner() const
@@ -124,17 +131,23 @@ public:
                 return fineCyclicAMIInterface_.owner();
             }
 
-            virtual const cyclicAMIGAMGInterface& neighbPatch() const
+            virtual const cyclicAMIGAMGInterface& neighbPatch
+            (
+                const label index
+            ) const
             {
                 return dynamic_cast<const cyclicAMIGAMGInterface&>
                 (
-                    coarseInterfaces_[neighbPatchID()]
+                    coarseInterfaces_[neighbPatchID(index)]
                 );
             }
 
-            virtual const AMIPatchToPatchInterpolation& AMI() const
+            virtual const AMIPatchToPatchInterpolation& AMI
+            (
+                const label index
+            ) const
             {
-                return *amiPtr_;
+                return amiPtrs_[index];
             }
 
             //- Return face transformation tensor

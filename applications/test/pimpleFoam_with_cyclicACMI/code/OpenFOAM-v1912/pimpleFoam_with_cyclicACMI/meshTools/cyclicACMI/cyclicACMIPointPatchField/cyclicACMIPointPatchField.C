@@ -180,7 +180,7 @@ void Foam::cyclicACMIPointPatchField<Type>::swapAddSeparated
             const cyclicAMIPolyPatch& cami = cyclicACMIPatch_.cyclicACMIPatch();
 
             // interpolate to neighbour
-            fcFld = cami.neighbPatch().cyclicAMIPolyPatch::interpolate(fcFld);
+            fcFld = cami.neighbPatch(0).cyclicAMIPolyPatch::interpolate(fcFld);
 
             // add to internal field
             nbr.addToInternalField

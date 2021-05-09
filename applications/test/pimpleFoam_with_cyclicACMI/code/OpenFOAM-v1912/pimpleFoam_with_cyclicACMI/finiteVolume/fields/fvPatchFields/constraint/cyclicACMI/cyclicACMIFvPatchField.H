@@ -55,9 +55,9 @@ SourceFiles
 #ifndef cyclicACMIFvPatchField_H
 #define cyclicACMIFvPatchField_H
 
-#include "cyclicACMIFvPatch.H"
 #include "coupledFvPatchField.H"
 #include "cyclicACMILduInterfaceField.H"
+#include "cyclicACMIFvPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -195,8 +195,8 @@ public:
             //- Return neighbour coupled internal cell data
             virtual tmp<Field<Type>> patchNeighbourField() const;
 
-            //- Return reference to neighbour patchField
-            const cyclicACMIFvPatchField<Type>& neighbourPatchField() const;
+            ////- Return reference to neighbour patchField
+            //const cyclicACMIFvPatchField<Type>& neighbourPatchField() const;
 
             //- Return reference to non-overlapping patchField
             const fvPatchField<Type>& nonOverlapPatchField() const;

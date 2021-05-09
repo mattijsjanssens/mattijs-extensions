@@ -120,7 +120,7 @@ bool Foam::cyclicAMIFvsPatchField<Type>::coupled() const
         Pstream::parRun()
      || (
             this->cyclicAMIPatch_.size()
-         && this->cyclicAMIPatch_.cyclicAMIPatch().neighbPatch().size()
+         && this->cyclicAMIPatch_.cyclicAMIPatch().neighbPatch(0).size()
         )
     )
     {

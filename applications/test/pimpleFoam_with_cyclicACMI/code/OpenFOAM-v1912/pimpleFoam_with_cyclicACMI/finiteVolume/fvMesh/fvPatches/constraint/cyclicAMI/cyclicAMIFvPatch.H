@@ -97,9 +97,15 @@ public:
             }
 
             //- Return neighbour
-            virtual label neighbPatchID() const
+            virtual const labelList& neighbPatchIDs() const
             {
-                return cyclicAMIPolyPatch_.neighbPatchID();
+                return cyclicAMIPolyPatch_.neighbPatchIDs();
+            }
+
+            //- Return neighbour
+            virtual label neighbPatchID(const label index) const
+            {
+                return cyclicAMIPolyPatch_.neighbPatchIDs()[index];
             }
 
             virtual bool owner() const
@@ -108,18 +114,24 @@ public:
             }
 
             //- Return processor number
-            virtual const cyclicAMIFvPatch& neighbPatch() const
+            virtual const cyclicAMIFvPatch& neighbPatch(const label index) const
             {
                 return refCast<const cyclicAMIFvPatch>
                 (
-                    this->boundaryMesh()[cyclicAMIPolyPatch_.neighbPatchID()]
+                    this->boundaryMesh()
+                    [
+                        cyclicAMIPolyPatch_.neighbPatchIDs()[index]
+                    ]
                 );
             }
 
             //- Return a reference to the AMI interpolator
-            virtual const AMIPatchToPatchInterpolation& AMI() const
+            virtual const AMIPatchToPatchInterpolation& AMI
+            (
+                const label index
+            ) const
             {
-                return cyclicAMIPolyPatch_.AMI();
+                return cyclicAMIPolyPatch_.AMI(index);
             }
 
             //- Return true if applying the low weight correction
@@ -147,11 +159,14 @@ public:
                 return cyclicAMIPolyPatch_.reverseT();
             }
 
-            const cyclicAMIFvPatch& neighbFvPatch() const
+            const cyclicAMIFvPatch& neighbFvPatch(const label index) const
             {
                 return refCast<const cyclicAMIFvPatch>
                 (
-                    this->boundaryMesh()[cyclicAMIPolyPatch_.neighbPatchID()]
+                    this->boundaryMesh()
+                    [
+                        cyclicAMIPolyPatch_.neighbPatchIDs()[index]
+                    ]
                 );
             }
 
