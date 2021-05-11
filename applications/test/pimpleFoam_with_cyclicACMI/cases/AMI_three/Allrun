@@ -1,0 +1,25 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+runApplication blockMesh
+
+foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.inGroups -set '(cyclicAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.neighbourPatches -set '(bottomAMI topAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.method -set 'partialFaceAreaWeightAMI'
+
+foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.inGroups -set '(cyclicAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.neighbourPatches -set '(leftAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.method -set 'partialFaceAreaWeightAMI'
+
+foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.inGroups -set '(cyclicAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.neighbourPatches -set '(leftAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.method -set 'partialFaceAreaWeightAMI'
+
+laplacianFoam_with_cyclicACMI
+
+#------------------------------------------------------------------------------

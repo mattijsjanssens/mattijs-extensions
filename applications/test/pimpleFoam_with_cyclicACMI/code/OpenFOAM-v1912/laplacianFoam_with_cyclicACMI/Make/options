@@ -1,0 +1,12 @@
+EXE_INC = \
+    -DFULLDEBUG -g -O0 \
+    -IlnInclude \
+    -IfiniteVolume/lnInclude \
+    -ImeshTools/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lfvOptions \
+    -lmeshTools
