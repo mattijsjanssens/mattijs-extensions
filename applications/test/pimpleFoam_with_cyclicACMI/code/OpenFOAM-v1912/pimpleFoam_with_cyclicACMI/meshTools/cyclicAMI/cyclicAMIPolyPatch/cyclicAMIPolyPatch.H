@@ -37,10 +37,10 @@ SourceFiles
 #ifndef cyclicAMIPolyPatch_H
 #define cyclicAMIPolyPatch_H
 
+#include "coupleGroupIdentifier.H"
 #include "coupledPolyPatch.H"
 #include "AMIPatchToPatchInterpolation.H"
 #include "polyBoundaryMesh.H"
-#include "coupleGroupIdentifier.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -320,6 +320,10 @@ public:
 
             //- Does this side own the patch?
             virtual bool owner() const;
+
+            //- Find (index of) owner. -1 if I am owner, otherwise index
+            //  if if neighbPatchIDs
+            virtual label findOwner() const;
 
             //- Return a reference to the projection surface
             const autoPtr<searchableSurface>& surfPtr() const;

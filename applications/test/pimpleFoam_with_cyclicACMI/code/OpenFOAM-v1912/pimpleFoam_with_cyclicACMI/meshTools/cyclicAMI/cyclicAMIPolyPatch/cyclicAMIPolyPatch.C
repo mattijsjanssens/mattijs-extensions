@@ -858,6 +858,12 @@ Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
                     << nbrPatch.neighbPatchNames() << endl;
             }
         }
+
+
+Pout<< "** for patch:" << name()
+    << " have neighbours:" << nbrNames << " with ids:" << nbrPatchIDs_
+    << endl;
+
     }
     return nbrPatchIDs_;
 }
@@ -893,6 +899,19 @@ bool Foam::cyclicAMIPolyPatch::owner() const
         }
     }
     return true;
+}
+
+
+Foam::label Foam::cyclicAMIPolyPatch::findOwner() const
+{
+    if (owner())
+    {
+        return -1;
+    }
+    else
+    {
+        return findMin(neighbPatchIDs());
+    }
 }
 
 
@@ -967,7 +986,17 @@ bool Foam::cyclicAMIPolyPatch::applyLowWeightCorrection() const
     }
     else
     {
-        return neighbPatch(0).AMI(0).applyLowWeightCorrection();
+        // Get owner patch
+        const auto& ownP =
+            refCast<const cyclicAMIPolyPatch>
+            (
+                this->boundaryMesh()[neighbPatchIDs()[findOwner()]]
+            );
+
+        // Get index of me in owner
+        const label myIndex = ownP.neighbPatchIDs().find(index());
+
+        return ownP.AMI(myIndex).applyLowWeightCorrection();
     }
 }
 
@@ -1159,20 +1188,39 @@ Foam::label Foam::cyclicAMIPolyPatch::pointFace
 
     if (owner())
     {
-        nbrFacei = AMI(0).tgtPointFace
-        (
-            *this,
-            neighbPatch(0),
-            nrt,
-            facei,
-            prt
-        );
+        const labelList& nbrPatchIds = neighbPatchIDs();
+
+        forAll(nbrPatchIds, i)
+        {
+            nbrFacei = AMI(i).tgtPointFace
+            (
+                *this,
+                neighbPatch(i),
+                nrt,
+                facei,
+                prt
+            );
+            if (nbrFacei != -1)
+            {
+                break;
+            }
+        }
     }
     else
     {
-        nbrFacei = neighbPatch(0).AMI(0).srcPointFace
+        // Get owner patch
+        const auto& ownP =
+            refCast<const cyclicAMIPolyPatch>
+            (
+                this->boundaryMesh()[neighbPatchIDs()[findOwner()]]
+            );
+
+        // Get index of me in owner
+        const label myIndex = ownP.neighbPatchIDs().find(index());
+
+        nbrFacei = ownP.AMI(myIndex).srcPointFace
         (
-            neighbPatch(0),
+            ownP,
             *this,
             nrt,
             facei,

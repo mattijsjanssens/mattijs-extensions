@@ -32,9 +32,24 @@ inline const Foam::wordList& Foam::cyclicAMIPolyPatch::neighbPatchNames() const
     if (nbrPatchNames_.empty())
     {
         // Try and use patchGroup to find samplePatch and sampleRegion
-        label patchID = coupleGroup_.findOtherPatchID(*this);
+        const labelList nbrPatchIDs(coupleGroup_.findOtherPatchIDs(*this));
 
-        nbrPatchNames_.setSize(1, boundaryMesh()[patchID].name());
+        nbrPatchNames_.setSize(nbrPatchIDs.size());
+        forAll(nbrPatchIDs, i)
+        {
+            nbrPatchNames_[i] = boundaryMesh()[nbrPatchIDs[i]].name();
+        }
+
+        // Note: could store nbrPatchIDs_ directly here and bypass
+        //       neighbPatchIDs but that does additional checking
+
+        if (nbrPatchNames_.empty())
+        {
+            FatalErrorInFunction<< "Did not find other patches "
+                << " in patchGroup " << coupleGroup_.name()
+                << " when searching for neigubour patches for patch " << name()
+                << exit(FatalError);
+        }
     }
     return nbrPatchNames_;
 }

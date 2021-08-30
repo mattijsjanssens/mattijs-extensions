@@ -125,18 +125,21 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
         {
             const cyclicAMIPolyPatch& nbr = neighbPatch(nbri);
 
-            // Find the AMI that points to me
-            label myId = nbr.neighbPatchIDs().find(this->index());
+            if (nbr.owner())
+            {
+                // Find the AMI that points to me
+                label myId = nbr.neighbPatchIDs().find(this->index());
 
-            // Interpolate nbr data to here and accumulate
-            nbr.AMI(myId).interpolateToTarget
-            (
-                SubField<Type>(fld, nbr.size(), n),
-                multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
-                result,
-                defaultValues
-            );
-            n += nbr.size();
+                // Interpolate nbr data to here and accumulate
+                nbr.AMI(myId).interpolateToTarget
+                (
+                    SubField<Type>(fld, nbr.size(), n),
+                    multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
+                    result,
+                    defaultValues
+                );
+                n += nbr.size();
+            }
         }
     }
 

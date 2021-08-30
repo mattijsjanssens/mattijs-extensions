@@ -37,8 +37,8 @@ SourceFiles
 #ifndef cyclicAMIPointPatch_H
 #define cyclicAMIPointPatch_H
 
-#include "coupledFacePointPatch.H"
 #include "cyclicAMIPolyPatch.H"
+#include "coupledFacePointPatch.H"
 #include "pointBoundaryMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

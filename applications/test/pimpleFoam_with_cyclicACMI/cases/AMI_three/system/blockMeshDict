@@ -89,6 +89,7 @@ boundary
         (
             (2 6 5 1)
         );
+        inGroups (coupleGroup);
     }
 
     bottomAMI
@@ -98,6 +99,7 @@ boundary
         (
             (8 12 15 11)
         );
+        inGroups (coupleGroup);
     }
     topAMI
     {
@@ -106,6 +108,7 @@ boundary
         (
             (16 20 23 19)
         );
+        inGroups (coupleGroup);
     }
 
     bottomRight

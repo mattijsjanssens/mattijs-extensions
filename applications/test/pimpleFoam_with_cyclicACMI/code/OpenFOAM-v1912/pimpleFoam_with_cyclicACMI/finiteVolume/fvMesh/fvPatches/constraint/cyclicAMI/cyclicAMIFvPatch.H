@@ -37,9 +37,9 @@ SourceFiles
 #ifndef cyclicAMIFvPatch_H
 #define cyclicAMIFvPatch_H
 
+#include "cyclicAMIPolyPatch.H"
 #include "coupledFvPatch.H"
 #include "cyclicAMILduInterface.H"
-#include "cyclicAMIPolyPatch.H"
 #include "fvBoundaryMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
