@@ -50,62 +50,63 @@ void Foam::cyclicACMIPolyPatch::resetAMI
     const AMIPatchToPatchInterpolation::interpolationMethod&
 ) const
 {
-    if (owner())
-    {
-        const polyPatch& nonOverlapPatch = this->nonOverlapPatch();
+    const polyPatch& nonOverlapPatch = this->nonOverlapPatch();
 
+    if (debug)
+    {
+        Pout<< "cyclicACMIPolyPatch::resetAMI : recalculating weights"
+            << " for " << name() << " and " << nonOverlapPatch.name()
+            << endl;
+    }
+
+    if (boundaryMesh().mesh().hasCellCentres())
+    {
         if (debug)
         {
-            Pout<< "cyclicACMIPolyPatch::resetAMI : recalculating weights"
+            Pout<< "cyclicACMIPolyPatch::resetAMI : clearing cellCentres"
                 << " for " << name() << " and " << nonOverlapPatch.name()
                 << endl;
         }
 
-        if (boundaryMesh().mesh().hasCellCentres())
-        {
-            if (debug)
-            {
-                Pout<< "cyclicACMIPolyPatch::resetAMI : clearing cellCentres"
-                    << " for " << name() << " and " << nonOverlapPatch.name()
-                    << endl;
-            }
-
-            //WarningInFunction
-            //    << "The mesh already has cellCentres calculated when"
-            //    << " resetting ACMI " << name() << "." << endl
-            //    << "This is a problem since ACMI adapts the face areas"
-            //    << " (to close cells) so this has" << endl
-            //    << "to be done before cell centre calculation." << endl
-            //    << "This can happen if e.g. the cyclicACMI is after"
-            //    << " any processor patches in the boundary." << endl;
-            const_cast<polyMesh&>
-            (
-                boundaryMesh().mesh()
-            ).primitiveMesh::clearGeom();
-        }
-
-
-        // Trigger re-building of faceAreas
-        (void)boundaryMesh().mesh().faceAreas();
-
-
-        // Calculate the AMI using partial face-area-weighted. This leaves
-        // the weights as fractions of local areas (sum(weights) = 1 means
-        // face is fully covered)
-        cyclicAMIPolyPatch::resetAMI
+        //WarningInFunction
+        //    << "The mesh already has cellCentres calculated when"
+        //    << " resetting ACMI " << name() << "." << endl
+        //    << "This is a problem since ACMI adapts the face areas"
+        //    << " (to close cells) so this has" << endl
+        //    << "to be done before cell centre calculation." << endl
+        //    << "This can happen if e.g. the cyclicACMI is after"
+        //    << " any processor patches in the boundary." << endl;
+        const_cast<polyMesh&>
         (
-            AMIPatchToPatchInterpolation::imPartialFaceAreaWeight
-        );
+            boundaryMesh().mesh()
+        ).primitiveMesh::clearGeom();
+    }
 
-        const labelList& nbrIds = neighbPatchIDs();
-        srcMasks_.setSize(nbrIds.size());
-        scalarField srcMaskSum(size(), Zero);
-        tgtMasks_.setSize(nbrIds.size());
-        forAll(nbrIds, nbri)
+
+    // Trigger re-building of faceAreas
+    (void)boundaryMesh().mesh().faceAreas();
+
+
+    // Calculate the AMI using partial face-area-weighted. This leaves
+    // the weights as fractions of local areas (sum(weights) = 1 means
+    // face is fully covered)
+    cyclicAMIPolyPatch::resetAMI
+    (
+        AMIPatchToPatchInterpolation::imPartialFaceAreaWeight
+    );
+
+    const labelList& nbrIds = neighbPatchIDs();
+    srcMasks_.setSize(nbrIds.size());
+    scalarField srcMaskSum(size(), Zero);
+    tgtMasks_.setSize(nbrIds.size());
+    forAll(nbrIds, nbri)
+    {
+        const polyPatch& nbr = neighbPatch(nbri);
+
+        if (this->AMI(nbri).valid())
         {
-            const polyPatch& nbr = neighbPatch(nbri);
-            AMIPatchToPatchInterpolation& AMI =
-                const_cast<AMIPatchToPatchInterpolation&>(this->AMI(nbri));
+            auto& AMI =
+                const_cast<AMIPatchToPatchInterpolation&>(this->AMI(nbri)());
 
             // Output some stats. AMIInterpolation will have already output the
             // average weights ("sum(weights) min:1 max:1 average:1")
@@ -181,26 +182,31 @@ void Foam::cyclicACMIPolyPatch::resetAMI
                     max(tolerance_, AMI.tgtWeightsSum())
                 );
         }
+    }
 
 
+    // Adapt owner side areas. Note that in uncoupled situations (e.g.
+    // decomposePar) srcMask, tgtMask can be zero size.
+    if (srcMaskSum.size())
+    {
+        vectorField::subField Sf = faceAreas();
+        vectorField::subField noSf = nonOverlapPatch.faceAreas();
 
-        // Adapt owner side areas. Note that in uncoupled situations (e.g.
-        // decomposePar) srcMask, tgtMask can be zero size.
-        if (srcMaskSum.size())
+        forAll(Sf, facei)
         {
-            vectorField::subField Sf = faceAreas();
-            vectorField::subField noSf = nonOverlapPatch.faceAreas();
-
-            forAll(Sf, facei)
-            {
-                Sf[facei] *= srcMaskSum[facei];
-                noSf[facei] *= 1.0 - srcMaskSum[facei];
-            }
+            Sf[facei] *= srcMaskSum[facei];
+            noSf[facei] *= 1.0 - srcMaskSum[facei];
         }
+    }
 
-        // Adapt slave side areas
-        forAll(nbrIds, nbri)
+    // Adapt slave side areas
+    forAll(nbrIds, nbri)
+    {
+        if (this->AMI(nbri).valid())
         {
+            auto& AMI =
+                const_cast<AMIPatchToPatchInterpolation&>(this->AMI(nbri)());
+
             const polyPatch& nbr = neighbPatch(nbri);
             const scalarField& tgtMask = tgtMasks_[nbri];
             if (tgtMask.size())
@@ -218,9 +224,6 @@ void Foam::cyclicACMIPolyPatch::resetAMI
                     noSf[facei] *= 1.0 - tgtMask[facei];
                 }
             }
-
-            AMIPatchToPatchInterpolation& AMI =
-                const_cast<AMIPatchToPatchInterpolation&>(this->AMI(nbri));
 
             // Re-normalise the weights since the effect of overlap is already
             // accounted for in the area.

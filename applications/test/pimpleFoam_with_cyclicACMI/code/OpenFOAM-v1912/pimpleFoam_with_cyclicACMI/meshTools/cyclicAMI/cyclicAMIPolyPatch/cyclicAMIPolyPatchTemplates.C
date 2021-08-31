@@ -35,24 +35,23 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::patchNeighbourField
     const UList<Type>& iF
 ) const
 {
-    const labelList& nbrIds = neighbPatchIDs();
+    const labelList& nbrPatchIds = neighbPatchIDs();
 
-    label n = 0;
-    for (const label nbrId : nbrIds)
-    {
-        n += this->boundaryMesh()[nbrId].size();
-    }
-
-    tmp<Field<Type>> tresult(new Field<Type>(n));
+    tmp<Field<Type>> tresult(new Field<Type>(neighbSize()));
     Field<Type>& result = tresult.ref();
 
-    n = 0;
-    for (const label nbrId : nbrIds)
+    label n = 0;
+
+    forAll(nbrPatchIds, index)
     {
-        const labelUList& nbrCells = this->boundaryMesh()[nbrId].faceCells();
-        for (const auto celli : nbrCells)
+        if (validAMI(index))
         {
-            result[n++] = iF[celli];
+            const auto& nbrPp = neighbPatch(index);
+            const labelUList& nbrCells = nbrPp.faceCells();
+            for (const auto celli : nbrCells)
+            {
+                result[n++] = iF[celli];
+            }
         }
     }
     return tresult;
@@ -66,23 +65,18 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
     const UList<Type>& defaultValues
 ) const
 {
-//    const cyclicAMIPolyPatch& ownPatch
-//    (
-//        owner()
-//      ? *this
-//      : neighbPatch()
-//    );
-//
-//    const labelList& nbrIds = ownPatch.neighbPatchIDs();
-    const labelList& nbrIds = neighbPatchIDs();
+    const labelList& nbrPatchIds = neighbPatchIDs();
 
     // fld = nbr values
     // defaultValues = local fall-back values
 
     if
     (
-        fld.size() != neighbSize()
-     || (defaultValues.size() && defaultValues.size() != size())
+        debug
+     && (
+            fld.size() != neighbSize()
+         || (defaultValues.size() && defaultValues.size() != size())
+        )
     )
     {
         FatalErrorInFunction << "Field size:" << fld.size()
@@ -96,17 +90,22 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
     tmp<Field<Type>> tresult(new Field<Type>(this->size(), Zero));
     Field<Type>& result = tresult.ref();
 
-    if (owner())
+    label n = 0;
+
+    forAll(nbrPatchIds, index)
     {
-        //return AMI().interpolateToSource(fld, defaultValues);
+        const auto& nbr = neighbPatch(index);
 
-        label n = 0;
-        forAll(nbrIds, nbri)
+        if (AMI(index).valid())
         {
-            const cyclicAMIPolyPatch& nbr = neighbPatch(nbri);
+            //Pout<< "** owner:" << this->name() << " size:" << this->size()
+            //    << " interpolateToSource from " << nbr.name()
+            //    << " size:" << nbr.size()
+            //    << " collated field:" << fld.size() << " starting at:" << n
+            //    << " into " << result.size() << endl;
 
-            // Interpolate nbr data to here and accumulate
-            AMI(nbri).interpolateToSource
+            // Owner. Interpolate nbr data to here and accumulate
+            AMI(index)().interpolateToSource
             (
                 SubField<Type>(fld, nbr.size(), n),
                 multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
@@ -115,23 +114,22 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
             );
             n += nbr.size();
         }
-    }
-    else
-    {
-        //return neighbPatch().AMI().interpolateToTarget(fld, defaultValues);
-
-        label n = 0;
-        forAll(nbrIds, nbri)
+        else
         {
-            const cyclicAMIPolyPatch& nbr = neighbPatch(nbri);
-
-            if (nbr.owner())
+            // Check if slave has valid AMI
+            const label myIndex = nbr.neighbPatchIDs().find(this->index());
+            if (nbr.AMI(myIndex).valid())
             {
-                // Find the AMI that points to me
-                label myId = nbr.neighbPatchIDs().find(this->index());
+                //Pout<< "** neighour:" << nbr.name()
+                //    << " size:" << nbr.size()
+                //    << " interpolateToSource from " << nbr.name()
+                //    << " size:" << nbr.size()
+                //    << " collated field:" << fld.size()
+                //    << " starting at:" << n
+                //    << " into " << result.size() << endl;
 
                 // Interpolate nbr data to here and accumulate
-                nbr.AMI(myId).interpolateToTarget
+                nbr.AMI(myIndex)().interpolateToTarget
                 (
                     SubField<Type>(fld, nbr.size(), n),
                     multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
@@ -156,38 +154,6 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
 {
     return interpolate(tFld(), defaultValues);
 }
-
-
-//template<class Type, class CombineOp>
-//void Foam::cyclicAMIPolyPatch::interpolate
-//(
-//    const UList<Type>& fld,
-//    const CombineOp& cop,
-//    List<Type>& result,
-//    const UList<Type>& defaultValues
-//) const
-//{
-//    if (owner())
-//    {
-//        AMI().interpolateToSource
-//        (
-//            fld,
-//            cop,
-//            result,
-//            defaultValues
-//        );
-//    }
-//    else
-//    {
-//        neighbPatch().AMI().interpolateToTarget
-//        (
-//            fld,
-//            cop,
-//            result,
-//            defaultValues
-//        );
-//    }
-//}
 
 
 // ************************************************************************* //

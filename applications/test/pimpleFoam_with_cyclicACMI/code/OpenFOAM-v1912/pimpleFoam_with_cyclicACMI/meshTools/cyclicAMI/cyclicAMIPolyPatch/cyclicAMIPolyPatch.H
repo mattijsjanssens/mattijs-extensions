@@ -29,6 +29,24 @@ Class
 Description
     Cyclic patch for Arbitrary Mesh Interface (AMI)
 
+    E.g. in polyMesh/boundary
+    leftAMI
+    {
+        type            cyclicAMI;
+        inGroups        (coupleGroup);
+        nFaces          4;
+        startFace       40;
+        coupleGroup     coupleGroup;
+        method          partialFaceAreaWeightAMI;
+    }
+
+    - the coupleGroup (or neighbourPatches) specifies which other patches it
+      might talk to
+    - if so there is an AMI on either *this or the neighbourPatch, depending
+      on which is the lower numbered one.
+    - the coupleGroup might have lots and lots of entries but only some
+      are filled.
+
 SourceFiles
     cyclicAMIPolyPatch.C
 
@@ -131,6 +149,8 @@ protected:
 
 
     // Protected Member Functions
+
+        bool validAMI(const label index) const;
 
         //- Reset the AMI interpolator
         virtual void resetAMI
@@ -295,10 +315,14 @@ public:
             //- Neighbour patch ID
             virtual labelList& neighbPatchIDs() const;
 
-            //- Total neighbour size
+            //- Does this side own the patch compared to neighbour index?
+            virtual bool owner(const label index) const;
+
+            //- Total neighbour size (of neighbours with valid AMI)
             virtual label neighbSize() const;
 
-            //- Return neighbour internal cell data (in neighbPatchIDs order)
+            //- Return neighbour internal cell data (in AMI/neighbPatchIDs order
+            //  compatible with interpolate routines)
             template<class Type>
             tmp<Field<Type>> patchNeighbourField(const UList<Type>& iF) const;
 
@@ -317,23 +341,18 @@ public:
                     const label index
                 ) const;
 
+                //- Does this side own the patch (only for single neighbour)
+                virtual bool owner() const
+                {
+                    return owner(0);
+                }
 
-            //- Does this side own the patch?
-            virtual bool owner() const;
-
-            //- Find (index of) owner. -1 if I am owner, otherwise index
-            //  if if neighbPatchIDs
-            virtual label findOwner() const;
 
             //- Return a reference to the projection surface
             const autoPtr<searchableSurface>& surfPtr() const;
 
             //- Return a reference to the AMI interpolator
-            const AMIPatchToPatchInterpolation& AMI
-            (
-                const label index
-            ) const;
-
+            tmpNrc<AMIPatchToPatchInterpolation> AMI(const label index) const;
 
             //- Return true if applying the low weight correction
             bool applyLowWeightCorrection() const;
@@ -392,16 +411,6 @@ public:
                     const tmp<Field<Type>>& tFld,
                     const UList<Type>& defaultValues = UList<Type>()
                 ) const;
-
-//                //- Low-level interpolate List
-//                template<class Type, class CombineOp>
-//                void interpolate
-//                (
-//                    const UList<Type>& fld,
-//                    const CombineOp& cop,
-//                    List<Type>& result,
-//                    const UList<Type>& defaultValues = UList<Type>()
-//                ) const;
 
 
         //- Calculate the patch geometry

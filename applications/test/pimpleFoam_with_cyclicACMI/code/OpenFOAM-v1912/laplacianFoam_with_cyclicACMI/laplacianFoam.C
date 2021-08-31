@@ -54,6 +54,7 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "cyclicAMIFvPatch.H"
 #include "fvCFD.H"
 #include "fvOptions.H"
 #include "simpleControl.H"

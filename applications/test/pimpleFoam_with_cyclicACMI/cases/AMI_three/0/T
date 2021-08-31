@@ -28,13 +28,19 @@ boundaryField
         value           uniform 0;
     }
 
-    bottomRight
+    right_bottom_right
     {
         type            fixedValue;
         value           uniform 0;
     }
 
-    topRight
+    right_top_right
+    {
+        type            fixedValue;
+        value           uniform 0;
+    }
+
+    left
     {
         type            fixedValue;
         value           uniform 1;

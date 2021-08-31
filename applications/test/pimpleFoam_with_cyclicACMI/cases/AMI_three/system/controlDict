@@ -15,6 +15,11 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+DebugSwitches
+{
+    cyclicAMI   1;
+}
+
 application     laplacianFoam;
 
 startFrom       startTime;

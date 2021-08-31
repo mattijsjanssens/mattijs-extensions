@@ -5,20 +5,33 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 runApplication blockMesh
 
-foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.type -set cyclicAMI
-foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.inGroups -set '(cyclicAMI)'
-foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.neighbourPatches -set '(bottomAMI topAMI)'
-foamDictionary constant/polyMesh/boundary -entry entry0.leftAMI.method -set 'partialFaceAreaWeightAMI'
+//- left_bottom
+foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.inGroups -set '(cyclicAMI coupleGroup)'
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.neighbourPatches -set '(bottomAMI topAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.coupleGroup -set 'coupleGroup'
+foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.method -set 'partialFaceAreaWeightAMI'
 
-foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.type -set cyclicAMI
-foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.inGroups -set '(cyclicAMI)'
-foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.neighbourPatches -set '(leftAMI)'
-foamDictionary constant/polyMesh/boundary -entry entry0.bottomAMI.method -set 'partialFaceAreaWeightAMI'
+//- left_top
+foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.inGroups -set '(cyclicAMI coupleGroup)'
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.neighbourPatches -set '(leftAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.coupleGroup -set 'coupleGroup'
+foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.method -set 'partialFaceAreaWeightAMI'
 
-foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.type -set cyclicAMI
-foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.inGroups -set '(cyclicAMI)'
-foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.neighbourPatches -set '(leftAMI)'
-foamDictionary constant/polyMesh/boundary -entry entry0.topAMI.method -set 'partialFaceAreaWeightAMI'
+//- right_bottom
+foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.inGroups -set '(cyclicAMI coupleGroup)'
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.neighbourPatches -set '(bottomAMI topAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.coupleGroup -set 'coupleGroup'
+foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.method -set 'partialFaceAreaWeightAMI'
+
+//- right_top
+foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.type -set cyclicAMI
+foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.inGroups -set '(cyclicAMI coupleGroup)'
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.neighbourPatches -set '(leftAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.coupleGroup -set 'coupleGroup'
+foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.method -set 'partialFaceAreaWeightAMI'
 
 laplacianFoam_with_cyclicACMI
 
