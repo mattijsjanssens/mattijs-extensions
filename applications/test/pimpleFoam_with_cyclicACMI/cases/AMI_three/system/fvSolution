@@ -19,8 +19,13 @@ solvers
 {
     T
     {
-        solver          PCG;
-        preconditioner  DIC;
+        //solver          PCG;
+        //preconditioner  DIC;
+
+        solver          GAMG;
+        smoother        GaussSeidel;
+
+
         tolerance       1e-06;
         relTol          0;
     }

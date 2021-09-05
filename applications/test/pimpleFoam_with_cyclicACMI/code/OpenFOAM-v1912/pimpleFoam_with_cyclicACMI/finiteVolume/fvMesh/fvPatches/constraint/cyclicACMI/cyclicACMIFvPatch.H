@@ -117,9 +117,9 @@ public:
                 return cyclicACMIPolyPatch_.neighbPatchIDs()[index];
             }
 
-            virtual bool owner() const
+            virtual bool owner(const label index) const
             {
-                return cyclicACMIPolyPatch_.owner();
+                return cyclicACMIPolyPatch_.owner(index);
             }
 
             //- Return neighbour fvPatch
@@ -150,17 +150,14 @@ public:
             }
 
             //- Return a reference to the AMI interpolator
-            virtual const AMIPatchToPatchInterpolation& AMI
+            virtual tmpNrc<AMIPatchToPatchInterpolation> AMI
             (
                 const label index
             ) const
             {
-                const AMIPatchToPatchInterpolation& AMI =
-                    cyclicACMIPolyPatch_.AMI(index);
-
                 updateAreas();
 
-                return AMI;
+                return cyclicACMIPolyPatch_.AMI(index);
             }
 
             //- Are the cyclic planes parallel

@@ -49,18 +49,18 @@ namespace Foam
 
 Foam::cyclicAMIGAMGInterface::cyclicAMIGAMGInterface
 (
-    const label index,
+    const label interfacei,
     const lduInterfacePtrsList& coarseInterfaces,
     const lduInterface& fineInterface,
     const labelField& localRestrictAddressing,
-    const labelField& neighbourRestrictAddressing,
+    const labelField& allNeighbourRestrictAddressing,
     const label fineLevelIndex,
     const label coarseComm
 )
 :
     GAMGInterface
     (
-        index,
+        interfacei,
         coarseInterfaces
     ),
     fineCyclicAMIInterface_
@@ -68,6 +68,17 @@ Foam::cyclicAMIGAMGInterface::cyclicAMIGAMGInterface
         refCast<const cyclicAMILduInterface>(fineInterface)
     )
 {
+Pout<< "Patch:" << interfacei << " fineSize:"  << fineInterface.faceCells().size()
+    << endl;
+//for (const auto& coarseIf : coarseInterfaces)
+//{
+//    Pout<< "    coarse size:" << coarseIf.faceCells().size() << endl;
+//}
+Pout<< "localRestrictAddressing:" << localRestrictAddressing << endl;
+Pout<< "allNeighbourRestrictAddressing:" << allNeighbourRestrictAddressing
+    << endl;
+
+
     // Construct face agglomeration from cell agglomeration
     {
         // From coarse face to cell
@@ -107,74 +118,87 @@ Foam::cyclicAMIGAMGInterface::cyclicAMIGAMGInterface
 
     // On the owner side construct the AMI
 
-    if (fineCyclicAMIInterface_.owner())
+    const labelList& nbrIds = fineCyclicAMIInterface_.neighbPatchIDs();
+
+    amiPtrs_.setSize(nbrIds.size());
+
+    label n = 0;
+    forAll(nbrIds, index)
     {
-        // Construct the neighbour side agglomeration (as the neighbour would
-        // do it so it the exact loop above using neighbourRestrictAddressing
-        // instead of localRestrictAddressing)
+        const auto tami(fineCyclicAMIInterface_.AMI(index));
 
-        // Note that for multiple nbrs the input is assembled in nbr order
-        // (see internalFieldTransfer below)
-
-        const labelList& nbrIds = fineCyclicAMIInterface_.neighbPatchIDs();
-
-        amiPtrs_.setSize(nbrIds.size());
-
-        label n = 0;
-        forAll(nbrIds, nbri)
+        if (tami.valid())
         {
-XXXXXX
-LOOK AT slice (n..n+size()) only !!!
-XXXXXX
-
-        labelList nbrFaceRestrictAddressing;
-        {
-            // From face to coarse face
-            DynamicList<label> dynNbrFaceRestrictAddressing
-            (
-                neighbourRestrictAddressing.size()
-            );
-
-            Map<label> masterToCoarseFace(neighbourRestrictAddressing.size());
-
-            for (const label curMaster : neighbourRestrictAddressing)
+DebugVar(tami().srcAddress());
+DebugVar(tami().tgtAddress());
+            labelList nbrFaceRestrictAddressing;
             {
-                const auto iter = masterToCoarseFace.cfind(curMaster);
+                //const auto& nbr = fineCyclicAMIInterface_.neighbPatch(index);
+                const label nbrSize = tami().tgtAddress().size();
+Pout<< "    offset:" << n
+    << " size:" << nbrSize
+    << endl;
+                const SubList<label> neighbourRestrictAddressing
+                (
+                    allNeighbourRestrictAddressing,
+                    nbrSize,
+                    n
+                );
+                n += nbrSize;
 
-                if (iter.found())
+                // From face to coarse face
+                DynamicList<label> dynNbrFaceRestrictAddressing
+                (
+                    neighbourRestrictAddressing.size()
+                );
+
+                Map<label> masterToCoarseFace
+                (
+                    neighbourRestrictAddressing.size()
+                );
+
+                for (const label curMaster : neighbourRestrictAddressing)
                 {
-                    // Already have coarse face
-                    dynNbrFaceRestrictAddressing.append(iter.val());
+                    const auto iter = masterToCoarseFace.cfind(curMaster);
+
+                    if (iter.found())
+                    {
+                        // Already have coarse face
+                        dynNbrFaceRestrictAddressing.append(iter.val());
+                    }
+                    else
+                    {
+                        // New coarse face
+                        const label coarseI = masterToCoarseFace.size();
+                        dynNbrFaceRestrictAddressing.append(coarseI);
+                        masterToCoarseFace.insert(curMaster, coarseI);
+                    }
                 }
-                else
-                {
-                    // New coarse face
-                    const label coarseI = masterToCoarseFace.size();
-                    dynNbrFaceRestrictAddressing.append(coarseI);
-                    masterToCoarseFace.insert(curMaster, coarseI);
-                }
+
+                nbrFaceRestrictAddressing.transfer
+                (
+                    dynNbrFaceRestrictAddressing
+                );
             }
-
-            nbrFaceRestrictAddressing.transfer(dynNbrFaceRestrictAddressing);
-        }
-
-        const labelList& nbrIds = fineCyclicAMIInterface_.neighbPatchIDs();
-
-        amiPtrs_.setSize(nbrIds.size());
-        forAll(nbrIds, nbri)
-        {
+DebugVar(faceRestrictAddressing_);
+DebugVar(nbrFaceRestrictAddressing);
             amiPtrs_.set
             (
-                nbri,
+                index,
                 new AMIPatchToPatchInterpolation
                 (
-                    fineCyclicAMIInterface_.AMI(nbri),
+                    tami(),
                     faceRestrictAddressing_,
                     nbrFaceRestrictAddressing
                 )
             );
         }
     }
+
+    Pout<< "** done patch:" << interfacei
+        << " finesize:" << fineInterface.faceCells().size()
+        << " coarsesize:" << faceCells().size()
+        << nl << endl;
 }
 
 
@@ -186,6 +210,32 @@ Foam::cyclicAMIGAMGInterface::~cyclicAMIGAMGInterface()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+bool Foam::cyclicAMIGAMGInterface::validAMI(const label index) const
+{
+    //Pout<< "for patch:" << this->index()
+    //    << " have AMIs:" << amiPtrs_.size()
+    //    << " looking for index:" << index << endl;
+    if (AMI(index).valid())
+    {
+        //Pout<< "for patch:" << this->index()
+        //    << " found AMI at index:" << index << endl;
+        return true;
+    }
+    else
+    {
+        const cyclicAMIGAMGInterface& nbr = neighbPatch(index);
+        const label myIndex = nbr.neighbPatchIDs().find(this->index());
+
+        //Pout<< "for patch:" << this->index()
+        //    << " have nbr:" << nbr.index()
+        //    << " with its nbrs:" << nbr.neighbPatchIDs()
+        //    << " myIndex:" << myIndex << endl;
+
+        return nbr.AMI(myIndex).valid();
+    }
+}
+
+
 Foam::tmp<Foam::labelField> Foam::cyclicAMIGAMGInterface::internalFieldTransfer
 (
     const Pstream::commsTypes,
@@ -196,27 +246,29 @@ Foam::tmp<Foam::labelField> Foam::cyclicAMIGAMGInterface::internalFieldTransfer
     const labelList& nbrIds = neighbPatchIDs();
 
     label n = 0;
-    forAll(nbrIds, nbri)
+    forAll(nbrIds, index)
     {
-        const cyclicAMIGAMGInterface& nbr =
-            dynamic_cast<const cyclicAMIGAMGInterface&>(neighbPatch(nbri));
-        n += nbr.size();
+        if (validAMI(index))
+        {
+            const auto& nbr = neighbPatch(index);
+            n += nbr.size();
+        }
     }
 
     tmp<labelField> tpnf(new labelField(n));
     labelField& pnf = tpnf.ref();
 
     n = 0;
-
-    forAll(nbrIds, nbri)
+    forAll(nbrIds, index)
     {
-        const cyclicAMIGAMGInterface& nbr =
-            dynamic_cast<const cyclicAMIGAMGInterface&>(neighbPatch(nbri));
-        const labelUList& nbrFaceCells = nbr.faceCells();
-
-        forAll(pnf, facei)
+        if (validAMI(index))
         {
-            pnf[n++] = iF[nbrFaceCells[facei]];
+            const auto& nbr = neighbPatch(index);
+            const labelUList& nbrFaceCells = nbr.faceCells();
+            for (const auto celli : nbrFaceCells)
+            {
+                pnf[n++] = iF[celli];
+            }
         }
     }
 

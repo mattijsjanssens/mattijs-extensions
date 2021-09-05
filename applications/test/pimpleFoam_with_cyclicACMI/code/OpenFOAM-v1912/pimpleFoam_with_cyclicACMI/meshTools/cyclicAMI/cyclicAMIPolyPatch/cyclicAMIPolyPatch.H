@@ -150,8 +150,6 @@ protected:
 
     // Protected Member Functions
 
-        bool validAMI(const label index) const;
-
         //- Reset the AMI interpolator
         virtual void resetAMI
         (
@@ -353,6 +351,9 @@ public:
 
             //- Return a reference to the AMI interpolator
             tmpNrc<AMIPatchToPatchInterpolation> AMI(const label index) const;
+
+            //- Helper: check if me or neighbour has valid AMI
+        virtual bool validAMI(const label index) const;
 
             //- Return true if applying the low weight correction
             bool applyLowWeightCorrection() const;

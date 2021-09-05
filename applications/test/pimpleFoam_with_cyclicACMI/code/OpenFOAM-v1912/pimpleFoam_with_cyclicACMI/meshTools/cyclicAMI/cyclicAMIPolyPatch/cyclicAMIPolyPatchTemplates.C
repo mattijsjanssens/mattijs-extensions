@@ -96,6 +96,13 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
     {
         const auto& nbr = neighbPatch(index);
 
+
+//XXXXXX
+// 1. handlign of defaultValues. I.e. needs to know which faces
+//    to apply lowWeightCorrection to by summing the weights from all the AMIs
+// 2. can we avoid packing (patchNeighbourField()) and slicing (SubField)?
+// 3. precalculate list of valid AMI and originating patch and index to avoid
+//    validAMI and nbr.neighbPatchIDs().find()
         if (AMI(index).valid())
         {
             //Pout<< "** owner:" << this->name() << " size:" << this->size()

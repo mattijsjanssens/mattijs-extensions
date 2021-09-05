@@ -108,12 +108,12 @@ public:
                 return cyclicAMIPolyPatch_.neighbPatchIDs()[index];
             }
 
-            virtual bool owner() const
+            virtual bool owner(const label index) const
             {
-                return cyclicAMIPolyPatch_.owner();
+                return cyclicAMIPolyPatch_.owner(index);
             }
 
-            //- Return processor number
+            //- Return neighbour
             virtual const cyclicAMIFvPatch& neighbPatch(const label index) const
             {
                 return refCast<const cyclicAMIFvPatch>
@@ -126,7 +126,7 @@ public:
             }
 
             //- Return a reference to the AMI interpolator
-            virtual const AMIPatchToPatchInterpolation& AMI
+            virtual tmpNrc<AMIPatchToPatchInterpolation> AMI
             (
                 const label index
             ) const

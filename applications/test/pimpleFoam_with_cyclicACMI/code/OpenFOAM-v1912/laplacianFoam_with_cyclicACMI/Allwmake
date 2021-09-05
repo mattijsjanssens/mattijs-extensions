@@ -4,6 +4,8 @@
 #------------------------------------------------------------------------------
 
 #ln -s ../pimpleFoam_with_cyclicACMI/lnInclude .
+wcleanLnInclude .
+rsync -a ../pimpleFoam_with_cyclicACMI/lnInclude .
 wmake $targetType
 
 #------------------------------------------------------------------------------

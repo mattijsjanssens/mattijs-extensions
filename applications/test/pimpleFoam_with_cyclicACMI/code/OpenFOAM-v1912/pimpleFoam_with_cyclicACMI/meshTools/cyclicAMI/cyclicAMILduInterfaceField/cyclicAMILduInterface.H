@@ -79,15 +79,16 @@ public:
             //- Return neighbour
             virtual label neighbPatchID(const label index) const = 0;
 
-            virtual bool owner() const = 0;
+//            virtual bool owner() const = 0;
+            virtual bool owner(const label index) const = 0;
 
-            //- Return processor number
+            //- Return neighbour
             virtual const cyclicAMILduInterface& neighbPatch
             (
                 const label index
             ) const = 0;
 
-            virtual const AMIPatchToPatchInterpolation& AMI
+            virtual tmpNrc<AMIPatchToPatchInterpolation> AMI
             (
                 const label index
             ) const = 0;

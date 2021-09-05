@@ -18,6 +18,8 @@ FoamFile
 DebugSwitches
 {
     cyclicAMI   1;
+    SolverPerformance   1;
+    GAMGAgglomeration   1;
 }
 
 application     laplacianFoam;

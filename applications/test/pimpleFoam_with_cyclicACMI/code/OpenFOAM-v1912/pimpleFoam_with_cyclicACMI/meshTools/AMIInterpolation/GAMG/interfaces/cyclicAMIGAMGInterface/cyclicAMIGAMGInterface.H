@@ -122,13 +122,16 @@ public:
             //- Return neighbour processor number
             virtual label neighbPatchID(const label index) const
             {
-                //return fineCyclicAMIInterface_.neighbPatchID(index);
                 return fineCyclicAMIInterface_.neighbPatchIDs()[index];
             }
 
-            virtual bool owner() const
+//            virtual bool owner() const
+//            {
+//                return fineCyclicAMIInterface_.owner();
+//            }
+            virtual bool owner(const label index) const
             {
-                return fineCyclicAMIInterface_.owner();
+                return fineCyclicAMIInterface_.owner(index);
             }
 
             virtual const cyclicAMIGAMGInterface& neighbPatch
@@ -142,13 +145,23 @@ public:
                 );
             }
 
-            virtual const AMIPatchToPatchInterpolation& AMI
+            virtual tmpNrc<AMIPatchToPatchInterpolation> AMI
             (
                 const label index
             ) const
             {
-                return amiPtrs_[index];
+                if (!amiPtrs_.set(index))
+                {
+                    return nullptr;
+                }
+                else
+                {
+                    return amiPtrs_[index];
+                }
             }
+
+            //- Helper: check me or neighbour for valid AMI
+            virtual bool validAMI(const label index) const;
 
             //- Return face transformation tensor
             virtual const tensorField& forwardT() const

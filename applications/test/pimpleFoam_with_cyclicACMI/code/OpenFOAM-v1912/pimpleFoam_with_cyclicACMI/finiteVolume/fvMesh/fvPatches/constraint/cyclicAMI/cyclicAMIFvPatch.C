@@ -207,8 +207,6 @@ Foam::tmp<Foam::labelField> Foam::cyclicAMIFvPatch::internalFieldTransfer
     const labelUList& iF
 ) const
 {
-    //return neighbFvPatch().patchInternalField(iF);
-
     tmp<labelField> tfld(new labelField(cyclicAMIPatch().neighbSize()));
     labelField& fld = tfld.ref();
 
@@ -218,10 +216,14 @@ Foam::tmp<Foam::labelField> Foam::cyclicAMIFvPatch::internalFieldTransfer
     label n = 0;
     forAll(nbrIds, nbri)
     {
-        const cyclicAMIFvPatch& nbr = neighbFvPatch(nbri);
-        SubField<label>(fld, nbr.size(), n) = nbr.patchInternalField(iF);
-        n += nbr.size();
+        if (cyclicAMIPatch().validAMI(nbri))
+        {
+            const cyclicAMIFvPatch& nbr = neighbFvPatch(nbri);
+            SubField<label>(fld, nbr.size(), n) = nbr.patchInternalField(iF);
+            n += nbr.size();
+        }
     }
+
     return tfld;
 }
 
