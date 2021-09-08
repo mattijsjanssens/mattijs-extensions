@@ -127,7 +127,6 @@ protected:
 
         //- AMI interpolation class
         mutable PtrList<AMIPatchToPatchInterpolation> AMIPtrs_;
-        //mutable autoPtr<AMIPatchToPatchInterpolation> AMIPtr_;
 
         //- AMI method
         const AMIPatchToPatchInterpolation::interpolationMethod AMIMethod_;
@@ -140,6 +139,9 @@ protected:
 
         //- Low weight correction threshold for AMI
         const scalar AMILowWeightCorrection_;
+
+        //- Overall weight (when using multiple AMI)
+        mutable scalarField allWeightsSum_;
 
         //- Projection surface
         mutable autoPtr<searchableSurface> surfPtr_;

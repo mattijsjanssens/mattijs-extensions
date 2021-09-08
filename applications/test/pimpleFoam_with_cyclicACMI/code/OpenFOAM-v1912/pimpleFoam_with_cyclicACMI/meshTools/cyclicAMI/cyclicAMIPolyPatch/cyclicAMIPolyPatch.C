@@ -365,7 +365,14 @@ void Foam::cyclicAMIPolyPatch::resetAMI
             else
             {
                 // Construct/apply AMI interpolation to determine addressing and
-                // weights
+                // weights. Note that with multiple nbrs the low weight
+                // correction is not applied on a per-AMI basis so disabled
+                // here (see cyclicAMIPolyPatch::interpolate instead)
+
+Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
+    << " have low-weight:" << AMILowWeightCorrection_
+    << endl;
+
                 AMIPtrs_.set
                 (
                     nbri,
@@ -377,10 +384,16 @@ void Foam::cyclicAMIPolyPatch::resetAMI
                         faceAreaIntersect::tmMesh,
                         AMIRequireMatch_,
                         AMIMethod,
-                        AMILowWeightCorrection_,
+                        (nbrIds.size() == 1 ? AMILowWeightCorrection_ : -1.0),
                         AMIReverse_
                     )
                 );
+
+Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
+    << " have AMIlow-weight:" << AMIPtrs_[nbri].lowWeightCorrection()
+    << endl;
+
+
 
                 if
                 (
@@ -409,6 +422,55 @@ void Foam::cyclicAMIPolyPatch::resetAMI
                             << "    " << "tgAddress :"
                             << AMIPtrs_[nbri].tgtAddress().size() << nl << endl;
                     }
+                }
+            }
+        }
+    }
+
+    allWeightsSum_.clear();
+    if (nbrIds.size() > 1)
+    {
+        allWeightsSum_.setSize(this->size());
+        allWeightsSum_ = Zero;
+        forAll(nbrIds, nbri)
+        {
+
+Pout<< "** nbri:" << nbri << " AMIPtrs_:" << AMIPtrs_.set(nbri) << endl;
+
+            if (AMI(nbri).valid())
+            {
+                const scalarField& w = AMI(nbri)().srcWeightsSum();
+                if (w.size() != this->size())
+                {
+                    FatalErrorInFunction << "patch:" << this->name()
+                        << " to nbr:" << neighbPatch(nbri).name()
+                        << exit(FatalError);
+                }
+                allWeightsSum_ += w;
+
+Pout<< "patch:" << name()
+    << " adding srcWeights:" << w
+    << " now allWeights:" << allWeightsSum_ << endl;
+            }
+            else
+            {
+                // Check if slave has valid AMI
+                const auto& nbr = neighbPatch(nbri);
+                const label myIndex = nbr.neighbPatchIDs().find(this->index());
+                if (nbr.AMI(myIndex).valid())
+                {
+                    const scalarField& w =nbr.AMI(myIndex)().tgtWeightsSum();
+                    if (w.size() != this->size())
+                    {
+                        FatalErrorInFunction << "patch:" << nbr.name()
+                            << " to *this:" << this->name() << exit(FatalError);
+                    }
+                    allWeightsSum_ += w;
+
+Pout<< "patch:" << name()
+    << " adding tgtWeights:" << w
+    << " now allWeights:" << allWeightsSum_ << endl;
+
                 }
             }
         }
@@ -928,35 +990,37 @@ Foam::cyclicAMIPolyPatch::AMI(const label index) const
 
 bool Foam::cyclicAMIPolyPatch::applyLowWeightCorrection() const
 {
-    const labelList& nbrIds = neighbPatchIDs();
+    //const labelList& nbrIds = neighbPatchIDs();
+    //
+    //// Find any local AMI
+    //forAll(nbrIds, index)
+    //{
+    //    if (AMI(index).valid())
+    //    {
+    //        return AMI(index)().applyLowWeightCorrection();
+    //    }
+    //}
+    //
+    //// Find AMI on any neighbour
+    //forAll(nbrIds, nbri)
+    //{
+    //    const auto& nbr = neighbPatch(nbri);
+    //    const label index = nbr.neighbPatchIDs().find(this->index());
+    //    if (index == -1)
+    //    {
+    //        FatalErrorInFunction
+    //            << "Patch " << nbr.name()
+    //            << " does not neighbour " << name()
+    //            << abort(FatalError);
+    //    }
+    //    if (nbr.AMI(index).valid())
+    //    {
+    //        return nbr.AMI(index)().applyLowWeightCorrection();
+    //    }
+    //}
+    //return false;
 
-    // Find any local AMI
-    forAll(nbrIds, index)
-    {
-        if (AMI(index).valid())
-        {
-            return AMI(index)().applyLowWeightCorrection();
-        }
-    }
-
-    // Find AMI on any neighbour
-    forAll(nbrIds, nbri)
-    {
-        const auto& nbr = neighbPatch(nbri);
-        const label index = nbr.neighbPatchIDs().find(this->index());
-        if (index == -1)
-        {
-            FatalErrorInFunction
-                << "Patch " << nbr.name()
-                << " does not neighbour " << name()
-                << abort(FatalError);
-        }
-        if (nbr.AMI(index).valid())
-        {
-            return nbr.AMI(index)().applyLowWeightCorrection();
-        }
-    }
-    return false;
+    return AMILowWeightCorrection_ > 0;
 }
 
 

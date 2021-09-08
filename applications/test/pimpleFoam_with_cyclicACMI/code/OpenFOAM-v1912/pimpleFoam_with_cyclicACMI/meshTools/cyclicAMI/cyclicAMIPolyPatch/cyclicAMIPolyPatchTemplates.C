@@ -98,11 +98,10 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
 
 
 //XXXXXX
-// 1. handlign of defaultValues. I.e. needs to know which faces
-//    to apply lowWeightCorrection to by summing the weights from all the AMIs
-// 2. can we avoid packing (patchNeighbourField()) and slicing (SubField)?
-// 3. precalculate list of valid AMI and originating patch and index to avoid
+// 1. can we avoid packing (patchNeighbourField()) and slicing (SubField)?
+// 2. precalculate list of valid AMI and originating patch and index to avoid
 //    validAMI and nbr.neighbPatchIDs().find()
+// 3. precalculate neighbSize() to avoid loop
         if (AMI(index).valid())
         {
             //Pout<< "** owner:" << this->name() << " size:" << this->size()
@@ -144,6 +143,31 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
                     defaultValues
                 );
                 n += nbr.size();
+            }
+        }
+    }
+
+    //Pout<< "nbrPatchIds:" << nbrPatchIds
+    //    << " low-weight:" << applyLowWeightCorrection()
+    //    << endl;
+    if (nbrPatchIds.size() > 1 && applyLowWeightCorrection())
+    {
+        // Multiple neighbours. Use our own lowWeightCorrection instead of
+        // one built-in into AMIInterpolation (that has been disabled in
+        // construction of AMIPatchToPatchInterpolation)
+
+        forAll(result, facei)
+        {
+            if (allWeightsSum_[facei] < AMILowWeightCorrection_)
+            {
+                //Pout<< "**OVERRIDING on patch:" << this->name()
+                //    << " face:" << facei
+                //    << "  old result:" << result[facei]
+                //    << " allWeightsSum_[facei]:" << allWeightsSum_[facei]
+                //    << " AMILowWeightCorrection_:" << AMILowWeightCorrection_
+                //    << " defaultValues:" << defaultValues[facei] <<  endl;
+
+                result[facei] = defaultValues[facei];
             }
         }
     }
