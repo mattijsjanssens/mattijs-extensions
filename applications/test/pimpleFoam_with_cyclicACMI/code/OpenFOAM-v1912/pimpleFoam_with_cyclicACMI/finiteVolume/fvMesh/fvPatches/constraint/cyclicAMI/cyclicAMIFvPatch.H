@@ -96,10 +96,16 @@ public:
                 return cyclicAMIPolyPatch_;
             }
 
-            //- Return neighbour
+            //- Return all neighbours (including ones without AMI)
             virtual const labelList& neighbPatchIDs() const
             {
                 return cyclicAMIPolyPatch_.neighbPatchIDs();
+            }
+
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const
+            {
+                return cyclicAMIPolyPatch_.neighbSize();
             }
 
             //- Return neighbour
@@ -134,12 +140,17 @@ public:
                 return cyclicAMIPolyPatch_.AMI(index);
             }
 
+            //- Helper: check if me or neighbour has valid AMI
+            virtual bool validAMI(const label index) const
+            {
+                return cyclicAMIPolyPatch_.validAMI(index);
+            }
+
             //- Return true if applying the low weight correction
             virtual bool applyLowWeightCorrection() const
             {
                 return cyclicAMIPolyPatch_.applyLowWeightCorrection();
             }
-
 
             //- Are the cyclic planes parallel
             virtual bool parallel() const

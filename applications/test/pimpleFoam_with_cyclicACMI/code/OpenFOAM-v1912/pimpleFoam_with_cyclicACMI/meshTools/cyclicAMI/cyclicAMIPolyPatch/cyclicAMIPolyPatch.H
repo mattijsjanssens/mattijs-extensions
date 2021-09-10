@@ -140,8 +140,11 @@ protected:
         //- Low weight correction threshold for AMI
         const scalar AMILowWeightCorrection_;
 
-        //- Overall weight (when using multiple AMI)
+        //- Overall weight (when using multiple AMI - unsized if not)
         mutable scalarField allWeightsSum_;
+
+        //- Overall size
+        mutable label neighbSize_;
 
         //- Projection surface
         mutable autoPtr<searchableSurface> surfPtr_;

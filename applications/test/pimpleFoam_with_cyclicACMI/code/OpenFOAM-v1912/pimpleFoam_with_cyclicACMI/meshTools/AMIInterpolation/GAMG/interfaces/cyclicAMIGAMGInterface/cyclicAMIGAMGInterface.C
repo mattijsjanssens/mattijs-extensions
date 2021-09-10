@@ -66,7 +66,8 @@ Foam::cyclicAMIGAMGInterface::cyclicAMIGAMGInterface
     fineCyclicAMIInterface_
     (
         refCast<const cyclicAMILduInterface>(fineInterface)
-    )
+    ),
+    neighbSize_(-1)
 {
 Pout<< "Patch:" << interfacei << " fineSize:"  << fineInterface.faceCells().size()
     << endl;
@@ -210,6 +211,25 @@ Foam::cyclicAMIGAMGInterface::~cyclicAMIGAMGInterface()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+Foam::label Foam::cyclicAMIGAMGInterface::neighbSize() const
+{
+    if (neighbSize_ == -1)
+    {
+        const labelList& nbrPatchIds = neighbPatchIDs();
+
+        neighbSize_ = 0;
+        forAll(nbrPatchIds, index)
+        {
+            if (validAMI(index))
+            {
+                neighbSize_ += neighbPatch(index).size();
+            }
+        }
+    }
+    return neighbSize_;
+}
+
+
 bool Foam::cyclicAMIGAMGInterface::validAMI(const label index) const
 {
     //Pout<< "for patch:" << this->index()
@@ -263,8 +283,7 @@ Foam::tmp<Foam::labelField> Foam::cyclicAMIGAMGInterface::internalFieldTransfer
     {
         if (validAMI(index))
         {
-            const auto& nbr = neighbPatch(index);
-            const labelUList& nbrFaceCells = nbr.faceCells();
+            const labelUList& nbrFaceCells = neighbPatch(index).faceCells();
             for (const auto celli : nbrFaceCells)
             {
                 pnf[n++] = iF[celli];

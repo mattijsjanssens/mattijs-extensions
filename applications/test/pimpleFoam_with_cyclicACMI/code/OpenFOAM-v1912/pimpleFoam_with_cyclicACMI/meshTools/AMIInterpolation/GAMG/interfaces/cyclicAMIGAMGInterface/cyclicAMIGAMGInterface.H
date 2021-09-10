@@ -63,6 +63,8 @@ class cyclicAMIGAMGInterface
         //- AMI interface
         PtrList<AMIPatchToPatchInterpolation> amiPtrs_;
 
+        //- Overall number of faces in all valid ami
+        mutable label neighbSize_;
 
     // Private Member Functions
 
@@ -119,16 +121,15 @@ public:
                 return fineCyclicAMIInterface_.neighbPatchIDs();
             }
 
-            //- Return neighbour processor number
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const;
+
+            //- Return neighbour patch number
             virtual label neighbPatchID(const label index) const
             {
                 return fineCyclicAMIInterface_.neighbPatchIDs()[index];
             }
 
-//            virtual bool owner() const
-//            {
-//                return fineCyclicAMIInterface_.owner();
-//            }
             virtual bool owner(const label index) const
             {
                 return fineCyclicAMIInterface_.owner(index);

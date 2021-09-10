@@ -136,31 +136,9 @@ Foam::cyclicAMIFvPatchField<Type>::patchNeighbourField() const
 {
     const Field<Type>& iField = this->primitiveField();
 
-    //const labelUList& nbrFaceCells =
-    //    cyclicAMIPatch_.cyclicAMIPatch().neighbPatch().faceCells();
-    //
-    //Field<Type> pnf(iField, nbrFaceCells);
-
-//MEJ
-    //// Get all remote data local
-    //const labelList& nbrIds = cyclicAMIPatch_.neighbPatchIDs();
-    //
-    //Field<Type> pnf(cyclicAMIPatch_.cyclicAMIPatch().neighbSize());
-    //
-    //label n = 0;
-    //forAll(nbrIds, nbri)
-    //{
-    //    const cyclicAMIFvPatch& nbr = cyclicAMIPatch_.neighbFvPatch(nbri);
-    //    const labelUList& nbrFaceCells = nbr.faceCells();
-    //
-    //    for (const auto celli : nbrFaceCells)
-    //    {
-    //        pnf[n++] = iField[celli];
-    //    }
-    //}
     const cyclicAMIPolyPatch& cpp = cyclicAMIPatch_.cyclicAMIPatch();
+
     Field<Type> pnf(cpp.patchNeighbourField(iField));
-//MEJ
 
     tmp<Field<Type>> tpnf;
     if (cyclicAMIPatch_.applyLowWeightCorrection())
@@ -181,21 +159,21 @@ Foam::cyclicAMIFvPatchField<Type>::patchNeighbourField() const
 }
 
 
-//template<class Type>
-//const Foam::cyclicAMIFvPatchField<Type>&
-//Foam::cyclicAMIFvPatchField<Type>::neighbourPatchField() const
-//{
-//    const GeometricField<Type, fvPatchField, volMesh>& fld =
-//        static_cast<const GeometricField<Type, fvPatchField, volMesh>&>
-//        (
-//            this->primitiveField()
-//        );
-//
-//    return refCast<const cyclicAMIFvPatchField<Type>>
-//    (
-//        fld.boundaryField()[cyclicAMIPatch_.neighbPatchID()]
-//    );
-//}
+template<class Type>
+const Foam::cyclicAMIFvPatchField<Type>&
+Foam::cyclicAMIFvPatchField<Type>::neighbourPatchField(const label index) const
+{
+    const GeometricField<Type, fvPatchField, volMesh>& fld =
+        static_cast<const GeometricField<Type, fvPatchField, volMesh>&>
+        (
+            this->primitiveField()
+        );
+
+    return refCast<const cyclicAMIFvPatchField<Type>>
+    (
+        fld.boundaryField()[cyclicAMIPatch_.neighbPatchIDs()[index]]
+    );
+}
 
 
 template<class Type>
@@ -209,72 +187,9 @@ void Foam::cyclicAMIFvPatchField<Type>::updateInterfaceMatrix
     const Pstream::commsTypes
 ) const
 {
-//YYYYY
-    // Make sure that only the owner side does all interpolation
-    // NOTE: not possible since we cannot access coeffs for the other patches!
-    //if (cyclicAMIPatch_.owner())
-    //{
-    //    const bool lowWeightCorr = cyclicAMIPatch_.applyLowWeightCorrection();
-    //
-    //    const labelList& nbrIds = neighbPatchIDs();
-    //
-    //    // From neighbours to me
-    //    // ~~~~~~~~~~~~~~~~~~~~~
-    //
-    //    //- Collate neighbour data in neighbour patch order
-    //    solveScalarField pnf
-    //    (
-    //        cyclicAMIPatch_.cyclicAMIPatch().patchNeighbourField
-    //        (
-    //            psiInternal
-    //        )
-    //    );
-    //
-    //    // Transform according to the transformation tensors
-    //    transformCoupleField(pnf, cmpt);
-    //
-    //    if (lowWeightCorr)
-    //    {
-    //        solveScalarField pif(psiInternal, cyclicAMIPatch_.faceCells());
-    //        pnf = cyclicAMIPatch_.interpolate(pnf, pif);
-    //    }
-    //    else
-    //    {
-    //        pnf = cyclicAMIPatch_.interpolate(pnf);
-    //    }
-    //
-    //    // Multiply the field by coefficients and add into the result
-    //    this->addToInternalField(result, !add, coeffs, pnf);
-    //
-    //    forAll(nbrIds, index)
-    //    {
-    //        const cyclicAMIPolyPatch& cpp = cyclicAMIPatch_.cyclicAMIPatch();
-    //        solveScalarField pnf(cpp.patchNeighbourField(psiInternal));
-    //
-    //        // Transform according to the transformation tensors
-    //        transformCoupleField(pnf, cmpt);
-    //
-    //        if (lowWeightCorr)
-    //        {
-    //            const solveScalarField pif
-    //            (
-    //                psiInternal,
-    //                cyclicAMIPatch_.faceCells()
-    //            );
-    //            pnf = cyclicAMIPatch_.interpolate(pnf, pif);
-    //        }
-    //        else
-    //        {
-    //            pnf = cyclicAMIPatch_.interpolate(pnf);
-    //        }
-    //
-    //        // Multiply the field by coefficients and add into the result
-    //        this->addToInternalField(result, !add, coeffs, pnf);
-    //    }
-    //
-    //    // From me to neighbour
-    //    // ~~~~~~~~~~~~~~~~~~~~
-//YYYYY
+    // Note: interesting might to have the owner side do all the additions
+    //       for all the AMIs it holds. However is not possible since we
+    //       cannot access coeffs for the other patches
 
     const cyclicAMIPolyPatch& cpp = cyclicAMIPatch_.cyclicAMIPatch();
 

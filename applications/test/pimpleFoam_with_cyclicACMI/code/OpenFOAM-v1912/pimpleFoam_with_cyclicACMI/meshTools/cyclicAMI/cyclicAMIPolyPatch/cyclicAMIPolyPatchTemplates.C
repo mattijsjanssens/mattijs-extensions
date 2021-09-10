@@ -58,6 +58,32 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::patchNeighbourField
 }
 
 
+//template<class Type, class PatchOp>
+//Foam::tmp<Foam::Field<Type>>
+//Foam::cyclicAMIPolyPatch::patchNeighbourField
+//(
+//    const PatchOp& pop
+//) const
+//{
+//    //- Append patch-wise data
+//    const labelList& nbrPatchIds = neighbPatchIDs();
+//
+//    tmp<Field<Type>> tresult(new Field<Type>(neighbSize()));
+//    Field<Type>& result = tresult.ref();
+//
+//    label n = 0;
+//    forAll(nbrPatchIds, index)
+//    {
+//        if (cyclicAMIPolyPatch_.validAMI(index))
+//        {
+//            const auto& nbr = neighbFvPatch(index);
+//            SubField<Type>(result, nbr.size(), n) = pop(nbr);
+//        }
+//    }
+//    return tresult;
+//}
+
+
 template<class Type>
 Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
 (

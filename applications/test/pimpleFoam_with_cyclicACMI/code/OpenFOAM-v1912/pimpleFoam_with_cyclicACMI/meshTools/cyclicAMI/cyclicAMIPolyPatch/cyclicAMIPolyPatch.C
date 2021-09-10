@@ -614,6 +614,7 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     AMIReverse_(false),
     AMIRequireMatch_(true),
     AMILowWeightCorrection_(-1.0),
+    neighbSize_(-1),
     surfPtr_(nullptr),
     surfDict_(fileName("surface"))
 {
@@ -661,6 +662,7 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     AMIReverse_(dict.lookupOrDefault("flipNormals", false)),
     AMIRequireMatch_(true),
     AMILowWeightCorrection_(dict.lookupOrDefault("lowWeightCorrection", -1.0)),
+    neighbSize_(-1),
     surfPtr_(nullptr),
     surfDict_(dict.subOrEmptyDict("surface"))
 {
@@ -745,6 +747,7 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     AMIReverse_(pp.AMIReverse_),
     AMIRequireMatch_(pp.AMIRequireMatch_),
     AMILowWeightCorrection_(pp.AMILowWeightCorrection_),
+    neighbSize_(-1),
     surfPtr_(nullptr),
     surfDict_(pp.surfDict_)
 {
@@ -777,6 +780,7 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     AMIReverse_(pp.AMIReverse_),
     AMIRequireMatch_(pp.AMIRequireMatch_),
     AMILowWeightCorrection_(pp.AMILowWeightCorrection_),
+    neighbSize_(-1),
     surfPtr_(nullptr),
     surfDict_(pp.surfDict_)
 {
@@ -816,6 +820,7 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     AMIReverse_(pp.AMIReverse_),
     AMIRequireMatch_(pp.AMIRequireMatch_),
     AMILowWeightCorrection_(pp.AMILowWeightCorrection_),
+    neighbSize_(-1),
     surfPtr_(nullptr),
     surfDict_(pp.surfDict_)
 {}
@@ -902,17 +907,20 @@ bool Foam::cyclicAMIPolyPatch::validAMI(const label index) const
 
 Foam::label Foam::cyclicAMIPolyPatch::neighbSize() const
 {
-    const labelList& nbrPatchIds = neighbPatchIDs();
-
-    label n = 0;
-    forAll(nbrPatchIds, index)
+    if (neighbSize_ == -1)
     {
-        if (validAMI(index))
+        const labelList& nbrPatchIds = neighbPatchIDs();
+
+        neighbSize_ = 0;
+        forAll(nbrPatchIds, index)
         {
-            n += neighbPatch(index).size();
+            if (validAMI(index))
+            {
+                neighbSize_ += neighbPatch(index).size();
+            }
         }
     }
-    return n;
+    return neighbSize_;
 }
 
 

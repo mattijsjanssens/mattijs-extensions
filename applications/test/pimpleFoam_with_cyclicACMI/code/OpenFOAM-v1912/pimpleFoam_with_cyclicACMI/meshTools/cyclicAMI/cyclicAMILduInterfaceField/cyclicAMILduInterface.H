@@ -76,10 +76,12 @@ public:
             //- Neighbour patch ID
             virtual const labelList& neighbPatchIDs() const = 0;
 
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const = 0;
+
             //- Return neighbour
             virtual label neighbPatchID(const label index) const = 0;
 
-//            virtual bool owner() const = 0;
             virtual bool owner(const label index) const = 0;
 
             //- Return neighbour
@@ -93,11 +95,38 @@ public:
                 const label index
             ) const = 0;
 
+            //- Helper: check if me or neighbour has valid AMI
+            virtual bool validAMI(const label index) const = 0;
+
             //- Return face transformation tensor
             virtual const tensorField& forwardT() const = 0;
 
             //- Return face reverse transformation tensor
             virtual const tensorField& reverseT() const = 0;
+
+
+        // Helper
+
+            ////- Append patch-wise data
+            //template<class Type, class PatchOp>
+            //tmp<Field<Type>> patchNeighbourField(const PatchOp& pop) const
+            //{
+            //    const labelList& nbrPatchIds = neighbPatchIDs();
+            //
+            //    tmp<Field<Type>> tresult(new Field<Type>(neighbSize()));
+            //    Field<Type>& result = tresult.ref();
+            //
+            //    label n = 0;
+            //    forAll(nbrPatchIds, index)
+            //    {
+            //        if (validAMI(index))
+            //        {
+            //            const auto& nbr = neighbFvPatch(index);
+            //            SubField<Type>(result, nbr.size(), n) = pop(nbr);
+            //        }
+            //    }
+            //    return tresult;
+            //}
 };
 
 

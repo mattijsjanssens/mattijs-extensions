@@ -62,70 +62,64 @@ bool Foam::cyclicAMIFvPatch::coupled() const
     }
     else
     {
-        const labelList& nbrIds = cyclicAMIPolyPatch_.neighbPatchIDs();
-        forAll(nbrIds, nbri)
-        {
-            const cyclicAMIFvPatch& nbr = neighbPatch(nbri);
-            if (!nbr.size())
-            {
-                return false;
-            }
-        }
-        return true;
+        return neighbSize() > 0;
     }
 }
 
 
 void Foam::cyclicAMIFvPatch::makeWeights(scalarField& w) const
 {
-////XXXX
-//    // Return internal field (e.g. cell agglomeration) in nbr patch index
-//    const labelList& nbrIds = neighbPatchIDs();
-//
-//    label n = 0;
-//    forAll(nbrIds, nbri)
-//    {
-//        const cyclicAMIGAMGInterface& nbr =
-//            dynamic_cast<const cyclicAMIGAMGInterface&>(neighbPatch(nbri));
-//        n += nbr.size();
-//    }
-//
-////XXXX
-//
-//
-//    if (coupled())
-//    {
-//        const cyclicAMIFvPatch& nbrPatch = neighbFvPatch();
-//
-//        const scalarField deltas(nf() & coupledFvPatch::delta());
-//
-//        tmp<scalarField> tnbrDeltas;
-//        if (applyLowWeightCorrection())
-//        {
-//            tnbrDeltas =
-//                interpolate
-//                (
-//                    nbrPatch.nf() & nbrPatch.coupledFvPatch::delta(),
-//                    scalarField(this->size(), 1.0)
-//                );
-//        }
-//        else
-//        {
-//            tnbrDeltas =
-//                interpolate(nbrPatch.nf() & nbrPatch.coupledFvPatch::delta());
-//        }
-//
-//        const scalarField& nbrDeltas = tnbrDeltas();
-//
-//        forAll(deltas, facei)
-//        {
-//            scalar di = deltas[facei];
-//            scalar dni = nbrDeltas[facei];
-//
-//            w[facei] = dni/(di + dni);
-//        }
-//    }
-//    else
+    if (coupled())
+    {
+        const scalarField deltas(nf() & coupledFvPatch::delta());
+
+        tmp<scalarField> tnbrDeltas;
+        {
+            // Collect neighbour deltas
+
+            const auto& pp = cyclicAMIPatch();
+
+            tmp<scalarField> tnd(new scalarField(pp.neighbSize()));
+            {
+                const labelList& nbrIds = neighbPatchIDs();
+
+                label n = 0;
+
+                scalarField& nd = tnd.ref();
+                forAll(nbrIds, index)
+                {
+                    if (pp.validAMI(index))
+                    {
+                        const auto& nbrPatch = neighbFvPatch(index);
+                        SubField<scalar>(nd, nbrPatch.size(), n) =
+                            (nbrPatch.nf() & nbrPatch.coupledFvPatch::delta());
+                        n += nbrPatch.size();
+                    }
+                }
+            }
+
+            // Interpolate to *this
+            if (applyLowWeightCorrection())
+            {
+                tnbrDeltas = interpolate(tnd, scalarField(this->size(), 1.0));
+            }
+            else
+            {
+                tnbrDeltas = interpolate(tnd);
+            }
+        }
+
+        const scalarField& nbrDeltas = tnbrDeltas();
+
+        forAll(deltas, facei)
+        {
+            scalar di = deltas[facei];
+            scalar dni = nbrDeltas[facei];
+
+            w[facei] = dni/(di + dni);
+        }
+    }
+    else
     {
         // Behave as uncoupled patch
         fvPatch::makeWeights(w);
@@ -135,57 +129,75 @@ void Foam::cyclicAMIFvPatch::makeWeights(scalarField& w) const
 
 Foam::tmp<Foam::vectorField> Foam::cyclicAMIFvPatch::delta() const
 {
-//    const cyclicAMIFvPatch& nbrPatch = neighbFvPatch();
-//
-//    if (coupled())
-//    {
-//        const vectorField patchD(coupledFvPatch::delta());
-//
-//        tmp<vectorField> tnbrPatchD;
-//        if (applyLowWeightCorrection())
-//        {
-//            tnbrPatchD =
-//                interpolate
-//                (
-//                    nbrPatch.coupledFvPatch::delta(),
-//                    vectorField(this->size(), Zero)
-//                );
-//        }
-//        else
-//        {
-//            tnbrPatchD = interpolate(nbrPatch.coupledFvPatch::delta());
-//        }
-//
-//        const vectorField& nbrPatchD = tnbrPatchD();
-//
-//        tmp<vectorField> tpdv(new vectorField(patchD.size()));
-//        vectorField& pdv = tpdv.ref();
-//
-//        // do the transformation if necessary
-//        if (parallel())
-//        {
-//            forAll(patchD, facei)
-//            {
-//                const vector& ddi = patchD[facei];
-//                const vector& dni = nbrPatchD[facei];
-//
-//                pdv[facei] = ddi - dni;
-//            }
-//        }
-//        else
-//        {
-//            forAll(patchD, facei)
-//            {
-//                const vector& ddi = patchD[facei];
-//                const vector& dni = nbrPatchD[facei];
-//
-//                pdv[facei] = ddi - transform(forwardT()[0], dni);
-//            }
-//        }
-//
-//        return tpdv;
-//    }
-//    else
+    if (coupled())
+    {
+        const vectorField patchD(coupledFvPatch::delta());
+
+        tmp<vectorField> tnbrPatchD;
+        {
+            // Collect neighbour deltas
+
+            const auto& pp = cyclicAMIPatch();
+
+            tmp<vectorField> tpd(new vectorField(pp.neighbSize()));
+            {
+                const labelList& nbrIds = neighbPatchIDs();
+
+                label n = 0;
+
+                vectorField& pd = tpd.ref();
+                forAll(nbrIds, index)
+                {
+                    if (pp.validAMI(index))
+                    {
+                        const auto& nbrPatch = neighbFvPatch(index);
+                        SubField<vector>(pd, nbrPatch.size(), n) =
+                            nbrPatch.coupledFvPatch::delta();
+                        n += nbrPatch.size();
+                    }
+                }
+            }
+
+            // Interpolate to *this
+            if (applyLowWeightCorrection())
+            {
+                tnbrPatchD = interpolate(tpd, vectorField(this->size(), Zero));
+            }
+            else
+            {
+                tnbrPatchD = interpolate(tpd);
+            }
+        }
+        const vectorField& nbrPatchD = tnbrPatchD();
+
+        tmp<vectorField> tpdv(new vectorField(patchD.size()));
+        vectorField& pdv = tpdv.ref();
+
+        // do the transformation if necessary
+        if (parallel())
+        {
+            forAll(patchD, facei)
+            {
+                const vector& ddi = patchD[facei];
+                const vector& dni = nbrPatchD[facei];
+
+                pdv[facei] = ddi - dni;
+            }
+        }
+        else
+        {
+            forAll(patchD, facei)
+            {
+                const vector& ddi = patchD[facei];
+                const vector& dni = nbrPatchD[facei];
+
+                pdv[facei] = ddi - transform(forwardT()[0], dni);
+            }
+        }
+
+        return tpdv;
+    }
+    else
     {
         return coupledFvPatch::delta();
     }

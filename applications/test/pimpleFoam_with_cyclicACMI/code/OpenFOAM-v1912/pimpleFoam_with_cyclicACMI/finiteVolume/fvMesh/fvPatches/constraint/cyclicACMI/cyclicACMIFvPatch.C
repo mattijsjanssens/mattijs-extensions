@@ -68,7 +68,7 @@ void Foam::cyclicACMIFvPatch::updateAreas() const
         forAll(nbrIds, nbri)
         {
             // neighbour couple
-            const cyclicACMIFvPatch& nbrACMI = neighbPatch(nbri);
+            const cyclicACMIFvPatch& nbrACMI = neighbFvPatch(nbri);
             const_cast<vectorField&>(nbrACMI.Sf()) =
                 nbrACMI.patch().faceAreas();
             const_cast<scalarField&>(nbrACMI.magSf()) =
@@ -126,7 +126,54 @@ void Foam::cyclicACMIFvPatch::makeWeights(scalarField& w) const
     //        }
     //    }
     //}
-    //else
+
+    if (coupled())
+    {
+        const scalarField deltas(nf() & coupledFvPatch::delta());
+
+        // Collect nbr delta
+        scalarField nbd(neighbSize());
+        {
+            const labelList& nbrPatchIds = neighbPatchIDs();
+            label n = 0;
+            forAll(nbrPatchIds, index)
+            {
+                if (validAMI(index))
+                {
+                    const auto& p = neighbFvPatch(index);
+                    SubField<scalar>(nbd, p.size(), n) =
+                        (p.nf() & p.coupledFvPatch::delta());
+                    n += p.size();
+                }
+            }
+        }
+
+        // These deltas are of the cyclic part alone - they are
+        // not affected by the amount of overlap with the nonOverlapPatch
+        scalarField nbrDeltas(interpolate(nbd));
+
+        scalar tol = cyclicACMIPolyPatch::tolerance();
+
+
+        forAll(deltas, facei)
+        {
+            scalar di = deltas[facei];
+            scalar dni = nbrDeltas[facei];
+
+            if (dni < tol)
+            {
+                // Avoid zero weights on disconnected faces. This value
+                // will be weighted with the (zero) face area so will not
+                // influence calculations.
+                w[facei] = 1.0;
+            }
+            else
+            {
+                w[facei] = dni/(di + dni);
+            }
+        }
+    }
+    else
     {
         // Behave as uncoupled patch
         fvPatch::makeWeights(w);
@@ -149,16 +196,7 @@ bool Foam::cyclicACMIFvPatch::coupled() const
     }
     else
     {
-        const labelList& nbrIds = cyclicACMIPolyPatch_.neighbPatchIDs();
-        forAll(nbrIds, nbri)
-        {
-            const cyclicACMIFvPatch& nbr = neighbPatch(nbri);
-            if (!nbr.size())
-            {
-                return false;
-            }
-        }
-        return true;
+        return neighbSize() > 0;
     }
 }
 
@@ -202,6 +240,62 @@ Foam::tmp<Foam::vectorField> Foam::cyclicACMIFvPatch::delta() const
     //    return tpdv;
     //}
     //else
+    if (coupled())
+    {
+        const vectorField patchD(coupledFvPatch::delta());
+
+        tmp<vectorField> tnbrPatchD;
+        {
+            // Collect neighbour deltas
+
+            vectorField pd(neighbSize());
+            {
+                const labelList& nbrIds = neighbPatchIDs();
+
+                label n = 0;
+                forAll(nbrIds, index)
+                {
+                    if (validAMI(index))
+                    {
+                        const auto& nbrPatch = neighbFvPatch(index);
+                        SubField<vector>(pd, nbrPatch.size(), n) =
+                            nbrPatch.coupledFvPatch::delta();
+                        n += nbrPatch.size();
+                    }
+                }
+            }
+            tnbrPatchD = interpolate(pd);
+        }
+        const vectorField& nbrPatchD = tnbrPatchD();
+
+        tmp<vectorField> tpdv(new vectorField(patchD.size()));
+        vectorField& pdv = tpdv.ref();
+
+        // do the transformation if necessary
+        if (parallel())
+        {
+            forAll(patchD, facei)
+            {
+                const vector& ddi = patchD[facei];
+                const vector& dni = nbrPatchD[facei];
+
+                pdv[facei] = ddi - dni;
+            }
+        }
+        else
+        {
+            forAll(patchD, facei)
+            {
+                const vector& ddi = patchD[facei];
+                const vector& dni = nbrPatchD[facei];
+
+                pdv[facei] = ddi - transform(forwardT()[0], dni);
+            }
+        }
+
+        return tpdv;
+    }
+    else
     {
         return coupledFvPatch::delta();
     }
@@ -225,11 +319,11 @@ Foam::tmp<Foam::labelField> Foam::cyclicACMIFvPatch::internalFieldTransfer
 {
     //return neighbFvPatch().patchInternalField(iF);
 
-    tmp<labelField> tfld(new labelField(cyclicACMIPatch().neighbSize()));
+    tmp<labelField> tfld(new labelField(neighbSize()));
     labelField& fld = tfld.ref();
 
     // Return internal field (e.g. cell agglomeration) in nbr patch index
-    const labelList& nbrIds = cyclicACMIPatch().neighbPatchIDs();
+    const labelList& nbrIds = neighbPatchIDs();
 
     label n = 0;
     forAll(nbrIds, nbri)

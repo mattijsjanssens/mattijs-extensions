@@ -111,6 +111,12 @@ public:
                 return cyclicACMIPolyPatch_.neighbPatchIDs();
             }
 
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const
+            {
+                return cyclicACMIPolyPatch_.neighbSize();
+            }
+
             //- Return neighbour
             virtual label neighbPatchID(const label index) const
             {
@@ -158,6 +164,12 @@ public:
                 updateAreas();
 
                 return cyclicACMIPolyPatch_.AMI(index);
+            }
+
+            //- Helper: check if me or neighbour has valid AMI
+            virtual bool validAMI(const label index) const
+            {
+                return cyclicACMIPolyPatch_.validAMI(index);
             }
 
             //- Are the cyclic planes parallel

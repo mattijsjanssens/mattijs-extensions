@@ -85,16 +85,6 @@ class cyclicAMIFvPatchField
         const cyclicAMIFvPatch& cyclicAMIPatch_;
 
 
-    // Private Member Functions
-
-        //- Return neighbour side field given internal fields
-        template<class Type2>
-        tmp<Field<Type2>> neighbourSideField
-        (
-            const Field<Type2>&
-        ) const;
-
-
 public:
 
     //- Runtime type information
@@ -179,8 +169,11 @@ public:
             //- Return neighbour coupled internal cell data
             virtual tmp<Field<Type>> patchNeighbourField() const;
 
-//            //- Return reference to neighbour patchField
-//            const cyclicAMIFvPatchField<Type>& neighbourPatchField() const;
+            //- Return reference to neighbour patchField
+            const cyclicAMIFvPatchField<Type>& neighbourPatchField
+            (
+                const label index
+            ) const;
 
             //- Update result field based on interface functionality
             virtual void updateInterfaceMatrix

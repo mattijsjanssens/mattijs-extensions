@@ -7,3 +7,4 @@ TODO:
 - cyclicAMIFvPatchField::updateInterfaceMatrix : check
     - patchNiehgbourField : collection of all neighbour fields
     - but psiInternal is local faceCells only. OK? Check
+- cyclicACMI?
