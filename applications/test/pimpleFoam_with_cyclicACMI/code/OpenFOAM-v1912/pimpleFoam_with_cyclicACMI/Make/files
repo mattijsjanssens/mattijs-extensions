@@ -1,5 +1,7 @@
 pimpleFoam.C
 
+finiteVolume/surfaceInterpolation.C
+
 dummyMotionSolver.C
 
 /**** OpenFOAM ****/
@@ -26,7 +28,6 @@ $(ACMICycPatches)/cyclicACMILduInterfaceField/cyclicACMILduInterfaceField.C
 $(ACMICycPatches)/cyclicACMIPolyPatch/cyclicACMIPolyPatch.C
 $(ACMICycPatches)/cyclicACMIPointPatch/cyclicACMIPointPatch.C
 $(ACMICycPatches)/cyclicACMIPointPatchField/cyclicACMIPointPatchFields.C
-
 
 /**** finiteVolume ****/
 

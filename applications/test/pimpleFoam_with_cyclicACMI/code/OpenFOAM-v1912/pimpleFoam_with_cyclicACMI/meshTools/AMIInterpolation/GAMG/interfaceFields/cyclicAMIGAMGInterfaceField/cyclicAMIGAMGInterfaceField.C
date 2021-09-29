@@ -104,46 +104,22 @@ void Foam::cyclicAMIGAMGInterfaceField::updateInterfaceMatrix
     const Pstream::commsTypes
 ) const
 {
-    const labelList& nbrIds = cyclicAMIInterface_.neighbPatchIDs();
+    //const labelList& nbrIds = cyclicAMIInterface_.neighbPatchIDs();
 
-
-//Pout<< "At patch:" << cyclicAMIInterface_.index()
-//    << " have nbrs:" << nbrIds << endl;
-//forAll(nbrIds, i)
-//{
-//    const auto& nbr = cyclicAMIInterface_.neighbPatch(i);
-//    Pout<< "    nbr:" << i
-//        << " size:" << nbr.size()
-//        << " faceCells:" << nbr.faceCells()
-//        << endl;
-//}
 
     // Collect all neighbour data (for pairs with valid AMI). See
     // also cyclicAMIPolyPatch::patchNeighbourField)
 
+    solveScalarField pnf(cyclicAMIInterface_.neighbSize());
+
     label n = 0;
-    forAll(nbrIds, index)
+    for (const label index : cyclicAMIInterface_.AMIIndices())
     {
-        if (cyclicAMIInterface_.validAMI(index))
+        const auto& nbr = cyclicAMIInterface_.neighbPatch(index);
+        const labelUList& nbrCells = nbr.faceCells();
+        for (const auto celli : nbrCells)
         {
-            const auto& nbr = cyclicAMIInterface_.neighbPatch(index);
-            n += nbr.size();
-        }
-    }
-
-    solveScalarField pnf(n);
-
-    n = 0;
-    forAll(nbrIds, index)
-    {
-        if (cyclicAMIInterface_.validAMI(index))
-        {
-            const auto& nbr = cyclicAMIInterface_.neighbPatch(index);
-            const labelUList& nbrCells = nbr.faceCells();
-            for (const auto celli : nbrCells)
-            {
-                pnf[n++] = psiInternal[celli];
-            }
+            pnf[n++] = psiInternal[celli];
         }
     }
 
@@ -154,14 +130,16 @@ void Foam::cyclicAMIGAMGInterfaceField::updateInterfaceMatrix
     solveScalarField& fld = tfld.ref();
 
     n = 0;
-    forAll(nbrIds, index)
+    for (const label index : cyclicAMIInterface_.AMIIndices())
     {
         const auto& nbr = cyclicAMIInterface_.neighbPatch(index);
+        const auto myAMI(cyclicAMIInterface_.AMI(index));
+        const auto nbrAMI(nbr.AMI(cyclicAMIInterface_.neighbIndex(index)));
 
-        if (cyclicAMIInterface_.AMI(index).valid())
+        if (myAMI.valid())
         {
             // Owner. Interpolate nbr data to here and accumulate
-            cyclicAMIInterface_.AMI(index)().interpolateToSource
+            myAMI().interpolateToSource
             (
                 SubField<solveScalar>(pnf, nbr.size(), n),
                 multiplyWeightedOp<solveScalar, plusEqOp<solveScalar>>
@@ -172,27 +150,19 @@ void Foam::cyclicAMIGAMGInterfaceField::updateInterfaceMatrix
             );
             n += nbr.size();
         }
-        else
+        else if (nbrAMI.valid())
         {
-            // Check if slave has valid AMI
-            const label myIndex = nbr.neighbPatchIDs().find
+            // Interpolate nbr data to here and accumulate
+            nbrAMI().interpolateToTarget
             (
-                cyclicAMIInterface_.index()
-            );
-            if (nbr.AMI(myIndex).valid())
-            {
-                // Interpolate nbr data to here and accumulate
-                nbr.AMI(myIndex)().interpolateToTarget
+                SubField<solveScalar>(pnf, nbr.size(), n),
+                multiplyWeightedOp<solveScalar, plusEqOp<solveScalar>>
                 (
-                    SubField<solveScalar>(pnf, nbr.size(), n),
-                    multiplyWeightedOp<solveScalar, plusEqOp<solveScalar>>
-                    (
-                        plusEqOp<solveScalar>()
-                    ),
-                    fld
-                );
-                n += nbr.size();
-            }
+                    plusEqOp<solveScalar>()
+                ),
+                fld
+            );
+            n += nbr.size();
         }
     }
 

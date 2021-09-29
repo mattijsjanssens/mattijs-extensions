@@ -27,7 +27,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "cyclicACMILduInterfaceField.H"
-#include "diagTensorField.H"
+//#include "diagTensorField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -45,14 +45,14 @@ Foam::cyclicACMILduInterfaceField::~cyclicACMILduInterfaceField()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::cyclicACMILduInterfaceField::transformCoupleField
-(
-    solveScalarField& f,
-    const direction cmpt
-) const
-{
-    cyclicAMILduInterfaceField::transformCoupleField(f, cmpt);
-}
+//void Foam::cyclicACMILduInterfaceField::transformCoupleField
+//(
+//    solveScalarField& f,
+//    const direction cmpt
+//) const
+//{
+//    cyclicAMILduInterfaceField::transformCoupleField(f, cmpt);
+//}
 
 
 // ************************************************************************* //

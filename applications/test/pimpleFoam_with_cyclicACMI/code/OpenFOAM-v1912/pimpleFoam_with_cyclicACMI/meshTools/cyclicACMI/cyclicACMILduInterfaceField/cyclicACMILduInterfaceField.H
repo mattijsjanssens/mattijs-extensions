@@ -73,16 +73,16 @@ public:
 
     // Member Functions
 
-        //- Transform given patch field
-        template<class Type>
-        void transformCoupleField(Field<Type>& f) const;
-
-        //- Transform given patch internal field
-        void transformCoupleField
-        (
-            solveScalarField& psiInternal,
-            const direction cmpt
-        ) const;
+//        //- Transform given patch field
+//        template<class Type>
+//        void transformCoupleField(Field<Type>& f) const;
+//
+//        //- Transform given patch internal field
+//        void transformCoupleField
+//        (
+//            solveScalarField& psiInternal,
+//            const direction cmpt
+//        ) const;
 };
 
 
@@ -92,16 +92,16 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "tensorField.H"
-
-template<class Type>
-void Foam::cyclicACMILduInterfaceField::transformCoupleField
-(
-    Field<Type>& f
-) const
-{
-    cyclicAMILduInterfaceField::transformCoupleField(f);
-}
+//#include "tensorField.H"
+//
+//template<class Type>
+//void Foam::cyclicACMILduInterfaceField::transformCoupleField
+//(
+//    Field<Type>& f
+//) const
+//{
+//    cyclicAMILduInterfaceField::transformCoupleField(f);
+//}
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

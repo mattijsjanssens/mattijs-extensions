@@ -45,6 +45,37 @@ const Foam::scalar Foam::cyclicACMIPolyPatch::tolerance_ = 1e-10;
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
+void Foam::cyclicACMIPolyPatch::writeStats
+(
+    const scalarField& wghtsSum,
+    const word& origin,
+    const word& patchName
+) const
+{
+    label nUncovered = 0;
+    label nCovered = 0;
+    for (const scalar sum : wghtsSum)
+    {
+        if (sum < tolerance_)
+        {
+            nUncovered++;
+        }
+        else if (sum > scalar(1)-tolerance_)
+        {
+            nCovered++;
+        }
+    }
+    reduce(nUncovered, sumOp<label>());
+    reduce(nCovered, sumOp<label>());
+    const label nTotal = returnReduce(wghtsSum.size(), sumOp<label>());
+
+    Info<< "ACMI: Patch " << origin << " uncovered/blended/covered by "
+        << patchName << " = "
+        << nUncovered << ", " << nTotal-nUncovered-nCovered
+        << ", " << nCovered << endl;
+}
+
+
 void Foam::cyclicACMIPolyPatch::resetAMI
 (
     const AMIPatchToPatchInterpolation::interpolationMethod&
@@ -95,178 +126,223 @@ void Foam::cyclicACMIPolyPatch::resetAMI
         AMIPatchToPatchInterpolation::imPartialFaceAreaWeight
     );
 
-    const labelList& nbrIds = neighbPatchIDs();
-    srcMasks_.setSize(nbrIds.size());
-    scalarField srcMaskSum(size(), Zero);
-    tgtMasks_.setSize(nbrIds.size());
-    forAll(nbrIds, nbri)
-    {
-        const polyPatch& nbr = neighbPatch(nbri);
+    //const labelList& nbrIds = neighbPatchIDs();
+    //srcMasks_.setSize(nbrIds.size());
+    //scalarField srcMaskSum(size(), Zero);
+    //tgtMasks_.setSize(nbrIds.size());
 
-        if (this->AMI(nbri).valid())
+//XXXXXXXXXX
+    // Print owner stats
+    for (const label nbri : AMIIndices())
+    {
+        const auto myAMI(AMI(nbri));
+
+        if (myAMI.valid())
         {
-            auto& AMI =
-                const_cast<AMIPatchToPatchInterpolation&>(this->AMI(nbri)());
+            const polyPatch& nbr = neighbPatch(nbri);
 
             // Output some stats. AMIInterpolation will have already output the
             // average weights ("sum(weights) min:1 max:1 average:1")
-            {
-                const scalarField& wghtsSum = AMI.srcWeightsSum();
-
-                label nUncovered = 0;
-                label nCovered = 0;
-                forAll(wghtsSum, facei)
-                {
-                    scalar sum = wghtsSum[facei];
-                    if (sum < tolerance_)
-                    {
-                        nUncovered++;
-                    }
-                    else if (sum > scalar(1)-tolerance_)
-                    {
-                        nCovered++;
-                    }
-                }
-                reduce(nUncovered, sumOp<label>());
-                reduce(nCovered, sumOp<label>());
-                label nTotal = returnReduce(wghtsSum.size(), sumOp<label>());
-
-                Info<< "ACMI: Patch source uncovered/blended/covered by "
-                    << nbr.name() << " = "
-                    << nUncovered << ", " << nTotal-nUncovered-nCovered
-                    << ", " << nCovered << endl;
-            }
-            {
-                const scalarField& wghtsSum = AMI.tgtWeightsSum();
-
-                label nUncovered = 0;
-                label nCovered = 0;
-                forAll(wghtsSum, facei)
-                {
-                    scalar sum = wghtsSum[facei];
-                    if (sum < tolerance_)
-                    {
-                        nUncovered++;
-                    }
-                    else if (sum > scalar(1)-tolerance_)
-                    {
-                        nCovered++;
-                    }
-                }
-                reduce(nUncovered, sumOp<label>());
-                reduce(nCovered, sumOp<label>());
-                label nTotal = returnReduce(wghtsSum.size(), sumOp<label>());
-
-                Info<< "ACMI: Patch target uncovered/blended/covered by "
-                    << nbr.name() << " = "
-                    << nUncovered << ", " << nTotal-nUncovered-nCovered
-                    << ", " << nCovered << endl;
-            }
-
-            scalarField& srcMask = srcMasks_[nbri];
-            scalarField& tgtMask = tgtMasks_[nbri];
-
-            srcMask =
-                min
-                (
-                    scalar(1) - tolerance_,
-                    max(tolerance_, AMI.srcWeightsSum())
-                );
-
-            srcMaskSum += srcMask;
-
-            tgtMask =
-                min
-                (
-                    scalar(1) - tolerance_,
-                    max(tolerance_, AMI.tgtWeightsSum())
-                );
+            writeStats(myAMI().srcWeightsSum(), "source", nbr.name());
+            writeStats(myAMI().tgtWeightsSum(), "target", nbr.name());
         }
     }
 
 
+    // Pre-calculate the mask from the weights. Use the summed weights from
+    // the cyclicAMIPolyPatch
+    maskSum_ = min
+    (
+        scalar(1) - tolerance_,
+        max(tolerance_, weightsSum())
+    );
+//XXXXXXXXXX
+
+
+//    for (const label nbri : AMIIndices())
+//    {
+//        const auto myAMI(AMI(nbri));
+//
+//        if (myAMI.valid())
+//        {
+//            const polyPatch& nbr = neighbPatch(nbri);
+//            auto& AMI = const_cast<AMIPatchToPatchInterpolation&>(myAMI());
+//
+//            // Output some stats. AMIInterpolation will have already output the
+//            // average weights ("sum(weights) min:1 max:1 average:1")
+//
+//            writeStats(AMI.srcWeightsSum(), "source", nbr.name());
+//            writeStats(AMI.tgtWeightsSum(), "target", nbr.name());
+//
+//            scalarField& srcMask = srcMasks_[nbri];
+//            scalarField& tgtMask = tgtMasks_[nbri];
+//
+//            srcMask =
+//                min
+//                (
+//                    scalar(1) - tolerance_,
+//                    max(tolerance_, AMI.srcWeightsSum())
+//                );
+//
+//            srcMaskSum += srcMask;
+//
+//            tgtMask =
+//                min
+//                (
+//                    scalar(1) - tolerance_,
+//                    max(tolerance_, AMI.tgtWeightsSum())
+//                );
+//        }
+//    }
+
     // Adapt owner side areas. Note that in uncoupled situations (e.g.
     // decomposePar) srcMask, tgtMask can be zero size.
-    if (srcMaskSum.size())
+    if (AMIIndices().size())
     {
         vectorField::subField Sf = faceAreas();
         vectorField::subField noSf = nonOverlapPatch.faceAreas();
 
         forAll(Sf, facei)
         {
-            Sf[facei] *= srcMaskSum[facei];
-            noSf[facei] *= 1.0 - srcMaskSum[facei];
+            Sf[facei] *= maskSum_[facei];
+            noSf[facei] *= 1.0 - maskSum_[facei];
         }
     }
 
-    // Adapt slave side areas
-    forAll(nbrIds, nbri)
+DebugVar(weightsSum());
+
+    // Re-normalise the weights since the effect of overlap is already
+    // accounted for in the area.
+    for (const label nbri : AMIIndices())
     {
-        if (this->AMI(nbri).valid())
+        const auto myAMI(AMI(nbri));
+
+        if (myAMI.valid())
         {
-            auto& AMI =
-                const_cast<AMIPatchToPatchInterpolation&>(this->AMI(nbri)());
+            auto& AMI = const_cast<AMIPatchToPatchInterpolation&>(myAMI());
+            scalarListList& srcWeights = AMI.srcWeights();
+            scalarField& srcWeightsSum = const_cast<scalarField&>(weightsSum());
 
-            const polyPatch& nbr = neighbPatch(nbri);
-            const scalarField& tgtMask = tgtMasks_[nbri];
-            if (tgtMask.size())
+            Pout<< " for " << name() << " normalising srcWeights "
+                << flatOutput(srcWeights) << endl;
+
+            forAll(srcWeights, i)
             {
-                const cyclicACMIPolyPatch& cp =
-                    refCast<const cyclicACMIPolyPatch>(nbr);
-                const polyPatch& pp = cp.nonOverlapPatch();
-
-                vectorField::subField Sf = cp.faceAreas();
-                vectorField::subField noSf = pp.faceAreas();
-
-                forAll(Sf, facei)
+                scalarList& wghts = srcWeights[i];
+                if (wghts.size())
                 {
-                    Sf[facei] *= tgtMask[facei];
-                    noSf[facei] *= 1.0 - tgtMask[facei];
-                }
-            }
+                    scalar& sum = srcWeightsSum[i];
 
-            // Re-normalise the weights since the effect of overlap is already
-            // accounted for in the area.
-            {
-                scalarListList& srcWeights = AMI.srcWeights();
-                scalarField& srcWeightsSum = AMI.srcWeightsSum();
-                forAll(srcWeights, i)
-                {
-                    scalarList& wghts = srcWeights[i];
-                    if (wghts.size())
+                    forAll(wghts, j)
                     {
-                        scalar& sum = srcWeightsSum[i];
-
-                        forAll(wghts, j)
-                        {
-                            wghts[j] /= sum;
-                        }
-                        sum = 1.0;
+                        wghts[j] /= sum;
                     }
-                }
-            }
-            {
-                scalarListList& tgtWeights = AMI.tgtWeights();
-                scalarField& tgtWeightsSum = AMI.tgtWeightsSum();
-                forAll(tgtWeights, i)
-                {
-                    scalarList& wghts = tgtWeights[i];
-                    if (wghts.size())
-                    {
-                        scalar& sum = tgtWeightsSum[i];
-                        forAll(wghts, j)
-                        {
-                            wghts[j] /= sum;
-                        }
-                        sum = 1.0;
-                    }
+                    sum = 1.0;
                 }
             }
         }
+        else
+        {
+            const auto nbrAMI(neighbPatch(nbri).AMI(neighbIndex(nbri)));
+            auto& AMI = const_cast<AMIPatchToPatchInterpolation&>(nbrAMI());
+            scalarListList& tgtWeights = AMI.tgtWeights();
+            scalarField& tgtWeightsSum = const_cast<scalarField&>(weightsSum());
 
-        // Set the updated flag
-        updated_ = true;
+            Pout<< " for " << name() << " normalising tgtWeights "
+                << flatOutput(tgtWeights) << endl;
+
+            forAll(tgtWeights, i)
+            {
+                scalarList& wghts = tgtWeights[i];
+                if (wghts.size())
+                {
+                    scalar& sum = tgtWeightsSum[i];
+
+                    forAll(wghts, j)
+                    {
+                        wghts[j] /= sum;
+                    }
+                    sum = 1.0;
+                }
+            }
+        }
     }
+
+DebugVar(weightsSum());
+
+//    // Adapt slave side areas
+//    for (const label nbri : AMIIndices())
+//    {
+//        const auto myAMI(AMI(nbri));
+//
+//        if (myAMI.valid())
+//        {
+//            auto& AMI =
+//                const_cast<AMIPatchToPatchInterpolation&>(myAMI());
+//
+//            const polyPatch& nbr = neighbPatch(nbri);
+//            const scalarField& tgtMask = tgtMasks_[nbri];
+//            if (tgtMask.size())
+//            {
+//                const cyclicACMIPolyPatch& cp =
+//                    refCast<const cyclicACMIPolyPatch>(nbr);
+//                const polyPatch& pp = cp.nonOverlapPatch();
+//
+//                vectorField::subField Sf = cp.faceAreas();
+//                vectorField::subField noSf = pp.faceAreas();
+//
+//                forAll(Sf, facei)
+//                {
+//                    Sf[facei] *= tgtMask[facei];
+//                    noSf[facei] *= 1.0 - tgtMask[facei];
+//                }
+//            }
+//
+//            // Re-normalise the weights since the effect of overlap is already
+//            // accounted for in the area.
+//            {
+//                scalarListList& srcWeights = AMI.srcWeights();
+//                scalarField& srcWeightsSum = AMI.srcWeightsSum();
+//                forAll(srcWeights, i)
+//                {
+//                    scalarList& wghts = srcWeights[i];
+//                    if (wghts.size())
+//                    {
+//                        scalar& sum = srcWeightsSum[i];
+//
+//                        forAll(wghts, j)
+//                        {
+//                            wghts[j] /= sum;
+//                        }
+//                        sum = 1.0;
+//                    }
+//                }
+//            }
+//            {
+//                scalarListList& tgtWeights = AMI.tgtWeights();
+//                scalarField& tgtWeightsSum = AMI.tgtWeightsSum();
+//                forAll(tgtWeights, i)
+//                {
+//                    scalarList& wghts = tgtWeights[i];
+//                    if (wghts.size())
+//                    {
+//                        scalar& sum = tgtWeightsSum[i];
+//                        forAll(wghts, j)
+//                        {
+//                            wghts[j] /= sum;
+//                        }
+//                        sum = 1.0;
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+    // Set the updated flag
+    updated_ = true;
+
+    DebugVar(faceAreas());
+    DebugVar(nonOverlapPatch.faceAreas());
 }
 
 
@@ -359,18 +435,18 @@ void Foam::cyclicACMIPolyPatch::clearGeom()
 }
 
 
-const Foam::scalarField&
-Foam::cyclicACMIPolyPatch::srcMask(const label index) const
-{
-    return srcMasks_[index];
-}
-
-
-const Foam::scalarField&
-Foam::cyclicACMIPolyPatch::tgtMask(const label index) const
-{
-    return tgtMasks_[index];
-}
+//const Foam::scalarField&
+//Foam::cyclicACMIPolyPatch::srcMask(const label index) const
+//{
+//    return srcMasks_[index];
+//}
+//
+//
+//const Foam::scalarField&
+//Foam::cyclicACMIPolyPatch::tgtMask(const label index) const
+//{
+//    return tgtMasks_[index];
+//}
 
 
 // * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * * * //
@@ -389,8 +465,8 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
     cyclicAMIPolyPatch(name, size, start, index, bm, patchType, transform),
     nonOverlapPatchName_(word::null),
     nonOverlapPatchID_(-1),
-    srcMasks_(0),
-    tgtMasks_(0),
+    //srcMasks_(0),
+    //tgtMasks_(0),
     updated_(false)
 {
     AMIRequireMatch_ = false;
@@ -412,8 +488,8 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
     cyclicAMIPolyPatch(name, dict, index, bm, patchType),
     nonOverlapPatchName_(dict.lookup("nonOverlapPatch")),
     nonOverlapPatchID_(-1),
-    srcMasks_(0),
-    tgtMasks_(0),
+    //srcMasks_(0),
+    //tgtMasks_(0),
     updated_(false)
 {
     AMIRequireMatch_ = false;
@@ -440,8 +516,8 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
     cyclicAMIPolyPatch(pp, bm),
     nonOverlapPatchName_(pp.nonOverlapPatchName_),
     nonOverlapPatchID_(-1),
-    srcMasks_(0),
-    tgtMasks_(0),
+    //srcMasks_(0),
+    //tgtMasks_(0),
     updated_(false)
 {
     AMIRequireMatch_ = false;
@@ -465,8 +541,8 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
     cyclicAMIPolyPatch(pp, bm, index, newSize, newStart, nbrPatchNames),
     nonOverlapPatchName_(nonOverlapPatchName),
     nonOverlapPatchID_(-1),
-    srcMasks_(0),
-    tgtMasks_(0),
+    //srcMasks_(0),
+    //tgtMasks_(0),
     updated_(false)
 {
     AMIRequireMatch_ = false;
@@ -496,8 +572,8 @@ Foam::cyclicACMIPolyPatch::cyclicACMIPolyPatch
     cyclicAMIPolyPatch(pp, bm, index, mapAddressing, newStart),
     nonOverlapPatchName_(pp.nonOverlapPatchName_),
     nonOverlapPatchID_(-1),
-    srcMasks_(0),
-    tgtMasks_(0),
+    //srcMasks_(0),
+    //tgtMasks_(0),
     updated_(false)
 {
     AMIRequireMatch_ = false;

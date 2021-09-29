@@ -121,15 +121,6 @@ public:
                 return fineCyclicAMIInterface_.neighbPatchIDs();
             }
 
-            //- Total neighbour size (of neighbours with valid AMI only)
-            virtual label neighbSize() const;
-
-            //- Return neighbour patch number
-            virtual label neighbPatchID(const label index) const
-            {
-                return fineCyclicAMIInterface_.neighbPatchIDs()[index];
-            }
-
             virtual bool owner(const label index) const
             {
                 return fineCyclicAMIInterface_.owner(index);
@@ -142,7 +133,10 @@ public:
             {
                 return dynamic_cast<const cyclicAMIGAMGInterface&>
                 (
-                    coarseInterfaces_[neighbPatchID(index)]
+                    coarseInterfaces_
+                    [
+                        fineCyclicAMIInterface_.neighbPatchIDs()[index]
+                    ]
                 );
             }
 
@@ -161,8 +155,20 @@ public:
                 }
             }
 
-            //- Helper: check me or neighbour for valid AMI
-            virtual bool validAMI(const label index) const;
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const;
+
+            //- Indices of neighbours with valid AMI
+            virtual const labelList& AMIIndices() const
+            {
+                return fineCyclicAMIInterface_.AMIIndices();
+            }
+
+            //- Index on neighbour of AMI
+            virtual label neighbIndex(const label index) const
+            {
+                return fineCyclicAMIInterface_.neighbIndex(index);
+            }
 
             //- Return face transformation tensor
             virtual const tensorField& forwardT() const

@@ -124,7 +124,7 @@ Pout<< "allNeighbourRestrictAddressing:" << allNeighbourRestrictAddressing
     amiPtrs_.setSize(nbrIds.size());
 
     label n = 0;
-    forAll(nbrIds, index)
+    for (const label index : fineCyclicAMIInterface_.AMIIndices())
     {
         const auto tami(fineCyclicAMIInterface_.AMI(index));
 
@@ -215,44 +215,13 @@ Foam::label Foam::cyclicAMIGAMGInterface::neighbSize() const
 {
     if (neighbSize_ == -1)
     {
-        const labelList& nbrPatchIds = neighbPatchIDs();
-
         neighbSize_ = 0;
-        forAll(nbrPatchIds, index)
+        for (const label index : AMIIndices())
         {
-            if (validAMI(index))
-            {
-                neighbSize_ += neighbPatch(index).size();
-            }
+            neighbSize_ += neighbPatch(index).size();
         }
     }
     return neighbSize_;
-}
-
-
-bool Foam::cyclicAMIGAMGInterface::validAMI(const label index) const
-{
-    //Pout<< "for patch:" << this->index()
-    //    << " have AMIs:" << amiPtrs_.size()
-    //    << " looking for index:" << index << endl;
-    if (AMI(index).valid())
-    {
-        //Pout<< "for patch:" << this->index()
-        //    << " found AMI at index:" << index << endl;
-        return true;
-    }
-    else
-    {
-        const cyclicAMIGAMGInterface& nbr = neighbPatch(index);
-        const label myIndex = nbr.neighbPatchIDs().find(this->index());
-
-        //Pout<< "for patch:" << this->index()
-        //    << " have nbr:" << nbr.index()
-        //    << " with its nbrs:" << nbr.neighbPatchIDs()
-        //    << " myIndex:" << myIndex << endl;
-
-        return nbr.AMI(myIndex).valid();
-    }
 }
 
 
@@ -263,31 +232,17 @@ Foam::tmp<Foam::labelField> Foam::cyclicAMIGAMGInterface::internalFieldTransfer
 ) const
 {
     // Return internal field (e.g. cell agglomeration) in nbr patch index
-    const labelList& nbrIds = neighbPatchIDs();
 
-    label n = 0;
-    forAll(nbrIds, index)
-    {
-        if (validAMI(index))
-        {
-            const auto& nbr = neighbPatch(index);
-            n += nbr.size();
-        }
-    }
-
-    tmp<labelField> tpnf(new labelField(n));
+    tmp<labelField> tpnf(new labelField(neighbSize()));
     labelField& pnf = tpnf.ref();
 
-    n = 0;
-    forAll(nbrIds, index)
+    label n = 0;
+    for (const label index : AMIIndices())
     {
-        if (validAMI(index))
+        const labelUList& nbrFaceCells = neighbPatch(index).faceCells();
+        for (const auto celli : nbrFaceCells)
         {
-            const labelUList& nbrFaceCells = neighbPatch(index).faceCells();
-            for (const auto celli : nbrFaceCells)
-            {
-                pnf[n++] = iF[celli];
-            }
+            pnf[n++] = iF[celli];
         }
     }
 

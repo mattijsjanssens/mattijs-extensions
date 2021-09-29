@@ -140,8 +140,15 @@ protected:
         //- Low weight correction threshold for AMI
         const scalar AMILowWeightCorrection_;
 
-        //- Overall weight (when using multiple AMI - unsized if not)
-        mutable scalarField allWeightsSum_;
+        //- Indices of neighbours with a valid AMI
+        mutable labelList AMIIndices_;
+
+        //- Pre-calculated index of AMI in neighbour
+        mutable labelList neighbIndex_;
+
+        //- Overall weight for all *this faces (only when using multiple AMI;
+        //  unsized if not)
+        mutable scalarField weightsSum_;
 
         //- Overall size
         mutable label neighbSize_;
@@ -316,7 +323,13 @@ public:
             inline const wordList& neighbPatchNames() const;
 
             //- Neighbour patch ID
-            virtual labelList& neighbPatchIDs() const;
+            virtual const labelList& neighbPatchIDs() const;
+
+            //- Indices of neighbours with valid AMI
+            virtual const labelList& AMIIndices() const;
+
+            //- Index on neighbour of AMI
+            virtual label neighbIndex(const label index) const;
 
             //- Does this side own the patch compared to neighbour index?
             virtual bool owner(const label index) const;
@@ -357,11 +370,11 @@ public:
             //- Return a reference to the AMI interpolator
             tmpNrc<AMIPatchToPatchInterpolation> AMI(const label index) const;
 
-            //- Helper: check if me or neighbour has valid AMI
-        virtual bool validAMI(const label index) const;
-
             //- Return true if applying the low weight correction
             bool applyLowWeightCorrection() const;
+
+            //- Return sum of weights on *this
+            const scalarField& weightsSum() const;
 
 
             // Transformations

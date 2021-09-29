@@ -49,25 +49,37 @@ namespace Foam
 
 Foam::cyclicACMIGAMGInterface::cyclicACMIGAMGInterface
 (
-    const label index,
+    const label interfacei,
     const lduInterfacePtrsList& coarseInterfaces,
     const lduInterface& fineInterface,
     const labelField& localRestrictAddressing,
-    const labelField& neighbourRestrictAddressing,
+    const labelField& allNeighbourRestrictAddressing,
     const label fineLevelIndex,
     const label coarseComm
 )
 :
     GAMGInterface
     (
-        index,
+        interfacei,
         coarseInterfaces
     ),
     fineCyclicACMIInterface_
     (
         refCast<const cyclicACMILduInterface>(fineInterface)
-    )
+    ),
+    neighbSize_(-1)
 {
+Pout<< "Patch:" << interfacei << " fineSize:"  << fineInterface.faceCells().size()
+    << endl;
+//for (const auto& coarseIf : coarseInterfaces)
+//{
+//    Pout<< "    coarse size:" << coarseIf.faceCells().size() << endl;
+//}
+Pout<< "localRestrictAddressing:" << localRestrictAddressing << endl;
+Pout<< "allNeighbourRestrictAddressing:" << allNeighbourRestrictAddressing
+    << endl;
+
+
     // Construct face agglomeration from cell agglomeration
     {
         // From coarse face to cell
@@ -107,53 +119,87 @@ Foam::cyclicACMIGAMGInterface::cyclicACMIGAMGInterface
 
     // On the owner side construct the AMI
 
-    if (fineCyclicACMIInterface_.owner())
+    const labelList& nbrIds = fineCyclicACMIInterface_.neighbPatchIDs();
+
+    amiPtrs_.setSize(nbrIds.size());
+
+    label n = 0;
+    for (const label index : fineCyclicACMIInterface_.AMIIndices())
     {
-        // Construct the neighbour side agglomeration (as the neighbour would
-        // do it so it the exact loop above using neighbourRestrictAddressing
-        // instead of localRestrictAddressing)
+        const auto tami(fineCyclicACMIInterface_.AMI(index));
 
-        labelList nbrFaceRestrictAddressing;
+        if (tami.valid())
         {
-            // From face to coarse face
-            DynamicList<label> dynNbrFaceRestrictAddressing
-            (
-                neighbourRestrictAddressing.size()
-            );
-
-            Map<label> masterToCoarseFace(neighbourRestrictAddressing.size());
-
-            for (const label curMaster : neighbourRestrictAddressing)
+DebugVar(tami().srcAddress());
+DebugVar(tami().tgtAddress());
+            labelList nbrFaceRestrictAddressing;
             {
-                const auto iter = masterToCoarseFace.cfind(curMaster);
+                //const auto& nbr = fineCyclicACMIInterface_.neighbPatch(index);
+                const label nbrSize = tami().tgtAddress().size();
+Pout<< "    offset:" << n
+    << " size:" << nbrSize
+    << endl;
+                const SubList<label> neighbourRestrictAddressing
+                (
+                    allNeighbourRestrictAddressing,
+                    nbrSize,
+                    n
+                );
+                n += nbrSize;
 
-                if (iter.found())
+                // From face to coarse face
+                DynamicList<label> dynNbrFaceRestrictAddressing
+                (
+                    neighbourRestrictAddressing.size()
+                );
+
+                Map<label> masterToCoarseFace
+                (
+                    neighbourRestrictAddressing.size()
+                );
+
+                for (const label curMaster : neighbourRestrictAddressing)
                 {
-                    // Already have coarse face
-                    dynNbrFaceRestrictAddressing.append(iter.val());
+                    const auto iter = masterToCoarseFace.cfind(curMaster);
+
+                    if (iter.found())
+                    {
+                        // Already have coarse face
+                        dynNbrFaceRestrictAddressing.append(iter.val());
+                    }
+                    else
+                    {
+                        // New coarse face
+                        const label coarseI = masterToCoarseFace.size();
+                        dynNbrFaceRestrictAddressing.append(coarseI);
+                        masterToCoarseFace.insert(curMaster, coarseI);
+                    }
                 }
-                else
-                {
-                    // New coarse face
-                    const label coarseI = masterToCoarseFace.size();
-                    dynNbrFaceRestrictAddressing.append(coarseI);
-                    masterToCoarseFace.insert(curMaster, coarseI);
-                }
+
+                nbrFaceRestrictAddressing.transfer
+                (
+                    dynNbrFaceRestrictAddressing
+                );
             }
-
-            nbrFaceRestrictAddressing.transfer(dynNbrFaceRestrictAddressing);
-        }
-
-        amiPtr_.reset
-        (
-            new AMIPatchToPatchInterpolation
+DebugVar(faceRestrictAddressing_);
+DebugVar(nbrFaceRestrictAddressing);
+            amiPtrs_.set
             (
-                fineCyclicACMIInterface_.AMI(),
-                faceRestrictAddressing_,
-                nbrFaceRestrictAddressing
-            )
-        );
+                index,
+                new AMIPatchToPatchInterpolation
+                (
+                    tami(),
+                    faceRestrictAddressing_,
+                    nbrFaceRestrictAddressing
+                )
+            );
+        }
     }
+
+    Pout<< "** done patch:" << interfacei
+        << " finesize:" << fineInterface.faceCells().size()
+        << " coarsesize:" << faceCells().size()
+        << nl << endl;
 }
 
 
@@ -165,6 +211,20 @@ Foam::cyclicACMIGAMGInterface::~cyclicACMIGAMGInterface()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+Foam::label Foam::cyclicACMIGAMGInterface::neighbSize() const
+{
+    if (neighbSize_ == -1)
+    {
+        neighbSize_ = 0;
+        for (const label index : AMIIndices())
+        {
+            neighbSize_ += neighbPatch(index).size();
+        }
+    }
+    return neighbSize_;
+}
+
+
 Foam::tmp<Foam::labelField>
 Foam::cyclicACMIGAMGInterface::internalFieldTransfer
 (
@@ -172,16 +232,19 @@ Foam::cyclicACMIGAMGInterface::internalFieldTransfer
     const labelUList& iF
 ) const
 {
-    const cyclicACMIGAMGInterface& nbr =
-        dynamic_cast<const cyclicACMIGAMGInterface&>(neighbPatch());
-    const labelUList& nbrFaceCells = nbr.faceCells();
+    // Return internal field (e.g. cell agglomeration) in nbr patch index
 
-    tmp<labelField> tpnf(new labelField(nbrFaceCells.size()));
+    tmp<labelField> tpnf(new labelField(neighbSize()));
     labelField& pnf = tpnf.ref();
 
-    forAll(pnf, facei)
+    label n = 0;
+    for (const label index : AMIIndices())
     {
-        pnf[facei] = iF[nbrFaceCells[facei]];
+        const labelUList& nbrFaceCells = neighbPatch(index).faceCells();
+        for (const auto celli : nbrFaceCells)
+        {
+            pnf[n++] = iF[celli];
+        }
     }
 
     return tpnf;

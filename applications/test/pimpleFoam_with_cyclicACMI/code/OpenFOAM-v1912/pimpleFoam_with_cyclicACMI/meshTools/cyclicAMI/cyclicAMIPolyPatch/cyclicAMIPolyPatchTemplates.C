@@ -35,53 +35,22 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::patchNeighbourField
     const UList<Type>& iF
 ) const
 {
-    const labelList& nbrPatchIds = neighbPatchIDs();
-
     tmp<Field<Type>> tresult(new Field<Type>(neighbSize()));
     Field<Type>& result = tresult.ref();
 
     label n = 0;
 
-    forAll(nbrPatchIds, index)
+    for (const label index : AMIIndices_)
     {
-        if (validAMI(index))
+        const auto& nbr = neighbPatch(index);
+        const labelUList& nbrCells = nbr.faceCells();
+        for (const auto celli : nbrCells)
         {
-            const auto& nbrPp = neighbPatch(index);
-            const labelUList& nbrCells = nbrPp.faceCells();
-            for (const auto celli : nbrCells)
-            {
-                result[n++] = iF[celli];
-            }
+            result[n++] = iF[celli];
         }
     }
     return tresult;
 }
-
-
-//template<class Type, class PatchOp>
-//Foam::tmp<Foam::Field<Type>>
-//Foam::cyclicAMIPolyPatch::patchNeighbourField
-//(
-//    const PatchOp& pop
-//) const
-//{
-//    //- Append patch-wise data
-//    const labelList& nbrPatchIds = neighbPatchIDs();
-//
-//    tmp<Field<Type>> tresult(new Field<Type>(neighbSize()));
-//    Field<Type>& result = tresult.ref();
-//
-//    label n = 0;
-//    forAll(nbrPatchIds, index)
-//    {
-//        if (cyclicAMIPolyPatch_.validAMI(index))
-//        {
-//            const auto& nbr = neighbFvPatch(index);
-//            SubField<Type>(result, nbr.size(), n) = pop(nbr);
-//        }
-//    }
-//    return tresult;
-//}
 
 
 template<class Type>
@@ -91,8 +60,6 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
     const UList<Type>& defaultValues
 ) const
 {
-    const labelList& nbrPatchIds = neighbPatchIDs();
-
     // fld = nbr values
     // defaultValues = local fall-back values
 
@@ -118,17 +85,12 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
 
     label n = 0;
 
-    forAll(nbrPatchIds, index)
+    for (const label index : AMIIndices_)
     {
         const auto& nbr = neighbPatch(index);
+        const auto myAMI(AMI(index));
 
-
-//XXXXXX
-// 1. can we avoid packing (patchNeighbourField()) and slicing (SubField)?
-// 2. precalculate list of valid AMI and originating patch and index to avoid
-//    validAMI and nbr.neighbPatchIDs().find()
-// 3. precalculate neighbSize() to avoid loop
-        if (AMI(index).valid())
+        if (myAMI.valid())
         {
             //Pout<< "** owner:" << this->name() << " size:" << this->size()
             //    << " interpolateToSource from " << nbr.name()
@@ -137,7 +99,7 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
             //    << " into " << result.size() << endl;
 
             // Owner. Interpolate nbr data to here and accumulate
-            AMI(index)().interpolateToSource
+            myAMI().interpolateToSource
             (
                 SubField<Type>(fld, nbr.size(), n),
                 multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
@@ -149,8 +111,8 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
         else
         {
             // Check if slave has valid AMI
-            const label myIndex = nbr.neighbPatchIDs().find(this->index());
-            if (nbr.AMI(myIndex).valid())
+            const auto nbrAMI(nbr.AMI(neighbIndex(index)));
+            if (nbrAMI.valid())
             {
                 //Pout<< "** neighour:" << nbr.name()
                 //    << " size:" << nbr.size()
@@ -161,7 +123,7 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
                 //    << " into " << result.size() << endl;
 
                 // Interpolate nbr data to here and accumulate
-                nbr.AMI(myIndex)().interpolateToTarget
+                nbrAMI().interpolateToTarget
                 (
                     SubField<Type>(fld, nbr.size(), n),
                     multiplyWeightedOp<Type, plusEqOp<Type>>(plusEqOp<Type>()),
@@ -176,20 +138,22 @@ Foam::tmp<Foam::Field<Type>> Foam::cyclicAMIPolyPatch::interpolate
     //Pout<< "nbrPatchIds:" << nbrPatchIds
     //    << " low-weight:" << applyLowWeightCorrection()
     //    << endl;
-    if (nbrPatchIds.size() > 1 && applyLowWeightCorrection())
+    if (AMIIndices_.size() > 1 && applyLowWeightCorrection())
     {
         // Multiple neighbours. Use our own lowWeightCorrection instead of
         // one built-in into AMIInterpolation (that has been disabled in
         // construction of AMIPatchToPatchInterpolation)
 
+        const scalarField& sumWeights = weightsSum();
+
         forAll(result, facei)
         {
-            if (allWeightsSum_[facei] < AMILowWeightCorrection_)
+            if (sumWeights[facei] < AMILowWeightCorrection_)
             {
                 //Pout<< "**OVERRIDING on patch:" << this->name()
                 //    << " face:" << facei
                 //    << "  old result:" << result[facei]
-                //    << " allWeightsSum_[facei]:" << allWeightsSum_[facei]
+                //    << " sumWeights[facei]:" << sumWeights[facei]
                 //    << " AMILowWeightCorrection_:" << AMILowWeightCorrection_
                 //    << " defaultValues:" << defaultValues[facei] <<  endl;
 

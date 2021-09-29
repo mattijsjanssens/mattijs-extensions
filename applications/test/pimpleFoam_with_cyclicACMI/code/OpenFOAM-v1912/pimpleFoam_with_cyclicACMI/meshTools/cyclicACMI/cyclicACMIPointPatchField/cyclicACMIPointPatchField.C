@@ -125,7 +125,7 @@ void Foam::cyclicACMIPointPatchField<Type>::swapAddSeparated
         // all swaps on the side that gets evaluated first.
 
         // Get neighbouring pointPatch
-        const cyclicACMIPointPatch& nbrPatch = cyclicACMIPatch_.neighbPatch();
+        const cyclicACMIPointPatch& nbrPatch = cyclicACMIPatch_.neighbPatch(0);
 
         // Get neighbouring pointPatchField
         const GeometricField<Type, pointPatchField, pointMesh>& fld =

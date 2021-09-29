@@ -298,14 +298,24 @@ void Foam::cyclicAMIPolyPatch::resetAMI
 {
     const labelList& nbrIds = neighbPatchIDs();
 
+    if (debug)
+    {
+        Pout<< "cyclicAMIPolyPatch::resetAMI : recalculating AMI"
+            << " for " << name() << " and neighbours " << nbrIds
+            << endl;
+    }
+
     AMIPtrs_.clear();
     AMIPtrs_.setSize(nbrIds.size());
+    //AMIIndices_.clear();
+    //neighbIndex_.setSize(nbrIds.size());
+    //neighbIndex_ = -1;
 
     forAll(nbrIds, nbri)
     {
-        const polyPatch& nbr = neighbPatch(nbri);
+        const auto& nbr = neighbPatch(nbri);
 
-        //Pout<< "** resetAMI from patch:" << name()
+        //Pout<< "** cyclicAMIPolyPatch::resetAMI from patch:" << name()
         //    << " patchi:" << this->index()
         //    << " to neighbour:" << nbr.name()
         //    << " patchi:" << nbr.index() << endl;
@@ -369,10 +379,6 @@ void Foam::cyclicAMIPolyPatch::resetAMI
                 // correction is not applied on a per-AMI basis so disabled
                 // here (see cyclicAMIPolyPatch::interpolate instead)
 
-Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
-    << " have low-weight:" << AMILowWeightCorrection_
-    << endl;
-
                 AMIPtrs_.set
                 (
                     nbri,
@@ -389,12 +395,6 @@ Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
                     )
                 );
 
-Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
-    << " have AMIlow-weight:" << AMIPtrs_[nbri].lowWeightCorrection()
-    << endl;
-
-
-
                 if
                 (
                     gAverage(AMIPtrs_[nbri].tgtWeightsSum()) < SMALL
@@ -402,6 +402,7 @@ Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
                 )
                 {
                     AMIPtrs_.release(nbri);
+                    //neighbIndex_[nbri] = -1;
                     if (debug)
                     {
                         Pout<< "cyclicAMIPolyPatch : " << name()
@@ -422,58 +423,139 @@ Pout<< "For patch:" << name() << " nbrs:" << nbrIds.size()
                             << "    " << "tgAddress :"
                             << AMIPtrs_[nbri].tgtAddress().size() << nl << endl;
                     }
+
+                    // Store connection from me to neighbour
+                    //const label nbrIndex = nbr.neighbPatchIDs().find(index());
+                    //AMIIndices_.append(nbri);
+                    //neighbIndex_[nbri] = nbrIndex;
+                    // Store connection from neighbour to me
+                    //nbr.AMIIndices_.append(nbrIndex);
+                    //nbr.neighbIndex_.setSize(nbr.neighbPatchIDs().size(), -1);
+                    //nbr.neighbIndex_[nbrIndex] = nbri;
+                }
+            }
+        }
+        else
+        {
+            AMIPtrs_.release(nbri);
+            //neighbIndex_[nbri] = -1;
+            //Pout<< "** cyclicAMIPolyPatch::resetAMI from patch:" << name()
+            //    << " IGNORING neighbour:" << nbr.name()
+            //    << " at index:" << nbri
+            //    << " patchi:" << nbr.index() << endl;
+        }
+    }
+
+
+    //- Determine compact addressing
+    AMIIndices_.clear();
+    neighbIndex_.setSize(nbrIds.size());
+    neighbIndex_ = -1;
+    {
+        forAll(nbrIds, nbri)
+        {
+            const auto& nbr = neighbPatch(nbri);
+            const label nbrIndex = nbr.neighbPatchIDs().find(this->index());
+
+            if (AMI(nbri).valid())
+            {
+                neighbIndex_[nbri] = nbrIndex;
+                AMIIndices_.append(nbri);
+            }
+            else
+            {
+                // Check if slave has valid AMI (happens if master has been
+                // visited before)
+                if (nbr.AMI(nbrIndex).valid())
+                {
+                    neighbIndex_[nbri] = nbrIndex;
+                    AMIIndices_.append(nbri);
                 }
             }
         }
     }
 
-    allWeightsSum_.clear();
-    if (nbrIds.size() > 1)
+    if (debug)
     {
-        allWeightsSum_.setSize(this->size());
-        allWeightsSum_ = Zero;
-        forAll(nbrIds, nbri)
+        Pout<< "cyclicAMIPolyPatch::resetAMI : recalculating AMI"
+            << " for " << name() << " and neighbours " << nbrIds
+            << " now have AMIIndices:" << AMIIndices_
+            << endl;
+    }
+}
+
+
+const Foam::scalarField& Foam::cyclicAMIPolyPatch::weightsSum() const
+{
+    const labelList& validAMIs = AMIIndices();
+
+    if (validAMIs.size() == 0)
+    {
+        //- No valid AMI. Ok as long as not used.
+        return weightsSum_;
+    }
+    else if (validAMIs.size() == 1)
+    {
+        // Use built-in weights
+        const label nbri = validAMIs[0];
+        const auto myAMI(AMI(nbri));
+        if (myAMI.valid())
         {
-
-Pout<< "** nbri:" << nbri << " AMIPtrs_:" << AMIPtrs_.set(nbri) << endl;
-
-            if (AMI(nbri).valid())
+            return myAMI().srcWeightsSum();
+        }
+        else
+        {
+            const auto nbrAMI(neighbPatch(nbri).AMI(neighbIndex(nbri)));
+            return nbrAMI().tgtWeightsSum();
+        }
+    }
+    else
+    {
+        // Calculate weightsSum if necessary
+        if (weightsSum_.size() != size())
+        {
+            if (debug)
             {
-                const scalarField& w = AMI(nbri)().srcWeightsSum();
-                if (w.size() != this->size())
-                {
-                    FatalErrorInFunction << "patch:" << this->name()
-                        << " to nbr:" << neighbPatch(nbri).name()
-                        << exit(FatalError);
-                }
-                allWeightsSum_ += w;
-
-Pout<< "patch:" << name()
-    << " adding srcWeights:" << w
-    << " now allWeights:" << allWeightsSum_ << endl;
+                Pout<< "cyclicAMIPolyPatch::weightsSum : patch:" << name()
+                    << " patchi:" << this->index()
+                    << " to neighbours:" << neighbPatchNames()
+                    << endl;
             }
-            else
+
+            weightsSum_.setSize(size());
+            weightsSum_ = Zero;
+
+            for (const label nbri : validAMIs)
             {
-                // Check if slave has valid AMI
+                const auto myAMI(AMI(nbri));
                 const auto& nbr = neighbPatch(nbri);
-                const label myIndex = nbr.neighbPatchIDs().find(this->index());
-                if (nbr.AMI(myIndex).valid())
+
+                if (myAMI.valid())
                 {
-                    const scalarField& w =nbr.AMI(myIndex)().tgtWeightsSum();
+                    const scalarField& w = myAMI().srcWeightsSum();
+                    if (w.size() != this->size())
+                    {
+                        FatalErrorInFunction << "patch:" << this->name()
+                            << " to nbr:" << nbr.name()
+                            << exit(FatalError);
+                    }
+                    weightsSum_ += w;
+                }
+                else
+                {
+                    // Neighbour has the AMI
+                    const auto nbrAMI(nbr.AMI(neighbIndex(nbri)));
+                    const scalarField& w = nbrAMI().tgtWeightsSum();
                     if (w.size() != this->size())
                     {
                         FatalErrorInFunction << "patch:" << nbr.name()
                             << " to *this:" << this->name() << exit(FatalError);
                     }
-                    allWeightsSum_ += w;
-
-Pout<< "patch:" << name()
-    << " adding tgtWeights:" << w
-    << " now allWeights:" << allWeightsSum_ << endl;
-
+                    weightsSum_ += w;
                 }
             }
         }
+        return weightsSum_;
     }
 }
 
@@ -487,7 +569,7 @@ void Foam::cyclicAMIPolyPatch::calcTransforms()
         half0Areas[facei] = half0[facei].areaNormal(half0.points());
     }
 
-    const cyclicAMIPolyPatch& half1 = neighbPatch(0);
+    const cyclicAMIPolyPatch& half1 = cyclicAMIPolyPatch::neighbPatch(0);
     vectorField half1Areas(half1.size());
     forAll(half1, facei)
     {
@@ -518,6 +600,9 @@ void Foam::cyclicAMIPolyPatch::initGeometry(PstreamBuffers& pBufs)
 {
     // The AMI is no longer valid. Leave it up to demand-driven calculation
     AMIPtrs_.clear();
+    AMIIndices_.clear();
+    weightsSum_.clear();
+    neighbSize_ = -1;
 
     polyPatch::initGeometry(pBufs);
 
@@ -543,6 +628,9 @@ void Foam::cyclicAMIPolyPatch::initMovePoints
 {
     // The AMI is no longer valid. Leave it up to demand-driven calculation
     AMIPtrs_.clear();
+    AMIIndices_.clear();
+    weightsSum_.clear();
+    neighbSize_ = -1;
 
     polyPatch::initMovePoints(pBufs, p);
 
@@ -635,7 +723,11 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     coupledPolyPatch(name, dict, index, bm, patchType),
     nbrPatchNames_
     (
-        dict.lookupOrDefault<wordList>("neighbourPatches", wordList(0))
+        dict.lookupOrDefault<wordList>
+        (
+            "neighbourPatches",
+            wordList(1, dict.lookupOrDefault<word>("neighbourPatch", ""))
+        )
     ),
     coupleGroup_(dict),
     nbrPatchIDs_(0),
@@ -670,6 +762,14 @@ Foam::cyclicAMIPolyPatch::cyclicAMIPolyPatch
     {
         FatalIOErrorInFunction(dict)
             << "No \"neighbourPatches\" or \"coupleGroup\" provided."
+            << exit(FatalIOError);
+    }
+
+    // Check not both neighbourPatches and neighbourPatch provided
+    if (dict.found("neighbourPatches") && dict.found("neighbourPatch"))
+    {
+        FatalIOErrorInFunction(dict)
+            << "Cannot both provide 'neighbourPatch' and 'neighbourPatches'"
             << exit(FatalIOError);
     }
 
@@ -834,7 +934,7 @@ Foam::cyclicAMIPolyPatch::~cyclicAMIPolyPatch()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
+const Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
 {
     if (nbrPatchIDs_.empty())
     {
@@ -872,15 +972,28 @@ Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
                     << nbrPatch.neighbPatchNames() << endl;
             }
         }
-
-        if (debug)
-        {
-            Pout<< "cyclicAMIPolyPatch : " << name()
-                << " have neighbours:" << nbrNames
-                << " with ids:" << nbrPatchIDs_ << endl;
-        }
     }
     return nbrPatchIDs_;
+}
+
+
+const Foam::labelList& Foam::cyclicAMIPolyPatch::AMIIndices() const
+{
+    if (AMIPtrs_.empty())
+    {
+        resetAMI(AMIMethod_);
+    }
+    return AMIIndices_;
+}
+
+
+Foam::label Foam::cyclicAMIPolyPatch::neighbIndex(const label index) const
+{
+    if (AMIPtrs_.empty())
+    {
+        resetAMI(AMIMethod_);
+    }
+    return neighbIndex_[index];
 }
 
 
@@ -890,34 +1003,14 @@ Foam::label Foam::cyclicAMIPolyPatch::neighbPatchID() const
 }
 
 
-bool Foam::cyclicAMIPolyPatch::validAMI(const label index) const
-{
-    if (AMI(index).valid())
-    {
-        return true;
-    }
-    else
-    {
-        const auto& nbr = neighbPatch(index);
-        const label myIndex = nbr.neighbPatchIDs().find(this->index());
-        return nbr.AMI(myIndex).valid();
-    }
-}
-    
-
 Foam::label Foam::cyclicAMIPolyPatch::neighbSize() const
 {
     if (neighbSize_ == -1)
     {
-        const labelList& nbrPatchIds = neighbPatchIDs();
-
         neighbSize_ = 0;
-        forAll(nbrPatchIds, index)
+        for (const label index : AMIIndices())
         {
-            if (validAMI(index))
-            {
-                neighbSize_ += neighbPatch(index).size();
-            }
+            neighbSize_ += neighbPatch(index).size();
         }
     }
     return neighbSize_;
@@ -998,36 +1091,6 @@ Foam::cyclicAMIPolyPatch::AMI(const label index) const
 
 bool Foam::cyclicAMIPolyPatch::applyLowWeightCorrection() const
 {
-    //const labelList& nbrIds = neighbPatchIDs();
-    //
-    //// Find any local AMI
-    //forAll(nbrIds, index)
-    //{
-    //    if (AMI(index).valid())
-    //    {
-    //        return AMI(index)().applyLowWeightCorrection();
-    //    }
-    //}
-    //
-    //// Find AMI on any neighbour
-    //forAll(nbrIds, nbri)
-    //{
-    //    const auto& nbr = neighbPatch(nbri);
-    //    const label index = nbr.neighbPatchIDs().find(this->index());
-    //    if (index == -1)
-    //    {
-    //        FatalErrorInFunction
-    //            << "Patch " << nbr.name()
-    //            << " does not neighbour " << name()
-    //            << abort(FatalError);
-    //    }
-    //    if (nbr.AMI(index).valid())
-    //    {
-    //        return nbr.AMI(index)().applyLowWeightCorrection();
-    //    }
-    //}
-    //return false;
-
     return AMILowWeightCorrection_ > 0;
 }
 
@@ -1217,41 +1280,33 @@ Foam::label Foam::cyclicAMIPolyPatch::pointFace
 
     label nbrFacei = -1;
 
-    const labelList& nbrPatchIds = neighbPatchIDs();
-
-    forAll(nbrPatchIds, i)
+    for (const label i : AMIIndices())
     {
-        const auto& nbrPatch = neighbPatch(i);
+        const auto& nbr = neighbPatch(i);
+        const auto myAMI(AMI(i));
 
-        if (owner(i))
+        if (myAMI.valid())
         {
-            if (AMI(i).valid())
-            {
-                nbrFacei = AMI(i)().tgtPointFace
-                (
-                    *this,
-                    nbrPatch,
-                    nrt,
-                    facei,
-                    prt
-                );
-            }
+            nbrFacei = myAMI().tgtPointFace
+            (
+                *this,
+                nbr,
+                nrt,
+                facei,
+                prt
+            );
         }
         else
         {
-            // Find myself in neighbour patch
-            const label myIndex = nbrPatch.neighbPatchIDs().find(index());
-            if (nbrPatch.AMI(myIndex).valid())
-            {
-                nbrFacei = nbrPatch.AMI(myIndex)().srcPointFace
-                (
-                    nbrPatch,
-                    *this,
-                    nrt,
-                    facei,
-                    prt
-                );
-            }
+            const auto nbrAMI(nbr.AMI(neighbIndex(i)));
+            nbrFacei = nbrAMI().srcPointFace
+            (
+                nbr,
+                *this,
+                nrt,
+                facei,
+                prt
+            );
         }
 
         if (nbrFacei != -1)
@@ -1273,7 +1328,12 @@ void Foam::cyclicAMIPolyPatch::write(Ostream& os) const
     {
         coupleGroup_.write(os);
     }
-    else if (!nbrPatchNames_.empty())
+    if (nbrPatchNames_.size() == 1)
+    {
+        // For backwards compatibility
+        os.writeEntry("neighbourPatch", nbrPatchNames_[0]);
+    }
+    else if (nbrPatchNames_.size())
     {
         os.writeEntry("neighbourPatches", nbrPatchNames_);
     }

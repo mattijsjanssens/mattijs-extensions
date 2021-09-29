@@ -102,18 +102,7 @@ public:
                 return cyclicAMIPolyPatch_.neighbPatchIDs();
             }
 
-            //- Total neighbour size (of neighbours with valid AMI only)
-            virtual label neighbSize() const
-            {
-                return cyclicAMIPolyPatch_.neighbSize();
-            }
-
-            //- Return neighbour
-            virtual label neighbPatchID(const label index) const
-            {
-                return cyclicAMIPolyPatch_.neighbPatchIDs()[index];
-            }
-
+            //- Am I owner of this 'connection'
             virtual bool owner(const label index) const
             {
                 return cyclicAMIPolyPatch_.owner(index);
@@ -131,7 +120,7 @@ public:
                 );
             }
 
-            //- Return a reference to the AMI interpolator
+            //- Return a reference to the AMI interpolator (or null)
             virtual tmpNrc<AMIPatchToPatchInterpolation> AMI
             (
                 const label index
@@ -140,10 +129,22 @@ public:
                 return cyclicAMIPolyPatch_.AMI(index);
             }
 
-            //- Helper: check if me or neighbour has valid AMI
-            virtual bool validAMI(const label index) const
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const
             {
-                return cyclicAMIPolyPatch_.validAMI(index);
+                return cyclicAMIPolyPatch_.neighbSize();
+            }
+
+            //- Indices of neighbours with valid AMI
+            virtual const labelList& AMIIndices() const
+            {
+                return cyclicAMIPolyPatch_.AMIIndices();
+            }
+
+            //- Index on neighbour interface of my interface
+            virtual label neighbIndex(const label index) const
+            {
+                return cyclicAMIPolyPatch_.neighbIndex(index);
             }
 
             //- Return true if applying the low weight correction

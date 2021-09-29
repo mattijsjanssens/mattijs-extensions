@@ -69,11 +69,14 @@ private:
         //- Index of non-overlapping patch
         mutable label nonOverlapPatchID_;
 
-        //- Mask/weighting for source patch
-        mutable List<scalarField> srcMasks_;
+//        //- Mask/weighting for source patch
+//        mutable List<scalarField> srcMasks_;
+//
+//        //- Mask/weighting for target patch
+//        mutable List<scalarField> tgtMasks_;
 
-        //- Mask/weighting for target patch
-        mutable List<scalarField> tgtMasks_;
+        //- Precalculated mask from overall weights for all *this faces
+        mutable scalarField maskSum_;
 
         //- Flag to indicate that AMI has been updated
         mutable bool updated_;
@@ -82,6 +85,14 @@ private:
 protected:
 
     // Protected Member Functions
+
+        //- Calculate and print some stats
+        void writeStats
+        (
+            const scalarField& wghtsSum,
+            const word& origin,
+            const word& patchName
+        ) const;
 
         //- Reset the AMI interpolator
         virtual void resetAMI
@@ -111,11 +122,11 @@ protected:
         //- Clear geometry
         virtual void clearGeom();
 
-        //- Return the mask/weighting for the source patch
-        virtual const scalarField& srcMask(const label index) const;
-
-        //- Return the mask/weighting for the target patch
-        virtual const scalarField& tgtMask(const label index) const;
+//        //- Return the mask/weighting for the source patch
+//        virtual const scalarField& srcMask(const label index) const;
+//
+//        //- Return the mask/weighting for the target patch
+//        virtual const scalarField& tgtMask(const label index) const;
 
 
 public:
@@ -267,7 +278,7 @@ public:
             inline polyPatch& nonOverlapPatch();
 
             //- Mask field where 1 = overlap, 0 = no-overlap
-            inline const scalarField& mask(const label index = 0) const;
+            inline const scalarField& mask() const;
 
             //- Overlap tolerance
             inline static scalar tolerance();

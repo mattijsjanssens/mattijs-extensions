@@ -61,7 +61,10 @@ class cyclicACMIGAMGInterface
         const cyclicACMILduInterface& fineCyclicACMIInterface_;
 
         //- AMI interface
-        autoPtr<AMIPatchToPatchInterpolation> amiPtr_;
+        PtrList<AMIPatchToPatchInterpolation> amiPtrs_;
+
+        //- Overall number of faces in all valid ami
+        mutable label neighbSize_;
 
 
     // Private Member Functions
@@ -113,28 +116,59 @@ public:
 
         //- Cyclic interface functions
 
-            //- Return neighbour processor number
-            virtual label neighbPatchID() const
+            //- Return neighbour patch numbers
+            virtual const labelList& neighbPatchIDs() const
             {
-                return fineCyclicACMIInterface_.neighbPatchID();
+                return fineCyclicACMIInterface_.neighbPatchIDs();
             }
 
-            virtual bool owner() const
+            virtual bool owner(const label index) const
             {
-                return fineCyclicACMIInterface_.owner();
+                return fineCyclicACMIInterface_.owner(index);
             }
 
-            virtual const cyclicACMIGAMGInterface& neighbPatch() const
+            virtual const cyclicACMIGAMGInterface& neighbPatch
+            (
+                const label index
+            ) const
             {
                 return dynamic_cast<const cyclicACMIGAMGInterface&>
                 (
-                    coarseInterfaces_[neighbPatchID()]
+                    coarseInterfaces_
+                    [
+                        fineCyclicACMIInterface_.neighbPatchIDs()[index]
+                    ]
                 );
             }
 
-            virtual const AMIPatchToPatchInterpolation& AMI() const
+            virtual tmpNrc<AMIPatchToPatchInterpolation> AMI
+            (
+                const label index
+            ) const
             {
-                return *amiPtr_;
+                if (!amiPtrs_.set(index))
+                {
+                    return nullptr;
+                }
+                else
+                {
+                    return amiPtrs_[index];
+                }
+            }
+
+            //- Total neighbour size (of neighbours with valid AMI only)
+            virtual label neighbSize() const;
+
+            //- Indices of neighbours with valid AMI
+            virtual const labelList& AMIIndices() const
+            {
+                return fineCyclicACMIInterface_.AMIIndices();
+            }
+
+            //- Index on neighbour of AMI
+            virtual label neighbIndex(const label index) const
+            {
+                return fineCyclicACMIInterface_.neighbIndex(index);
             }
 
             //- Return face transformation tensor

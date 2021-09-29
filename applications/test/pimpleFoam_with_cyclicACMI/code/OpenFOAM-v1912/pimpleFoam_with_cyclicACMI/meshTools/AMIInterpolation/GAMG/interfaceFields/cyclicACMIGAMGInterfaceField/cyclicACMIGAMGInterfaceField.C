@@ -29,6 +29,7 @@ License
 #include "cyclicACMIGAMGInterfaceField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "lduMatrix.H"
+#include "SubField.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -103,25 +104,66 @@ void Foam::cyclicACMIGAMGInterfaceField::updateInterfaceMatrix
     const Pstream::commsTypes
 ) const
 {
-    // Get neighbouring field
-    solveScalarField pnf
-    (
-        cyclicACMIInterface_.neighbPatch().interfaceInternalField(psiInternal)
-    );
+    // Collect all neighbour data (for pairs with valid AMI). See
+    // also cyclicAMIPolyPatch::patchNeighbourField)
+
+    solveScalarField pnf(cyclicACMIInterface_.neighbSize());
+
+    label n = 0;
+    for (const label index : cyclicACMIInterface_.AMIIndices())
+    {
+        const auto& nbr = cyclicACMIInterface_.neighbPatch(index);
+        const labelUList& nbrCells = nbr.faceCells();
+        for (const auto celli : nbrCells)
+        {
+            pnf[n++] = psiInternal[celli];
+        }
+    }
 
     // Transform according to the transformation tensors
     transformCoupleField(pnf, cmpt);
 
-    if (cyclicACMIInterface_.owner())
+    tmp<solveScalarField> tfld(new solveScalarField(this->size(), Zero));
+    solveScalarField& fld = tfld.ref();
+
+    n = 0;
+    for (const label index : cyclicACMIInterface_.AMIIndices())
     {
-        pnf = cyclicACMIInterface_.AMI().interpolateToSource(pnf);
-    }
-    else
-    {
-        pnf = cyclicACMIInterface_.neighbPatch().AMI().interpolateToTarget(pnf);
+        const auto& nbr = cyclicACMIInterface_.neighbPatch(index);
+        const auto myAMI(cyclicACMIInterface_.AMI(index));
+        const auto nbrAMI(nbr.AMI(cyclicACMIInterface_.neighbIndex(index)));
+
+        if (myAMI.valid())
+        {
+            // Owner. Interpolate nbr data to here and accumulate
+            myAMI().interpolateToSource
+            (
+                SubField<solveScalar>(pnf, nbr.size(), n),
+                multiplyWeightedOp<solveScalar, plusEqOp<solveScalar>>
+                (
+                    plusEqOp<solveScalar>()
+                ),
+                fld
+            );
+            n += nbr.size();
+        }
+        else if (nbrAMI.valid())
+        {
+            // Interpolate nbr data to here and accumulate
+            nbrAMI().interpolateToTarget
+            (
+                SubField<solveScalar>(pnf, nbr.size(), n),
+                multiplyWeightedOp<solveScalar, plusEqOp<solveScalar>>
+                (
+                    plusEqOp<solveScalar>()
+                ),
+                fld
+            );
+            n += nbr.size();
+        }
     }
 
-    this->addToInternalField(result, !add, coeffs, pnf);
+    this->addToInternalField(result, !add, coeffs, fld);
 }
 
 

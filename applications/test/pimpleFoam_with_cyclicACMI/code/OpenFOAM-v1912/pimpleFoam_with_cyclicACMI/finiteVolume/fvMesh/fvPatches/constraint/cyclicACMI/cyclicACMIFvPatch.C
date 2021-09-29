@@ -64,11 +64,11 @@ void Foam::cyclicACMIFvPatch::updateAreas() const
             mag(nonOverlapPatch.patch().faceAreas());
 
 
-        const labelList& nbrIds = neighbPatchIDs();
-        forAll(nbrIds, nbri)
+        for (const label nbri : AMIIndices())
         {
             // neighbour couple
             const cyclicACMIFvPatch& nbrACMI = neighbFvPatch(nbri);
+
             const_cast<vectorField&>(nbrACMI.Sf()) =
                 nbrACMI.patch().faceAreas();
             const_cast<scalarField&>(nbrACMI.magSf()) =
@@ -76,6 +76,15 @@ void Foam::cyclicACMIFvPatch::updateAreas() const
 
             // neighbour non-overlapping
             const fvPatch& nbrNonOverlapPatch = nbrACMI.nonOverlapPatch();
+
+            if (debug)
+            {
+                Pout<< "cyclicACMIFvPatch::updateAreas() :"
+                    << " updating fv areas for "
+                    << nbrACMI.name() << " and " << nbrNonOverlapPatch.name()
+                    << endl;
+            }
+
             const_cast<vectorField&>(nbrNonOverlapPatch.Sf()) =
                 nbrNonOverlapPatch.patch().faceAreas();
             const_cast<scalarField&>(nbrNonOverlapPatch.magSf()) =
@@ -131,26 +140,34 @@ void Foam::cyclicACMIFvPatch::makeWeights(scalarField& w) const
     {
         const scalarField deltas(nf() & coupledFvPatch::delta());
 
+Pout<< "** cyclicACMIFvPatch::makeWeights : patch:" << this->name()
+    << " deltas:" << deltas << endl;
+Pout<< "    neighbSize:" << neighbSize() << " AMIIndices:" << AMIIndices()
+    << endl;
+
+
         // Collect nbr delta
         scalarField nbd(neighbSize());
         {
-            const labelList& nbrPatchIds = neighbPatchIDs();
             label n = 0;
-            forAll(nbrPatchIds, index)
+            for (const label index : AMIIndices())
             {
-                if (validAMI(index))
-                {
-                    const auto& p = neighbFvPatch(index);
-                    SubField<scalar>(nbd, p.size(), n) =
-                        (p.nf() & p.coupledFvPatch::delta());
-                    n += p.size();
-                }
+                const auto& nbr = neighbFvPatch(index);
+Pout<< "from nbr:" << nbr.name() << " have nf:" << nbr.nf()
+    << " have Cf:" << nbr.Cf() << " have Cn:" << nbr.Cn()
+    << " have delta:" << nbr.coupledFvPatch::delta() << endl;
+                SubField<scalar>(nbd, nbr.size(), n) =
+                    (nbr.nf() & nbr.coupledFvPatch::delta());
+                n += nbr.size();
             }
         }
 
         // These deltas are of the cyclic part alone - they are
         // not affected by the amount of overlap with the nonOverlapPatch
         scalarField nbrDeltas(interpolate(nbd));
+
+Pout<< "** cyclicACMIFvPatch::makeWeights : patch:" << this->name()
+    << " nbrDeltas:" << nbrDeltas << endl;
 
         scalar tol = cyclicACMIPolyPatch::tolerance();
 
@@ -244,29 +261,31 @@ Foam::tmp<Foam::vectorField> Foam::cyclicACMIFvPatch::delta() const
     {
         const vectorField patchD(coupledFvPatch::delta());
 
+Pout<< "** cyclicACMIFvPatch::delta : patch:" << this->name()
+    << " patchD:" << patchD << endl;
+
         tmp<vectorField> tnbrPatchD;
         {
             // Collect neighbour deltas
 
             vectorField pd(neighbSize());
             {
-                const labelList& nbrIds = neighbPatchIDs();
-
                 label n = 0;
-                forAll(nbrIds, index)
+                for (const label index : AMIIndices())
                 {
-                    if (validAMI(index))
-                    {
-                        const auto& nbrPatch = neighbFvPatch(index);
-                        SubField<vector>(pd, nbrPatch.size(), n) =
-                            nbrPatch.coupledFvPatch::delta();
-                        n += nbrPatch.size();
-                    }
+                    const auto& nbr = neighbFvPatch(index);
+
+                    SubField<vector>(pd, nbr.size(), n) =
+                        nbr.coupledFvPatch::delta();
+                    n += nbr.size();
                 }
             }
             tnbrPatchD = interpolate(pd);
         }
         const vectorField& nbrPatchD = tnbrPatchD();
+
+Pout<< "** cyclicACMIFvPatch::delta : patch:" << this->name()
+    << " nbrPatchD:" << nbrPatchD << endl;
 
         tmp<vectorField> tpdv(new vectorField(patchD.size()));
         vectorField& pdv = tpdv.ref();
@@ -323,12 +342,10 @@ Foam::tmp<Foam::labelField> Foam::cyclicACMIFvPatch::internalFieldTransfer
     labelField& fld = tfld.ref();
 
     // Return internal field (e.g. cell agglomeration) in nbr patch index
-    const labelList& nbrIds = neighbPatchIDs();
-
     label n = 0;
-    forAll(nbrIds, nbri)
+    for (const label index : AMIIndices())
     {
-        const cyclicACMIFvPatch& nbr = neighbFvPatch(nbri);
+        const auto& nbr = neighbFvPatch(index);
         SubField<label>(fld, nbr.size(), n) = nbr.patchInternalField(iF);
         n += nbr.size();
     }
