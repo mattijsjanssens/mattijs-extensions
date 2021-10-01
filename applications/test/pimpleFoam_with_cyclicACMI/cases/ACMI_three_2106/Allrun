@@ -1,0 +1,50 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+echo "** RUN in >= v2106 **"
+
+runApplication blockMesh
+
+#- left_bottom
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.type -set cyclicACMI
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.inGroups -set '(cyclicACMI coupleGroup)'
+#- Remove neighbourPatch entry
+foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.neighbourPatch -remove
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.neighbourPatches -set '(bottomAMI topAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.coupleGroup -set 'coupleGroup'
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_bottom_AMI.method -set 'partialFaceAreaWeightAMI'
+
+#- left_top
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.type -set cyclicACMI
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.inGroups -set '(cyclicACMI coupleGroup)'
+#- Remove neighbourPatch entry
+foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.neighbourPatch -remove
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.neighbourPatches -set '(leftAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.coupleGroup -set 'coupleGroup'
+#foamDictionary constant/polyMesh/boundary -entry entry0.left_top_AMI.method -set 'partialFaceAreaWeightAMI'
+
+#- right_bottom
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.type -set cyclicACMI
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.inGroups -set '(cyclicACMI coupleGroup)'
+#- Remove neighbourPatch entry
+foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.neighbourPatch -remove
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.neighbourPatches -set '(bottomAMI topAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.coupleGroup -set 'coupleGroup'
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_bottom_AMI.method -set 'partialFaceAreaWeightAMI'
+
+#- right_top
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.type -set cyclicACMI
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.inGroups -set '(cyclicACMI coupleGroup)'
+#- Remove neighbourPatch entry
+foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.neighbourPatch -remove
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.neighbourPatches -set '(leftAMI)'
+foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.coupleGroup -set 'coupleGroup'
+#foamDictionary constant/polyMesh/boundary -entry entry0.right_top_AMI.method -set 'partialFaceAreaWeightAMI'
+
+
+echo "** NOW RUN laplacianFoam_with_cyclicACMI **"
+#laplacianFoam_with_cyclicACMI
+
+#------------------------------------------------------------------------------

@@ -1,0 +1,126 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2107                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       polyBoundaryMesh;
+    location    "constant/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+11
+(
+    walls
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          10;
+        startFace       24;
+    }
+    left
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          4;
+        startFace       34;
+    }
+    left_bottom_AMI
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI coupleGroup);
+        nFaces          4;
+        startFace       38;
+        matchTolerance  0.0001;
+        transform       unknown;
+        //neighbourPatch  right_bottom_AMI;
+        AMIMethod       faceAreaWeightAMI;
+        restartUncoveredSourceFace 1;
+        nonOverlapPatch left_bottom_blockage;
+
+        coupleGroup     coupleGroup;
+    }
+    left_bottom_blockage
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          4;
+        startFace       42;
+    }
+    right_bottom_AMI
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI coupleGroup);
+        nFaces          3;
+        startFace       46;
+        matchTolerance  0.0001;
+        transform       unknown;
+        //neighbourPatch  left_bottom_AMI;
+        AMIMethod       faceAreaWeightAMI;
+        restartUncoveredSourceFace 1;
+        nonOverlapPatch right_bottom_blockage;
+
+        coupleGroup     coupleGroup;
+
+    }
+    right_bottom_blockage
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          3;
+        startFace       49;
+    }
+    right_top_AMI
+    {
+        type            cyclicACMI;
+        inGroups        2(cyclicACMI coupleGroup);
+        nFaces          3;
+        startFace       52;
+        matchTolerance  0.0001;
+        transform       unknown;
+        //neighbourPatch  left_bottom_AMI;
+        AMIMethod       faceAreaWeightAMI;
+        restartUncoveredSourceFace 1;
+        nonOverlapPatch right_top_blockage;
+
+        coupleGroup     coupleGroup;
+
+    }
+    right_top_blockage
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          3;
+        startFace       55;
+    }
+    right_bottom_right
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          3;
+        startFace       58;
+    }
+    frontAndBack
+    {
+        type            empty;
+        inGroups        1(empty);
+        nFaces          28;
+        startFace       61;
+    }
+    defaultFaces
+    {
+        type            empty;
+        inGroups        1(empty);
+        nFaces          17;
+        startFace       89;
+    }
+)
+
+// ************************************************************************* //

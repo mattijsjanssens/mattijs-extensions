@@ -938,38 +938,53 @@ const Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
 {
     if (nbrPatchIDs_.empty())
     {
-        const wordList& nbrNames = neighbPatchNames();
-
-        nbrPatchIDs_.setSize(nbrNames.size());
-        forAll(nbrNames, i)
+        if (coupleGroup_.valid())
         {
-            const word& nbrName = nbrNames[i];
+            nbrPatchIDs_ = coupleGroup_.findOtherPatchIDs(*this);
 
-            nbrPatchIDs_[i] = this->boundaryMesh().findPatchID(nbrName);
-
-            if (nbrPatchIDs_[i] == -1)
+            // Make sure nbrPatchNames is compatible with nbrPatchIDs
+            nbrPatchNames_.setSize(nbrPatchIDs_.size());
+            forAll(nbrPatchIDs_, i)
             {
-                FatalErrorInFunction
-                    << "Illegal neighbourPatch name " << nbrName
-                    << nl << "Valid patch names are "
-                    << this->boundaryMesh().names()
-                    << exit(FatalError);
+                const label patchi = nbrPatchIDs_[i];
+                nbrPatchNames_[i] = this->boundaryMesh()[patchi].name();
             }
+        }
+        else
+        {
+            const wordList& nbrNames = neighbPatchNames();
 
-            // Check that it is a cyclic AMI patch
-            const cyclicAMIPolyPatch& nbrPatch =
-                refCast<const cyclicAMIPolyPatch>
-                (
-                    this->boundaryMesh()[nbrPatchIDs_[i]]
-                );
-
-            if (!nbrPatch.neighbPatchNames().found(name()))
+            nbrPatchIDs_.setSize(nbrNames.size());
+            forAll(nbrNames, i)
             {
-                WarningInFunction
-                    << "Patch " << name()
-                    << " specifies neighbour patch " << nbrName
-                    << nl << " but that in return specifies "
-                    << nbrPatch.neighbPatchNames() << endl;
+                const word& nbrName = nbrNames[i];
+
+                nbrPatchIDs_[i] = this->boundaryMesh().findPatchID(nbrName);
+
+                if (nbrPatchIDs_[i] == -1)
+                {
+                    FatalErrorInFunction
+                        << "Illegal neighbourPatch name " << nbrName
+                        << nl << "Valid patch names are "
+                        << this->boundaryMesh().names()
+                        << exit(FatalError);
+                }
+
+                // Check that it is a cyclic AMI patch
+                const cyclicAMIPolyPatch& nbrPatch =
+                    refCast<const cyclicAMIPolyPatch>
+                    (
+                        this->boundaryMesh()[nbrPatchIDs_[i]]
+                    );
+
+                if (!nbrPatch.neighbPatchNames().found(name()))
+                {
+                    WarningInFunction
+                        << "Patch " << name()
+                        << " specifies neighbour patch " << nbrName
+                        << nl << " but that in return specifies "
+                        << nbrPatch.neighbPatchNames() << endl;
+                }
             }
         }
     }

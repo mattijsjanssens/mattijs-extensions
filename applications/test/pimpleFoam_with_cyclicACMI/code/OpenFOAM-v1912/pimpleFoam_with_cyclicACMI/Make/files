@@ -1,7 +1,5 @@
 pimpleFoam.C
 
-finiteVolume/surfaceInterpolation.C
-
 dummyMotionSolver.C
 
 /**** OpenFOAM ****/
