@@ -435,15 +435,6 @@ void Foam::cyclicAMIPolyPatch::resetAMI
                 }
             }
         }
-        else
-        {
-            AMIPtrs_.release(nbri);
-            //neighbIndex_[nbri] = -1;
-            //Pout<< "** cyclicAMIPolyPatch::resetAMI from patch:" << name()
-            //    << " IGNORING neighbour:" << nbr.name()
-            //    << " at index:" << nbri
-            //    << " patchi:" << nbr.index() << endl;
-        }
     }
 
 
@@ -1302,26 +1293,12 @@ Foam::label Foam::cyclicAMIPolyPatch::pointFace
 
         if (myAMI.valid())
         {
-            nbrFacei = myAMI().tgtPointFace
-            (
-                *this,
-                nbr,
-                nrt,
-                facei,
-                prt
-            );
+            nbrFacei = myAMI().tgtPointFace(*this, nbr, nrt, facei, prt);
         }
         else
         {
             const auto nbrAMI(nbr.AMI(neighbIndex(i)));
-            nbrFacei = nbrAMI().srcPointFace
-            (
-                nbr,
-                *this,
-                nrt,
-                facei,
-                prt
-            );
+            nbrFacei = nbrAMI().srcPointFace(nbr, *this, nrt, facei, prt);
         }
 
         if (nbrFacei != -1)
