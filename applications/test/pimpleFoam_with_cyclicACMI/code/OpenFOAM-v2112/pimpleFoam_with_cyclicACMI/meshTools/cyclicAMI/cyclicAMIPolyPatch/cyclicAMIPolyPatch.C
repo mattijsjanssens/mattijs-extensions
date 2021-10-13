@@ -485,8 +485,10 @@ void Foam::cyclicAMIPolyPatch::resetAMI(const UList<point>& points) const
         }
     }
 
+    // Calculated raw AMI. Mark early to prevent recursion
+    AMIPtr_->upToDate() = true;
 
-    //- Determine compact addressing
+    // Determine compact addressing
     AMIIndices_.clear();
     neighbIndex_.setSize(nbrIds.size());
     neighbIndex_ = -1;
@@ -505,7 +507,7 @@ void Foam::cyclicAMIPolyPatch::resetAMI(const UList<point>& points) const
             {
                 // Check if slave has valid AMI (happens if master has been
                 // visited before)
-                if (nbr.AMI(nbrIndex).valid())
+                if (!owner(nbri) && nbr.AMI(nbrIndex).valid())
                 {
                     neighbIndex_[nbri] = nbrIndex;
                     AMIIndices_.append(nbri);
@@ -516,7 +518,7 @@ void Foam::cyclicAMIPolyPatch::resetAMI(const UList<point>& points) const
 
     if (debug)
     {
-        Pout<< "cyclicAMIPolyPatch::resetAMI : recalculating AMI"
+        Pout<< "cyclicAMIPolyPatch::resetAMI : calculated AMI"
             << " for " << name() << " and neighbours " << nbrIds
             << " now have AMIIndices:" << AMIIndices_
             << endl;

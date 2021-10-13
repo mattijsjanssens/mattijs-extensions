@@ -286,11 +286,6 @@ Foam::tmp<Foam::vectorField> Foam::cyclicACMIFvPatch::delta() const
         }
         const vectorField& nbrPatchD = tnbrPatchD();
 
-Pout<< "** cyclicACMIFvPatch::delta : patch:" << this->name()
-    << " nbrPatchD:" << nbrPatchD << endl;
-
-
-
         auto tpdv = tmp<vectorField>::New(patchD.size());
         vectorField& pdv = tpdv.ref();
 

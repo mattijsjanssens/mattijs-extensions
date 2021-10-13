@@ -266,8 +266,8 @@ void Foam::cyclicACMIPolyPatch::scalePatchFaceAreas
                 scalarListList& weights = AMI.srcWeights();
                 scalarField& wghtsSum = const_cast<scalarField&>(weightsSum());
 
-                Pout<< " for " << name() << " normalising weights "
-                    << flatOutput(weights) << endl;
+                //Pout<< " for " << name() << " normalising weights "
+                //    << flatOutput(weights) << endl;
 
                 forAll(weights, i)
                 {
@@ -291,8 +291,8 @@ void Foam::cyclicACMIPolyPatch::scalePatchFaceAreas
                 scalarListList& weights = AMI.tgtWeights();
                 scalarField& wghtsSum = const_cast<scalarField&>(weightsSum());
 
-                Pout<< " for " << name() << " normalising weights "
-                    << flatOutput(weights) << endl;
+                //Pout<< " for " << name() << " normalising weights "
+                //    << flatOutput(weights) << endl;
 
                 forAll(weights, i)
                 {
@@ -310,8 +310,6 @@ void Foam::cyclicACMIPolyPatch::scalePatchFaceAreas
                 }
             }
         }
-DebugVar(weightsSum());
-
     }
 }
 
@@ -879,7 +877,7 @@ Foam::cyclicACMIPolyPatch::neighbPatch
     const label index
 ) const
 {
-    const polyPatch& pp = neighbPatch(index);
+    const polyPatch& pp = cyclicAMIPolyPatch::neighbPatch(index);
 
 //    // Bit of checking now we know neighbour patch
 //    if (!owner() && scalePtr_.valid())
