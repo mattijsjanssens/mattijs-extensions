@@ -202,8 +202,7 @@ Pout<< "** cyclicACMIFvPatch::makeWeights : patch:" << this->name()
 
 bool Foam::cyclicACMIFvPatch::coupled() const
 {
-    //return Pstream::parRun() || (this->size() && neighbFvPatch().size());
-    if (Pstream::parRun())
+    return Pstream::parRun() || (this->size() && this->neighbSize());
     {
         return true;
     }
