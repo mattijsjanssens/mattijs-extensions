@@ -1,6 +1,12 @@
-- parallel reduction
+- edges in topoSet
 - parallel writing / collating
 - automatic decompose
 - overlapping cellZones in polyTopoChange
 - dlopen with local file system
 - linear solvers: parallel preconditioning, reordering before solving, multiple masters
+- linear solvers: run-time selection of residual checks
+- linear solvers: amgcl (see e.g. https://amgcl.readthedocs.io/en/latest/tutorial/poisson3DbMPI.html)
+- linear solvers: parallel reduction
+- cyclic on internal face (cyclicZone?)
+- ring version of shared pointer
+- average fvOption
