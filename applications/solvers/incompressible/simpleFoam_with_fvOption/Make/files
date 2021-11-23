@@ -1,0 +1,4 @@
+averageConstraint.C
+simpleFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/simpleFoam_with_fvOption
