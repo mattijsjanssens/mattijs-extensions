@@ -115,7 +115,6 @@ void Foam::cyclicACMIFvPatch::makeWeights(scalarField& w) const
             label n = 0;
             for (const label index : AMIIndices())
             {
-                //const auto& nbr = neighbFvPatch(index);
                 const auto& nbr = neighbPatch(index);
                 SubField<scalar>(nbd, nbr.size(), n) =
                     (nbr.nf() & nbr.coupledFvPatch::delta());
@@ -274,9 +273,7 @@ Foam::tmp<Foam::vectorField> Foam::cyclicACMIFvPatch::delta() const
                 label n = 0;
                 for (const label index : AMIIndices())
                 {
-                    //const auto& nbr = neighbFvPatch(index);
                     const auto& nbr = neighbPatch(index);
-
                     SubField<vector>(pd, nbr.size(), n) =
                         nbr.coupledFvPatch::delta();
                     n += nbr.size();
@@ -354,7 +351,6 @@ Foam::tmp<Foam::labelField> Foam::cyclicACMIFvPatch::internalFieldTransfer
     label n = 0;
     for (const label index : AMIIndices())
     {
-        //const auto& nbr = neighbFvPatch(index);
         const auto& nbr = neighbPatch(index);
         SubField<label>(fld, nbr.size(), n) = nbr.patchInternalField(iF);
         n += nbr.size();
@@ -363,7 +359,6 @@ Foam::tmp<Foam::labelField> Foam::cyclicACMIFvPatch::internalFieldTransfer
 }
 
 
-//XXXX
 void Foam::cyclicACMIFvPatch::resetPatchPhi
 (
     const cyclicACMIFvPatch& fvp,
@@ -404,7 +399,7 @@ void Foam::cyclicACMIFvPatch::resetPatchPhi
         phiNonOverlapp[facei] *= w;
     }
 }
-//XXXX
+
 
 void Foam::cyclicACMIFvPatch::movePoints()
 {
