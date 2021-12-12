@@ -50,4 +50,8 @@ constraintFvsPatchFields = $(fvsPatchFields)/constraint
 $(constraintFvsPatchFields)/cyclicAMI/cyclicAMIFvsPatchFields.C
 $(constraintFvsPatchFields)/cyclicACMI/cyclicACMIFvsPatchFields.C
 
+
+TurbulenceModels/compressible/turbulentFluidThermoModels/derivedFvPatchFields/turbulentTemperatureCoupledCyclicAMI/turbulentTemperatureCyclicAMIFvPatchScalarField.C
+
+
 EXE = $(FOAM_USER_APPBIN)/pimpleFoam_with_cyclicACMI
