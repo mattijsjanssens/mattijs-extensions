@@ -50,6 +50,7 @@ turbulentTemperatureCyclicAMIFvPatchScalarField
         "undefined-alpha"
     ),
     mappedPatchBase(patch().patch()),
+    mappedPatchFieldBase<scalar>(*this, *this),
     TnbrName_("undefined-Tnbr")
 {}
 
@@ -66,6 +67,7 @@ turbulentTemperatureCyclicAMIFvPatchScalarField
     cyclicAMIFvPatchField<scalar>(ptf, p, iF, mapper),
     temperatureCoupledBase(patch(), ptf),
     mappedPatchBase(patch().patch()),
+    mappedPatchFieldBase<scalar>(*this, *this, ptf),
     TnbrName_(ptf.TnbrName_),
     thicknessLayers_(ptf.thicknessLayers_),
     thicknessLayer_(ptf.thicknessLayer_.clone(p.patch())),
@@ -85,6 +87,7 @@ turbulentTemperatureCyclicAMIFvPatchScalarField
     cyclicAMIFvPatchField<scalar>(p, iF, dict),
     temperatureCoupledBase(patch(), dict),
     mappedPatchBase(patch().patch(), dict),
+    mappedPatchFieldBase<scalar>(*this, *this, dict, *this),
     TnbrName_(dict.get<word>("Tnbr"))
 {
     // Read list of layers
@@ -118,6 +121,7 @@ turbulentTemperatureCyclicAMIFvPatchScalarField
     cyclicAMIFvPatchField<scalar>(wtcsf, iF),
     temperatureCoupledBase(patch(), wtcsf),
     mappedPatchBase(patch().patch(), wtcsf),
+    mappedPatchFieldBase<scalar>(*this, *this, wtcsf),
     TnbrName_(wtcsf.TnbrName_),
     thicknessLayers_(wtcsf.thicknessLayers_),
     thicknessLayer_(wtcsf.thicknessLayer_.clone(patch().patch())),
@@ -135,6 +139,7 @@ turbulentTemperatureCyclicAMIFvPatchScalarField
     cyclicAMIFvPatchField<scalar>(wtcsf),
     temperatureCoupledBase(patch(), wtcsf),
     mappedPatchBase(patch().patch(), wtcsf),
+    mappedPatchFieldBase<scalar>(wtcsf),
     TnbrName_(wtcsf.TnbrName_),
     thicknessLayers_(wtcsf.thicknessLayers_),
     thicknessLayer_(wtcsf.thicknessLayer_.clone(patch().patch())),
@@ -236,36 +241,38 @@ Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::patchKappa
 }
 
 
-void Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::updateCoeffs()
+Foam::tmp<Foam::scalarField>
+Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::snGrad
+(
+    const scalarField& deltaCoeffs
+) const
 {
-    if (updated())
-    {
-        return;
-    }
+    // Use patch temperature, patch delta vector instead of
+    // neighbouring cell information
+    const scalarField& Tp = *this;
+    return
+        patchDeltaCoeffs()*(Tp - patchInternalField());
+}
 
+
+//Foam::tmp<Foam::Field<scalar>>
+//Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::patchNeighbourField
+//(
+//    const scalarField& psiInternal,
+//) const
+//{
 //    // Since we're inside initEvaluate/evaluate there might be processor
 //    // comms underway. Change the tag we use.
 //    const int oldTag = UPstream::msgType();
 //    UPstream::msgType() = oldTag+1;
 //
+//
 //    // Get the coupling information from the mappedPatchBase
-//    const mappedPatchBase& mpp =
-//        mappedPatchFieldBase<scalar>::mapper
-//        (
-//            patch(),
-//            this->internalField()
-//        );
+//    const mappedPatchBase& mpp = *this;
 //
+//    tmp<scalarField> tfld(new scalarField(0));
+//    auto& fld = tfld.ref();
 //
-//    const scalarField myDeltaCoeffs(patchDeltaCoeffs());
-//
-//    const scalarField& Tp = *this;
-//    const scalarField kappaTp(patchKappa(myDeltaCoeffs, Tp));
-//    const tmp<scalarField> myKDelta = kappaTp*myDeltaCoeffs;
-//
-//
-//    scalarField nbrIntFld;
-//    scalarField nbrKDelta;
 //    if (mpp.sameWorld())
 //    {
 //        // Same world so lookup
@@ -287,61 +294,218 @@ void Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::updateCoeffs()
 //        );
 //
 //        // Swap to obtain full local values of neighbour K*delta
-//        nbrIntFld = nbrField.patchInternalField();
-//        nbrKDelta = nbrField.patchKappa(nbrField)*nbrPatch.patchDeltaCoeffs();
+//        fld = nbrField.patchInternalField();
 //    }
 //    else
 //    {
 //        // Different world so use my region,patch. Distribution below will
 //        // do the reordering.
-//        nbrIntFld = patchInternalField();
-//        nbrKDelta = myKDelta.ref();
+//        fld = patchInternalField();
 //    }
-//    distribute(this->internalField().name() + "_value", nbrIntFld);
-//    distribute(this->internalField().name() + "_weights", nbrKDelta);
+//    mappedPatchFieldBase<scalar>::distribute
+//    (
+//        this->internalField().name() + "_value",
+//        fld
+//    );
 //
-//
-//    // Both sides agree on
-//    // - temperature : (myKDelta*fld + nbrKDelta*nbrFld)/(myKDelta+nbrKDelta)
-//    // - gradient    : (temperature-fld)*delta
-//    // We've got a degree of freedom in how to implement this in a mixed bc.
-//    // (what gradient, what fixedValue and mixing coefficient)
-//    // Two reasonable choices:
-//    // 1. specify above temperature on one side (preferentially the high side)
-//    //    and above gradient on the other. So this will switch between pure
-//    //    fixedvalue and pure fixedgradient
-//    // 2. specify gradient and temperature such that the equations are the
-//    //    same on both sides. This leads to the choice of
-//    //    - refGradient = zero gradient
-//    //    - refValue = neighbour value
-//    //    - mixFraction = nbrKDelta / (nbrKDelta + myKDelta())
-//
-//    this->refValue() = nbrIntFld;
-//    this->refGrad() = 0.0;
-//    this->valueFraction() = nbrKDelta/(nbrKDelta + myKDelta());
-//
-//    cyclicAMIFvPatchField<scalar>::updateCoeffs();
-//
-//    if (debug)
-//    {
-//        scalar Q = gSum(kappaTp*patch().magSf()*snGrad());
-//
-//        Info<< patch().boundaryMesh().mesh().name() << ':'
-//            << patch().name() << ':'
-//            << this->internalField().name() << " <- "
-//            << mpp.sampleRegion() << ':'
-//            << mpp.samplePatch() << ':'
-//            << this->internalField().name() << " :"
-//            << " heat transfer rate:" << Q
-//            << " walltemperature "
-//            << " min:" << gMin(*this)
-//            << " max:" << gMax(*this)
-//            << " avg:" << gAverage(*this)
-//            << endl;
-//    }
+//    // Transform according to the transformation tensors
+//    this->transformCoupleField(fld);
 //
 //    // Restore tag
 //    UPstream::msgType() = oldTag;
+//
+//    return tfld;
+//}
+
+
+void Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::evaluate
+(
+    const Pstream::commsTypes commsType
+)
+{
+    if (updated())
+    {
+        return;
+    }
+
+    // Since we're inside initEvaluate/evaluate there might be processor
+    // comms underway. Change the tag we use.
+    const int oldTag = UPstream::msgType();
+    UPstream::msgType() = oldTag+1;
+
+    // Get the coupling information from the mappedPatchBase
+    const mappedPatchBase& mpp = *this;
+
+    const scalarField myDeltaCoeffs(patchDeltaCoeffs());
+
+    const scalarField& Tp = *this;
+    const scalarField kappaTp(patchKappa(myDeltaCoeffs, Tp));
+    const tmp<scalarField> myKDelta = kappaTp*myDeltaCoeffs;
+
+
+    scalarField nbrIntFld;
+    scalarField nbrKDelta;
+    if (mpp.sameWorld())
+    {
+        // Same world so lookup
+        const auto& nbrMesh = refCast<const fvMesh>(mpp.sampleMesh());
+        const label nbrPatchID = mpp.samplePolyPatch().index();
+        const auto& nbrPatch = nbrMesh.boundary()[nbrPatchID];
+
+        const turbulentTemperatureCyclicAMIFvPatchScalarField&
+        nbrField =
+        refCast
+        <
+        const turbulentTemperatureCyclicAMIFvPatchScalarField
+        >
+        (
+            nbrPatch.lookupPatchField<volScalarField, scalar>
+            (
+                TnbrName_
+            )
+        );
+
+        // Swap to obtain full local values of neighbour K*delta
+        nbrIntFld = nbrField.patchInternalField();
+        nbrKDelta =
+            nbrField.patchKappa
+            (
+                nbrField.patchDeltaCoeffs(),
+                nbrField
+            )
+           *nbrField.patchDeltaCoeffs();
+    }
+    else
+    {
+        // Different world so use my region,patch. Distribution below will
+        // do the reordering.
+        nbrIntFld = patchInternalField();
+        nbrKDelta = myKDelta.ref();
+    }
+    mappedPatchFieldBase<scalar>::distribute
+    (
+        this->internalField().name() + "_value",
+        nbrIntFld
+    );
+    mappedPatchFieldBase<scalar>::distribute
+    (
+        this->internalField().name() + "_weights",
+        nbrKDelta
+    );
+
+    // Transform according to the transformation tensors
+    this->transformCoupleField(nbrIntFld);
+
+
+    // Both sides agree on
+    // - temperature : (myKDelta*fld + nbrKDelta*nbrFld)/(myKDelta+nbrKDelta)
+    // - gradient    : (temperature-fld)*delta
+    // We've got a degree of freedom in how to implement this in a mixed bc.
+    // (what gradient, what fixedValue and mixing coefficient)
+    // Two reasonable choices:
+    // 1. specify above temperature on one side (preferentially the high side)
+    //    and above gradient on the other. So this will switch between pure
+    //    fixedvalue and pure fixedgradient
+    // 2. specify gradient and temperature such that the equations are the
+    //    same on both sides. This leads to the choice of
+    //    - refGradient = zero gradient
+    //    - refValue = neighbour value
+    //    - mixFraction = nbrKDelta / (nbrKDelta + myKDelta())
+
+    scalarField::operator=
+    (
+        (myKDelta*patchInternalField() + nbrKDelta*nbrIntFld)
+       /(myKDelta+nbrKDelta)
+    );
+
+    if (debug)
+    {
+        scalar Q = gSum(kappaTp*patch().magSf()*snGrad(myDeltaCoeffs));
+
+        Info<< patch().boundaryMesh().mesh().name() << ':'
+            << patch().name() << ':'
+            << this->internalField().name() << " <- "
+            << mpp.sampleRegion() << ':'
+            << mpp.samplePatch() << ':'
+            << this->internalField().name() << " :"
+            << " heat transfer rate:" << Q
+            << " walltemperature "
+            << " min:" << gMin(*this)
+            << " max:" << gMax(*this)
+            << " avg:" << gAverage(*this)
+            << endl;
+    }
+
+    // Restore tag
+    UPstream::msgType() = oldTag;
+
+    // Bypass cyclicAMIFvPatchScalarField evaluation
+    fvPatchField<scalar>::evaluate();
+}
+
+
+void
+Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::updateInterfaceMatrix
+(
+    solveScalarField& result,
+    const bool add,
+    const lduAddressing& lduAddr,
+    const label patchId,
+    const solveScalarField& psiInternal,
+    const scalarField& coeffs,
+    const direction cmpt,
+    const Pstream::commsTypes commsType
+) const
+{
+    const labelUList& nbrFaceCells =
+        lduAddr.patchAddr
+        (
+            this->cyclicAMIPatch().neighbPatchID()
+        );
+
+    solveScalarField pnf(psiInternal, nbrFaceCells);
+
+    pnf = this->cyclicAMIPatch().interpolate(pnf);
+
+    // Transform according to the transformation tensors
+    this->transformCoupleField(pnf, cmpt);
+
+    const labelUList& faceCells = lduAddr.patchAddr(patchId);
+
+    // Multiply the field by coefficients and add into the result
+    this->addToInternalField(result, !add, faceCells, coeffs, pnf);
+}
+
+
+void
+Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::updateInterfaceMatrix
+(
+    Field<scalar>& result,
+    const bool add,
+    const lduAddressing& lduAddr,
+    const label patchId,
+    const Field<scalar>& psiInternal,
+    const scalarField& coeffs,
+    const Pstream::commsTypes commsType
+) const
+{
+    const labelUList& nbrFaceCells =
+        lduAddr.patchAddr
+        (
+            this->cyclicAMIPatch().neighbPatchID()
+        );
+
+    Field<scalar> pnf(psiInternal, nbrFaceCells);
+
+    pnf = this->cyclicAMIPatch().interpolate(pnf);
+
+    // Transform according to the transformation tensors
+    this->transformCoupleField(pnf);
+
+    const labelUList& faceCells = lduAddr.patchAddr(patchId);
+
+    // Multiply the field by coefficients and add into the result
+    this->addToInternalField(result, !add, faceCells, coeffs, pnf);
 }
 
 
@@ -400,6 +564,7 @@ void Foam::turbulentTemperatureCyclicAMIFvPatchScalarField::write
     cyclicAMIFvPatchField<scalar>::write(os);
     temperatureCoupledBase::write(os);
     mappedPatchBase::write(os);
+    mappedPatchFieldBase<scalar>::write(os);
     os.writeEntry("Tnbr", TnbrName_);
     if (thicknessLayer_)
     {

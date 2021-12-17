@@ -612,7 +612,19 @@ void Foam::cyclicAMIPolyPatch::calcTransforms()
         half0Areas[facei] = half0[facei].areaNormal(half0.points());
     }
 
-    const cyclicAMIPolyPatch& half1 = neighbPatch(0);
+    //const cyclicAMIPolyPatch& half1 = neighbPatch(0);
+DebugVar(nbrPatchIDs_);
+DebugVar(nbrPatchNames_);
+
+Pout<< "neighbPatchIDs:" << neighbPatchIDs() << endl;
+Pout<< "neighbPatch type:" << this->boundaryMesh()[neighbPatchIDs()[0]].type()
+    << endl;
+
+    const cyclicAMIPolyPatch& half1 = refCast<const cyclicAMIPolyPatch>
+    (
+        this->boundaryMesh()[neighbPatchIDs()[0]]
+    );
+
     vectorField half1Areas(half1.size());
     forAll(half1, facei)
     {
@@ -1174,11 +1186,15 @@ Foam::label Foam::cyclicAMIPolyPatch::periodicPatchID() const
 //}
 const Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
 {
+DebugVar(nbrPatchIDs_);
+
     if (nbrPatchIDs_.empty())
     {
         if (coupleGroup_.valid())
         {
+DebugVar(coupleGroup_);
             nbrPatchIDs_ = coupleGroup_.findOtherPatchIDs(*this);
+DebugVar(nbrPatchIDs_);
 
             // Make sure nbrPatchNames is compatible with nbrPatchIDs
             nbrPatchNames_.setSize(nbrPatchIDs_.size());
@@ -1187,6 +1203,7 @@ const Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
                 const label patchi = nbrPatchIDs_[i];
                 nbrPatchNames_[i] = this->boundaryMesh()[patchi].name();
             }
+DebugVar(nbrPatchNames_);
         }
         else
         {
@@ -1226,6 +1243,7 @@ const Foam::labelList& Foam::cyclicAMIPolyPatch::neighbPatchIDs() const
             }
         }
     }
+DebugVar(nbrPatchIDs_);
     return nbrPatchIDs_;
 }
 

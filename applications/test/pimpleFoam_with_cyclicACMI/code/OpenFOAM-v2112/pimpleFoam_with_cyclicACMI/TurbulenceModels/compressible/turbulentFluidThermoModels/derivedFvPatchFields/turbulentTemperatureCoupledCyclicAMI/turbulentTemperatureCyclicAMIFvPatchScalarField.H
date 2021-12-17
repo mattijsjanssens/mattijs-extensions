@@ -45,6 +45,7 @@ SourceFiles
 #include "cyclicAMIFvPatchFields.H"
 #include "temperatureCoupledBase.H"
 #include "mappedPatchBase.H"
+#include "mappedPatchFieldBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -59,7 +60,8 @@ class turbulentTemperatureCyclicAMIFvPatchScalarField
 :
     public cyclicAMIFvPatchField<scalar>,
     public temperatureCoupledBase,
-    public mappedPatchBase
+    public mappedPatchBase,
+    public mappedPatchFieldBase<scalar>
 {
     // Private data
 
@@ -87,7 +89,7 @@ class turbulentTemperatureCyclicAMIFvPatchScalarField
 public:
 
     //- Runtime type information
-    TypeName("turbulentTemperatureCyclicAMI");
+    TypeName("compressible:turbulentTemperatureCyclicAMI");
 
 
     // Constructors
@@ -170,10 +172,17 @@ public:
                 const scalarField& Tp
             ) const;
 
-            void updateCoeffs();
+            //- Return patch-normal gradient
+            virtual tmp<Field<scalar>> snGrad
+            (
+                const scalarField& deltaCoeffs
+            ) const;
 
-//            //- Return neighbour coupled given internal cell data
-//            tmp<scalarField> patchNeighbourField() const;
+            //- Evaluate the patch field
+            virtual void evaluate
+            (
+                const Pstream::commsTypes commsType
+            );
 
             //- Update result field based on interface functionality
             virtual void updateInterfaceMatrix
