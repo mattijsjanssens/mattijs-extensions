@@ -3,7 +3,8 @@ PBRTSRC = $(PBRT)/pbrt-v3/src
 EXTSRC = $(PBRT)/pbrt-v3/src/ext
 GLOGSRC = $(EXTSRC)/glog/src
 
-EXTBUILD = /home/mattijs/pub/pbrt/build/src/ext
+PBRTBUILD = /home/mattijs/pub/pbrt/pbrt-v3-build
+EXTBUILD = $(PBRTBUILD)/src/ext
 GLOGBUILD = $(EXTBUILD)/glog
 
 EXE_INC = \
@@ -23,6 +24,19 @@ EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude
 
 EXE_LIBS = \
+    -L$(GLOGBUILD) -lglog \
+    -L$(PBRTBUILD) -lpbrt \
+    -L$(EXTBUILD)/openexr/OpenEXR/IlmImf -lIlmImf \
+    -L$(EXTBUILD)/openexr/IlmBase/Imath -lImath \
+    -L$(EXTBUILD)/openexr/IlmBase/Half -lHalf \
+    -L$(EXTBUILD)/openexr/IlmBase/Iex -lIex \
+    -L$(EXTBUILD)/openexr/IlmBase/IexMath -lIexMath \
+    -L$(EXTBUILD)/openexr/IlmBase/IlmThread -lIlmThread \
+    -L$(EXTBUILD)/ptex/src/ptex -lPtex \
+/*    -L$(EXTBUILD)/openexr/OpenEXR/IlmImf -lHalf */ \
+/*    -L$(EXTBUILD)/openexr/OpenEXR/IlmImf -lIlmThread */ \
+/*    -L$(EXTBUILD)/openexr/OpenEXR/IlmImf -lIex */ \
+/*    -L$(EXTBUILD)/openexr/OpenEXR/IlmImf -lImath */ \
     -lfiniteVolume \
     -ldecompositionMethods \
     -L$(FOAM_LIBBIN)/dummy -lscotchDecomp -lptscotchDecomp \

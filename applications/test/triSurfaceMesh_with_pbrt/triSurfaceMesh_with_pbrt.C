@@ -42,15 +42,30 @@ Usage
 #define PBRT_CONSTEXPR constexpr
 #define PBRT_THREAD_LOCAL thread_local
 
-// core/api.cpp*
-#include "api.h"
-#include "parallel.h"
+
+#include <cmath>
+#include <functional>
+#include "pbrt.h"
+#include "rng.h"
+#include "shape.h"
+#include "lowdiscrepancy.h"
+#include "sampling.h"
+#include "shapes/cone.h"
+#include "shapes/cylinder.h"
+#include "shapes/disk.h"
+#include "shapes/paraboloid.h"
+#include "shapes/sphere.h"
+#include "shapes/triangle.h"
+
+//// core/api.cpp*
+//#include "api.h"
+//#include "parallel.h"
 #include "paramset.h"
-#include "spectrum.h"
-#include "scene.h"
-#include "film.h"
-#include "medium.h"
-#include "stats.h"
+//#include "spectrum.h"
+//#include "scene.h"
+//#include "film.h"
+//#include "medium.h"
+//#include "stats.h"
 
 // API Additional Headers
 #include "accelerators/bvh.h"
@@ -337,8 +352,22 @@ int main(int argc, char *argv[])
         )
     );
 
+    std::vector<pbrt::Point3f> vertices;
 
-    const labelledTri& f = surf[0];
+    const pointField& pts = surf.localPoints();
+    for (const auto& pt : pts)
+    {
+        vertices.push_back(pbrt::Point3f(pt[0], pt[1], pt[2]));
+    }
+    std::vector<int> indices;
+    for (const auto& tri : surf.localFaces())
+    {
+        indices.push_back(tri[0]);
+        indices.push_back(tri[1]);
+        indices.push_back(tri[2]);
+    }
+    
+
 
     pbrt::Transform o2w;
     pbrt::Transform w2o;
@@ -350,22 +379,34 @@ int main(int argc, char *argv[])
         (
             &o2w,
             &w2o,
-            false,  // bool reverseOrientation,
-            surf.size(),    //int nTriangles, 
-            const int *vertexIndices, int nVertices, const Point3f *p,
-    const Vector3f *s, const Normal3f *n, const Point2f *uv,
-    const std::shared_ptr<Texture<Float>> &alphaTexture,
-    const std::shared_ptr<Texture<Float>> &shadowAlphaTexture,
-    const int *faceIndices = nullptr)
+            false,          // bool reverseOrientation
+            surf.size(),    //int nTriangles
+            &indices[0],    //int *vertexIndices
+            vertices.size(),
+            &vertices[0],
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr
+        )
+    );
+
+
+//int nVertices, const Point3f *p,
+//    const Vector3f *s, const Normal3f *n, const Point2f *uv,
+//    const std::shared_ptr<Texture<Float>> &alphaTexture,
+//    const std::shared_ptr<Texture<Float>> &shadowAlphaTexture,
+//    const int *faceIndices = nullptr)
 
 
     std::vector<std::shared_ptr<pbrt::Primitive>> prims;
     pbrt::ParamSet paramSet;
-    //int isectCost = paramSet.FindOneInt("intersectcost", 80);
-    //int travCost = paramSet.FindOneInt("traversalcost", 1);
-    //Float emptyBonus = paramSet.FindOneFloat("emptybonus", 0.5f);
-    //int maxPrims = paramSet.FindOneInt("maxprims", 1);
-    //int maxDepth = paramSet.FindOneInt("maxdepth", -1);
+    int isectCost = paramSet.FindOneInt("intersectcost", 80);
+    int travCost = paramSet.FindOneInt("traversalcost", 1);
+    pbrt::Float emptyBonus = paramSet.FindOneFloat("emptybonus", 0.5f);
+    int maxPrims = paramSet.FindOneInt("maxprims", 1);
+    int maxDepth = paramSet.FindOneInt("maxdepth", -1);
 
     std::shared_ptr<pbrt::Primitive> accel
     (
@@ -376,20 +417,23 @@ int main(int argc, char *argv[])
         )
     );
 
-
     const pbrt::Point3f o(0.0, 0.0, 0.0);
     const pbrt::Vector3f d(1.0, 1.0, 1.0);
     pbrt::Ray ray(o, d);
 
-    pbrt::Float tHit;
+    //pbrt::Float tHit;
     pbrt::SurfaceInteraction isect;
     //bool intersects = accel->Intersect(ray, &tHit, &isect, false);
     bool intersects = accel->Intersect(ray, &isect);
-
+    //
     DebugVar(intersects);
-    DebugVar(tHit);
-    DebugVar(isect.p);
-    DebugVar(isect.n);
+    //DebugVar(tHit);
+    DebugVar(isect.p.x);
+    DebugVar(isect.p.y);
+    DebugVar(isect.p.z);
+    DebugVar(isect.n.x);
+    DebugVar(isect.n.y);
+    DebugVar(isect.n.z);
 
     Info<< "\nEnd\n" << endl;
 
