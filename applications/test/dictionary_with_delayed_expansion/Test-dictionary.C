@@ -42,7 +42,7 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void inplaceExpand(const dictionary& topDict, dictionary& d)
+void expand(const dictionary& topDict, dictionary& d)
 {
     for (auto& e : d)
     {
@@ -78,7 +78,7 @@ void inplaceExpand(const dictionary& topDict, dictionary& d)
         else
         {
             const dictionary& subDict = e.dict();
-            inplaceExpand(topDict, const_cast<dictionary&>(subDict));
+            expand(topDict, const_cast<dictionary&>(subDict));
         }
     }
 }
@@ -104,13 +104,13 @@ int main(int argc, char *argv[])
 
 
     // 1. Determine syntax for unparsed variable name
-    dictionary dict;
-    dict.add(new primitiveEntry("name", "\\$WM_MPLIB"));
-
+    //dictionary dict;
+    //dict.add(new primitiveEntry("name", "\\$WM_MPLIB"));
+    dictionary dict(IFstream("testDict")());
 DebugVar(dict);
 
     // 2. One-step replacement of variable name
-    inplaceExpand(dict, dict);
+    expand(dict, dict);
     DebugVar(dict);
 
     // 3. Or could do two step:
