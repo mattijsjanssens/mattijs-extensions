@@ -1,0 +1,3 @@
+laplacian_spread.C
+
+EXE = $(FOAM_USER_APPBIN)/laplacian_spread
