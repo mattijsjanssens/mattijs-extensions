@@ -41,53 +41,8 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+autoPtr<Function1<scalar>> generateShapeFunction()
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    runTime.functionObjects().off();
-    #include "createMesh.H"
-
-    //const polyBoundaryMesh& pbm = mesh.boundaryMesh();
-    // Find set of patches from the list of regular expressions provided
-    //const word patchName((IStringStream(args[1])()));
-    //label patchi = pbm.findPatchID(patchName);
-
-    // Generate our own cloud
-    passiveParticleCloud particles
-    (
-        mesh,
-        "banana",
-        IDLList<passiveParticle>()
-    );
-    Pout<< "Adding particles." << endl;
-    particles.addParticle
-    (
-        new passiveParticle(mesh, point(0.5001, 0.5001, 0.1001))
-    );
-    particles.addParticle
-    (
-        new passiveParticle(mesh, point(0.4001, 0.4001, 0.3001))
-    );
-
-    // Generate indices
-    List<const passiveParticle*> particleList(particles.size());
-    scalarField radius(particles.size());
-    
-    label particlei = 0;
-    for (const auto& p : particles)
-    {
-        particleList[particlei] = &p;
-        radius[particlei] = 0.15*(particlei+1);
-        particlei++;
-    }
-
-    const globalIndex globalParticles(particleList.size());
-
-    // Generate 
-    List<limitedDistanceData<label>> cellData(mesh.nCells());
-    List<limitedDistanceData<label>> faceData(mesh.nFaces());
-
     // Shape of sphere. Needs to be zero outside of sphere.
     dictionary scaleDict;
     List<Tuple2<scalar, scalar>> vals(3);
@@ -99,19 +54,31 @@ int main(int argc, char *argv[])
     scaleDict.add("type", "table");
     dictionary dict;
     dict.add("scale", scaleDict);
-    autoPtr<Function1<scalar>> scalePtr(Function1<scalar>::New("scale", dict));
-
-    DebugVar(scalePtr().value(0.1));
-    DebugVar(scalePtr().value(1));
-    DebugVar(scalePtr().value(1.1));
-    DebugVar(scalePtr().value(200));
+    return Function1<scalar>::New("scale", dict);
+}
 
 
-    limitedDistanceData<label>::weightFunction fun(scalePtr());
+autoPtr<mapDistribute> spread
+(
+    const polyMesh& mesh,
+    limitedDistanceData<label>::weightFunction& fun,
 
+    const List<const passiveParticle*>& particleList,
+    const scalarField& radius,
 
-    DynamicList<label> seedFaces;
-    DynamicList<limitedDistanceData<label>> seedInfo;
+    DynamicList<label>& collectedParticles,
+    DynamicList<label>& collectedCells,
+    DynamicList<scalar>& collectedWeights
+)
+{
+    const globalIndex globalParticles(particleList.size());
+
+    List<limitedDistanceData<label>> cellData(mesh.nCells());
+    List<limitedDistanceData<label>> faceData(mesh.nFaces());
+
+    // Note: initial size how?
+    DynamicList<label> seedFaces(particleList.size());
+    DynamicList<limitedDistanceData<label>> seedInfo(particleList.size());
 
     forAll(particleList, particlei)
     {
@@ -134,8 +101,6 @@ int main(int argc, char *argv[])
             << " in cell:" << cc
             << " have r:" << radius[particlei]
             << " have weight:" << overlap
-            << " have scale:"
-            << scalePtr().value(mag(cc-position))
             << endl;
 
         const limitedDistanceData<label> pInfo
@@ -183,22 +148,7 @@ int main(int argc, char *argv[])
         fun
     );
 
-
-    // - make untemplated - data is always global particle index
-    // - better volume overlap calculation
-    // - allow normalisation bypass for
-    //      -step scaling
-    //      -exact overlap calculation
-
-
-    // Normalisation of weights
-
-
     // Collect all visited cells
-    DynamicList<label> collectedParticles;
-    DynamicList<scalar> collectedWeights;
-    DynamicList<label> collectedCells;
-
     forAll(cellData, celli)
     {
         const auto& data = cellData[celli].data();
@@ -219,39 +169,34 @@ int main(int argc, char *argv[])
     collectedCells.shrink();
 
     List<Map<label>> compactMap;
-    mapDistribute map(globalParticles, collectedParticles, compactMap);
+    return autoPtr<mapDistribute>
+    (
+        new mapDistribute(globalParticles, collectedParticles, compactMap)
+    );
+}
 
-    //// Test: pull data from particles to collected
-    //{
-    //    pointField position(particleList.size());
-    //    forAll(particleList, particlei)
-    //    {
-    //        position[particlei] = particleList[particlei]->position();
-    //    }
-    //    map.distribute(position);
-    //    forAll(collectedParticles, i)
-    //    {
-    //        const label celli = collectedCells[i];
-    //        const label particlei = collectedParticles[i];
-    //        Pout<< "At cell:" << celli << " at:" << mesh.cellCentres()[celli]
-    //            << " have origin:" << position[particlei]
-    //            << " with weight:" << collectedWeights[i]
-    //            << endl;
-    //    }
-    //}
 
-    // Sum weights onto particle
-    scalarField sumWeights(particles.size(), 0.0);
+void normaliseWeights
+(
+    const mapDistribute& map,
+    const label nParticles,
+    const List<label>& collectedParticles,
+    scalarList& collectedWeights
+)
+{
+    // Get local data in slot order
+    scalarField sumWeights(nParticles, 0.0);
     forAll(collectedParticles, i)
     {
         const label particlei = collectedParticles[i];
         sumWeights[particlei] += collectedWeights[i];
     }
+    // Send to originating particle and sum
     mapDistributeBase::distribute
     (
         Pstream::commsTypes::nonBlocking,
         List<labelPair>::null(),
-        particles.size(),           // constructSize
+        nParticles,
         map.constructMap(),
         map.constructHasFlip(),
         map.subMap(),
@@ -262,7 +207,7 @@ int main(int argc, char *argv[])
         flipOp()
     );
 
-    // Send back and divide
+    // Send back to cells and divide
     map.distribute(sumWeights);
     forAll(collectedParticles, i)
     {
@@ -275,6 +220,116 @@ int main(int argc, char *argv[])
         //    << endl;
        collectedWeights[i] /= sumWeights[particlei];
     }
+}
+
+
+int main(int argc, char *argv[])
+{
+    #include "setRootCase.H"
+    #include "createTime.H"
+    runTime.functionObjects().off();
+    #include "createMesh.H"
+
+    // Generate a test cloud
+    // ~~~~~~~~~~~~~~~~~~~~~
+
+    passiveParticleCloud particles
+    (
+        mesh,
+        "banana",
+        IDLList<passiveParticle>()
+    );
+    {
+        Pout<< "Adding particles." << endl;
+        particles.addParticle
+        (
+            new passiveParticle(mesh, point(0.5001, 0.5001, 0.1001))
+        );
+        particles.addParticle
+        (
+            new passiveParticle(mesh, point(0.4001, 0.4001, 0.3001))
+        );
+    }
+
+
+    // Generate indices
+    // ~~~~~~~~~~~~~~~~
+
+    List<const passiveParticle*> particleList(particles.size());
+    // (radius data should really be on particle)
+    scalarField radius(particles.size());
+    {
+        label particlei = 0;
+        for (const auto& p : particles)
+        {
+            particleList[particlei] = &p;
+            radius[particlei] = 0.15*(particlei+1);
+            particlei++;
+        }
+    }
+    const globalIndex globalParticles(particleList.size());
+
+
+    // Generate weight function
+    // ~~~~~~~~~~~~~~~~~~~~~~~~
+    // Currently : approx overlap volume
+    auto scalePtr(generateShapeFunction());
+    limitedDistanceData<label>::weightFunction fun(scalePtr());
+
+
+    // Get list of cells+weights+originating particle slot
+    DynamicList<label> spreadParticles;
+    DynamicList<label> spreadCells;
+    DynamicList<scalar> spreadWeights;
+    autoPtr<mapDistribute> mapPtr
+    (
+        spread
+        (
+            mesh,
+            fun,
+
+            particleList,
+            radius,
+
+            spreadParticles,
+            spreadCells,
+            spreadWeights
+        )
+    );
+    const auto& map = mapPtr();
+
+    // Test: pull data from particles to spread
+    {
+        pointField position(particleList.size());
+        forAll(particleList, particlei)
+        {
+            position[particlei] = particleList[particlei]->position();
+        }
+        map.distribute(position);
+        forAll(spreadParticles, i)
+        {
+            const label celli = spreadCells[i];
+            const label sloti = spreadParticles[i];
+            Pout<< "At cell:" << celli << " at:" << mesh.cellCentres()[celli]
+                << " have origin:" << position[sloti]
+                << " with weight:" << spreadWeights[i]
+                << endl;
+        }
+    }
+
+
+    if (true)
+    {
+        // Make sure all weights add up to 1. Wrong: should be sphere volume!
+        normaliseWeights
+        (
+            map,
+            particles.size(),
+            spreadParticles,
+            spreadWeights
+        );
+    }
+
 
     // Extract as volScalarField
     volScalarField vsf
@@ -290,10 +345,10 @@ int main(int argc, char *argv[])
         mesh,
         dimensionedScalar("weight", dimLength, 0.0)
     );
-    forAll(collectedParticles, i)
+    forAll(spreadParticles, i)
     {
-        const label celli = collectedCells[i];
-        vsf[celli] += collectedWeights[i];
+        const label celli = spreadCells[i];
+        vsf[celli] += spreadWeights[i];
     }
     vsf.correctBoundaryConditions();
 
