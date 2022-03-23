@@ -33,6 +33,8 @@ Usage
 #include "Time.H"
 #include "triSurfaceMesh.H"
 #include "indexedOctree.H"
+#include "sigFpe.H"
+#include "OBJstream.H"
 //#include "treeBoundBox.H"
 //#include "PackedBoolList.H"
 //#include "unitConversion.H"
@@ -408,6 +410,19 @@ int main(int argc, char *argv[])
     int maxPrims = paramSet.FindOneInt("maxprims", 1);
     int maxDepth = paramSet.FindOneInt("maxdepth", -1);
 
+    // Create _GeometricPrimitive_(s) for animated shape
+    std::shared_ptr<pbrt::Material> mtl;// = graphicsState.GetMaterialForShape(params);
+    paramSet.ReportUnused();
+    //MediumInterface mi = graphicsState.CreateMediumInterface();
+    prims.reserve(shapes.size());
+    for (auto s : shapes)
+    {
+        prims.push_back
+        (
+            std::make_shared<pbrt::GeometricPrimitive>(s, mtl, nullptr, nullptr)
+        );
+    }
+
     std::shared_ptr<pbrt::Primitive> accel
     (
         pbrt::CreateKdTreeAccelerator
@@ -416,10 +431,29 @@ int main(int argc, char *argv[])
             paramSet
         )
     );
+    //std::shared_ptr<pbrt::Primitive> accel
+    //(
+    //    pbrt::CreateKdTreeAccelerator
+    //    (
+    //        std::move(shapes),
+    //        paramSet
+    //    )
+    //);
 
-    const pbrt::Point3f o(0.0, 0.0, 0.0);
+    const pbrt::Point3f o(0.2, 0.1, -0.1);
     const pbrt::Vector3f d(1.0, 1.0, 1.0);
     pbrt::Ray ray(o, d);
+
+    OBJstream os(runTime.path()/"rays.obj");
+
+    os.write
+    (
+        linePointRef
+        (
+            point(o.x, o.y, o.z),
+            point(o.x+d.x, o.y+d.y, o.z+d.z)
+        )
+    );
 
     //pbrt::Float tHit;
     pbrt::SurfaceInteraction isect;
@@ -434,6 +468,14 @@ int main(int argc, char *argv[])
     DebugVar(isect.n.x);
     DebugVar(isect.n.y);
     DebugVar(isect.n.z);
+    DebugVar(isect.wo.x);
+    DebugVar(isect.wo.y);
+    DebugVar(isect.wo.z);
+
+    {
+        OBJstream os(runTime.path()/"hits.obj");
+        os.write(point(isect.p.x, isect.p.y, isect.p.z));
+    }
 
     Info<< "\nEnd\n" << endl;
 

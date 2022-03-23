@@ -8,8 +8,8 @@ EXTBUILD = $(PBRTBUILD)/src/ext
 GLOGBUILD = $(EXTBUILD)/glog
 
 EXE_INC = \
-    -Wno-old-style-cast \
     /* -g -DFULLDEBUG -O0 */ \
+    -Wno-old-style-cast \
     -I$(PBRTSRC)/core \
     -I$(PBRTSRC) \
     -I$(EXTSRC) \
