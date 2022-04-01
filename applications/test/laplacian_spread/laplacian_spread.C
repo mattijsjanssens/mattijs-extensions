@@ -58,12 +58,13 @@ autoPtr<Function1<scalar>> generateShapeFunction()
 }
 
 
-autoPtr<mapDistribute> spread
+autoPtr<mapDistribute> pointVolInterpolation
 (
     const polyMesh& mesh,
     limitedDistanceData<label>::weightFunction& fun,
 
-    const List<const passiveParticle*>& particleList,
+    const pointField& position,
+    const labelList& cellID,
     const scalarField& radius,
 
     DynamicList<label>& collectedParticles,
@@ -71,30 +72,26 @@ autoPtr<mapDistribute> spread
     DynamicList<scalar>& collectedWeights
 )
 {
-    const globalIndex globalParticles(particleList.size());
+    const globalIndex globalParticles(position.size());
 
     List<limitedDistanceData<label>> cellData(mesh.nCells());
     List<limitedDistanceData<label>> faceData(mesh.nFaces());
 
     // Note: initial size how?
-    DynamicList<label> seedFaces(particleList.size());
-    DynamicList<limitedDistanceData<label>> seedInfo(particleList.size());
+    DynamicList<label> seedFaces(position.size());
+    DynamicList<limitedDistanceData<label>> seedInfo(position.size());
 
-    forAll(particleList, particlei)
+    forAll(position, particlei)
     {
-        const auto& p = *particleList[particlei];
-        const label celli = p.cell();
-        const vector position = p.position();
-
         const scalar overlap = fun.weight
         (
             mesh,
-            celli,
-            position,
+            cellID[particlei],
+            position[particlei],
             radius[particlei]
         );
 
-        const point& cc = mesh.cellCentres()[celli];
+        const point& cc = mesh.cellCentres()[cellID[particlei]];
 
         Pout<< "For particle:" << particlei
             << " at:" << position
@@ -107,18 +104,18 @@ autoPtr<mapDistribute> spread
         (
             scalarList(1, overlap),
             scalarList(1, radius[particlei]),
-            pointList(1, position),
+            pointList(1, position[particlei]),
             labelList(1, globalParticles.toGlobal(particlei))
         );
 
-        const cell& cFaces = mesh.cells()[celli];
+        const cell& cFaces = mesh.cells()[cellID[particlei]];
         for (const label facei : cFaces)
         {
             const bool changed = faceData[facei].updateFace
             (
                 mesh,
                 facei,
-                celli,
+                cellID[particlei],
                 pInfo,
                 SMALL,
                 fun
@@ -252,22 +249,24 @@ int main(int argc, char *argv[])
     }
 
 
-    // Generate indices
-    // ~~~~~~~~~~~~~~~~
+    // Extract particle data into lists
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    List<const passiveParticle*> particleList(particles.size());
     // (radius data should really be on particle)
     scalarField radius(particles.size());
+    pointField position(particles.size());
+    labelList cellID(particles.size());
     {
         label particlei = 0;
         for (const auto& p : particles)
         {
-            particleList[particlei] = &p;
+            position[particlei] = p.position();
+            cellID[particlei] = p.cell();
             radius[particlei] = 0.15*(particlei+1);
             particlei++;
         }
     }
-    const globalIndex globalParticles(particleList.size());
+    const globalIndex globalParticles(particles.size());
 
 
     // Generate weight function
@@ -283,12 +282,13 @@ int main(int argc, char *argv[])
     DynamicList<scalar> spreadWeights;
     autoPtr<mapDistribute> mapPtr
     (
-        spread
+        pointVolInterpolation
         (
             mesh,
             fun,
 
-            particleList,
+            position,
+            cellID,
             radius,
 
             spreadParticles,
@@ -298,13 +298,23 @@ int main(int argc, char *argv[])
     );
     const auto& map = mapPtr();
 
+
+    if (true)
+    {
+        // Make sure all weights add up to 1. Build into pointVolInterpolation
+        // routine?
+        normaliseWeights
+        (
+            map,
+            particles.size(),
+            spreadParticles,
+            spreadWeights
+        );
+    }
+
+
     // Test: pull data from particles to spread
     {
-        pointField position(particleList.size());
-        forAll(particleList, particlei)
-        {
-            position[particlei] = particleList[particlei]->position();
-        }
         map.distribute(position);
         forAll(spreadParticles, i)
         {
@@ -317,18 +327,6 @@ int main(int argc, char *argv[])
         }
     }
 
-
-    if (true)
-    {
-        // Make sure all weights add up to 1. Wrong: should be sphere volume!
-        normaliseWeights
-        (
-            map,
-            particles.size(),
-            spreadParticles,
-            spreadWeights
-        );
-    }
 
 
     // Extract as volScalarField
