@@ -37,6 +37,7 @@ Description
 #include "IFstream.H"
 #include "dictionary.H"
 #include "stringOps.H"
+#include "Function1.H"
 
 using namespace Foam;
 
@@ -102,12 +103,15 @@ int main(int argc, char *argv[])
 //        Info<< "variable expansion:" << s << endl;
 //    }
 
-
     // 1. Determine syntax for unparsed variable name
     //dictionary dict;
     //dict.add(new primitiveEntry("name", "\\$WM_MPLIB"));
     dictionary dict(IFstream("testDict")());
 DebugVar(dict);
+
+    //- not possible - needs Field<word> possible
+    //auto fnPtr = Function1<word>::New("bla", dict);
+
 
     // 2. One-step replacement of variable name
     expand(dict, dict);

@@ -28,9 +28,20 @@ Description
     Preconditioned pipelined conjugate residuals solver for symmetric
     lduMatrices using a run-time selectable preconditioner.
 
-See
-    "Hiding global synchronization latency in the preconditioned Conjugate
-     Gradient algorithm", P. Ghysels, W. Vanroose
+    Reference:
+    \verbatim
+        P. Ghysels, W. Vanroose.
+        "Hiding global synchronization latency in the
+         preconditioned Conjugate Gradient algorithm"
+    \endverbatim
+    and implementation details from
+    \verbatim
+        Paul Eller, William Gropp
+        "Scalable Non-blocking Preconditioned Conjugate Gradient Methods"
+    \endverbatim
+
+See also
+    PPCG
 
 SourceFiles
     PPCR.C

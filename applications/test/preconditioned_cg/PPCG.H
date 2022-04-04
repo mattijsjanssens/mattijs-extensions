@@ -34,6 +34,11 @@ Description
         "Hiding global synchronization latency in the
          preconditioned Conjugate Gradient algorithm"
     \endverbatim
+    and implementation details from
+    \verbatim
+        Paul Eller, William Gropp
+        "Scalable Non-blocking Preconditioned Conjugate Gradient Methods"
+    \endverbatim
 
 SourceFiles
     PPCG.C
