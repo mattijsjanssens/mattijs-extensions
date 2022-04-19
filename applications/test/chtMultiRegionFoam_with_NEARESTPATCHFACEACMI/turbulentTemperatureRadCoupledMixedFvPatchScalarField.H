@@ -127,6 +127,10 @@ class turbulentTemperatureRadCoupledMixedFvPatchScalarField
         //- Thermal inertia term
         Switch thermalInertia_;
 
+        //- Condition to supply the no-overlap value (for uncovered faces;
+        //  see cyclicACMI/scalarFixedValue)
+        tmp<fvPatchField<scalar>> nonOverlapPatchFieldPtr_;
+
 
      // Private Functions
 
@@ -227,6 +231,10 @@ public:
 
 
     // Member Functions
+
+            //- Return reference to non-overlapping patchField
+            const fvPatchField<scalar>& nonOverlapPatchField() const;
+
 
         // Mapping functions
 

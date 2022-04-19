@@ -67,7 +67,8 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     TnbrName_("undefined-Tnbr"),
     qrNbrName_("undefined-qrNbr"),
     qrName_("undefined-qr"),
-    thermalInertia_(false)
+    thermalInertia_(false),
+    nonOverlapPatchFieldPtr_(nullptr)
 {
     this->refValue() = 0.0;
     this->refGrad() = 0.0;
@@ -100,7 +101,17 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     thicknessLayer_(psf.thicknessLayer_.clone(p.patch())),
     kappaLayers_(psf.kappaLayers_),
     kappaLayer_(psf.kappaLayer_.clone(p.patch())),
-    thermalInertia_(psf.thermalInertia_)
+    thermalInertia_(psf.thermalInertia_),
+    nonOverlapPatchFieldPtr_
+    (
+        fvPatchField<scalar>::New
+        (
+            psf.nonOverlapPatchField(),
+            p,
+            iF,
+            mapper
+        )
+    )
 {}
 
 
@@ -123,7 +134,16 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     TnbrName_(dict.getOrDefault<word>("Tnbr", "T")),
     qrNbrName_(dict.getOrDefault<word>("qrNbr", "none")),
     qrName_(dict.getOrDefault<word>("qr", "none")),
-    thermalInertia_(dict.getOrDefault<Switch>("thermalInertia", false))
+    thermalInertia_(dict.getOrDefault<Switch>("thermalInertia", false)),
+    nonOverlapPatchFieldPtr_
+    (
+        fvPatchField<scalar>::New
+        (
+            p,
+            iF,
+            dict.subDict("nonOverlapPatch")
+        )
+    )
 {
     if (!isA<mappedPatchBase>(this->patch().patch()))
     {
@@ -197,6 +217,18 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
             dict
         );
     }
+    if
+    (
+       !isA<fixedValueFvPatchField<scalar>>(nonOverlapPatchFieldPtr_())
+    && !isA<mixedFvPatchField<scalar>>(nonOverlapPatchFieldPtr_())
+    )
+    {
+        FatalIOErrorInFunction(dict)
+            << "nonOverlapPatchField of type "
+            << nonOverlapPatchFieldPtr_().type()
+            << " is not fixed or mixed value"
+            << exit(FatalIOError);
+    }
 
     fvPatchScalarField::operator=(scalarField("value", dict, p.size()));
 
@@ -253,7 +285,8 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     thicknessLayer_(psf.thicknessLayer_.clone(patch().patch())),
     kappaLayers_(psf.kappaLayers_),
     kappaLayer_(psf.kappaLayer_.clone(patch().patch())),
-    thermalInertia_(psf.thermalInertia_)
+    thermalInertia_(psf.thermalInertia_),
+    nonOverlapPatchFieldPtr_(psf.nonOverlapPatchField().clone())
 {}
 
 
@@ -278,11 +311,20 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     thicknessLayer_(psf.thicknessLayer_.clone(patch().patch())),
     kappaLayers_(psf.kappaLayers_),
     kappaLayer_(psf.kappaLayer_.clone(patch().patch())),
-    thermalInertia_(psf.thermalInertia_)
+    thermalInertia_(psf.thermalInertia_),
+    nonOverlapPatchFieldPtr_(psf.nonOverlapPatchField().clone())
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+const fvPatchField<scalar>&
+turbulentTemperatureRadCoupledMixedFvPatchScalarField::nonOverlapPatchField()
+const
+{
+    return nonOverlapPatchFieldPtr_();
+}
+
 
 void turbulentTemperatureRadCoupledMixedFvPatchScalarField::autoMap
 (
@@ -297,6 +339,7 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::autoMap
         thicknessLayer_().autoMap(mapper);
         kappaLayer_().autoMap(mapper);
     }
+    nonOverlapPatchFieldPtr_->autoMap(mapper);
 }
 
 
@@ -321,6 +364,7 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::rmap
         thicknessLayer_().rmap(tiptf.thicknessLayer_(), addr);
         kappaLayer_().rmap(tiptf.kappaLayer_(), addr);
     }
+    nonOverlapPatchFieldPtr_->rmap(tiptf.nonOverlapPatchField(), addr);
 }
 
 
@@ -371,6 +415,11 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::updateCoeffs()
     if (updated())
     {
         return;
+    }
+
+    if (nonOverlapPatchFieldPtr_)
+    {
+        nonOverlapPatchFieldPtr_->evaluate();
     }
 
     const polyMesh& mesh = patch().boundaryMesh().mesh();
@@ -541,6 +590,7 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::updateCoeffs()
         refValue() = TcNbr;
         refGrad() = (qr + qrNbr)/kappaTp;
     }
+
 
     source() = Zero;
 
@@ -747,6 +797,10 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::write
         thicknessLayers_.writeEntry("thicknessLayers", os);
         kappaLayers_.writeEntry("kappaLayers", os);
     }
+
+    os.beginBlock("nonOverlapPatch");
+    nonOverlapPatchFieldPtr_->write(os);
+    os.endBlock();
 
     temperatureCoupledBase::write(os);
     mappedPatchFieldBase<scalar>::write(os);

@@ -536,6 +536,15 @@ void Foam::mappedPatchFieldBase<Type>::distribute
     Field<T>& fld
 ) const
 {
+    if (mapper_.mode() == mappedPatchBase::NEARESTPATCHFACEACMI)
+    {
+        Pout<< "** mappedPatchFieldBase<Type>::distribute" << endl;
+        const AMIPatchToPatchInterpolation& AMI = mapper_.AMI();
+        DebugVar(AMI.srcWeightsSum());
+        DebugVar(AMI.tgtWeightsSum());
+        error::printStack(Pout);
+    }
+
     if (mapper_.sampleDatabase())
     {
         const label myComm = mapper_.getCommunicator();  // Get or create
@@ -740,6 +749,14 @@ Foam::mappedPatchFieldBase<Type>::mappedField
                 newValues = patchField_;
             }
             distribute(fieldName_, newValues);
+
+            if (mapper_.mode() == mappedPatchBase::NEARESTPATCHFACEACMI)
+            {
+                Pout<< "** mappedPatchFieldBase<Type>::mappedField" << endl;
+                const AMIPatchToPatchInterpolation& AMI = mapper_.AMI();
+                DebugVar(AMI.srcWeightsSum());
+                DebugVar(AMI.tgtWeightsSum());
+            }
 
             break;
         }
