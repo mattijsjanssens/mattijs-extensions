@@ -123,7 +123,7 @@ void Foam::staticDisplacementMotionSolver::solve()
 
     // Force onto static mesh. Note: cannot use GeometricField== since checks
     // for same mesh.
-    baseSolver.pointDisplacement().ref() == pointDisplacement();
+    baseSolver.pointDisplacement().ref().field() = pointDisplacement();
     baseSolver.pointDisplacement().boundaryFieldRef() ==
         pointDisplacement().boundaryField();
 
@@ -131,7 +131,7 @@ void Foam::staticDisplacementMotionSolver::solve()
     solver_().solve();
 
     // Copy pointDisplacement back
-    pointDisplacement().ref() == baseSolver.pointDisplacement();
+    pointDisplacement().ref().field() = baseSolver.pointDisplacement();
     pointDisplacement().boundaryFieldRef() ==
         baseSolver.pointDisplacement().boundaryField();
 }

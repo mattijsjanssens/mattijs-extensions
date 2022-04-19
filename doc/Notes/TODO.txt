@@ -1,3 +1,5 @@
+- low-weightCorrection replace with stencil
+- time interpolation of multi-world
 - edges in topoSet
 - parallel writing / collating
 - automatic decompose
@@ -10,3 +12,4 @@
 - cyclic on internal face (cyclicZone?)
 - ring version of shared pointer
 - average fvOption
+- gaussGrad correctBoundaryConditions - move to fvPatchField?
