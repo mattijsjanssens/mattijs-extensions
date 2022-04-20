@@ -104,13 +104,15 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     thermalInertia_(psf.thermalInertia_),
     nonOverlapPatchFieldPtr_
     (
-        fvPatchField<scalar>::New
+        psf.nonOverlapPatchFieldPtr_.valid()
+      ? fvPatchField<scalar>::New
         (
             psf.nonOverlapPatchField(),
             p,
             iF,
             mapper
         )
+      : nullptr
     )
 {}
 
@@ -137,12 +139,14 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     thermalInertia_(dict.getOrDefault<Switch>("thermalInertia", false)),
     nonOverlapPatchFieldPtr_
     (
-        fvPatchField<scalar>::New
+        (mapper().mode() == mappedPatchBase::NEARESTPATCHFACEACMI)
+      ? fvPatchField<scalar>::New
         (
             p,
             iF,
             dict.subDict("nonOverlapPatch")
         )
+      : nullptr
     )
 {
     if (!isA<mappedPatchBase>(this->patch().patch()))
@@ -219,8 +223,11 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     }
     if
     (
-       !isA<fixedValueFvPatchField<scalar>>(nonOverlapPatchFieldPtr_())
-    && !isA<mixedFvPatchField<scalar>>(nonOverlapPatchFieldPtr_())
+        nonOverlapPatchFieldPtr_
+     && (
+           !isA<fixedValueFvPatchField<scalar>>(nonOverlapPatchFieldPtr_())
+        && !isA<mixedFvPatchField<scalar>>(nonOverlapPatchFieldPtr_())
+        )
     )
     {
         FatalIOErrorInFunction(dict)
@@ -286,7 +293,12 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     kappaLayers_(psf.kappaLayers_),
     kappaLayer_(psf.kappaLayer_.clone(patch().patch())),
     thermalInertia_(psf.thermalInertia_),
-    nonOverlapPatchFieldPtr_(psf.nonOverlapPatchField().clone())
+    nonOverlapPatchFieldPtr_
+    (
+        psf.nonOverlapPatchFieldPtr_
+      ? psf.nonOverlapPatchField().clone()
+      : nullptr
+    )
 {}
 
 
@@ -312,7 +324,12 @@ turbulentTemperatureRadCoupledMixedFvPatchScalarField
     kappaLayers_(psf.kappaLayers_),
     kappaLayer_(psf.kappaLayer_.clone(patch().patch())),
     thermalInertia_(psf.thermalInertia_),
-    nonOverlapPatchFieldPtr_(psf.nonOverlapPatchField().clone())
+    nonOverlapPatchFieldPtr_
+    (
+        psf.nonOverlapPatchFieldPtr_
+      ? psf.nonOverlapPatchField().clone()
+      : nullptr
+    )
 {}
 
 
@@ -339,7 +356,10 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::autoMap
         thicknessLayer_().autoMap(mapper);
         kappaLayer_().autoMap(mapper);
     }
-    nonOverlapPatchFieldPtr_->autoMap(mapper);
+    if (nonOverlapPatchFieldPtr_)
+    {
+        nonOverlapPatchFieldPtr_->autoMap(mapper);
+    }
 }
 
 
@@ -364,7 +384,10 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::rmap
         thicknessLayer_().rmap(tiptf.thicknessLayer_(), addr);
         kappaLayer_().rmap(tiptf.kappaLayer_(), addr);
     }
-    nonOverlapPatchFieldPtr_->rmap(tiptf.nonOverlapPatchField(), addr);
+    if (nonOverlapPatchFieldPtr_)
+    {
+        nonOverlapPatchFieldPtr_->rmap(tiptf.nonOverlapPatchField(), addr);
+    }
 }
 
 
@@ -798,9 +821,12 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::write
         kappaLayers_.writeEntry("kappaLayers", os);
     }
 
-    os.beginBlock("nonOverlapPatch");
-    nonOverlapPatchFieldPtr_->write(os);
-    os.endBlock();
+    if (nonOverlapPatchFieldPtr_)
+    {
+        os.beginBlock("nonOverlapPatch");
+        nonOverlapPatchFieldPtr_->write(os);
+        os.endBlock();
+    }
 
     temperatureCoupledBase::write(os);
     mappedPatchFieldBase<scalar>::write(os);

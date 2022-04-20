@@ -238,6 +238,11 @@ public:
 
     // Member Functions
 
+        const mappedPatchBase& mapper() const
+        {
+            return mapper_;
+        }
+
         //- Field to sample. Either on my or nbr mesh
         template<class T>
         const GeometricField<T, fvPatchField, volMesh>& sampleField
