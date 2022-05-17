@@ -628,6 +628,51 @@ void turbulentTemperatureRadCoupledMixedFvPatchScalarField::updateCoeffs()
             );
     }
 
+
+    if (mapper().mode() == mappedPatchBase::NEARESTPATCHFACEACMI)
+    {
+        // Mix with non-overlap
+        const AMIPatchToPatchInterpolation& AMI = mapper_.AMI();
+        const auto& sum = AMI.srcWeightsSum();
+        const scalarField noSum(1.0-sum);
+        const auto& no = nonOverlapPatchField();
+
+        Pout<< "Mixing with " << no.type() << endl;
+
+        const auto* mixedPtr = isA<mixedFvPatchField<scalar>>(no);
+        if (mixedPtr)
+        {
+            const auto& mixed = *mixedPtr;
+
+            Pout<< "Mixing with mixed " << no.type() << endl;
+
+            valueFraction() = sum*valueFraction()+ noSum*mixed.valueFraction();
+            refValue() = sum*refValue()+ noSum*mixed.refValue();
+            refGrad() = sum*refGrad()+ noSum*mixed.refGrad();
+            source() = sum*source()+ noSum*mixed.source();
+        }
+        else
+        {
+            // Assume fixedValue:
+            //  - valueFraction = 1, refValue = value, grad = N/A so pick
+            //    zeroGrad, source = 0
+
+            Pout<< "Mixing with fixed " << no.type() << endl;
+
+            // Non-overlap: pure fixed value
+            valueFraction() = sum*valueFraction()+ noSum;
+            DebugVar(valueFraction());
+            // Non-overlap: fixed value
+            refValue() = sum*refValue()+ noSum*no;
+            DebugVar(refValue());
+            // Non-overlap: zero gradient
+            refGrad() = sum*refGrad();
+            DebugVar(refGrad());
+            // Non-overlap: zero source?
+            source() = sum*source();
+        }
+    }
+
     mixedFvPatchScalarField::updateCoeffs();
 
     if (debug)

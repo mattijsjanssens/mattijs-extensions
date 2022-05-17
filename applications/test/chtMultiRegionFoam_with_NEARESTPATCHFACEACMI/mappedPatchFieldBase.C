@@ -540,9 +540,11 @@ void Foam::mappedPatchFieldBase<Type>::distribute
     {
         Pout<< "** mappedPatchFieldBase<Type>::distribute" << endl;
         const AMIPatchToPatchInterpolation& AMI = mapper_.AMI();
+        DebugVar(AMI.srcWeights());
         DebugVar(AMI.srcWeightsSum());
+        DebugVar(AMI.tgtWeights());
         DebugVar(AMI.tgtWeightsSum());
-        error::printStack(Pout);
+        //error::printStack(Pout);
     }
 
     if (mapper_.sampleDatabase())

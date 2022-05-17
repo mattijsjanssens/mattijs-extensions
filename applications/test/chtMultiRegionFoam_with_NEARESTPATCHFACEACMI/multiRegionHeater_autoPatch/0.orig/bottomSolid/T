@@ -51,6 +51,11 @@ boundaryField
         value           uniform 300;
         Tnbr            T;
         kappaMethod     solidThermo;
+        nonOverlapPatch
+        {
+            type            uniformFixedValue;
+            uniformValue    666;
+        }
     }
     group_fluid
     {
@@ -58,6 +63,11 @@ boundaryField
         value           uniform 300;
         Tnbr            T;
         kappaMethod     solidThermo;
+        nonOverlapPatch
+        {
+            type            uniformFixedValue;
+            uniformValue    666;
+        }
     }
 }
 
