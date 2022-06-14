@@ -1,0 +1,13 @@
+mappedPatchBase.C
+mappedPolyPatch.C
+mappedWallPolyPatch.C
+/* mappedVariableThicknessWallPolyPatch.C */
+
+mappedFvPatch.C
+mappedWallFvPatch.C
+
+mappedPointPatch.C
+
+turbulentTemperatureRadCoupledMixedFvPatchScalarField.C
+
+LIB = $(FOAM_USER_LIBBIN)/libmappedPatches_with_ACMI
