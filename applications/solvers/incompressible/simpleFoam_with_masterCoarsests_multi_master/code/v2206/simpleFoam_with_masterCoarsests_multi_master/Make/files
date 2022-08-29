@@ -1,0 +1,4 @@
+simpleFoam.C
+masterCoarsestGAMGProcAgglomeration.C
+
+EXE = $(FOAM_USER_APPBIN)/simpleFoam_with_masterCoarsests_multi_master
