@@ -154,6 +154,12 @@ bool Foam::masterCoarsestGAMGProcAgglomeration::agglomerate()
                         agglomProcIDs,
                         comms_.last()
                     );
+
+
+
+                    // Restart a bit of agglomeration
+
+
                 }
             }
         }
