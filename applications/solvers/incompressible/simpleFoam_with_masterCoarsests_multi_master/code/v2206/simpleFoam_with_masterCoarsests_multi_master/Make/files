@@ -1,3 +1,7 @@
+GAMGAgglomeration.C
+pairGAMGAgglomeration.C
+pairGAMGAgglomerate.C
+
 simpleFoam.C
 masterCoarsestGAMGProcAgglomeration.C
 masterCoarsestGAMGProcAgglomeration2.C

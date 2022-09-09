@@ -69,6 +69,7 @@ namespace Foam
 
 class GAMGAgglomeration;
 class lduPrimitiveMesh;
+class lduAddressing;
 
 /*---------------------------------------------------------------------------*\
               Class masterCoarsestGAMGProcAgglomeration2 Declaration
@@ -94,6 +95,13 @@ class masterCoarsestGAMGProcAgglomeration2
             const label singleCellMeshComm,
             const lduMesh& mesh,
             scalarField& faceWeights
+        ) const;
+
+        tmp<labelField> agglomerate
+        (
+            label& nCoarseCells,
+            const lduAddressing& fineMatrixAddressing,
+            const scalarField& faceWeights
         ) const;
 
         //- Construct processor agglomeration: for every processor the

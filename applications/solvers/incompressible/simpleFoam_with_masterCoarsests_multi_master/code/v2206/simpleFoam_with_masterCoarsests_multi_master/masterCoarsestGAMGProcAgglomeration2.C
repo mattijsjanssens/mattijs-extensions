@@ -142,6 +142,28 @@ Foam::masterCoarsestGAMGProcAgglomeration2::singleCellMesh
 
 
 Foam::tmp<Foam::labelField>
+Foam::masterCoarsestGAMGProcAgglomeration2::agglomerate
+(
+    label& nCoarseCells,
+    const lduAddressing& fineMatrixAddressing,
+    const scalarField& faceWeights
+) const
+{
+    // Called on master processor only:
+    // - agglomerate (multiple steps?)
+    // - return number of coarse cells
+    // - return map from input to output cell
+
+    return pairGAMGAgglomeration::agglomerate
+    (
+        nCoarseCells,
+        fineMatrixAddressing,
+        faceWeights
+    );
+}
+
+
+Foam::tmp<Foam::labelField>
 Foam::masterCoarsestGAMGProcAgglomeration2::processorAgglomeration
 (
     const lduMesh& mesh
@@ -153,6 +175,7 @@ Foam::masterCoarsestGAMGProcAgglomeration2::processorAgglomeration
         labelList(1, Zero)   // only processor 0
     );
 
+    // Return processor-connectivity as a mesh (on master of communicator)
     scalarField faceWeights;
     autoPtr<lduPrimitiveMesh> singleCellMeshPtr
     (
@@ -170,13 +193,14 @@ Foam::masterCoarsestGAMGProcAgglomeration2::processorAgglomeration
     if (singleCellMeshPtr)
     {
         // On master call the agglomerator
-        const lduPrimitiveMesh& singleCellMesh = *singleCellMeshPtr;
+        //const lduPrimitiveMesh& singleCellMesh = *singleCellMeshPtr;
 
         label nCoarseProcs;
-        fineToCoarse = pairGAMGAgglomeration::agglomerate
+        //fineToCoarse = pairGAMGAgglomeration::agglomerate
+        fineToCoarse = masterCoarsestGAMGProcAgglomeration2::agglomerate
         (
             nCoarseProcs,
-            singleCellMesh,
+            singleCellMeshPtr(),
             faceWeights
         );
 
@@ -200,6 +224,9 @@ Foam::masterCoarsestGAMGProcAgglomeration2::processorAgglomeration
     return tfineToCoarse;
 }
 
+
+//XXXXXX
+//XXXXXX
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -257,6 +284,14 @@ bool Foam::masterCoarsestGAMGProcAgglomeration2::agglomerate()
 
             if (nProcs > 1)
             {
+//                //- Construct given mesh and controls
+//                pairGAMGAgglomeration agglomerator
+//                (
+//                    levelMesh,
+//                    dictionary()
+//                );
+
+
                 // Processor restriction map: per processor the coarse processor
                 labelList procAgglomMap(nProcs);
 
@@ -265,15 +300,15 @@ DebugVar(nProcessorsPerMaster_);
 
                 if (nProcessorsPerMaster_ > 1)
                 {
-                    //forAll(procAgglomMap, fineProci)
-                    //{
-                    //    procAgglomMap[fineProci] =
-                    //    (
-                    //        fineProci
-                    //      / nProcessorsPerMaster_
-                    //    );
-                    //}
-                    procAgglomMap = processorAgglomeration(levelMesh);
+                    forAll(procAgglomMap, fineProci)
+                    {
+                        procAgglomMap[fineProci] =
+                        (
+                            fineProci
+                          / nProcessorsPerMaster_
+                        );
+                    }
+                    //procAgglomMap = processorAgglomeration(levelMesh);
                 }
                 else
                 {
@@ -318,11 +353,36 @@ DebugVar(procAgglomMap);
                         comms_.last()
                     );
 
+                    for
+                    (
+                        label levelI = 0;
+                        levelI <= agglom_.size();
+                        levelI++
+                    )
+                    {
+                        if (agglom_.hasMeshLevel(levelI))
+                        {
+                            const lduMesh& fineMesh = agglom_.meshLevel(levelI);
+                            const auto& addr = fineMesh.lduAddr();
+                            Pout<< "level:" << levelI
+                                << " size:" << addr.size() << endl;
 
 
-                    // Restart a bit of agglomeration
-
-
+                            //const scalarField weights
+                            //(
+                            //    addr.lowerAddr().size(),
+                            //    1.0
+                            //);
+                            //Pout<< "weights:" << weights.size() << endl;
+                            //
+                            //dynamic_cast<pairGAMGAgglomeration&>(agglom_)
+                            //.agglomerate(levelI, weights);
+                            //
+                            //Pout<< "**DONE weights:" << weights.size()
+                            //    << endl;
+                            //break;
+                        }
+                    }
                 }
             }
         }
