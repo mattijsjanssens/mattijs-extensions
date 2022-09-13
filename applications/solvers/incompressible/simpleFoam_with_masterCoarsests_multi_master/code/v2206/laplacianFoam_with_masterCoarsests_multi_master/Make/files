@@ -1,0 +1,10 @@
+GAMGAgglomeration.C
+pairGAMGAgglomeration.C
+pairGAMGAgglomerate.C
+
+laplacianFoam.C
+
+masterCoarsestGAMGProcAgglomeration.C
+masterCoarsestGAMGProcAgglomeration2.C
+
+EXE = $(FOAM_USER_APPBIN)/laplacianFoam_with_masterCoarsests_multi_master

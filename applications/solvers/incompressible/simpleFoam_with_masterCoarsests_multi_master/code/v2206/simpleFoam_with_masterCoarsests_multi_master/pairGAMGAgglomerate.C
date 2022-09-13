@@ -45,9 +45,21 @@ void Foam::pairGAMGAgglomeration::agglomerate
     label nPairLevels = 0;
     label nCreatedLevels = startLevel;
 
+
+DebugVar(nCreatedLevels);
+DebugVar(maxLevels_);
+
     while (nCreatedLevels < maxLevels_ - 1)
     {
         label nCoarseCells = -1;
+
+
+        if (!hasMeshLevel(nCreatedLevels))
+        {
+            FatalErrorInFunction<< "nCreatedLevels:" << nCreatedLevels
+                << exit(FatalError);
+        }
+        DebugVar(faceWeights);
 
         tmp<labelField> finalAgglomPtr = agglomerate
         (
@@ -98,8 +110,11 @@ void Foam::pairGAMGAgglomeration::agglomerate
         nPairLevels++;
     }
 
-    // Shrink the storage of the levels to those created
-    compactLevels(nCreatedLevels, false);
+
+    DebugVar("** bvefore compating");
+//    // Shrink the storage of the levels to those created
+//    compactLevels(nCreatedLevels, false);
+    DebugVar("** after compating");
 }
 
 

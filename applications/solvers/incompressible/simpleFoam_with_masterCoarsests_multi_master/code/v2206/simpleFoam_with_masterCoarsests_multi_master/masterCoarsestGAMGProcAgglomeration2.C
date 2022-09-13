@@ -316,7 +316,7 @@ DebugVar(nProcessorsPerMaster_);
                 }
 
 DebugVar(procAgglomMap);
-
+Pout<< "procAgglomMap:" << flatOutput(procAgglomMap) << endl;
 
                 // Master processor
                 labelList masterProcs;
@@ -330,6 +330,9 @@ DebugVar(procAgglomMap);
                     masterProcs,
                     agglomProcIDs
                 );
+
+Pout<< "masterProcs:" << flatOutput(masterProcs) << endl;
+Pout<< "agglomProcIDs:" << flatOutput(agglomProcIDs) << endl;
 
                 // Allocate a communicator for the processor-agglomerated matrix
                 comms_.append
@@ -368,19 +371,19 @@ DebugVar(procAgglomMap);
                                 << " size:" << addr.size() << endl;
 
 
-                            //const scalarField weights
-                            //(
-                            //    addr.lowerAddr().size(),
-                            //    1.0
-                            //);
-                            //Pout<< "weights:" << weights.size() << endl;
-                            //
-                            //dynamic_cast<pairGAMGAgglomeration&>(agglom_)
-                            //.agglomerate(levelI, weights);
-                            //
-                            //Pout<< "**DONE weights:" << weights.size()
-                            //    << endl;
-                            //break;
+                            const scalarField weights
+                            (
+                                addr.lowerAddr().size(),
+                                1.0
+                            );
+                            Pout<< "weights:" << weights.size() << endl;
+                            
+                            dynamic_cast<pairGAMGAgglomeration&>(agglom_)
+                            .agglomerate(levelI, weights);
+                            
+                            Pout<< "**DONE weights:" << weights.size()
+                                << endl;
+                            break;
                         }
                     }
                 }

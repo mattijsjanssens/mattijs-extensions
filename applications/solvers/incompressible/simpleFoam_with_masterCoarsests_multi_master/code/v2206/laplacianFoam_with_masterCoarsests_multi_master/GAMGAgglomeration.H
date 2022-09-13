@@ -1,0 +1,1 @@
+../simpleFoam_with_masterCoarsests_multi_master/GAMGAgglomeration.H
