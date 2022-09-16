@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//libs            ("libaverageConstraint");
+libs            ("libaverageConstraint");
 
 application     simpleFoam;
 
