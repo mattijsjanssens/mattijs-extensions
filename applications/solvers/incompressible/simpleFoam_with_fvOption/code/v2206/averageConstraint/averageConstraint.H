@@ -89,8 +89,7 @@ SourceFiles
 #define averageConstraint_H
 
 #include "cellSetOption.H"
-#include "Enum.H"
-#include "Function1.H"
+#include "pointList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -107,6 +106,33 @@ class averageConstraint
 :
     public fv::cellSetOption
 {
+    // Private Member Functions
+
+        void print(fvMatrix<scalar>& eqn, const label celli) const;
+
+        //- Calculate least-squares weights
+        void stencilWeights
+        (
+            const point& sample,
+            const pointList& donorCcs,
+            scalarList& weights
+        ) const;
+
+        //- Insert averaging interpolation stencil
+        void average
+        (
+            fvMatrix<scalar>& eqn,
+            const label
+        );
+
+        //- Insert least-squares interpolation stencil
+        void interpolate
+        (
+            fvMatrix<scalar>& eqn,
+            const label
+        );
+
+
 public:
 
     //- Runtime type information
@@ -139,9 +165,6 @@ public:
 
         //- Constrain the equation
         virtual void constrain(fvMatrix<scalar>& eqn, const label fieldi);
-
-        void print(fvMatrix<scalar>& eqn, const label celli) const;
-
 
         // IO
 
