@@ -1,3 +1,4 @@
 averageConstraint.C
+blockConstraint.C
 
 LIB = $(FOAM_USER_LIBBIN)/libaverageConstraint
