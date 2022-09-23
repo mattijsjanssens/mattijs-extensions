@@ -16,7 +16,7 @@ FoamFile
 
 libs            ("libaverageConstraint");
 
-application     simpleFoam;
+application     simpleFoam_with_fvOption;
 
 startFrom       startTime;
 
@@ -24,13 +24,13 @@ startTime       0;
 
 stopAt          endTime;  //endTime;
 
-endTime         20;
+endTime         2000;
 
 deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   1;
+writeInterval   100;
 
 purgeWrite      0;
 

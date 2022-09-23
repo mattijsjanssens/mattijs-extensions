@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2206                                 |
+|  \\    /   O peration     | Version:  v2106                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -9,43 +9,23 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       volScalarField;
-    object      T;
+    class       dictionary;
+    object      topoSetDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 0 0 1 0 0 0];
-
-internalField   uniform 1;
-
-boundaryField
-{
-    top
+actions
+(
     {
-        type            zeroGradient;
+        name    c0;
+        type    cellSet;
+        action  new;
+        source  labelToCell;
+        sourceInfo
+        {
+            value (3196);
+        }
     }
-
-    bottom
-    {
-        type            zeroGradient;
-    }
-
-    left
-    {
-        type            fixedValue;
-        value           uniform 1;
-    }
-
-    right
-    {
-        type            fixedValue;
-        value           uniform 0;
-    }
-
-    frontAndBack
-    {
-        type            zeroGradient;
-    }
-}
+);
 
 // ************************************************************************* //

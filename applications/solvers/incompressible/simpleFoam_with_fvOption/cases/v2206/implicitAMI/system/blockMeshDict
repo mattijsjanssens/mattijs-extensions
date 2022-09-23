@@ -14,18 +14,18 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-scale   0.1;
+scale   1;
 
 vertices
 (
     (0 0 0)
-    (0.5 0 0)
-    (0.5 1 0)
+    (1 0 0)
+    (1 1 0)
     (0 1 0)
-    (0 0 0.1)
-    (0.5 0 0.1)
-    (0.5 1 0.1)
-    (0 1 0.1)
+    (0 0 1)
+    (1 0 1)
+    (1 1 1)
+    (0 1 1)
 
 
     (0.5 0 0)
@@ -43,9 +43,6 @@ blocks
 (
     //- Left block
     hex (0 1 2 3 4 5 6 7) left (3 3 3) simpleGrading (1 1 1)
-
-    //- Right block
-    hex (8 9 10 11 12 13 14 15) right (2 2 3) simpleGrading (1 1 1)
 );
 
 edges
@@ -54,36 +51,12 @@ edges
 
 boundary
 (
-    AMI1
-    {
-        type            cyclicAMI;
-        neighbourPatch  AMI2;
-        transform       noOrdering;
-        faces
-        (
-            (2 6 5 1)
-        );
-    }
-
-    AMI2
-    {
-        type            cyclicAMI;
-        neighbourPatch  AMI1;
-        transform       noOrdering;
-        faces
-        (
-            (8 12 15 11)
-        );
-    }
-
     top
     {
         type patch;
         faces
         (
             (3 7 6 2)
-
-            (11 15 14 10)
         );
     }
     bottom
@@ -92,8 +65,6 @@ boundary
         faces
         (
             (1 5 4 0)
-
-            (9 13 12 8)
         );
     }
     left
@@ -111,7 +82,7 @@ boundary
         type patch;
         faces
         (
-            (10 14 13 9)
+            (2 6 5 1)
         );
     }
 
@@ -122,9 +93,6 @@ boundary
         (
             (0 3 2 1)
             (4 5 6 7)
-
-            (8 11 10 9)
-            (12 13 14 15)
         );
     }
 );

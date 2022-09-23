@@ -118,6 +118,14 @@ class averageConstraint
             scalarList& weights
         ) const;
 
+        //- Calculate average weights
+        void averageStencilWeights
+        (
+            const point& sample,
+            const pointList& donorCcs,
+            scalarList& weights
+        ) const;
+
         //- Insert averaging interpolation stencil
         void average
         (

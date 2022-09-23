@@ -371,6 +371,24 @@ void Foam::fv::averageConstraint::stencilWeights
         weights[0] = 1.0;
     }
 }
+
+
+void Foam::fv::averageConstraint::averageStencilWeights
+(
+    const point& sample,
+    const pointList& donorCcs,
+    scalarList& weights
+) const
+{
+    Pout<< "For sample:" << sample
+        << " have ccs:" << donorCcs
+        << endl;
+
+    weights.clear();
+    weights.setSize(donorCcs.size(), 1.0/donorCcs.size());
+}
+
+
 void Foam::fv::averageConstraint::interpolate
 (
     fvMatrix<scalar>& eqn,
@@ -438,22 +456,26 @@ void Foam::fv::averageConstraint::interpolate
                 }
             }
         }
-        scalarList weights;
-        stencilWeights
+        scalarField weights;
+        stencilWeights      //averageStencilWeights
         (
             C[celli],
             donorCcs,
             weights
         );
 
+        // Normalise
         const scalar sumWeights = sum(weights);
+        weights /= sumWeights;
 
-//XXXXXX
+        Pout<< "For cell:" << C[celli] << nl
+            << "    nbrs       :" << flatOutput(donorCcs) << nl
+            << "    LSQ weights:" << flatOutput(weights) << endl;
+
+
+
         // Insert as averaging stencil
-        const scalar oldDiag = eqn.diag()[celli];
-
         eqn.source()[celli] = 0.0;
-        eqn.diag()[celli]*= sumWeights;
 
         // And set psi already to average
         eqn.psi()[celli] = Zero;
@@ -461,7 +483,7 @@ void Foam::fv::averageConstraint::interpolate
         // Set all off diagonal contributions
         forAll(faceIDs, i)
         {
-            const scalar w = oldDiag*weights[i];
+            const scalar w = -eqn.diag()[celli]*weights[i];
             const label facei = faceIDs[i];
 
             if (mesh_.isInternalFace(facei))
@@ -504,19 +526,6 @@ void Foam::fv::averageConstraint::interpolate
                     eqn.psi()[celli] +=
                         w*eqn.psi().boundaryField()[patchi][patchFacei];
                 }
-            }
-        }
-        eqn.psi()[celli] /= sumWeights;
-
-        {
-            print(eqn, celli);
-            const labelList& cCells = mesh_.cellCells()[celli];
-            for (const label celli : cCells)
-            {
-                Pout<< "    Neighbour:" << celli
-                    << " at:" << mesh_.cellCentres()[celli]
-                    << " value:" << eqn.psi()[celli]
-                    << endl;
             }
         }
     }
