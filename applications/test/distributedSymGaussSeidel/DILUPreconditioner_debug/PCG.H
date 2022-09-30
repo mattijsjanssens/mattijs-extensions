@@ -63,6 +63,12 @@ class PCG_debug
             const direction cmpt
         ) const;
 
+        void calcReciprocalD
+        (
+            solveScalarField& rD,
+            const lduMatrix& matrix
+        );
+
         //- Disallow default bitwise copy construct
         PCG_debug(const PCG_debug&);
 

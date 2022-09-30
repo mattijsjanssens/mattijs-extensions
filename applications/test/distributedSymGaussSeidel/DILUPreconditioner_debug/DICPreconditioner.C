@@ -203,6 +203,7 @@ void Foam::DICPreconditioner_debug::calcReciprocalD
         const label startRequest = Pstream::nRequests();
         matrix.initMatrixInterfaces
         (
+            true,       //add?
             coeffs,
             interfaces,
             invRd,
@@ -211,6 +212,7 @@ void Foam::DICPreconditioner_debug::calcReciprocalD
         );
         matrix.updateMatrixInterfaces
         (
+            true,       //add?
             coeffs,
             interfaces,
             invRd,
@@ -278,6 +280,7 @@ void Foam::DICPreconditioner_debug::precondition
         const label startRequest = Pstream::nRequests();
         solver_.matrix().initMatrixInterfaces
         (
+            true,       //add?
             lowerCoeffs_,
             interfaces,
             wA,
@@ -286,6 +289,7 @@ void Foam::DICPreconditioner_debug::precondition
         );
         solver_.matrix().updateMatrixInterfaces
         (
+            true,       //add?
             lowerCoeffs_,
             interfaces,
             wA,
@@ -295,6 +299,7 @@ void Foam::DICPreconditioner_debug::precondition
         );
     }
 
+    // Do contributions from lower to upper cell
     for (label face=0; face<nFaces; face++)
     {
         wAPtr[uPtr[face]] -= rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
@@ -305,6 +310,7 @@ void Foam::DICPreconditioner_debug::precondition
         const label startRequest = Pstream::nRequests();
         solver_.matrix().initMatrixInterfaces
         (
+            true,       //add?
             upperCoeffs_,
             interfaces,
             wA,
@@ -313,6 +319,7 @@ void Foam::DICPreconditioner_debug::precondition
         );
         solver_.matrix().updateMatrixInterfaces
         (
+            true,       //add?
             upperCoeffs_,
             interfaces,
             wA,
@@ -322,6 +329,7 @@ void Foam::DICPreconditioner_debug::precondition
         );
     }
 
+    // Do contributions from upper to lower cell
     for (label face=nFacesM1; face>=0; face--)
     {
         wAPtr[lPtr[face]] -= rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];

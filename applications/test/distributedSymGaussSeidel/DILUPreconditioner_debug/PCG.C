@@ -94,6 +94,45 @@ namespace Foam
 //        }
 //    }
 //}
+void Foam::PCG_debug::calcReciprocalD
+(
+    solveScalarField& rD,
+    const lduMatrix& matrix
+)
+{
+    solveScalar* __restrict__ rDPtr = rD.begin();
+
+    const label* const __restrict__ uPtr = matrix.lduAddr().upperAddr().begin();
+    const label* const __restrict__ lPtr = matrix.lduAddr().lowerAddr().begin();
+    const scalar* const __restrict__ upperPtr = matrix.upper().begin();
+
+    // Calculate the DIC diagonal
+    const label nFaces = matrix.upper().size();
+    for (label face=0; face<nFaces; face++)
+    {
+        const scalar s = upperPtr[face]*upperPtr[face]/rDPtr[lPtr[face]];
+
+        Pout<< "calcReciprocalD : For face:" << face
+            << " adapting diagonal for uppercell:" << uPtr[face]
+            << " weight:" << upperPtr[face]
+            << " contributions from lowercell:" << lPtr[face]
+            << " lowerContrib:" << s
+            << endl;
+
+        rDPtr[uPtr[face]] -= s;
+    }
+
+
+    // Calculate the reciprocal of the preconditioned diagonal
+    const label nCells = rD.size();
+
+    for (label cell=0; cell<nCells; cell++)
+    {
+        rDPtr[cell] = 1.0/rDPtr[cell];
+    }
+}
+
+
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -117,7 +156,16 @@ Foam::PCG_debug::PCG_debug
         interfaces,
         solverControls
     )
-{}
+{
+    const scalarField& diag = matrix.diag();
+
+    scalarField rD(diag.size());
+    std::copy(diag.begin(), diag.end(), rD.begin());
+
+    calcReciprocalD(rD, matrix);
+
+    Pout<< "** non-parallel rD:" << flatOutput(rD) << endl;
+}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -247,6 +295,8 @@ DebugVar(invRd);
             FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
             for (const label inti : lowerInterfaces)
             {
+                // Note: interfaceBouCoeffs is negated w.r.t. internal faces
+                //       but does not matter here since squared
                 coeffs.set
                 (
                     inti,
@@ -270,6 +320,7 @@ DebugVar(invRd);
             const label startRequest = Pstream::nRequests();
             matrix().initMatrixInterfaces
             (
+                false,   // subtract
                 coeffs,
                 interfaces_,
                 invRd,
@@ -278,6 +329,7 @@ DebugVar(invRd);
             );
             matrix().updateMatrixInterfaces
             (
+                false,   // subtract
                 coeffs,
                 interfaces_,
                 invRd,
@@ -389,6 +441,7 @@ forAll(coeffs, inti)
                     const label startRequest = Pstream::nRequests();
                     matrix().initMatrixInterfaces
                     (
+                        false,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -397,6 +450,7 @@ forAll(coeffs, inti)
                     );
                     matrix().updateMatrixInterfaces
                     (
+                        false,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -458,6 +512,7 @@ forAll(coeffs, inti)
                     const label startRequest = Pstream::nRequests();
                     matrix().initMatrixInterfaces
                     (
+                        false,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -466,6 +521,7 @@ forAll(coeffs, inti)
                     );
                     matrix().updateMatrixInterfaces
                     (
+                        false,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
