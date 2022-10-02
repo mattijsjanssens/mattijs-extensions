@@ -320,7 +320,7 @@ DebugVar(invRd);
             const label startRequest = Pstream::nRequests();
             matrix().initMatrixInterfaces
             (
-                false,   // subtract
+                true,   // add
                 coeffs,
                 interfaces_,
                 invRd,
@@ -329,7 +329,7 @@ DebugVar(invRd);
             );
             matrix().updateMatrixInterfaces
             (
-                false,   // subtract
+                true,   // add
                 coeffs,
                 interfaces_,
                 invRd,
@@ -340,7 +340,8 @@ DebugVar(invRd);
 
             forAll(rD_, cell)
             {
-                Pout<< "diag:" << matrix().diag()[cell]
+                Pout<< "After haloswap: cell:" << cell
+                    << " diag:" << matrix().diag()[cell]
                     << " rD_:" << rD_[cell] << endl;
             }
         }
@@ -369,6 +370,7 @@ DebugVar(invRd);
             {
                 rD_[cell] = 1.0/rD_[cell];
             }
+            Pout<< "rD_:" << flatOutput(rD_) << endl;
         }
 
 
@@ -433,7 +435,7 @@ forAll(coeffs, inti)
     if (coeffs.set(inti))
     {
         Pout<< "    int:" << inti
-            << " lowercoeffs:" << coeffs[inti] << endl;
+            << " lowercoeffs:" << flatOutput(coeffs[inti]) << endl;
     }
 }
 
@@ -441,7 +443,7 @@ forAll(coeffs, inti)
                     const label startRequest = Pstream::nRequests();
                     matrix().initMatrixInterfaces
                     (
-                        false,  // subtract contribution from lower numbered
+                        true,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -450,7 +452,7 @@ forAll(coeffs, inti)
                     );
                     matrix().updateMatrixInterfaces
                     (
-                        false,  // subtract contribution from lower numbered
+                        true,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -473,7 +475,7 @@ forAll(coeffs, inti)
 
                     Pout<< " to " << wAPtr[uPtr[face]] << endl;
                 }
-Pout<< "** after lower proc wA:" << wA << endl;
+Pout<< "** after lower proc wA:" << flatOutput(wA) << endl;
 
 
                 // Calculate coupled contributions from higher processors
@@ -506,13 +508,13 @@ forAll(coeffs, inti)
     if (coeffs.set(inti))
     {
         Pout<< "    int:" << inti
-            << " uppercoeffs:" << coeffs[inti] << endl;
+            << " uppercoeffs:" << flatOutput(coeffs[inti]) << endl;
     }
 }
                     const label startRequest = Pstream::nRequests();
                     matrix().initMatrixInterfaces
                     (
-                        false,  // subtract contribution from lower numbered
+                        true,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -521,7 +523,7 @@ forAll(coeffs, inti)
                     );
                     matrix().updateMatrixInterfaces
                     (
-                        false,  // subtract contribution from lower numbered
+                        true,  // subtract contribution from lower numbered
                         coeffs,
                         interfaces_,
                         wA,
@@ -544,7 +546,7 @@ forAll(coeffs, inti)
 
                     Pout<< " to " << wAPtr[lPtr[face]] << endl;
                 }
-Pout<< "** after higher proc wA:" << wA << endl;
+Pout<< "** after higher proc wA:" << flatOutput(wA) << endl;
             }
 
             // --- Update search directions:
