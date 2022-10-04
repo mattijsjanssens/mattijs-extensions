@@ -1,3 +1,4 @@
+DICPCG.C
 PCG.C
 DICPreconditioner.C
 DILUPreconditioner.C
