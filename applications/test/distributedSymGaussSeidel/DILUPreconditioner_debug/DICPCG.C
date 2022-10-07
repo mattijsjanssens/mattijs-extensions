@@ -186,43 +186,6 @@ Foam::solverPerformance Foam::DICPCG::solve
 
     label nCells = psi.size();
 
-
-    // Pre-calculate 'left' and 'right' processor interfaces
-    DynamicList<label> lowerInterfaces(interfaces_.size());
-    DynamicList<label> upperInterfaces(interfaces_.size());
-    forAll(interfaces_, inti)
-    {
-        if
-        (
-            interfaces_.set(inti)
-         && isA<processorLduInterface>(interfaces_[inti].interface())
-        )
-        {
-            const processorLduInterface& procInt =
-            refCast<const processorLduInterface>
-            (
-                interfaces_[inti].interface()
-            );
-
-            Pout<< "    interface:" << inti
-                << " type:" << interfaces_[inti].interface().type()
-                << " myProcNo:" << procInt.myProcNo()
-                << " neighbProcNo:" << procInt.neighbProcNo()
-                << endl;
-
-            if (procInt.neighbProcNo() > procInt.myProcNo())
-            {
-                upperInterfaces.append(inti);
-            }
-            else
-            {
-                lowerInterfaces.append(inti);
-            }
-        }
-    }
-    //Pout<< "lowerInterfaces:" << lowerInterfaces << endl;
-    //Pout<< "upperInterfaces:" << upperInterfaces << endl;
-
     scalar* __restrict__ psiPtr = psi.begin();
 
     scalarField pA(nCells);
@@ -387,7 +350,6 @@ Foam::solverPerformance Foam::DICPCG::solve
                 if (colours[Pstream::myProcNo()] == colori)
                 {
                     Pout<< "Doing colour " << colori << endl;
-
                     forAll(interfaceBouCoeffs_, inti)
                     {
                         if (interfaces_.set(inti))
@@ -395,12 +357,9 @@ Foam::solverPerformance Foam::DICPCG::solve
                             const auto& bc = interfaceBouCoeffs_[inti];
                             scalarField& coeff = coeffs[inti];
 
-DebugVar(bc.size());
-DebugVar(coeff.size());
-DebugVar(interfaces_[inti].interface().faceCells().size());
-
                             forAll(bc, i)
                             {
+                                // bouCoeffs are negative compared to upperPtr
                                 coeff[i] = -1.0*bc[i];
                             }
                             coeff *= scalarField
@@ -414,7 +373,6 @@ DebugVar(interfaces_[inti].interface().faceCells().size());
                 else
                 {
                     Pout<< "Not doing colour " << colori << endl;
-
                     forAll(coeffs, inti)
                     {
                         if (coeffs.set(inti))
@@ -440,13 +398,14 @@ DebugVar(interfaces_[inti].interface().faceCells().size());
                 label nFaces = matrix().upper().size();
                 label nFacesM1 = nFaces - 1;
 
+                // Initialise 'internal' cells
                 for (label cell=0; cell<nCells; cell++)
                 {
                     wAPtr[cell] = rDPtr[cell]*rAPtr[cell];
                 }
 
 
-                // Add coupled contributions
+                // Do 'halo' contributions
                 const label startRequest = Pstream::nRequests();
                 matrix().initMatrixInterfaces
                 (
@@ -468,68 +427,13 @@ DebugVar(interfaces_[inti].interface().faceCells().size());
                     startRequest              
                 );
 
+                // Do 'internal' faces
                 for (label face=0; face<nFaces; face++)
                 {
                     wAPtr[uPtr[face]] -=
                         rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
                 }
-Pout<< "** after lower proc wA:" << flatOutput(wA) << endl;
-
-
-//                // Calculate coupled contributions from higher processors
-//                {
-//                    FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
-//                    for (const label inti : upperInterfaces)
-//                    {
-//                        coeffs.set
-//                        (
-//                            inti,
-//                            new scalarField(-1.0*interfaceBouCoeffs_[inti])
-//                        );
-//                        coeffs[inti] *=
-//                            scalarField
-//                            (
-//                                rD_,
-//                                interfaces_[inti].interface().faceCells()
-//                            );                        
-//                    }
-//                    for (const label inti : lowerInterfaces)
-//                    {
-//                        coeffs.set
-//                        (
-//                            inti,
-//                            new scalarField(interfaceBouCoeffs_[inti].size(), 0.0)
-//                        );
-//                    }
-//forAll(coeffs, inti)
-//{
-//    if (coeffs.set(inti))
-//    {
-//        Pout<< "    int:" << inti
-//            << " uppercoeffs:" << flatOutput(coeffs[inti]) << endl;
-//    }
-//}
-//                    const label startRequest = Pstream::nRequests();
-//                    matrix().initMatrixInterfaces
-//                    (
-//                        true,  // subtract contribution from lower numbered
-//                        coeffs,
-//                        interfaces_,
-//                        wA,
-//                        wA,
-//                        cmpt                
-//                    );
-//                    matrix().updateMatrixInterfaces
-//                    (
-//                        true,  // subtract contribution from lower numbered
-//                        coeffs,
-//                        interfaces_,
-//                        wA,
-//                        wA,
-//                        cmpt,
-//                        startRequest              
-//                    );
-//                }
+Pout<< "** after forward wA:" << flatOutput(wA) << endl;
 
 
                 for (label face=nFacesM1; face>=0; face--)
@@ -537,6 +441,66 @@ Pout<< "** after lower proc wA:" << flatOutput(wA) << endl;
                     wAPtr[lPtr[face]] -=
                         rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
                 }
+
+Pout<< "** after back wA:" << flatOutput(wA) << endl;
+
+                // Transfer cells back to originating processors
+                if (colours[Pstream::myProcNo()] == colori)
+                {
+                    Pout<< "Not doing colour " << colori << endl;
+                    forAll(coeffs, inti)
+                    {
+                        if (coeffs.set(inti))
+                        {
+                            coeffs[inti] = Zero;
+                        }
+                    }
+                }
+                else
+                {
+                    Pout<< "Doing colour " << colori << endl;
+                    forAll(interfaceBouCoeffs_, inti)
+                    {
+                        if (interfaces_.set(inti))
+                        {
+                            const auto& bc = interfaceBouCoeffs_[inti];
+                            scalarField& coeff = coeffs[inti];
+
+                            forAll(bc, i)
+                            {
+                                // bouCoeffs are negative compared to upperPtr
+                                coeff[i] = -1.0*bc[i];
+                            }
+                            coeff *= scalarField
+                            (
+                                rD_,
+                                interfaces_[inti].interface().faceCells()
+                            );
+                        }
+                    }
+                }
+                // Do 'halo' contributions
+                const label oldRequest = Pstream::nRequests();
+                matrix().initMatrixInterfaces
+                (
+                    true,  // subtract contribution
+                    coeffs,
+                    interfaces_,
+                    wA,
+                    wA,
+                    cmpt                
+                );
+                matrix().updateMatrixInterfaces
+                (
+                    true,  // subtract contribution
+                    coeffs,
+                    interfaces_,
+                    wA,
+                    wA,
+                    cmpt,
+                    oldRequest              
+                );
+Pout<< "** after sending coupled back wA:" << flatOutput(wA) << endl;
             }
 
             // --- Update search directions:
