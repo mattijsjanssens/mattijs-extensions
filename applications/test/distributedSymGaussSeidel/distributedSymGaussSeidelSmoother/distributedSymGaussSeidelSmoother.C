@@ -292,6 +292,10 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
     const boolList allInterfaces(interfaces_.size(), true);
     boolList isLowerProcInterface(interfaces_.size(), false);
     boolList isHigherProcInterface(interfaces_.size(), false);
+
+    PackedBoolList toHigherProcCell(psi.size(), false);
+    PackedBoolList toLowerProcCell(psi.size(), false);
+
     forAll(interfaces_, inti)
     {
         if (interfaces_.set(inti))
@@ -305,6 +309,15 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
                 isHigherProcInterface[inti] =
                     (procIf.neighbProcNo() > procIf.myProcNo());
                 isLowerProcInterface[inti] = !isHigherProcInterface[inti];
+
+                if (procIf.neighbProcNo() > procIf.myProcNo())
+                {
+                    toHigherProcCell.set(intf.faceCells());
+                }
+                else
+                {
+                    toLowerProcCell.set(intf.faceCells());
+                }
             }
         }
     }
@@ -350,6 +363,29 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
     {
         bPrime = source;
 
+        // Update cells to lower numbered processors
+        updateMatrixInterfaces
+        (
+            isLowerProcInterface,
+            mBouCoeffs,
+            interfaces_,
+            psi,
+            bPrime,
+            cmpt
+        );
+
+        // Forward solve
+        for (label celli=0; celli<nCells; celli++)
+        {
+            forward(psi, celli, matrix_, bPrime);
+        }
+
+        // Start sending to higher numbered processors
+
+
+
+
+
         // Forward solve on interior nodes
         for (label celli=0; celli<nCells; celli++)
         {
@@ -377,7 +413,7 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
         //    cmpt
         //);
 
-        // Receive 
+        // Wait for lower numbered processor
         for
 
 
