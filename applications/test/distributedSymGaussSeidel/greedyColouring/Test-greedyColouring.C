@@ -25,12 +25,12 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "processorTopologyNew.H"
 #include "argList.H"
 #include "fvMesh.H"
 //#include "volFields.H"
 #include "processorLduInterface.H"
 #include "columnFvMesh.H"
-#include "processorTopologyNew.H"
 
 using namespace Foam;
 
@@ -39,7 +39,6 @@ using namespace Foam;
 
 int main(int argc, char *argv[])
 {
-
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
@@ -48,17 +47,38 @@ int main(int argc, char *argv[])
 
     const lduInterfacePtrsList patches = lm.interfaces();
 
+    // Filter out the non-processor patches
+    DynamicList<label> procPatchIDs;
+    forAll(patches, patchi)
+    {
+        if (patches.set(patchi))
+        {
+            if (isA<processorLduInterface>(patches[patchi]))
+            {
+                procPatchIDs.append(patchi);
+            }
+        }
+    }
+    lduInterfacePtrsList procPatches(procPatchIDs.size());
+    forAll(procPatches, i)
+    {
+        const label patchi = procPatchIDs[i];
+        const auto& pp = patches[patchi];
+        procPatches.set(i, &pp);
+    }
+
     const processorTopology pt
     (
         processorTopology::New<processorLduInterface, lduInterfacePtrsList>
         (
-            patches,
+            procPatches,
             UPstream::worldComm
         )
     );
 
 
-    Pout<< "procNeighbours:" << flatOutput(pt.procNeighbours())
+    Pout<< "procNeighbours:"
+        << flatOutput(pt.procNeighbours()[Pstream::myProcNo()])
         << endl;
 
 
