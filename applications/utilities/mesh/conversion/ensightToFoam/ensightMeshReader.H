@@ -80,17 +80,17 @@ protected:
 
     // Protected Data
 
-        //- Cell shapes
-        cellShapeList cellShapes_;
+//        //- Cell shapes
+//        cellShapeList cellShapes_;
 
         //- Point labels (imported Point numbering not necessarily contiguous)
         labelList mapToFoamPointId_;
 
         //- Cell labels (imported Cell numbering not necessarily contiguous)
         labelList mapToFoamCellId_;
-
-        //- Boundary region data
-        boundaryRegion boundaryRegion_;
+//
+//        //- Boundary region data
+//        boundaryRegion boundaryRegion_;
 
 
     // Protected Member Functions

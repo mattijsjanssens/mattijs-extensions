@@ -1,4 +1,11 @@
+calcPointCells.C
+createPolyBoundary.C
+createPolyCells.C
+meshReaderAux.C
+meshReader.C
+
 ensightMeshReader.C
 ensightToFoam.C
+
 
 EXE = $(FOAM_USER_APPBIN)/ensightToFoam
