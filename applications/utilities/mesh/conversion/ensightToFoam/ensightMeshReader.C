@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2016-2019 OpenCFD Ltd.
+    Copyright (C) 2022 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -1038,9 +1037,9 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 
     string header;
     is.read(header);
-    Info<< typeName << " : " << header << endl;
+    Info<< "Ensight : " << header << endl;
     is.read(header);
-    Info<< typeName << " : " << header << endl;
+    Info<< "Ensight : " << header << endl;
 
     // Work
     DynamicList<label> verts; 
@@ -1114,7 +1113,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             auto& points = partPoints[partIndex];
             auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
 
-            Pout<< indent << "points " << nPoints << endl;
+            Pout<< indent << "coordinates " << nPoints << endl;
             for (label pointi = 0; pointi < nPoints; pointi++)
             {
                 is.read(points[pointi].x());
@@ -1157,6 +1156,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 );
                 meshCellFaces[celli] = cellVerts.faces();
                 meshMapToFoamCellId[celli] = celli;
+
                 celli++;
             }
         }
@@ -1201,21 +1201,30 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             {
                 label nFaces;
                 is.read(nFaces);
-                meshCellFaces[celli].setSize(nFaces);
+
+                faceList& cellFaces = meshCellFaces[celli];
+                cellFaces.setSize(nFaces);
                 meshMapToFoamCellId[celli] = celli;
 
-                verts.clear();
-                for (label i = 0; i < 8; i++)
+                forAll(cellFaces, cellFacei)
                 {
-                    label verti;
-                    is.read(verti);
-                    verts.append(partMapToFoamPointId[verti]);
+                    label nVerts;
+                    is.read(nVerts);
+                    cellFaces[cellFacei].setSize(nVerts);
                 }
-                partShapes[celli++] = cellShape
-                (
-                    *cellModel::ptr(cellModel::HEX),
-                    verts
-                );
+
+                forAll(cellFaces, cellFacei)
+                {
+                    face& f = cellFaces[cellFacei];
+                    forAll(f, fp)
+                    {
+                        label verti;
+                        is.read(verti);
+                        f[fp] = partMapToFoamPointId[verti];
+                    }
+                }
+
+                celli++;
             }
         }
         else if (key == "quad4")
@@ -1227,19 +1236,55 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             partFaces.setSize(max(partFaces.size(), partIndex+1));
             if (!partFaces.set(partIndex))
             {
-                partFaces.set(partIndex, new faceList(nShapes));
+                partFaces.set(partIndex, new faceList(0));
             }
             auto& faces = partFaces[partIndex];
+            label facei = faces.size();
+            faces.setSize(facei+nShapes);
 
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
-                faces[shapei].setSize(4);
-                for (label i = 0; i < 4; i++)
+                auto& f = faces[facei];
+                f.setSize(4);
+                forAll(f, fp)
                 {
                     label verti;
                     is.read(verti);
-                    faces[shapei][i] = verti-1;
+                    f[fp] = verti-1;
                 }
+
+                facei++;
+            }
+        }
+        else if (key == "nsided")
+        {
+            label nShapes;
+            is.read(nShapes);
+            Pout<< indent << "nsided " << nShapes << endl;
+
+            partFaces.setSize(max(partFaces.size(), partIndex+1));
+            if (!partFaces.set(partIndex))
+            {
+                partFaces.set(partIndex, new faceList(0));
+            }
+            auto& faces = partFaces[partIndex];
+            label facei = faces.size();
+            faces.setSize(facei+nShapes);
+
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                label nVerts;
+                is.read(nVerts);
+                auto& f = faces[facei];
+                f.setSize(nVerts);
+                forAll(f, fp)
+                {
+                    label verti;
+                    is.read(verti);
+                    f[fp] = verti-1;
+                }
+
+                facei++;
             }
         }
     }
@@ -1258,11 +1303,23 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     mapToFoamCellId_.transfer(meshMapToFoamCellId);
     origCellId_ = mapToFoamCellId_;
 
-    // Build map from face to cell and index. Note: used exact match
+    // Build map from face to cell and index. Note: use exact match
     // - no circular equivalence
-    // - no reverse order equivalence
-    //HashTable<cellFaceIdentifier, face, face::symmHasher> vertsToCell;
-    HashTable<cellFaceIdentifier, face, face::hasher> vertsToCell;
+    // but instead pass in ordered faces (lowest numbered vertex first)
+    HashTable<cellFaceIdentifier, face, face::symmHasher> vertsToCell;
+    {
+        label nCellFaces = 0;
+        forAll(cellFaces_, celli)
+        {
+            const auto& cFaces = cellFaces_[celli];
+            nCellFaces += cFaces.size();
+        }
+        vertsToCell.resize(nCellFaces);
+    }
+
+
+    // Insert cell's faces into hashtable
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     face rotatedFace;
     forAll(cellFaces_, celli)
@@ -1270,19 +1327,25 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         const auto& cFaces = cellFaces_[celli];
         forAll(cFaces, cFacei)
         {
-            const face& f = cFaces[cFacei];
+            const face& f = rotateFace(cFaces[cFacei], rotatedFace);
 
-            vertsToCell.insert
-            (
-                rotateFace(f, rotatedFace),
-                cellFaceIdentifier(celli, cFacei)
-            );
-
-            Pout<< "For cell:" << celli << " face:" << f
-                << " inserted:" << vertsToCell[rotatedFace]
-                << endl;
-            //Pout<< " inserted2:" << vertsToCell[f.reverseFace()]
-            //    << endl;
+            const auto fFnd = vertsToCell.find(f);
+            if (fFnd)
+            {
+                // Already inserted. Internal face.
+                //Pout<< "For cell:" << celli
+                //    << " face:" << cFaces[cFacei]
+                //    << " detected other cell/face:" << fFnd() << endl;
+                vertsToCell.erase(fFnd);
+            }
+            else
+            {
+                //Pout<< "For cell:" << celli
+                //    << " face:" << cFaces[cFacei]
+                //    << " inserting cell/face:"
+                //    << cellFaceIdentifier(celli, cFacei) << endl;
+                vertsToCell.insert(f, cellFaceIdentifier(celli, cFacei));
+            }
         }
     }
 
@@ -1295,10 +1358,6 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         if (parti != internalPartIndex && partFaces.set(parti))
         {
             patchToPart[nPatches++] = parti;
-            Pout<< "part:" << parti
-                << " name:" << partNames[parti]
-                << " faces:" << partFaces[parti]
-                << endl;
         }
     }
     patchToPart.setSize(nPatches);
@@ -1310,10 +1369,10 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     {
         const label parti = patchToPart[patchi];
 
-        Pout<< "Matching part:" << parti
-            << " name:" << partNames[parti]
-            << " points:" << partPoints[parti].size()
-            << " to internal points:" << partPoints[internalPartIndex].size()
+        Pout<< "Matching part " << parti
+            << " name " << partNames[parti]
+            << " points " << partPoints[parti].size()
+            << " to internal points " << partPoints[internalPartIndex].size()
             << endl;
 
         patchNames_[patchi] = partNames[parti];
@@ -1334,8 +1393,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         if (!ok)
         {
             FatalErrorInFunction << "No full match for patch "
-                << patchNames_[patchi] 
-                << exit(FatalError);
+                << patchNames_[patchi]  << exit(FatalError);
         }
 
         const auto& faces = partFaces[parti];
@@ -1345,18 +1403,40 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         forAll(faces, facei)
         {
             // Rewrite into mesh-point ordering
-            const face newFace(partToMesh, faces[facei]);
-
-            const auto& cellAndFace =
-                vertsToCell[rotateFace(newFace, rotatedFace)];
-            Pout<< " cellAndFace:" << cellAndFace << endl;
-
-            partCellAndFace[facei] = cellAndFace;
+            const face newF(partToMesh, faces[facei]);
+            // Lookup cell and face on cell using the vertices
+            const auto cAndF = vertsToCell.find(rotateFace(newF, rotatedFace));
+            partCellAndFace[facei] = cAndF();
+            vertsToCell.erase(cAndF);
         }
     }
     patchPhysicalTypes_.setSize(nPatches, "wall");
     patchStarts_.setSize(nPatches, 0);
     patchSizes_.setSize(nPatches, 0);
+
+    if (vertsToCell.size())
+    {
+        // Unused internal or boundary faces
+        DebugVar(vertsToCell);
+        boundaryIds_.append(List<cellFaceIdentifier>(0));
+        {
+            auto& cellAndFaces = boundaryIds_.last();
+            cellAndFaces.setSize(vertsToCell.size());
+            label i = 0;
+            for (const auto& e : vertsToCell)
+            {
+                cellAndFaces[i++] = e;
+            }
+        }
+        patchTypes_.append("empty");
+        patchNames_.append("defaultFaces");
+        patchPhysicalTypes_.append("empty");
+        patchStarts_.append(0);
+        patchSizes_.append(0);
+
+        Pout<< "Introducing patch " << patchNames_.last()
+            << endl;
+    }
 
     return true;
 }
