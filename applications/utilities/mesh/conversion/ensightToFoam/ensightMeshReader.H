@@ -95,6 +95,13 @@ protected:
 
     // Protected Member Functions
 
+        //- Rotate face so lowest vertex is first
+        const face& rotateFace
+        (
+            const face& f,
+            face& rotatedFace
+        ) const;
+
         //- Read the mesh from the file(s)
         virtual bool readGeometry(const scalar scaleFactor = 1.0);
 

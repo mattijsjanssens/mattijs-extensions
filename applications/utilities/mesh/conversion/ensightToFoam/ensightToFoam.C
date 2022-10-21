@@ -129,65 +129,9 @@ DebugVar(geomFile);
         );
 
         autoPtr<polyMesh> mesh = reader.mesh(runTime);
-    }
-    return 0;
-
-
-    IFstream is(prefix/"data"/"constant"/"geometry");
-
-    DebugVar(is.name());
-
-    string line;
-
-    DynamicList<point> points;
-    DynamicList<label> verts; 
-
-    while (is.good())
-    {
-        is.getLine(line);
-        DebugVar(line);
-        if (line == "part")
-        {
-            is.getLine(line);
-            const label parti = readLabel(IStringStream(line)());
-            string partName;
-            is.getLine(partName);
-
-            Pout<< "Reading part " << parti << " name:" << partName << endl;
-
-            points.clear();
-            verts.clear();
-        }
-        else if (line == "coordinates")
-        {
-            const label nPoints = readLabel(is);
-            Pout<< "nPoints:" << nPoints << endl;
-            points.clear();
-            points.setCapacity(nPoints);
-            for (label pointi = 0; pointi < nPoints; pointi++)
-            {
-                point pt;
-                is >> pt.x();
-                is >> pt.y();
-                is >> pt.z();
-                points.append(pt);
-            }
-            Pout<< "Points:" << points << endl;
-        }
-        else if (line == "hexa8")
-        {
-            const label nHex = readLabel(is);
-            Pout<< "nHex:" << nHex << endl;
-            for (label hexi = 0; hexi < nHex; hexi++)
-            {
-                verts.clear();
-                for (label i = 0; i < 8; i++)
-                {
-                    verts.append(readLabel(is));
-                }
-                DebugVar(verts);
-            }
-        }
+        //runTime++;
+        mesh().setInstance(runTime.timeName());
+        mesh().write();
     }
 
     Info<< "\nEnd\n" << endl;
