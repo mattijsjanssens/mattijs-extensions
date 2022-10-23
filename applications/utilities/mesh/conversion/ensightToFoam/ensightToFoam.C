@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2016-2021 OpenCFD Ltd.
+    Copyright (C) 2022 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -58,9 +57,7 @@ See also
 
 #include "argList.H"
 #include "Time.H"
-//#include "STARCDMeshReader.H"
-#include "OFstream.H"
-#include "IFstream.H"
+//#include "IFstream.H"
 #include "polyMesh.H"
 #include "ensightMeshReader.H"
 
@@ -72,7 +69,7 @@ int main(int argc, char *argv[])
 {
     argList::addNote
     (
-        "Convert STARCD/PROSTAR (v4) mesh to OpenFOAM"
+        "Convert Ensight mesh to OpenFOAM"
     );
 
     argList::noParallel();
@@ -116,8 +113,6 @@ int main(int argc, char *argv[])
 
     {
         const fileName geomFile(prefix/"data"/"constant"/"geometry");
-
-DebugVar(geomFile);
 
         fileFormats::ensightMeshReader reader
         (
