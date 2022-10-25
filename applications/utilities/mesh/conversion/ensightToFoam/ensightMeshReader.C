@@ -28,26 +28,17 @@ License
 #include "ensightMeshReader.H"
 #include "cellModel.H"
 #include "ensightReadFile.H"
-#include "OBJstream.H"
 #include "matchPoints.H"
 
-// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
-//    // Read and discard to newline
-//    static inline void readToNewline(ISstream& is)
-//    {
-//        char ch = '\n';
-//        do
-//        {
-//            is.get(ch);
-//        }
-//        while ((is) && ch != '\n');
-//    }
-
-} // End namespace Foam
+namespace fileFormats
+{
+    defineTypeNameAndDebug(ensightMeshReader, 0);
+}
+}
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
@@ -79,6 +70,9 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 {
     ensightReadFile is(geometryFile_);
 
+    // Skip 'binary' tag
+    is.readBinaryHeader();
+
     string header;
     is.read(header);
     Info<< "Ensight : " << header << endl;
@@ -107,14 +101,11 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     string key;
     while (is.good())
     {
-        Pout<< "is:" << is.info() << endl;
-
         do
         {
             is.readKeyword(key);
         }
         while (key.empty() && is.good());
-        Pout<< "key:" << key << endl;
 
         if (key == "node" || key == "element")
         {
@@ -144,7 +135,10 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             }
             Pout<< indent
                 << "Reading part " << partIndex
-                << " name " << partNames[partIndex] << incrIndent << endl;
+                << " name " << partNames[partIndex]
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg()
+                << incrIndent << endl;
         }
         else if (key == "coordinates")
         {
@@ -165,7 +159,9 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             auto& points = partPoints[partIndex];
             auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
 
-            Pout<< indent << "coordinates " << nPoints << endl;
+            Pout<< indent << "coordinates " << nPoints
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
             for (label pointi = 0; pointi < nPoints; pointi++)
             {
                 is.read(points[pointi].x());
@@ -180,22 +176,24 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 is.read(points[pointi].z());
             }
         }
-        else if (key == "hexa8")
+        else if (key == "tetra4")
         {
             label nShapes;
             is.read(nShapes);
 
-            label celli = meshCellFaces.size();
+            const label celli = meshCellFaces.size();
             meshCellFaces.resize(celli+nShapes);
             meshMapToFoamCellId.setSize(meshCellFaces.size());
 
             const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
 
-            Pout<< indent<< "hexa8 " << nShapes << endl;
+            Pout<< indent<< "tetra4 " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 verts.clear();
-                for (label i = 0; i < 8; i++)
+                for (label i = 0; i < 4; i++)
                 {
                     label verti;
                     is.read(verti);
@@ -203,13 +201,11 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 }
                 cellShape cellVerts
                 (
-                    *cellModel::ptr(cellModel::HEX),
+                    *cellModel::ptr(cellModel::TET),
                     verts
                 );
-                meshCellFaces[celli] = cellVerts.faces();
-                meshMapToFoamCellId[celli] = celli;
-
-                celli++;
+                meshCellFaces[celli+shapei] = cellVerts.faces();
+                meshMapToFoamCellId[celli+shapei] = celli+shapei;
             }
         }
         else if (key == "pyramid5")
@@ -217,13 +213,15 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            label celli = meshCellFaces.size();
+            const label celli = meshCellFaces.size();
             meshCellFaces.resize(celli+nShapes);
             meshMapToFoamCellId.setSize(meshCellFaces.size());
 
             const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
 
-            Pout<< indent<< "pyramid5 " << nShapes << endl;
+            Pout<< indent<< "pyramid5 " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 verts.clear();
@@ -238,10 +236,72 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                     *cellModel::ptr(cellModel::PYR),
                     verts
                 );
-                meshCellFaces[celli] = cellVerts.faces();
-                meshMapToFoamCellId[celli] = celli;
+                meshCellFaces[celli+shapei] = cellVerts.faces();
+                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+            }
+        }
+        else if (key == "penta6")
+        {
+            label nShapes;
+            is.read(nShapes);
 
-                celli++;
+            const label celli = meshCellFaces.size();
+            meshCellFaces.resize(celli+nShapes);
+            meshMapToFoamCellId.setSize(meshCellFaces.size());
+
+            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
+
+            Pout<< indent<< "penta6 " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                verts.clear();
+                for (label i = 0; i < 6; i++)
+                {
+                    label verti;
+                    is.read(verti);
+                    verts.append(partMapToFoamPointId[verti]);
+                }
+                cellShape cellVerts
+                (
+                    *cellModel::ptr(cellModel::PRISM),
+                    verts
+                );
+                meshCellFaces[celli+shapei] = cellVerts.faces();
+                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+            }
+        }
+        else if (key == "hexa8")
+        {
+            label nShapes;
+            is.read(nShapes);
+
+            const label celli = meshCellFaces.size();
+            meshCellFaces.resize(celli+nShapes);
+            meshMapToFoamCellId.setSize(meshCellFaces.size());
+
+            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
+
+            Pout<< indent<< "hexa8 " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                verts.clear();
+                for (label i = 0; i < 8; i++)
+                {
+                    label verti;
+                    is.read(verti);
+                    verts.append(partMapToFoamPointId[verti]);
+                }
+                cellShape cellVerts
+                (
+                    *cellModel::ptr(cellModel::HEX),
+                    verts
+                );
+                meshCellFaces[celli+shapei] = cellVerts.faces();
+                meshMapToFoamCellId[celli+shapei] = celli+shapei;
             }
         }
         else if (key == "nfaced")
@@ -249,29 +309,38 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            label celli = meshCellFaces.size();
+            const label celli = meshCellFaces.size();
             meshCellFaces.resize(celli+nShapes);
             meshMapToFoamCellId.setSize(meshCellFaces.size());
 
             const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
 
-            Pout<< indent<< "nfaces " << nShapes << endl;
+            Pout<< indent<< "nfaced " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 label nFaces;
                 is.read(nFaces);
-
-                faceList& cellFaces = meshCellFaces[celli];
+                faceList& cellFaces = meshCellFaces[celli+shapei];
                 cellFaces.setSize(nFaces);
-                meshMapToFoamCellId[celli] = celli;
+                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+            }
 
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                faceList& cellFaces = meshCellFaces[celli+shapei];
                 forAll(cellFaces, cellFacei)
                 {
                     label nVerts;
                     is.read(nVerts);
                     cellFaces[cellFacei].setSize(nVerts);
                 }
+            }
 
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                faceList& cellFaces = meshCellFaces[celli+shapei];
                 forAll(cellFaces, cellFacei)
                 {
                     face& f = cellFaces[cellFacei];
@@ -282,15 +351,15 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                         f[fp] = partMapToFoamPointId[verti];
                     }
                 }
-
-                celli++;
             }
         }
-        else if (key == "quad4")
+        else if (key == "tria3")
         {
             label nShapes;
             is.read(nShapes);
-            Pout<< indent << "quad4 " << nShapes << endl;
+            Pout<< indent << "tria3 " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
 
             partFaces.setSize(max(partFaces.size(), partIndex+1));
             if (!partFaces.set(partIndex))
@@ -298,12 +367,41 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 partFaces.set(partIndex, new faceList(0));
             }
             auto& faces = partFaces[partIndex];
-            label facei = faces.size();
+            const label facei = faces.size();
             faces.setSize(facei+nShapes);
 
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
-                auto& f = faces[facei];
+                auto& f = faces[facei+shapei];
+                f.setSize(3);
+                forAll(f, fp)
+                {
+                    label verti;
+                    is.read(verti);
+                    f[fp] = verti-1;
+                }
+            }
+        }
+        else if (key == "quad4")
+        {
+            label nShapes;
+            is.read(nShapes);
+            Pout<< indent << "quad4 " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
+
+            partFaces.setSize(max(partFaces.size(), partIndex+1));
+            if (!partFaces.set(partIndex))
+            {
+                partFaces.set(partIndex, new faceList(0));
+            }
+            auto& faces = partFaces[partIndex];
+            const label facei = faces.size();
+            faces.setSize(facei+nShapes);
+
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                auto& f = faces[facei+shapei];
                 f.setSize(4);
                 forAll(f, fp)
                 {
@@ -311,15 +409,15 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                     is.read(verti);
                     f[fp] = verti-1;
                 }
-
-                facei++;
             }
         }
         else if (key == "nsided")
         {
             label nShapes;
             is.read(nShapes);
-            Pout<< indent << "nsided " << nShapes << endl;
+            Pout<< indent << "nsided " << nShapes
+                << " starting at line " << is.lineNumber()
+                << " position " << is.stdStream().tellg() << endl;
 
             partFaces.setSize(max(partFaces.size(), partIndex+1));
             if (!partFaces.set(partIndex))
@@ -327,26 +425,28 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 partFaces.set(partIndex, new faceList(0));
             }
             auto& faces = partFaces[partIndex];
-            label facei = faces.size();
+            const label facei = faces.size();
             faces.setSize(facei+nShapes);
 
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
+                auto& f = faces[facei+shapei];
                 label nVerts;
                 is.read(nVerts);
-                auto& f = faces[facei];
                 f.setSize(nVerts);
+            }
+
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                auto& f = faces[facei+shapei];
                 forAll(f, fp)
                 {
                     label verti;
                     is.read(verti);
                     f[fp] = verti-1;
                 }
-
-                facei++;
             }
         }
-        Pout<< "done key:" << key << endl;
     }
 
     if (partIndex != -1)
@@ -393,17 +493,10 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             if (fFnd)
             {
                 // Already inserted. Internal face.
-                //Pout<< "For cell:" << celli
-                //    << " face:" << cFaces[cFacei]
-                //    << " detected other cell/face:" << fFnd() << endl;
                 vertsToCell.erase(fFnd);
             }
             else
             {
-                //Pout<< "For cell:" << celli
-                //    << " face:" << cFaces[cFacei]
-                //    << " inserting cell/face:"
-                //    << cellFaceIdentifier(celli, cFacei) << endl;
                 vertsToCell.insert(f, cellFaceIdentifier(celli, cFacei));
             }
         }
@@ -493,8 +586,8 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         patchStarts_.append(0);
         patchSizes_.append(0);
 
-        Pout<< "Introducing default patch " << patchNames_.last()
-            << endl;
+        Pout<< "Introducing default patch " << patchNames_.size()-1
+            << " name " << patchNames_.last() << endl;
     }
 
     return true;

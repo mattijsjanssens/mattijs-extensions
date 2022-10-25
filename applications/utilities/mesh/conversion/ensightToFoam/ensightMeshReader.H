@@ -88,6 +88,10 @@ protected:
 
 public:
 
+    //- Runtime type information
+    TypeName("ensightMeshReader");
+
+
     // Constructors
 
         //- Construct from case name

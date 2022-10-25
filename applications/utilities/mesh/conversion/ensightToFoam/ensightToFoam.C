@@ -95,21 +95,11 @@ int main(int argc, char *argv[])
     argList args(argc, argv);
     Time runTime(args.rootPath(), args.caseName());
 
-    // Binary output, unless otherwise specified
-    const IOstreamOption::streamFormat format =
-    (
-        args.found("ascii")
-      ? IOstreamOption::ASCII
-      : IOstreamOption::BINARY
-    );
-
     // Increase the precision of the points data
     IOstream::defaultPrecision(max(10u, IOstream::defaultPrecision()));
 
-
     // Remove extensions and/or trailing '.'
     const auto prefix = args.get<fileName>(1).lessExt();
-    DebugVar(prefix);
 
     {
         const fileName geomFile(prefix/"data"/"constant"/"geometry");
@@ -124,8 +114,7 @@ int main(int argc, char *argv[])
         );
 
         autoPtr<polyMesh> mesh = reader.mesh(runTime);
-        //runTime++;
-        mesh().setInstance(runTime.timeName());
+        mesh().setInstance(runTime.constant());
         mesh().write();
     }
 

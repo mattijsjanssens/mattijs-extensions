@@ -5,13 +5,13 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 runApplication blockMesh
 
-#runApplication topoSet
-#
-#runApplication refineHexMesh c0 -overwrite
-#
-#runApplication topoSet
-#
-#runApplication tetDecomposition pyramid -cellSet noHex -overwrite
+runApplication topoSet
+
+runApplication refineHexMesh c0 -overwrite
+
+runApplication -o topoSet
+
+runApplication tetDecomposition pyramid -cellSet noHex -overwrite
 
 runApplication foamToEnsight -ascii
 
