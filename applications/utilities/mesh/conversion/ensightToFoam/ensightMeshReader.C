@@ -61,42 +61,30 @@ const Foam::face& Foam::fileFormats::ensightMeshReader::rotateFace
 }
 
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-bool Foam::fileFormats::ensightMeshReader::readGeometry
+bool Foam::fileFormats::ensightMeshReader::readGoldPart
 (
-    const scalar scaleFactor
-)
+    ensightReadFile& is,
+    const bool read_node_ids,
+    const bool read_elem_ids,
+
+    pointField& points,
+    labelList& pointToNodeIds,
+
+    // 3D-elems : cells (cell-to-faces)
+    faceListList& cells,
+    labelList& cellToElemIds,
+
+    // 2D-elems : faces
+    faceList& faces,
+    labelList& faceToElemIDs
+) const
 {
-    ensightReadFile is(geometryFile_);
+    //- Read a single part. Return true if end-of-file reached. Return false
+    //  if 'part' read
 
-    // Skip 'binary' tag
-    is.readBinaryHeader();
-
-    string header;
-    is.read(header);
-    Info<< "Ensight : " << header << endl;
-    is.read(header);
-    Info<< "Ensight : " << header << endl;
 
     // Work
     DynamicList<label> verts; 
-
-    label partIndex = -1;
-    List<string> partNames;
-
-    label internalPartIndex = -1;
-
-    PtrList<pointField> partPoints;
-    PtrList<labelList> partMapToFoamPointIds;
-
-    // Addressing from cell to faces
-    // Note: only one internal mesh supported.
-    faceListList meshCellFaces;
-    labelList meshMapToFoamCellId;
-
-    // Boundary faces
-    PtrList<faceList> partFaces;
 
     string key;
     while (is.good())
@@ -107,65 +95,76 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         }
         while (key.empty() && is.good());
 
-        if (key == "node" || key == "element")
+        if (key == "part")
         {
-            word id;
-            is.read(id);
-            word op;
-            is.read(op);
+            return false;
         }
-        else if (key == "part")
+        //else if (key == "extents")
+        //{
+        //    is.read(extents.min().x());
+        //    is.read(extents.max().x());
+        //    is.read(extents.min().y());
+        //    is.read(extents.max().y());
+        //    is.read(extents.min().z());
+        //    is.read(extents.max().z());
+        //    Pout<< indent << "Read extents " << boundBox(min, max) << endl;
+        //}
+        //else if (key == "node")
+        //{
+        //    word id;
+        //    is.read(id);
+        //    word op;
+        //    is.read(op);    // 'none' or 'assign' or 'given'
+        //    if (op == "given" || op == "ignore")
+        //    {
+        //        read_node_ids = true;
+        //    }
+        //}
+        //else if (key == "element")
+        //{
+        //    word id;
+        //    is.read(id);
+        //    word op;
+        //    is.read(op);    // 'none' or 'assign' or 'given'
+        //    if (op == "given" || op == "ignore")
+        //    {
+        //        read_elem_ids = true;
+        //    }
+        //}
+        else if (key == "node_ids")
         {
-            if (partIndex != -1)
+            const label nPoints = points.size();
+            // Ignore for now
+            for (label i = 0; i < nPoints; i++)
             {
-                Pout<< decrIndent;
+                label index;
+                is.read(index);
             }
-
-            is.read(partIndex);
-
-            if (partIndex >= partNames.size())
-            {
-                partNames.setSize(partIndex+1);
-            }
-            is.read(partNames[partIndex]);
-
-            if (partNames[partIndex] == "internalMesh")
-            {
-                internalPartIndex = partIndex;
-            }
-            Pout<< indent
-                << "Reading part " << partIndex
-                << " name " << partNames[partIndex]
-                << " starting at line " << is.lineNumber()
-                << " position " << is.stdStream().tellg()
-                << incrIndent << endl;
         }
         else if (key == "coordinates")
         {
             label nPoints;
             is.read(nPoints);
 
-            partPoints.setSize(max(partPoints.size(), partIndex+1));
-            partMapToFoamPointIds.setSize(max(partPoints.size(), partIndex+1));
-            if (!partPoints.set(partIndex))
-            {
-                partPoints.set(partIndex, new pointField(nPoints));
-                partMapToFoamPointIds.set
-                (
-                    partIndex,
-                    new labelList(nPoints+1, -1)
-                );
-            }
-            auto& points = partPoints[partIndex];
-            auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
-
             Pout<< indent << "coordinates " << nPoints
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
+
+            if (read_node_ids)
+            {
+                // Ensight Gold: read node ids separate
+                pointToNodeIds.setSize(nPoints, -1);
+                for (label pointi = 0; pointi < nPoints; pointi++)
+                {
+                    is.read(pointToNodeIds[pointi]);
+                }
+            }
+
+            points.setSize(nPoints);
+
             for (label pointi = 0; pointi < nPoints; pointi++)
             {
                 is.read(points[pointi].x());
-                partMapToFoamPointId[pointi+1] = pointi;
             }
             for (label pointi = 0; pointi < nPoints; pointi++)
             {
@@ -181,15 +180,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            const label celli = meshCellFaces.size();
-            meshCellFaces.resize(celli+nShapes);
-            meshMapToFoamCellId.setSize(meshCellFaces.size());
-
-            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
-
             Pout<< indent<< "tetra4 " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
+
+            const label celli = cells.size();
+            cells.resize(celli+nShapes);
+
+            if (read_elem_ids)
+            {
+                cellToElemIds.resize(celli+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(cellToElemIds[celli+shapei]);
+                }
+            }
+
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 verts.clear();
@@ -197,15 +203,14 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 {
                     label verti;
                     is.read(verti);
-                    verts.append(partMapToFoamPointId[verti]);
+                    verts.append(verti-1);
                 }
                 cellShape cellVerts
                 (
                     *cellModel::ptr(cellModel::TET),
                     verts
                 );
-                meshCellFaces[celli+shapei] = cellVerts.faces();
-                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+                cells[celli+shapei] = cellVerts.faces();
             }
         }
         else if (key == "pyramid5")
@@ -213,15 +218,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            const label celli = meshCellFaces.size();
-            meshCellFaces.resize(celli+nShapes);
-            meshMapToFoamCellId.setSize(meshCellFaces.size());
-
-            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
-
             Pout<< indent<< "pyramid5 " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
+
+            const label celli = cells.size();
+            cells.resize(celli+nShapes);
+
+            if (read_elem_ids)
+            {
+                cellToElemIds.resize(celli+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(cellToElemIds[celli+shapei]);
+                }
+            }
+
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 verts.clear();
@@ -229,15 +241,14 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 {
                     label verti;
                     is.read(verti);
-                    verts.append(partMapToFoamPointId[verti]);
+                    verts.append(verti-1);
                 }
                 cellShape cellVerts
                 (
                     *cellModel::ptr(cellModel::PYR),
                     verts
                 );
-                meshCellFaces[celli+shapei] = cellVerts.faces();
-                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+                cells[celli+shapei] = cellVerts.faces();
             }
         }
         else if (key == "penta6")
@@ -245,15 +256,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            const label celli = meshCellFaces.size();
-            meshCellFaces.resize(celli+nShapes);
-            meshMapToFoamCellId.setSize(meshCellFaces.size());
-
-            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
-
             Pout<< indent<< "penta6 " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
+
+            const label celli = cells.size();
+            cells.resize(celli+nShapes);
+
+            if (read_elem_ids)
+            {
+                cellToElemIds.resize(celli+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(cellToElemIds[celli+shapei]);
+                }
+            }
+
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 verts.clear();
@@ -261,15 +279,14 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 {
                     label verti;
                     is.read(verti);
-                    verts.append(partMapToFoamPointId[verti]);
+                    verts.append(verti-1);
                 }
                 cellShape cellVerts
                 (
                     *cellModel::ptr(cellModel::PRISM),
                     verts
                 );
-                meshCellFaces[celli+shapei] = cellVerts.faces();
-                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+                cells[celli+shapei] = cellVerts.faces();
             }
         }
         else if (key == "hexa8")
@@ -277,15 +294,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            const label celli = meshCellFaces.size();
-            meshCellFaces.resize(celli+nShapes);
-            meshMapToFoamCellId.setSize(meshCellFaces.size());
-
-            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
-
             Pout<< indent<< "hexa8 " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
+
+            const label celli = cells.size();
+            cells.resize(celli+nShapes);
+
+            if (read_elem_ids)
+            {
+                cellToElemIds.resize(celli+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(cellToElemIds[celli+shapei]);
+                }
+            }
+
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
                 verts.clear();
@@ -293,15 +317,14 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                 {
                     label verti;
                     is.read(verti);
-                    verts.append(partMapToFoamPointId[verti]);
+                    verts.append(verti-1);
                 }
                 cellShape cellVerts
                 (
                     *cellModel::ptr(cellModel::HEX),
                     verts
                 );
-                meshCellFaces[celli+shapei] = cellVerts.faces();
-                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+                cells[celli+shapei] = cellVerts.faces();
             }
         }
         else if (key == "nfaced")
@@ -309,27 +332,33 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             label nShapes;
             is.read(nShapes);
 
-            const label celli = meshCellFaces.size();
-            meshCellFaces.resize(celli+nShapes);
-            meshMapToFoamCellId.setSize(meshCellFaces.size());
-
-            const auto& partMapToFoamPointId = partMapToFoamPointIds[partIndex];
-
             Pout<< indent<< "nfaced " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
-            for (label shapei = 0; shapei < nShapes; shapei++)
+
+            const label celli = cells.size();
+            cells.resize(celli+nShapes);
+
+            if (read_elem_ids)
             {
-                label nFaces;
-                is.read(nFaces);
-                faceList& cellFaces = meshCellFaces[celli+shapei];
-                cellFaces.setSize(nFaces);
-                meshMapToFoamCellId[celli+shapei] = celli+shapei;
+                cellToElemIds.resize(celli+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(cellToElemIds[celli+shapei]);
+                }
             }
 
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
-                faceList& cellFaces = meshCellFaces[celli+shapei];
+                label nFaces;
+                is.read(nFaces);
+                faceList& cellFaces = cells[celli+shapei];
+                cellFaces.setSize(nFaces);
+            }
+
+            for (label shapei = 0; shapei < nShapes; shapei++)
+            {
+                faceList& cellFaces = cells[celli+shapei];
                 forAll(cellFaces, cellFacei)
                 {
                     label nVerts;
@@ -340,7 +369,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 
             for (label shapei = 0; shapei < nShapes; shapei++)
             {
-                faceList& cellFaces = meshCellFaces[celli+shapei];
+                faceList& cellFaces = cells[celli+shapei];
                 forAll(cellFaces, cellFacei)
                 {
                     face& f = cellFaces[cellFacei];
@@ -348,7 +377,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                     {
                         label verti;
                         is.read(verti);
-                        f[fp] = partMapToFoamPointId[verti];
+                        f[fp] = verti-1;
                     }
                 }
             }
@@ -357,17 +386,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         {
             label nShapes;
             is.read(nShapes);
+
             Pout<< indent << "tria3 " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
 
-            partFaces.setSize(max(partFaces.size(), partIndex+1));
-            if (!partFaces.set(partIndex))
-            {
-                partFaces.set(partIndex, new faceList(0));
-            }
-            auto& faces = partFaces[partIndex];
             const label facei = faces.size();
+
+            if (read_elem_ids)
+            {
+                faceToElemIDs.resize(facei+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(faceToElemIDs[facei+shapei]);
+                }
+            }
+
             faces.setSize(facei+nShapes);
 
             for (label shapei = 0; shapei < nShapes; shapei++)
@@ -386,17 +420,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         {
             label nShapes;
             is.read(nShapes);
+
             Pout<< indent << "quad4 " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
 
-            partFaces.setSize(max(partFaces.size(), partIndex+1));
-            if (!partFaces.set(partIndex))
-            {
-                partFaces.set(partIndex, new faceList(0));
-            }
-            auto& faces = partFaces[partIndex];
             const label facei = faces.size();
+
+            if (read_elem_ids)
+            {
+                faceToElemIDs.resize(facei+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(faceToElemIDs[facei+shapei]);
+                }
+            }
+
             faces.setSize(facei+nShapes);
 
             for (label shapei = 0; shapei < nShapes; shapei++)
@@ -415,17 +454,22 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         {
             label nShapes;
             is.read(nShapes);
+
             Pout<< indent << "nsided " << nShapes
                 << " starting at line " << is.lineNumber()
                 << " position " << is.stdStream().tellg() << endl;
 
-            partFaces.setSize(max(partFaces.size(), partIndex+1));
-            if (!partFaces.set(partIndex))
-            {
-                partFaces.set(partIndex, new faceList(0));
-            }
-            auto& faces = partFaces[partIndex];
             const label facei = faces.size();
+
+            if (read_elem_ids)
+            {
+                faceToElemIDs.resize(facei+nShapes);
+                for (label shapei = 0; shapei < nShapes; shapei++)
+                {
+                    is.read(faceToElemIDs[facei+shapei]);
+                }
+            }
+
             faces.setSize(facei+nShapes);
 
             for (label shapei = 0; shapei < nShapes; shapei++)
@@ -449,23 +493,175 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         }
     }
 
-    if (partIndex != -1)
+    // EOF
+    return true;
+}
+//XXXXXXX
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+bool Foam::fileFormats::ensightMeshReader::readGeometry
+(
+    const scalar scaleFactor
+)
+{
+    ensightReadFile is(geometryFile_);
+
+    // Skip 'binary' tag
+    is.readBinaryHeader();
+
+    string header;
+    is.read(header);
+    Info<< "Ensight : " << header << endl;
+    is.read(header);
+    Info<< "Ensight : " << header << endl;
+
+
+    bool read_node_ids = false;
+    bool read_elem_ids = false;
+
+    // Work
+    label partIndex = -1;
+    List<string> partNames;
+
+    PtrList<pointField> partPoints;
+    PtrList<labelList> partNodeIDs;
+
+    // Cells (cell-to-faces)
+    // Note: only one internal mesh supported.
+    PtrList<faceListList> partCells;
+    // Element ID for cells
+    PtrList<labelList> partCellIDs;
+    // Boundary faces
+    PtrList<faceList> partFaces;
+    // Element IDs for faces
+    PtrList<labelList> partFaceIDs;
+
+
+    // Parse all
+    string key;
+    while (is.good())
     {
-        Pout<< decrIndent;
+        do
+        {
+            is.readKeyword(key);
+        }
+        while (key.empty() && is.good());
+
+        if (key == "extents")
+        {
+            point min;
+            point max;
+            is.read(min.x());
+            is.read(max.x());
+            is.read(min.y());
+            is.read(max.y());
+            is.read(min.z());
+            is.read(max.z());
+            Pout<< indent
+                << "Read extents " << boundBox(min, max)
+                << endl;
+        }
+        else if (key == "node")
+        {
+            word id;
+            is.read(id);
+            word op;
+            is.read(op);    // 'none' or 'assign'
+            if (op == "given" || op == "ignore")
+            {
+                read_node_ids = true;
+            }
+        }
+        else if (key == "element")
+        {
+            word id;
+            is.read(id);
+            word op;
+            is.read(op);    // 'none' or 'assign'
+            if (op == "given" || op == "ignore")
+            {
+                read_elem_ids = true;
+            }
+        }
+        else if (key == "part")
+        {
+            label partIndex;
+            is.read(partIndex);
+
+            bool finished = false;
+            do
+            {
+                if (partIndex >= partNames.size())
+                {
+                    partNames.setSize(partIndex+1);
+                    partPoints.setSize(partIndex+1);
+                    partPoints.set(partIndex, new pointField(0));
+                    partNodeIDs.setSize(partIndex+1);
+                    partNodeIDs.set(partIndex, new labelList(0));
+                    partCells.setSize(partIndex+1);
+                    partCells.set(partIndex, new faceListList(0));
+                    partCellIDs.setSize(partIndex+1);
+                    partCellIDs.set(partIndex, new labelList(0));
+                    partFaces.setSize(partIndex+1);
+                    partFaces.set(partIndex, new faceList(0));
+                    partFaceIDs.setSize(partIndex+1);
+                    partFaceIDs.set(partIndex, new labelList(0));
+                }
+
+                is.read(partNames[partIndex]);
+
+                Pout<< indent
+                    << "Reading part " << partIndex
+                    << " name " << partNames[partIndex]
+                    << " starting at line " << is.lineNumber()
+                    << " position " << is.stdStream().tellg() << endl;
+
+                Pout<< incrIndent;
+                finished = readGoldPart
+                (
+                    is,
+                    read_node_ids,
+                    read_elem_ids,
+
+                    partPoints[partIndex],
+                    partNodeIDs[partIndex],
+
+                    // Cells (cell-to-faces)
+                    partCells[partIndex],
+                    partCellIDs[partIndex],
+
+                    // Faces
+                    partFaces[partIndex],
+                    partFaceIDs[partIndex]
+                );
+                Pout<< decrIndent;
+            }
+            while (!finished);
+
+            break;
+        }
     }
 
 
-    // Transfer internal points/cellFaces to storage
-    points_ = partPoints[internalPartIndex];
-    mapToFoamPointId_ = partMapToFoamPointIds[internalPartIndex];
 
-    cellFaces_.transfer(meshCellFaces);
-    mapToFoamCellId_.transfer(meshMapToFoamCellId);
-    origCellId_ = mapToFoamCellId_;
+    // Extract the meshPartIndex part
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+    // Transfer internal points/cellFaces to storage
+    points_ = partPoints[meshPartIndex_];
+    //mapToFoamPointId_ = partMapToFoamPointIds[meshPartIndex_];
+
+    cellFaces_.transfer(partCells[meshPartIndex_]);
+    //mapToFoamCellId_.transfer(meshMapToFoamCellId);
+    //origCellId_ = mapToFoamCellId_;
 
     // Build map from face to cell and index. Note: use exact match
     // - no circular equivalence
-    // but instead pass in ordered faces (lowest numbered vertex first)
+    // - but instead pass in ordered faces (lowest numbered vertex first)
     HashTable<cellFaceIdentifier, face, face::symmHasher> vertsToCell;
     {
         label nCellFaces = 0;
@@ -503,15 +699,34 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     }
 
 
+    DynamicList<label> patchParts;
+    if (useAllPartsForPatching_)
+    {
+        forAll(partFaces, parti)
+        {
+            if (partFaces[parti].size())
+            {
+                patchParts.append(parti);
+            }
+        }
+        Pout<< "Using parts " << UIndirectList<string>(partNames, patchParts)
+            << " for patching" << endl;
+    }
+    else
+    {
+        patchParts.append(meshPartIndex_);
+        Pout<< "Using part " << partNames[meshPartIndex_]
+            << " for patching" << endl;
+    }
+
+
     labelList patchToPart(partNames.size());
 
     label nPatches = 0;
-    forAll(partFaces, parti)
+
+    for (const label parti : patchParts)
     {
-        if (parti != internalPartIndex && partFaces.set(parti))
-        {
-            patchToPart[nPatches++] = parti;
-        }
+        patchToPart[nPatches++] = parti;
     }
     patchToPart.setSize(nPatches);
 
@@ -525,7 +740,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         Pout<< "Matching part " << parti
             << " name " << partNames[parti]
             << " points " << partPoints[parti].size()
-            << " to internal points " << partPoints[internalPartIndex].size()
+            << " to internal points " << partPoints[meshPartIndex_].size()
             << endl;
 
         patchNames_[patchi] = partNames[parti];
@@ -534,19 +749,26 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         const auto& pp = partPoints[parti];
 
         labelList partToMesh;
-        bool ok = matchPoints
-        (
-            pp,
-            partPoints[internalPartIndex],
-            scalarField(pp.size(), ROOTSMALL),
-            true,   //false,
-            partToMesh
-        );
-
-        if (!ok)
+        if (parti != meshPartIndex_)
         {
-            FatalErrorInFunction << "No full match for patch "
-                << patchNames_[patchi]  << exit(FatalError);
+            bool ok = matchPoints
+            (
+                pp,
+                partPoints[meshPartIndex_],
+                scalarField(pp.size(), ROOTSMALL),
+                true,   //false,
+                partToMesh
+            );
+
+            if (!ok)
+            {
+                FatalErrorInFunction << "No full match for patch "
+                    << patchNames_[patchi]  << exit(FatalError);
+            }
+        }
+        else
+        {
+            partToMesh = identity(pp.size());
         }
 
         const auto& faces = partFaces[parti];
@@ -598,15 +820,19 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 
 Foam::fileFormats::ensightMeshReader::ensightMeshReader
 (
-    const fileName& prefix,
+    const fileName& geomFile,
+    const label meshPartIndex,
+    const bool useAllPartsForPatching,
     const objectRegistry& registry,
-    const scalar scaleFactor,
-    const bool keepSolids
+    const scalar scaleFactor
+    //const bool keepSolids
 )
 :
-    meshReader(prefix, scaleFactor),
-    mapToFoamPointId_(0),
-    mapToFoamCellId_(0)
+    meshReader(geomFile, scaleFactor),
+    meshPartIndex_(meshPartIndex),
+    useAllPartsForPatching_(useAllPartsForPatching)
+    //mapToFoamPointId_(0),
+    //mapToFoamCellId_(0)
 {}
 
 

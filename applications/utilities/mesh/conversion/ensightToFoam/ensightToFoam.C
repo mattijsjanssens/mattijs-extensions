@@ -51,7 +51,7 @@ Note
     Baffles are written as interfaces for later use
 
 See also
-    Foam::cellTable, Foam::meshReader and Foam::fileFormats::STARCDMeshReader
+    Foam::meshReader and Foam::fileFormats::STARCDMeshReader
 
 \*---------------------------------------------------------------------------*/
 
@@ -73,23 +73,24 @@ int main(int argc, char *argv[])
     );
 
     argList::noParallel();
-    argList::addArgument("prefix", "The prefix for the input PROSTAR files");
-    argList::addBoolOption
-    (
-        "ascii",
-        "Write in ASCII instead of binary format"
-    );
+    argList::addArgument(".geo file", "The file containing the geometry");
+    argList::addArgument("part index", "The part containing the 3D mesh");
+    //argList::addBoolOption
+    //(
+    //    "ascii",
+    //    "Write in ASCII instead of binary format"
+    //);
     argList::addOption
     (
         "scale",
         "factor",
-        "Geometry scaling factor - default is 0.001 ([mm] to [m])"
+        "Geometry scaling factor"
     );
-    argList::addBoolOption
-    (
-        "solids",
-        "Retain solid cells and treat like fluid cells"
-    );
+    //argList::addBoolOption
+    //(
+    //    "solids",
+    //    "Retain solid cells and treat like fluid cells"
+    //);
 
 
     argList args(argc, argv);
@@ -98,19 +99,22 @@ int main(int argc, char *argv[])
     // Increase the precision of the points data
     IOstream::defaultPrecision(max(10u, IOstream::defaultPrecision()));
 
-    // Remove extensions and/or trailing '.'
-    const auto prefix = args.get<fileName>(1).lessExt();
+    //// Remove extensions and/or trailing '.'
+    //const auto prefix = args.get<fileName>(1).lessExt();
+    //const fileName geomFile(prefix/"data"/"constant"/"geometry");
+    const fileName geomFile(args.get<fileName>(1));
+    const label partIndex(args.get<label>(2));
 
     {
-        const fileName geomFile(prefix/"data"/"constant"/"geometry");
-
         fileFormats::ensightMeshReader reader
         (
             geomFile,
+            partIndex,
+            true,       // use all parts containing faces for patching
             runTime,
-            // Default rescale from [mm] to [m]
-            args.getOrDefault<scalar>("scale", 0.001),
-            args.found("solids")
+            // Optional scale
+            args.getOrDefault<scalar>("scale", 1)
+            //args.found("solids"),
         );
 
         autoPtr<polyMesh> mesh = reader.mesh(runTime);

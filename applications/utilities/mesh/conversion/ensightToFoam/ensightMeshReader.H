@@ -39,11 +39,14 @@ SourceFiles
 #define ensightMeshReader_H
 
 #include "meshReader.H"
+//#include "ensightReadFile.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
+
+class ensightReadFile;
 
 namespace fileFormats
 {
@@ -58,8 +61,11 @@ class ensightMeshReader
 {
     // Private data
 
-        //- Retain solid cell types
-        //bool keepSolids_;
+        //- Part containing the mesh
+        const label meshPartIndex_;
+
+        //- Part containing the patches
+        const bool useAllPartsForPatching_;
 
 
 protected:
@@ -82,6 +88,26 @@ protected:
             face& rotatedFace
         ) const;
 
+        //- Read a single part until eof (return true) or until start of next
+        //  part (return false)
+        bool readGoldPart
+        (
+            ensightReadFile& is,
+            const bool read_node_ids,
+            const bool read_elem_ids,
+
+            pointField& points,
+            labelList& pointToNodeIds,
+
+            // 3D-elems : cells (cell-to-faces)
+            faceListList& cellFaces,
+            labelList& cellToElemIds,
+
+            // 2D-elems : faces
+            faceList& faces,
+            labelList& faceToElemIDs
+        ) const;
+
         //- Read the mesh from the file(s)
         virtual bool readGeometry(const scalar scaleFactor = 1.0);
 
@@ -97,10 +123,11 @@ public:
         //- Construct from case name
         ensightMeshReader
         (
-            const fileName& prefix,
+            const fileName& geomFile,
+            const label meshPartIndex,
+            const bool useAllPartsForPatching,
             const objectRegistry& registry,
-            const scalar scaleFactor = 1.0,
-            const bool keepSolids = false
+            const scalar scaleFactor = 1.0
         );
 
 
