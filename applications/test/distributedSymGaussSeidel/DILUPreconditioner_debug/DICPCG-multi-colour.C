@@ -41,43 +41,6 @@ namespace Foam
 void Foam::DICPCG::calcReciprocalD
 (
     solveScalarField& rD,
-    const lduMatrix& matrix
-) const
-{
-    solveScalar* __restrict__ rDPtr = rD.begin();
-
-    const label* const __restrict__ uPtr = matrix.lduAddr().upperAddr().begin();
-    const label* const __restrict__ lPtr = matrix.lduAddr().lowerAddr().begin();
-    const scalar* const __restrict__ upperPtr = matrix.upper().begin();
-
-    // Calculate the DIC diagonal
-    const label nFaces = matrix.upper().size();
-    for (label face=0; face<nFaces; face++)
-    {
-        const scalar s = upperPtr[face]*upperPtr[face]/rDPtr[lPtr[face]];
-
-//        Pout<< "calcReciprocalD : For face:" << face
-//            << " adapting diagonal for uppercell:" << uPtr[face]
-//            << " weight:" << upperPtr[face]
-//            << " contributions from lowercell:" << lPtr[face]
-//            << " lowerContrib:" << s
-//            << endl;
-
-        rDPtr[uPtr[face]] -= s;
-    }
-
-
-    // Calculate the reciprocal of the preconditioned diagonal
-    const label nCells = rD.size();
-
-    for (label cell=0; cell<nCells; cell++)
-    {
-        rDPtr[cell] = 1.0/rDPtr[cell];
-    }
-}
-void Foam::DICPCG::calcReciprocalD
-(
-    solveScalarField& rD,
     const lduMatrix& matrix,
     const labelList& selectedInterfaces,
     FieldField<Field, scalar>& coeffs,  // work
@@ -183,16 +146,7 @@ Foam::DICPCG::DICPCG
         interfaces,
         solverControls
     )
-{
-//    const scalarField& diag = matrix.diag();
-//
-//    scalarField rD(diag.size());
-//    std::copy(diag.begin(), diag.end(), rD.begin());
-//
-//    calcReciprocalD(rD, matrix);
-//
-//    Pout<< "** non-parallel rD:" << flatOutput(rD) << endl;
-}
+{}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -262,15 +216,6 @@ Foam::solverPerformance Foam::DICPCG::solve
         //);
 
 //XXXXX
-        //{
-        //    scalarField nonParRD(matrix().diag());
-        //    calcReciprocalD(nonParRD, matrix());
-        //    DebugVar(nonParRD);
-        //}
-//XXXX
-
-
-
         // Work array
         FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
         forAll(interfaceBouCoeffs_, inti)
@@ -283,7 +228,6 @@ Foam::solverPerformance Foam::DICPCG::solve
         }
 
 
-
         // --- Solver iteration
         do
         {
@@ -292,21 +236,21 @@ Foam::solverPerformance Foam::DICPCG::solve
 
             // --- Precondition residual
             //preconPtr->precondition(wA, rA, cmpt);
-
 //XXXXXX
-            // TBD: replace with proper colouring
-            const lduMesh& mesh = matrix().mesh();
-            const processorColour& colours = processorColour::New(mesh);
-            const label nColours = colours.nColours();
-
-            for (label colouri = 0; colouri < nColours; colouri++)
             {
+                // TBD: replace with proper colouring
+                //const labelList colours(identity(Pstream::nProcs()));
+                //const label nColours = max(colours)+1;
+                const lduMesh& mesh = matrix().mesh();
+                const processorColour& colours = processorColour::New(mesh);
+                //const label nColours = colours.nColours();
+                const label colouri = colours[Pstream::myProcNo()];
+
                 // Select interfaces involving colouri
                 // - me to lower-coloured procs (= already solved for)
                 // - lower-coloured procs to me
-                DynamicList<label> meFromHigherNbrs;
-                DynamicList<label> meFromLowerNbrs;
-                DynamicList<label> higherFromMeNbrs;
+                DynamicList<label> lowerNbrs;
+                DynamicList<label> higherNbrs;
                 forAll(interfaceBouCoeffs_, inti)
                 {
                     if (interfaces_.set(inti))
@@ -316,44 +260,31 @@ Foam::solverPerformance Foam::DICPCG::solve
                             isA<const processorLduInterface>(intf);
                         if (ppp)
                         {
-                            if
-                            (
-                                colours[Pstream::myProcNo()] == colouri
-                             && colours[ppp->neighbProcNo()] > colouri
-                            )
+                            if (colours[ppp->neighbProcNo()] < colouri)
                             {
                                 // Neighbour not yet updated
-                                meFromHigherNbrs.append(inti);
+                                lowerNbrs.append(inti);
                             }
-                            else if
-                            (
-                                colours[Pstream::myProcNo()] == colouri
-                             && colours[ppp->neighbProcNo()] < colouri
-                            )
+                            else if (colours[ppp->neighbProcNo()] > colouri)
                             {
-                                // Neighbour not yet updated
-                                meFromLowerNbrs.append(inti);
+                                higherNbrs.append(inti);
                             }
-                            if
-                            (
-                                colours[Pstream::myProcNo()] > colouri
-                             && colours[ppp->neighbProcNo()] == colouri
-                            )
+                            else
                             {
-                                // Neighbour just been solved for. I am not
-                                // yet solved for
-                                higherFromMeNbrs.append(inti);
+                                WarningInFunction
+                                    << "weird processorLduInterface"
+                                    << " from " << ppp->myProcNo()
+                                    << " to " << ppp->neighbProcNo()
+                                    << endl;
                             }
                         }
                     }
                 }
-                //DebugVar(meFromHigherNbrs);
-                //DebugVar(higherFromMeNbrs);
-
 
                 // Include not-solved for neighbours
                 scalarField rD_;
-                calcReciprocalD(rD_, matrix(), meFromHigherNbrs, coeffs, cmpt);
+                //calcReciprocalD(rD_, matrix(), lowerNbrs, coeffs, cmpt);
+                calcReciprocalD(rD_, matrix(), lowerNbrs, coeffs, cmpt);
 
                 //DebugVar(rD_);
 
@@ -375,15 +306,12 @@ Foam::solverPerformance Foam::DICPCG::solve
                 label nFacesM1 = nFaces - 1;
 
                 // Initialise 'internal' cells
-                if (colours[Pstream::myProcNo()] == colouri)
+                for (label cell=0; cell<nCells; cell++)
                 {
-                    for (label cell=0; cell<nCells; cell++)
-                    {
-                        wAPtr[cell] = rDPtr[cell]*rAPtr[cell];
-                    }
+                    wAPtr[cell] = rDPtr[cell]*rAPtr[cell];
                 }
 
-                // Do 'halo' contributions from higher neighbours
+                // Do 'halo' contributions from lower numbered procs
                 {
                     forAll(interfaces_, inti)
                     {
@@ -392,7 +320,7 @@ Foam::solverPerformance Foam::DICPCG::solve
                             coeffs[inti] = Zero;
                         }
                     }
-                    for (const label inti : meFromHigherNbrs)
+                    for (const label inti : lowerNbrs)
                     {
                         const auto& intf = interfaces_[inti].interface();
                         const auto& faceCells = intf.faceCells();
@@ -429,18 +357,16 @@ Foam::solverPerformance Foam::DICPCG::solve
                     );
                 }
 
-                if (colours[Pstream::myProcNo()] == colouri)
+
+                // Do 'internal' faces, forward sweep
+                for (label face=0; face<nFaces; face++)
                 {
-                    // Do 'internal' faces
-                    for (label face=0; face<nFaces; face++)
-                    {
-                        wAPtr[uPtr[face]] -=
-                            rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
-                    }
+                    wAPtr[uPtr[face]] -=
+                        rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
                 }
 
-                // Do 'halo' contributions from lower neighbours
-                if (false)
+
+                // Do 'halo' contributions from higher numbered procs
                 {
                     forAll(interfaces_, inti)
                     {
@@ -449,7 +375,7 @@ Foam::solverPerformance Foam::DICPCG::solve
                             coeffs[inti] = Zero;
                         }
                     }
-                    for (const label inti : meFromLowerNbrs)
+                    for (const label inti : higherNbrs)
                     {
                         const auto& intf = interfaces_[inti].interface();
                         const auto& faceCells = intf.faceCells();
@@ -486,59 +412,15 @@ Foam::solverPerformance Foam::DICPCG::solve
                     );
                 }
 
-                if (colours[Pstream::myProcNo()] == colouri)
-                {
-                    for (label face=nFacesM1; face>=0; face--)
-                    {
-                        wAPtr[lPtr[face]] -=
-                            rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
-                    }
-                }
 
-//                // Send back to origating processors
-//                forAll(interfaces_, inti)
-//                {
-//                    if (interfaces_.set(inti))
-//                    {
-//                        coeffs[inti] = Zero;
-//                    }
-//                }
-//                for (const label inti : higherFromMeNbrs)
-//                {
-//                    const auto& intf = interfaces_[inti].interface();
-//                    const auto& faceCells = intf.faceCells();
-//                    const auto& bc = interfaceBouCoeffs_[inti];
-//                    scalarField& coeff = coeffs[inti];
-//
-//                    forAll(bc, i)
-//                    {
-//                        // bouCoeffs are negative compared
-//                        // to upperPtr
-//                        coeff[i] = -bc[i]*rD_[faceCells[i]];
-//                    }
-//                }
-//
-//                const label oldRequest = Pstream::nRequests();
-//                matrix().initMatrixInterfaces
-//                (
-//                    true,  // subtract contribution
-//                    coeffs,
-//                    interfaces_,
-//                    wA,
-//                    wA,
-//                    cmpt                
-//                );
-//                matrix().updateMatrixInterfaces
-//                (
-//                    true,  // subtract contribution
-//                    coeffs,
-//                    interfaces_,
-//                    wA,
-//                    wA,
-//                    cmpt,
-//                    oldRequest              
-//                );
+                // Do 'internal' faces, backwards sweep
+                for (label face=nFacesM1; face>=0; face--)
+                {
+                    wAPtr[lPtr[face]] -=
+                        rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
+                }
             }
+//XXXXXX
 
             // --- Update search directions:
             wArA = gSumProd(wA, rA, matrix().mesh().comm());

@@ -1,3 +1,4 @@
+processorColour.C
 Test-greedyColouring.C
 
 EXE = $(FOAM_USER_APPBIN)/Test-greedyColouring

@@ -25,63 +25,33 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "processorTopologyNew.H"
-#include "argList.H"
-#include "fvMesh.H"
-//#include "volFields.H"
-#include "processorLduInterface.H"
-#include "columnFvMesh.H"
-#include "volFields.H"
-#include "zeroGradientFvPatchFields.H"
 #include "processorColour.H"
-
-using namespace Foam;
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-//const processorColour& lookup(const lduMesh& mesh)
-//{
-//    const processorColour* ptr =
-//        mesh.thisDb().objectRegistry::template cfindObject<processorColour>
-//        (
-//            processorColour::typeName
-//        );
-//
-//    if (ptr)
-//    {
-//        return *ptr;
-//    }
-//
-//    processorColour* objectPtr = new processorColour(mesh);
-//
-//    regIOobject::store(static_cast<MoveableMeshObject<lduMesh>*>(objectPtr));
-//
-//    return *objectPtr;
-//}
+#include "processorLduInterface.H"
+#include "processorTopologyNew.H"
 
 
-// Main program:
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-int main(int argc, char *argv[])
+namespace Foam
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    #include "createMesh.H"
-
-    const lduMesh& lm = mesh;
+    defineTypeNameAndDebug(processorColour, 0);
+}
 
 
-    const auto& pc = processorColour::New(lm);
-    //const auto& pc = lookup(lm);
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-    Pout<< "my colour:" << pc.myColour() << endl;
-    Pout<< "all colours:" << pc.nColours();
+Foam::processorColour::processorColour
+(
+    const lduMesh& mesh
+)
+:
+    MeshObject<lduMesh, Foam::MoveableMeshObject, processorColour>(mesh),
+    labelList(Pstream::nProcs(), -1),
+    nColours_(labelMax)
+{
+    // Re-use processor-topology analysis
 
-    return 0;
-
-
-
-    const lduInterfacePtrsList patches = lm.interfaces();
+    const lduInterfacePtrsList patches = mesh.interfaces();
 
     // Filter out the non-processor patches
     DynamicList<label> procPatchIDs;
@@ -112,13 +82,11 @@ int main(int argc, char *argv[])
         )
     );
 
+    // Use greedy algorithm for now
+    // (see e.g. https://iq.opengenus.org/graph-colouring-greedy-algorithm/)
 
-    Pout<< "procNeighbours:"
-        << flatOutput(pt.procNeighbours()[Pstream::myProcNo()])
-        << endl;
+    labelList& colour = *this;
 
-
-    labelList colour(Pstream::nProcs(), -1);
 
     if (Pstream::master())
     {
@@ -128,7 +96,7 @@ int main(int argc, char *argv[])
         DynamicList<label> newFront;
         while (front.size())
         {
-            Pout<< "Front:" << front << endl;
+            //Pout<< "Front:" << front << endl;
 
             newFront.clear();
             for (const label proci : front)
@@ -165,8 +133,6 @@ int main(int argc, char *argv[])
                 }
             }
 
-            Pout<< "    newFront:" << flatOutput(newFront) << endl;
-
             front = std::move(newFront);
         }
     }
@@ -174,34 +140,52 @@ int main(int argc, char *argv[])
     Pstream::broadcast(colour);
 
 
-    {
-        volScalarField volColour
+    //if (false)
+    //{
+    //    volScalarField volColour
+    //    (
+    //        IOobject
+    //        (
+    //            "colour",
+    //            mesh.time().timeName(),
+    //            mesh,
+    //            IOobject::NO_READ,
+    //            IOobject::AUTO_WRITE,
+    //            false
+    //        ),
+    //        mesh,
+    //        dimensionedScalar(dimless, colour[Pstream::myProcNo()]),
+    //        zeroGradientFvPatchScalarField::typeName
+    //    );
+    //    volColour.write();
+    //}
+
+    //colour_ = colour[Pstream::myProcNo()];
+    nColours_ = max(colour)+1;
+}
+
+
+// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
+
+const Foam::processorColour& Foam::processorColour::New(const lduMesh& mesh)
+{
+    const processorColour* ptr =
+        mesh.thisDb().objectRegistry::template cfindObject<processorColour>
         (
-            IOobject
-            (
-                "colour",
-                mesh.time().timeName(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::AUTO_WRITE,
-                false
-            ),
-            mesh,
-            dimensionedScalar(dimless, colour[Pstream::myProcNo()]),
-            zeroGradientFvPatchScalarField::typeName
+            processorColour::typeName
         );
-        //forAll(colour, celli)
-        //{
-        //    volColour[celli] = colour[celli];
-        //}
-        //volColour.correctBoundaryConditions();
-        volColour.write();
+
+    if (ptr)
+    {
+        return *ptr;
     }
 
+    processorColour* objectPtr = new processorColour(mesh);
 
-    Info<< "End\n" << endl;
+    //regIOobject::store(static_cast<MoveableMeshObject<lduMesh>*>(objectPtr));
+    regIOobject::store(objectPtr);
 
-    return 0;
+    return *objectPtr;
 }
 
 

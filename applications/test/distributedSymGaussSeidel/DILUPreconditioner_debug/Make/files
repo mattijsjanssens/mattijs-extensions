@@ -1,5 +1,8 @@
+processorColour.C
 DICPreconditioner2.C
 DICPCG.C
+/* DICPCG-multi-colour.C */
+
 PCG.C
 DICPreconditioner.C
 DILUPreconditioner.C

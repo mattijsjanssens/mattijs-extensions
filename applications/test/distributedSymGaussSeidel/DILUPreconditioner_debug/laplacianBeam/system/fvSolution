@@ -19,11 +19,11 @@ solvers
 {
     T
     {
-        solver          DICPCG;
+        solver          DICPCG; //PCG;    //DICPCG;
         preconditioner  DIC;    //DIC_debug;
         tolerance       1e-06;
         relTol          0;  //0.05;
-        minIter         1;
+        //maxIter         10;
     }
 
 //    pFinal
