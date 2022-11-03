@@ -61,11 +61,8 @@ class ensightMeshReader
 {
     // Private data
 
-        //- Part containing the mesh
-        const label meshPartIndex_;
-
-        //- Part containing the patches
-        const bool useAllPartsForPatching_;
+        //- Merge distance
+        const scalar mergeTol_;
 
 
 protected:
@@ -124,9 +121,8 @@ public:
         ensightMeshReader
         (
             const fileName& geomFile,
-            const label meshPartIndex,
-            const bool useAllPartsForPatching,
             const objectRegistry& registry,
+            const scalar mergeTol = SMALL,
             const scalar scaleFactor = 1.0
         );
 

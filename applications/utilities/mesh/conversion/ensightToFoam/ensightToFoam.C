@@ -74,24 +74,12 @@ int main(int argc, char *argv[])
 
     argList::noParallel();
     argList::addArgument(".geo file", "The file containing the geometry");
-    argList::addArgument("part index", "The part containing the 3D mesh");
-    //argList::addBoolOption
+    //argList::addOption
     //(
-    //    "ascii",
-    //    "Write in ASCII instead of binary format"
+    //    "scale",
+    //    "factor",
+    //    "Geometry scaling factor"
     //);
-    argList::addOption
-    (
-        "scale",
-        "factor",
-        "Geometry scaling factor"
-    );
-    //argList::addBoolOption
-    //(
-    //    "solids",
-    //    "Retain solid cells and treat like fluid cells"
-    //);
-
 
     argList args(argc, argv);
     Time runTime(args.rootPath(), args.caseName());
@@ -99,22 +87,16 @@ int main(int argc, char *argv[])
     // Increase the precision of the points data
     IOstream::defaultPrecision(max(10u, IOstream::defaultPrecision()));
 
-    //// Remove extensions and/or trailing '.'
-    //const auto prefix = args.get<fileName>(1).lessExt();
-    //const fileName geomFile(prefix/"data"/"constant"/"geometry");
     const fileName geomFile(args.get<fileName>(1));
-    const label partIndex(args.get<label>(2));
 
     {
         fileFormats::ensightMeshReader reader
         (
             geomFile,
-            partIndex,
-            true,       // use all parts containing faces for patching
             runTime,
+            0.0         // mergeTol_
             // Optional scale
-            args.getOrDefault<scalar>("scale", 1)
-            //args.found("solids"),
+            //args.getOrDefault<scalar>("scale", 1)
         );
 
         autoPtr<polyMesh> mesh = reader.mesh(runTime);
