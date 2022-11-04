@@ -64,16 +64,19 @@ class ensightMeshReader
         //- Merge distance
         const scalar mergeTol_;
 
+        //- Check and correct handedness
+        const bool setHandedness_;
+
 
 protected:
 
     // Protected Data
 
-        //- Point labels (imported Point numbering not necessarily contiguous)
-        labelList mapToFoamPointId_;
+        //- mesh point to original node_id
+        labelList nodeIds_;
 
-        //- Cell labels (imported Cell numbering not necessarily contiguous)
-        labelList mapToFoamCellId_;
+        //- mesh cell to original element_id
+        labelList elementIds_;
 
 
     // Protected Member Functions
@@ -83,6 +86,33 @@ protected:
         (
             const face& f,
             face& rotatedFace
+        ) const;
+
+        //- Read set of vertices. Optional mapping
+        void readVerts
+        (
+            ensightReadFile& is,
+            const label nVerts,
+            const Map<label>& nodeIdToPoints,
+            DynamicList<label>& verts
+        ) const;
+
+        //- Read set of element/node IDs
+        void readIDs
+        (
+            ensightReadFile& is,
+            const bool doRead,
+            const label nShapes,
+            labelList& foamToElem,
+            Map<label>& elemToFoam
+        ) const;
+
+        //- Swap handedness of hex if needed
+        void setHandedness
+        (
+            const cellModel& model,
+            DynamicList<label>& verts,
+            const pointField& points
         ) const;
 
         //- Read a single part until eof (return true) or until start of next
@@ -95,14 +125,17 @@ protected:
 
             pointField& points,
             labelList& pointToNodeIds,
+            Map<label>& nodeIdToPoints,
 
             // 3D-elems : cells (cell-to-faces)
             faceListList& cellFaces,
             labelList& cellToElemIds,
+            Map<label>& elemIdToCells,
 
             // 2D-elems : faces
             faceList& faces,
-            labelList& faceToElemIDs
+            labelList& faceToElemIDs,
+            Map<label>& elemIdToFaces
         ) const;
 
         //- Read the mesh from the file(s)
@@ -123,12 +156,28 @@ public:
             const fileName& geomFile,
             const objectRegistry& registry,
             const scalar mergeTol = SMALL,
-            const scalar scaleFactor = 1.0
+            const scalar scaleFactor = 1.0,
+            const bool setHandedness = true
         );
 
 
     //- Destructor
     virtual ~ensightMeshReader() = default;
+
+
+    // Access
+
+        //- Original node id (if supplied) or -1
+        inline const labelList& nodeIds() const
+        {
+            return nodeIds_;
+        }
+
+        //- Original element id (if supplied) or -1
+        inline const labelList& elementIds() const
+        {
+            return elementIds_;
+        }
 };
 
 

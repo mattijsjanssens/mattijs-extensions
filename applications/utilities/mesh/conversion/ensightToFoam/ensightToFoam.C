@@ -24,31 +24,27 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    star4ToFoam
+    ensightToFoam
 
 Group
     grpMeshConversionUtilities
 
 Description
-    Convert a STARCD/PROSTAR (v4) mesh into OpenFOAM format.
+    Convert an Ensight Gold mesh into OpenFOAM format.
 
 Usage
-    \b star4ToFoam [OPTION] prostarMesh
+    \b ensightToFoam [OPTION] \<ensightGeometryFile\>
 
     Options:
-      - \par -ascii
-        Write in ASCII format instead of binary
+      - \par -mergeTol \<factor\>
+        Specify an alternative merging tolerance as a fraction of
+        the bounding box of the points.
 
       - \par -scale \<factor\>
-        Specify an alternative geometry scaling factor.
-        The default is \b 0.001 (scale \em [mm] to \em [m]).
+        Specify an optional geometry scaling factor.
 
-      - \par -solids
-        Treat any solid cells present just like fluid cells.
-        The default is to discard them.
-
-Note
-    Baffles are written as interfaces for later use
+      - \par -keepHandedness
+        Do not automatically flip negative volume cells
 
 See also
     Foam::meshReader and Foam::fileFormats::STARCDMeshReader
@@ -57,8 +53,6 @@ See also
 
 #include "argList.H"
 #include "Time.H"
-//#include "IFstream.H"
-#include "polyMesh.H"
 #include "ensightMeshReader.H"
 
 using namespace Foam;
@@ -74,12 +68,24 @@ int main(int argc, char *argv[])
 
     argList::noParallel();
     argList::addArgument(".geo file", "The file containing the geometry");
-    //argList::addOption
-    //(
-    //    "scale",
-    //    "factor",
-    //    "Geometry scaling factor"
-    //);
+    argList::addOption
+    (
+        "mergeTol",
+        "factor",
+        "Merge tolerance as a fraction of bounding box - 0 to disable merging"
+    );
+    argList::addOption
+    (
+        "scale",
+        "factor",
+        "Geometry scaling factor - default is 1"
+    );
+    argList::addBoolOption
+    (
+        "keepHandedness",
+        "Do not automatically flip inverted cells"
+        " (default is to do a geometric test)"
+    );
 
     argList args(argc, argv);
     Time runTime(args.rootPath(), args.caseName());
@@ -94,9 +100,9 @@ int main(int argc, char *argv[])
         (
             geomFile,
             runTime,
-            0.0         // mergeTol_
-            // Optional scale
-            //args.getOrDefault<scalar>("scale", 1)
+            args.getOrDefault<scalar>("mergeTol", 1e-6),
+            args.getOrDefault<scalar>("scale", 1.0),
+            args.found("keepHandedness")
         );
 
         autoPtr<polyMesh> mesh = reader.mesh(runTime);
