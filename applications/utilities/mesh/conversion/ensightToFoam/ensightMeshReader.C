@@ -604,6 +604,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 
     List<string> partNames;
 
+    DynamicList<label> partIDs;     // per part the original Ensight part no
     PtrList<pointField> partPoints;
     PtrList<labelList> partNodeIDs;
     PtrList<Map<label>> partPointIDs;
@@ -673,39 +674,27 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
             {
                 label partIndex;
                 is.read(partIndex);
-                partIndex -= 1;
+                partIDs.append(partIndex);
 
-                if (partIndex >= partNames.size())
-                {
-                    partNames.setSize(partIndex+1);
+                // Make space
+                partNames.setSize(partIDs.size());
+                partPoints.append(new pointField(0));
+                partNodeIDs.append(new labelList(0));
+                partPointIDs.append(new Map<label>());
 
-                    partPoints.setSize(partIndex+1);
-                    partPoints.set(partIndex, new pointField(0));
-                    partNodeIDs.setSize(partIndex+1);
-                    partNodeIDs.set(partIndex, new labelList(0));
-                    partPointIDs.setSize(partIndex+1);
-                    partPointIDs.set(partIndex, new Map<label>());
+                partCells.append(new faceListList(0));
+                partCellIDs.append(new labelList(0));
+                partCellElemIDs.append(new Map<label>());
 
-                    partCells.setSize(partIndex+1);
-                    partCells.set(partIndex, new faceListList(0));
-                    partCellIDs.setSize(partIndex+1);
-                    partCellIDs.set(partIndex, new labelList(0));
-                    partCellElemIDs.setSize(partIndex+1);
-                    partCellElemIDs.set(partIndex, new Map<label>());
+                partFaces.append(new faceList(0));
+                partFaceIDs.append(new labelList(0));
+                partFaceElemIDs.append(new Map<label>());
 
-                    partFaces.setSize(partIndex+1);
-                    partFaces.set(partIndex, new faceList(0));
-                    partFaceIDs.setSize(partIndex+1);
-                    partFaceIDs.set(partIndex, new labelList(0));
-                    partFaceElemIDs.setSize(partIndex+1);
-                    partFaceElemIDs.set(partIndex, new Map<label>());
-                }
-
-                is.read(partNames[partIndex]);
+                is.read(partNames.last());
 
                 Pout<< indent
                     << "Reading part " << partIndex
-                    << " name " << partNames[partIndex]
+                    << " name " << partNames.last()
                     << " starting at line " << is.lineNumber()
                     << " position " << is.stdStream().tellg() << endl;
 
@@ -716,27 +705,27 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
                     read_node_ids,
                     read_elem_ids,
 
-                    partPoints[partIndex],
-                    partNodeIDs[partIndex],
-                    partPointIDs[partIndex],
+                    partPoints.last(),
+                    partNodeIDs.last(),
+                    partPointIDs.last(),
 
                     // Cells (cell-to-faces)
-                    partCells[partIndex],
-                    partCellIDs[partIndex],
-                    partCellElemIDs[partIndex],
+                    partCells.last(),
+                    partCellIDs.last(),
+                    partCellElemIDs.last(),
 
                     // Faces
-                    partFaces[partIndex],
-                    partFaceIDs[partIndex],
-                    partFaceElemIDs[partIndex]
+                    partFaces.last(),
+                    partFaceIDs.last(),
+                    partFaceElemIDs.last()
                 );
 
-                partPoints[partIndex] *= scaleFactor;
+                partPoints.last() *= scaleFactor;
 
                 Pout<< indent
                     << "For part " << partIndex
-                    << " read cells " << partCells[partIndex].size()
-                    << " faces " << partFaces[partIndex].size()
+                    << " read cells " << partCells.last().size()
+                    << " faces " << partFaces.last().size()
                     << endl;
 
                 Pout<< decrIndent;
@@ -750,67 +739,149 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 
     // Merge all coordinates
     labelListList pointToMerged(partPoints.size());
+
+    //- Use point merging - also merges points inside a part which might upset
+    //- e.g. ami
+    //{
+    //    label nPoints = 0;
+    //    forAll(partPoints, parti)
+    //    {
+    //        nPoints += partPoints[parti].size();
+    //    }
+    //
+    //    points_.setSize(nPoints);
+    //    nodeIds_.setSize(nPoints, -1);
+    //    nPoints = 0;
+    //    forAll(partPoints, parti)
+    //    {
+    //        const auto& pts = partPoints[parti];
+    //
+    //        SubList<point>(points_, pts.size(), nPoints) = pts;
+    //        SubList<label>(nodeIds_, pts.size(), nPoints) =
+    //            partNodeIDs[parti];
+    //
+    //        auto& map = pointToMerged[parti];
+    //        map = nPoints + identity(pts.size());
+    //
+    //        nPoints += pts.size();
+    //    }
+    //
+    //    if (mergeTol_ > 0)
+    //    {
+    //        const scalar mergeDist = mergeTol_*boundBox(points_, true).mag();
+    //
+    //        labelList sharedToMerged;
+    //        const label nMerged = inplaceMergePoints
+    //        (
+    //            points_,
+    //            mergeDist,
+    //            false,
+    //            sharedToMerged
+    //        );
+    //        Pout<< "Merged " << nMerged << " points out of " << nPoints
+    //            << " using merge tolerance " << mergeTol_
+    //            << ", distance " << mergeDist
+    //            << endl;
+    //
+    //        forAll(partNodeIDs, parti)
+    //        {
+    //            inplaceRenumber(sharedToMerged, pointToMerged[parti]);
+    //
+    //            // Now pointToMerged contains the numbering from original,
+    //            // partwise to global points
+    //            UIndirectList<label>(nodeIds_, pointToMerged[parti]) =
+    //                partNodeIDs[parti];
+    //        }
+    //    }
+    //}
+
+    // Merge all coordinates
     {
+        boundBox extents;
         label nPoints = 0;
         forAll(partPoints, parti)
         {
-            if (partPoints.set(parti))
-            {
-                nPoints += partPoints[parti].size();
-            }
+            extents.add(partPoints[parti]);
+            nPoints += partPoints[parti].size();
         }
+        const scalar mergeDist = mergeTol_*extents.mag();
 
-        points_.setSize(nPoints);
-        nodeIds_.setSize(nPoints, -1);
-        nPoints = 0;
+        Pout<< "Merging points closer than " << mergeDist
+            << " calculated from bounding box " << extents
+            << " and mergeTol " << mergeTol_
+            << endl;
+
         forAll(partPoints, parti)
         {
-            if (partPoints.set(parti))
-            {
-                const auto& pts = partPoints[parti];
+            const auto& pPoints = partPoints[parti];
+            auto& pPointMap = pointToMerged[parti];
+            pPointMap.setSize(pPoints.size(), -1);
 
-                SubList<point>(points_, pts.size(), nPoints) = pts;
-                SubList<label>(nodeIds_, pts.size(), nPoints) =
-                    partNodeIDs[parti];
-
-                auto& map = pointToMerged[parti];
-                map = nPoints + identity(pts.size());
-
-                nPoints += pts.size();
-            }
-        }
-
-        if (mergeTol_ > 0)
-        {
-            const scalar mergeDist = mergeTol_*boundBox(points_, true).mag();
-
-            labelList sharedToMerged;
-            const label nMerged = inplaceMergePoints
-            (
-                points_,
-                mergeDist,
-                false,
-                sharedToMerged
-            );
-            Pout<< "Merged " << nMerged << " points out of " << nPoints
-                << " using merge tolerance " << mergeTol_
-                << ", distance " << mergeDist
+            Pout<< "Matching part " << parti
+                << " name " << partNames[parti]
+                << " points " << pPoints.size()
+                << " to current merged points " << points_.size()
                 << endl;
 
-            forAll(partNodeIDs, parti)
+            if (points_.empty())
             {
-                if (partNodeIDs.set(parti))
-                {
-                    inplaceRenumber(sharedToMerged, pointToMerged[parti]);
+                points_ = pPoints;
+                pPointMap = identity(pPoints.size());
+            }
+            else
+            {
+                // Match to existing
+                labelList from0To1;
+                matchPoints
+                (
+                    pPoints,
+                    points_,
+                    scalarField(pPoints.size(), mergeDist),
+                    false,
+                    from0To1
+                );
+                label nAdded = 0;
 
-                    // Now pointToMerged contains the numbering from original,
-                    // partwise to global points
-                    UIndirectList<label>(nodeIds_, pointToMerged[parti]) =
-                        partNodeIDs[parti];
+                forAll(from0To1, partPointi)
+                {
+                    const label pointi = from0To1[partPointi];
+                    if (pointi != -1)
+                    {
+                        pPointMap[partPointi] = pointi;
+                    }
+                    else
+                    {
+                        nAdded++;
+                    }
+                }
+
+                const label nOldPoints = points_.size();
+                points_.setSize(nOldPoints+nAdded);
+                nAdded = 0;
+                forAll(from0To1, partPointi)
+                {
+                    if (from0To1[partPointi] == -1)
+                    {
+                        const label newPointi = nOldPoints+nAdded++;
+                        points_[newPointi] = pPoints[partPointi];
+                        pPointMap[partPointi] = newPointi;
+                    }
                 }
             }
         }
+
+        // Now we have complete points. Take over element IDs.
+        nodeIds_.setSize(points_.size());
+        forAll(partNodeIDs, parti)
+        {
+            const auto& pPointMap = pointToMerged[parti];
+            UIndirectList<label>(nodeIds_, pPointMap) = partNodeIDs[parti];
+        }
+
+        Pout<< "Merged from " << nPoints << " down to " << points_.size()
+            << " points" << endl;
     }
+
 
     // Merge all cells
     labelList cellOffsets(partCells.size()+1);
@@ -819,10 +890,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
         label nCells = 0;
         forAll(partCells, parti)
         {
-            if (partCells.set(parti))
-            {
-                nCells += partCells[parti].size();
-            }
+            nCells += partCells[parti].size();
             cellOffsets[parti+1] = nCells;
         }
 
@@ -832,42 +900,39 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
 
         forAll(partCells, parti)
         {
-            if (partCells.set(parti))
+            // Copy cells into position
+            const auto& cells = partCells[parti];
+
+            SubList<faceList> cellSlice
+            (
+                cellFaces_,
+                cells.size(),
+                cellOffsets[parti]
+            );
+            cellSlice = cells;
+
+            SubList<label>
+            (
+                cellTableId_,
+                cells.size(),
+                cellOffsets[parti]
+            ) = parti;
+
+            SubList<label>
+            (
+                elementIds_,
+                cells.size(),
+                cellOffsets[parti]
+            ) = partCellIDs[parti];
+
+            // Renumber faces
+            const auto& pointMap = pointToMerged[parti];
+
+            for (auto& cellFaces : cellSlice)
             {
-                // Copy cells into position
-                const auto& cells = partCells[parti];
-
-                SubList<faceList> cellSlice
-                (
-                    cellFaces_,
-                    cells.size(),
-                    cellOffsets[parti]
-                );
-                cellSlice = cells;
-
-                SubList<label>
-                (
-                    cellTableId_,
-                    cells.size(),
-                    cellOffsets[parti]
-                ) = parti;
-
-                SubList<label>
-                (
-                    elementIds_,
-                    cells.size(),
-                    cellOffsets[parti]
-                ) = partCellIDs[parti];
-
-                // Renumber faces
-                const auto& pointMap = pointToMerged[parti];
-
-                for (auto& cellFaces : cellSlice)
+                for (auto& f : cellFaces)
                 {
-                    for (auto& f : cellFaces)
-                    {
-                        inplaceRenumber(pointMap, f);
-                    }
+                    inplaceRenumber(pointMap, f);
                 }
             }
         }
@@ -878,7 +943,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     forAll(partCells, parti)
     {
         cellTable_.setMaterial(parti, "fluid");
-        cellTable_.setName(parti, "part" + Foam::name(parti));
+        cellTable_.setName(parti, "part" + Foam::name(partIDs[parti]));
     }
 
 
@@ -919,7 +984,7 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     label nPatches = 0;
     forAll(partFaces, parti)
     {
-        if (partFaces.set(parti) && partFaces[parti].size())
+        if (partFaces[parti].size())
         {
             Pout<< "Using part " << parti
                 << " name " << partNames[parti]
@@ -937,63 +1002,60 @@ bool Foam::fileFormats::ensightMeshReader::readGeometry
     {
         const label parti = patchToPart[patchi];
 
-        if (partFaces.set(parti))
+        Pout<< "Matching part " << parti
+            << " name " << partNames[parti]
+            << " faces " << partFaces[parti].size()
+            //<< " points " << partPoints[parti].size()
+            << " to merged faces " << vertsToCell.size()
+            << ", merged points " << points_.size()
+            << endl;
+
+        patchNames_[patchi] = word::validate(partNames[parti]);
+
+        const auto& pointMap = pointToMerged[parti];
+        const auto& faces = partFaces[parti];
+
+        auto& partCellAndFace = boundaryIds_[patchi];
+        partCellAndFace.setSize(faces.size());
+
+        label patchFacei = 0;
+        forAll(faces, facei)
         {
-            Pout<< "Matching part " << parti
-                << " name " << partNames[parti]
-                << " faces " << partFaces[parti].size()
-                //<< " points " << partPoints[parti].size()
-                << " to merged faces " << vertsToCell.size()
-                << ", merged points " << points_.size()
-                << endl;
-
-            patchNames_[patchi] = word::validate(partNames[parti]);
-
-            const auto& pointMap = pointToMerged[parti];
-            const auto& faces = partFaces[parti];
-
-            auto& partCellAndFace = boundaryIds_[patchi];
-            partCellAndFace.setSize(faces.size());
-
-            label patchFacei = 0;
-            forAll(faces, facei)
+            if (faces[facei].empty())
             {
-                if (faces[facei].empty())
-                {
-                    Pout<< "Ignoring empty face:" << facei << endl;
-                    continue;
-                }
-
-                // Rewrite into mesh-point ordering
-                const face newF(pointMap, faces[facei]);
-                // Lookup cell and face on cell using the vertices
-                const auto cAndF = vertsToCell.find
-                (
-                    rotateFace
-                    (
-                        newF,
-                        rotatedFace
-                    )
-                );
-
-                if (!cAndF)
-                {
-                    //WarningInFunction
-                    //    << "Did not find face " << facei
-                    //    << " verts:" << faces[facei]
-                    //    << " renumbered:" << newF
-                    //    << " rotated:" << rotatedFace
-                    //    << " in part " << parti
-                    //    << endl;
-                }
-                else
-                {
-                    partCellAndFace[patchFacei++] = cAndF();
-                    vertsToCell.erase(cAndF);
-                }
+                Pout<< "Ignoring empty face:" << facei << endl;
+                continue;
             }
-            partCellAndFace.setSize(patchFacei);
+
+            // Rewrite into mesh-point ordering
+            const face newF(pointMap, faces[facei]);
+            // Lookup cell and face on cell using the vertices
+            const auto cAndF = vertsToCell.find
+            (
+                rotateFace
+                (
+                    newF,
+                    rotatedFace
+                )
+            );
+
+            if (!cAndF)
+            {
+                //WarningInFunction
+                //    << "Did not find face " << facei
+                //    << " verts:" << faces[facei]
+                //    << " renumbered:" << newF
+                //    << " rotated:" << rotatedFace
+                //    << " in part " << parti
+                //    << endl;
+            }
+            else
+            {
+                partCellAndFace[patchFacei++] = cAndF();
+                vertsToCell.erase(cAndF);
+            }
         }
+        partCellAndFace.setSize(patchFacei);
     }
     patchPhysicalTypes_.setSize(nPatches, "wall");
     patchStarts_.setSize(nPatches, 0);

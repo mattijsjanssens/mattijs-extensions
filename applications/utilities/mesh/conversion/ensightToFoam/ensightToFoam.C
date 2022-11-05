@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
         (
             geomFile,
             runTime,
-            args.getOrDefault<scalar>("mergeTol", 1e-6),
+            args.getOrDefault<scalar>("mergeTol", 1e-10),
             args.getOrDefault<scalar>("scale", 1.0),
             args.found("keepHandedness")
         );
