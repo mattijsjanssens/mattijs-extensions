@@ -31,6 +31,7 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
+#include "ISstream.H"
 #include "argList.H"
 #include "IOstreams.H"
 #include "IOobject.H"
@@ -106,8 +107,16 @@ int main(int argc, char *argv[])
     // 1. Determine syntax for unparsed variable name
     //dictionary dict;
     //dict.add(new primitiveEntry("name", "\\$WM_MPLIB"));
+
+    Pout<<" ** STARTING **" << endl;
+    ISstream::keepComments = true;
     dictionary dict(IFstream("testDict")());
 DebugVar(dict);
+    Pout<<" ** STOPPING **" << endl;
+    ISstream::keepComments = false;
+
+return 0;
+
 
     //- not possible - needs Field<word> possible
     //auto fnPtr = Function1<word>::New("bla", dict);
