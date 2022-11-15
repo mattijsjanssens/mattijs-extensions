@@ -38,89 +38,174 @@ namespace Foam
 }
 
 
+void Foam::DICPCG::receive
+(
+    const labelList& selectedInterfaces,
+    FieldField<Field, scalar>& recvBufs,    // Receive buffer
+    label& startOfRequests
+) const
+{
+    if (startOfRequests == -1)
+    {
+        startOfRequests = Pstream::nRequests();
+    }
+
+    // Start reads
+    for (const label inti : selectedInterfaces)
+    {
+        const auto& intf = interfaces_[inti].interface();
+        const auto* ppp = isA<const processorLduInterface>(intf);
+
+        scalarField& recvBuf = recvBufs[inti];
+        recvBuf.setSize(interfaceBouCoeffs_[inti].size());
+
+        Pout<< "** starting read at interface:" << inti
+            << " from " << ppp->neighbProcNo() << endl;
+
+        UIPstream::read
+        (
+            Pstream::commsTypes::nonBlocking,
+            ppp->neighbProcNo(),
+            recvBuf.data_bytes(),
+            recvBuf.size_bytes(),
+            ppp->tag(),
+            ppp->comm()
+        );
+    }
+}
+
+
+void Foam::DICPCG::send
+(
+    const labelList& selectedInterfaces,
+    const solveScalarField& psiInternal,
+    FieldField<Field, scalar>& sendBufs,
+    label& startOfRequests
+) const
+{
+    if (startOfRequests == -1)
+    {
+        startOfRequests = Pstream::nRequests();
+    }
+
+    // Start writes
+    for (const label inti : selectedInterfaces)
+    {
+        const auto& intf = interfaces_[inti].interface();
+        const auto* ppp = isA<const processorLduInterface>(intf);
+        const auto& faceCells = intf.faceCells();
+
+        scalarField& sendBuf = sendBufs[inti];
+
+        Pout<< "** starting send at interface:" << inti
+            << " to " << ppp->neighbProcNo() << endl;
+
+        sendBuf.setSize(faceCells.size());
+        forAll(faceCells, face)
+        {
+            sendBuf[face] = psiInternal[faceCells[face]];
+        }
+
+        Pout<< "at int:" << inti
+            << " sending to proc:" << ppp->neighbProcNo()
+            << " actual data:" << flatOutput(sendBuf)
+            << endl;
+
+        UOPstream::write
+        (
+            Pstream::commsTypes::nonBlocking,
+            ppp->neighbProcNo(),
+            sendBuf.cdata_bytes(),
+            sendBuf.size_bytes(),
+            ppp->tag(),
+            ppp->comm()
+        );
+    }
+}
+
+
 void Foam::DICPCG::calcReciprocalD
 (
     solveScalarField& rD,
     const lduMatrix& matrix,
-    const labelList& selectedInterfaces,
-    FieldField<Field, scalar>& coeffs,  // work
-    const direction cmpt
+    const labelList& lowerInterfaces,
+    const labelList& higherInterfaces,
+    FieldField<Field, scalar>& sendBufs,    // Send buffer
+    FieldField<Field, scalar>& recvBufs,    // Receive buffer
+    label& startOfRequests
 ) const
 {
+    // Start swapping remote contributions
+    startOfRequests = Pstream::nRequests();
+
+    // Start reads (into recvBufs)
+    Pout<< "Starting read from interfaces:" << flatOutput(lowerInterfaces)
+        << endl;
+    receive(lowerInterfaces, recvBufs, startOfRequests);
+
+
     const scalarField& diag = matrix.diag();
     rD.setSize(diag.size());
     std::copy(diag.begin(), diag.end(), rD.begin());
 
 
-    // Subtract coupled contributions
-    {
-        scalarField invRd(matrix.diag());
-        forAll(invRd, cell)
-        {
-            invRd[cell] = 1.0/invRd[cell];
-        }
-
-
-        forAll(interfaces_, inti)
-        {
-            if (interfaces_.set(inti))
-            {
-                coeffs[inti] = Zero;
-            }
-        }
-        for (const label inti : selectedInterfaces)
-        {
-            const auto& bc = interfaceBouCoeffs_[inti];
-            scalarField& coeff = coeffs[inti];
-
-            forAll(bc, i)
-            {
-                coeff[i] = bc[i]*bc[i];
-            }
-        }
-
-        const label startRequest = Pstream::nRequests();
-        matrix.initMatrixInterfaces
-        (
-            true,   // subtract remote contributions
-            coeffs,
-            interfaces_,
-            invRd,
-            rD,
-            cmpt                
-        );
-        matrix.updateMatrixInterfaces
-        (
-            true,   // subtract remote contributions
-            coeffs,
-            interfaces_,
-            invRd,
-            rD,
-            cmpt,
-            startRequest              
-        );
-    }
-
     const label* const __restrict__ uPtr = matrix.lduAddr().upperAddr().begin();
     const label* const __restrict__ lPtr = matrix.lduAddr().lowerAddr().begin();
     const scalar* const __restrict__ upperPtr = matrix.upper().begin();
 
+    // Subtract coupled contributions
+    if (startOfRequests != -1)
     {
-        const label nFaces = matrix.upper().size();
+        // Wait for finish. Received result in recvBufs
+        UPstream::waitRequests(startOfRequests);
+        startOfRequests = -1;
+    }
 
-        for (label face=0; face<nFaces; face++)
+    for (const label inti : lowerInterfaces)
+    {
+        const auto& intf = interfaces_[inti].interface();
+        // TBD: do not use patch faceCells but passed-in addressing?
+        const auto& faceCells = intf.faceCells();
+        const auto& recvBuf = recvBufs[inti];
+        const auto& bc = interfaceBouCoeffs_[inti];
+
+        const auto* ppp = isA<const processorLduInterface>(intf);
+        Pout<< "at int:" << inti
+            << " received from proc:" << ppp->neighbProcNo()
+            << " actual data:" << flatOutput(recvBuf)
+            << endl;
+
+        forAll(recvBuf, face)
         {
-            rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[lPtr[face]];
+            // Note:interfaceBouCoeffs_ is -upperPtr
+            rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
         }
+    }
 
 
-        // Calculate the reciprocal of the preconditioned diagonal
-        const label nCells = rD.size();
+    const label nFaces = matrix.upper().size();
+    for (label face=0; face<nFaces; face++)
+    {
+        rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[lPtr[face]];
+    }
 
-        for (label cell=0; cell<nCells; cell++)
-        {
-            rD[cell] = 1.0/rD[cell];
-        }
+
+    // Start writes of rD (using sendBufs)
+    send(higherInterfaces, rD, sendBufs, startOfRequests);
+
+    // Calculate the reciprocal of the preconditioned diagonal
+    const label nCells = rD.size();
+
+    for (label cell=0; cell<nCells; cell++)
+    {
+        rD[cell] = 1.0/rD[cell];
+    }
+
+    if (startOfRequests != -1)
+    {
+        // Wait for finish
+        UPstream::waitRequests(startOfRequests);
+        startOfRequests = -1;
     }
 }
 
@@ -217,16 +302,18 @@ Foam::solverPerformance Foam::DICPCG::solve
 
 //XXXXX
         // Work array
-        FieldField<Field, scalar> coeffs(interfaceBouCoeffs_.size());
+        FieldField<Field, scalar> sendBufs(interfaceBouCoeffs_.size());
+        FieldField<Field, scalar> recvBufs(interfaceBouCoeffs_.size());
         forAll(interfaceBouCoeffs_, inti)
         {
             if (interfaces_.set(inti))
             {
                 const auto& bc = interfaceBouCoeffs_[inti];
-                coeffs.set(inti, new scalarField(bc.size(), Zero));
+                sendBufs.set(inti, new scalarField(bc.size(), Zero));
+                recvBufs.set(inti, new scalarField(bc.size(), Zero));
             }
         }
-
+        label startOfRequests = -1;
 
         // --- Solver iteration
         do
@@ -282,11 +369,22 @@ Foam::solverPerformance Foam::DICPCG::solve
                 }
 
                 // Include not-solved for neighbours
+                Pout<< "** Diagonal" << endl;
                 scalarField rD_;
                 //calcReciprocalD(rD_, matrix(), lowerNbrs, coeffs, cmpt);
-                calcReciprocalD(rD_, matrix(), lowerNbrs, coeffs, cmpt);
-
-                //DebugVar(rD_);
+                {
+                    calcReciprocalD
+                    (
+                        rD_,
+                        matrix(),
+                        lowerNbrs,
+                        higherNbrs,
+                        sendBufs,    // Send buffer
+                        recvBufs,    // Receive buffer
+                        startOfRequests
+                    );
+                    DebugVar(rD_);
+                }
 
 
 
@@ -305,6 +403,18 @@ Foam::solverPerformance Foam::DICPCG::solve
                 label nFaces = matrix().upper().size();
                 label nFacesM1 = nFaces - 1;
 
+
+                label startOfRequests = Pstream::nRequests();
+
+                // Start reads (into recvBufs)
+                Pout<< "Starting read from interfaces:"
+                    << flatOutput(lowerNbrs) << endl;
+                receive(lowerNbrs, recvBufs, startOfRequests);
+                UPstream::waitRequests(startOfRequests);
+                startOfRequests = -1;
+
+                Pout<< "** forwards sweep" << endl;
+
                 // Initialise 'internal' cells
                 for (label cell=0; cell<nCells; cell++)
                 {
@@ -312,113 +422,116 @@ Foam::solverPerformance Foam::DICPCG::solve
                 }
 
                 // Do 'halo' contributions from lower numbered procs
+                if (startOfRequests != -1)
                 {
-                    forAll(interfaces_, inti)
-                    {
-                        if (interfaces_.set(inti))
-                        {
-                            coeffs[inti] = Zero;
-                        }
-                    }
-                    for (const label inti : lowerNbrs)
-                    {
-                        const auto& intf = interfaces_[inti].interface();
-                        const auto& faceCells = intf.faceCells();
-                        const auto& bc = interfaceBouCoeffs_[inti];
-                        scalarField& coeff = coeffs[inti];
-
-                        forAll(bc, i)
-                        {
-                            // bouCoeffs are negative compared to
-                            // upperPtr
-                            coeff[i] = -bc[i]*rD_[faceCells[i]];
-                        }
-                    }
-
-                    const label startRequest = Pstream::nRequests();
-                    matrix().initMatrixInterfaces
-                    (
-                        true,  // subtract contribution
-                        coeffs,
-                        interfaces_,
-                        wA,
-                        wA,
-                        cmpt                
-                    );
-                    matrix().updateMatrixInterfaces
-                    (
-                        true,  // subtract contribution
-                        coeffs,
-                        interfaces_,
-                        wA,
-                        wA,
-                        cmpt,
-                        startRequest              
-                    );
+                    // Wait for finish. Received result in recvBufs
+                    UPstream::waitRequests(startOfRequests);
+                    startOfRequests = -1;
                 }
 
+                for (const label inti : lowerNbrs)
+                {
+                    const auto& intf = interfaces_[inti].interface();
+                    // TBD: do not use patch faceCells but passed-in
+                    // addressing?
+                    const auto& faceCells = intf.faceCells();
+                    const auto& recvBuf = recvBufs[inti];
+                    const auto& bc = interfaceBouCoeffs_[inti];
+
+                    const auto* ppp =
+                        isA<const processorLduInterface>(intf);
+                    Pout<< "at int:" << inti
+                        << " received from proc:" << ppp->neighbProcNo()
+                        << " actual data:" << flatOutput(recvBuf)
+                        << endl;
+
+                    forAll(recvBuf, face)
+                    {
+                        // Note: interfaceBouCoeffs_ is -upperPtr
+                        const label cell = faceCells[face];
+
+                        Pout<< "From remote:" << rDPtr[cell]*bc[face]*recvBuf[face]
+                            << endl;
+
+                        wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
+                    }
+                }
 
                 // Do 'internal' faces, forward sweep
                 for (label face=0; face<nFaces; face++)
                 {
+                    Pout<< "From lower cell:"
+                        << -rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]]
+                        << endl;
+
                     wAPtr[uPtr[face]] -=
                         rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
                 }
 
-
-                // Do 'halo' contributions from higher numbered procs
+                // Start send/receives
                 {
-                    forAll(interfaces_, inti)
-                    {
-                        if (interfaces_.set(inti))
-                        {
-                            coeffs[inti] = Zero;
-                        }
-                    }
-                    for (const label inti : higherNbrs)
-                    {
-                        const auto& intf = interfaces_[inti].interface();
-                        const auto& faceCells = intf.faceCells();
-                        const auto& bc = interfaceBouCoeffs_[inti];
-                        scalarField& coeff = coeffs[inti];
-
-                        forAll(bc, i)
-                        {
-                            // bouCoeffs are negative compared to
-                            // upperPtr
-                            coeff[i] = -bc[i]*rD_[faceCells[i]];
-                        }
-                    }
-
-                    const label startRequest = Pstream::nRequests();
-                    matrix().initMatrixInterfaces
-                    (
-                        true,  // subtract contribution
-                        coeffs,
-                        interfaces_,
-                        wA,
-                        wA,
-                        cmpt                
-                    );
-                    matrix().updateMatrixInterfaces
-                    (
-                        true,  // subtract contribution
-                        coeffs,
-                        interfaces_,
-                        wA,
-                        wA,
-                        cmpt,
-                        startRequest              
-                    );
+                    // Start writes of wA (using sendBufs)
+                    send(higherNbrs, wA, sendBufs, startOfRequests);
+                    UPstream::waitRequests(startOfRequests);
+                    startOfRequests = -1;
                 }
 
+
+                Pout<< "** backwards sweep" << endl;
+
+                // Do 'halo' contributions from higher numbered procs
+                if (startOfRequests != -1)
+                {
+                    // Wait for finish. Received result in recvBufs
+                    UPstream::waitRequests(startOfRequests);
+                    startOfRequests = -1;
+                }
+                for (const label inti : higherNbrs)
+                {
+                    const auto& intf = interfaces_[inti].interface();
+                    // TBD: do not use patch faceCells but passed-in
+                    // addressing?
+                    const auto& faceCells = intf.faceCells();
+                    const auto& recvBuf = recvBufs[inti];
+                    const auto& bc = interfaceBouCoeffs_[inti];
+
+                    const auto* ppp =
+                        isA<const processorLduInterface>(intf);
+                    Pout<< "at int:" << inti
+                        << " received from proc:" << ppp->neighbProcNo()
+                        << " actual data:" << flatOutput(recvBuf)
+                        << endl;
+
+                    forAll(recvBuf, face)
+                    {
+                        // Note: interfaceBouCoeffs_ is -upperPtr
+                        const label cell = faceCells[face];
+
+                        Pout<< "From remote:" << rDPtr[cell]*bc[face]*recvBuf[face]
+                            << endl;
+
+                        wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
+                    }
+                }
 
                 // Do 'internal' faces, backwards sweep
                 for (label face=nFacesM1; face>=0; face--)
                 {
+                    Pout<< "From upper cell:"
+                        << -rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]]
+                        << endl;
+
                     wAPtr[lPtr[face]] -=
                         rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
                 }
+
+                {
+                    // Start writes of wA (using sendBufs)
+                    send(lowerNbrs, wA, sendBufs, startOfRequests);
+                    UPstream::waitRequests(startOfRequests);
+                    startOfRequests = -1;
+                }
+                Pout<< endl;
             }
 //XXXXXX
 

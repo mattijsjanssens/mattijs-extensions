@@ -53,19 +53,37 @@ class DICPCG
 {
     // Private Member Functions
 
-        void calcReciprocalD
+        void receive
         (
-            solveScalarField& rD,
-            const lduMatrix& matrix
+            const labelList& selectedInterfaces,
+            FieldField<Field, scalar>& recvBufs,    // Receive buffer
+            label& startOfRequests
         ) const;
+
+        void send
+        (
+            const labelList& selectedInterfaces,
+            const solveScalarField& psiInternal,
+            FieldField<Field, scalar>& sendBufs,
+            label& startOfRequests
+        ) const;
+
+
+//        void calcReciprocalD
+//        (
+//            solveScalarField& rD,
+//            const lduMatrix& matrix
+//        ) const;
 
         void calcReciprocalD
         (
             solveScalarField& rD,
             const lduMatrix& matrix,
-            const labelList& selectedInterfaces,
-            FieldField<Field, scalar>& coeffs,  // work
-            const direction cmpt
+            const labelList& lowerInterfaces,
+            const labelList& higherInterfaces,
+            FieldField<Field, scalar>& sendBufs,    // Send buffer
+            FieldField<Field, scalar>& recvBufs,    // Receive buffer
+            label& startOfRequests
         ) const;
 
         //- Disallow default bitwise copy construct
