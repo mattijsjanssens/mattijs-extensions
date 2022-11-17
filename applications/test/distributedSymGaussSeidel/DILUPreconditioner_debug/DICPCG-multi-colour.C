@@ -98,7 +98,8 @@ void Foam::DICPCG::send
         scalarField& sendBuf = sendBufs[inti];
 
         Pout<< "** starting send at interface:" << inti
-            << " to " << ppp->neighbProcNo() << endl;
+            << " to " << ppp->neighbProcNo()
+            << " at req:" << startOfRequests << endl;
 
         sendBuf.setSize(faceCells.size());
         forAll(faceCells, face)
@@ -324,6 +325,8 @@ Foam::solverPerformance Foam::DICPCG::solve
             // --- Precondition residual
             //preconPtr->precondition(wA, rA, cmpt);
 //XXXXXX
+            Pout<< "** Starting iteration " << solverPerf.nIterations()
+                << endl;
             {
                 // TBD: replace with proper colouring
                 //const labelList colours(identity(Pstream::nProcs()));
@@ -406,14 +409,18 @@ Foam::solverPerformance Foam::DICPCG::solve
 
                 label startOfRequests = Pstream::nRequests();
 
+                Pout<< "** forwards sweep" << endl;
+
                 // Start reads (into recvBufs)
                 Pout<< "Starting read from interfaces:"
                     << flatOutput(lowerNbrs) << endl;
                 receive(lowerNbrs, recvBufs, startOfRequests);
+                Pout<< "Starting read wait from lower from startOfRequests:"
+                    << startOfRequests << endl;
                 UPstream::waitRequests(startOfRequests);
+                Pout<< "Done read wait from lower from startOfRequests:"
+                    << startOfRequests << endl;
                 startOfRequests = -1;
-
-                Pout<< "** forwards sweep" << endl;
 
                 // Initialise 'internal' cells
                 for (label cell=0; cell<nCells; cell++)
@@ -424,6 +431,7 @@ Foam::solverPerformance Foam::DICPCG::solve
                 // Do 'halo' contributions from lower numbered procs
                 if (startOfRequests != -1)
                 {
+                    FatalErrorInFunction << "problem" << exit(FatalError);
                     // Wait for finish. Received result in recvBufs
                     UPstream::waitRequests(startOfRequests);
                     startOfRequests = -1;
@@ -472,17 +480,33 @@ Foam::solverPerformance Foam::DICPCG::solve
                 {
                     // Start writes of wA (using sendBufs)
                     send(higherNbrs, wA, sendBufs, startOfRequests);
+                    Pout<< "Starting send wait to higher from startOfRequests:"
+                        << startOfRequests << endl;
                     UPstream::waitRequests(startOfRequests);
+                    Pout<< "Done send wait to higher  from startOfRequests:"
+                        << startOfRequests << endl;
                     startOfRequests = -1;
                 }
 
 
                 Pout<< "** backwards sweep" << endl;
 
+                // Start reads (into recvBufs)
+                Pout<< "Starting read from interfaces:"
+                    << flatOutput(higherNbrs) << endl;
+                receive(higherNbrs, recvBufs, startOfRequests);
+                Pout<< "Starting read wait from higher from startOfRequests:"
+                    << startOfRequests << endl;
+                UPstream::waitRequests(startOfRequests);
+                Pout<< "Done read wait from higher from startOfRequests:"
+                    << startOfRequests << endl;
+                startOfRequests = -1;
+
                 // Do 'halo' contributions from higher numbered procs
                 if (startOfRequests != -1)
                 {
                     // Wait for finish. Received result in recvBufs
+                    FatalErrorInFunction << "problem" << exit(FatalError);
                     UPstream::waitRequests(startOfRequests);
                     startOfRequests = -1;
                 }
@@ -528,10 +552,16 @@ Foam::solverPerformance Foam::DICPCG::solve
                 {
                     // Start writes of wA (using sendBufs)
                     send(lowerNbrs, wA, sendBufs, startOfRequests);
+                    Pout<< "Starting send wait to lower from startOfRequests:"
+                        << startOfRequests << endl;
                     UPstream::waitRequests(startOfRequests);
+                    Pout<< "Done send wait to lower  from startOfRequests:"
+                        << startOfRequests << endl;
+
                     startOfRequests = -1;
                 }
-                Pout<< endl;
+                Pout<< "** Finished iteration " << solverPerf.nIterations()
+                    << nl << endl;
             }
 //XXXXXX
 
