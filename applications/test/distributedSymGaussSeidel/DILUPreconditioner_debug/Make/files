@@ -1,10 +1,12 @@
 processorColour.C
-DICPreconditioner2.C
+distributedDICPreconditioner.C
 /* DICPCG.C */
 DICPCG-multi-colour.C
 
+/*
 PCG.C
 DICPreconditioner.C
 DILUPreconditioner.C
+*/
 
-LIB = $(FOAM_USER_LIBBIN)/libDILUPreconditioner_debug
+LIB = $(FOAM_USER_LIBBIN)/libpreconditioner

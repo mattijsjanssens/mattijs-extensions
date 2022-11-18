@@ -19,35 +19,27 @@ solvers
 {
     T
     {
-        solver          DICPCG; //PCG;    //DICPCG;
-        preconditioner  DIC;    //DIC_debug;
+        //solver          PCG;
+        //preconditioner  distributedDIC;
+
+        solver          GAMG;
+        smoother        GaussSeidel;
+        nCellsInCoarsestLevel 1;
+
+        // Explicit specify solver for coarse-level correction to override
+        // solution tolerance
+        coarsestLevelCorr
+        {
+            solver          PCG;
+            preconditioner  distributedDIC;
+        }
+
+
         tolerance       1e-06;
         relTol          0;  //0.05;
         //maxIter         10;
     }
-
-//    pFinal
-//    {
-//        $p;
-//        relTol          0;
-//    }
-//
-//    U
-//    {
-//        solver          smoothSolver;
-//        smoother        symGaussSeidel;
-//        tolerance       1e-05;
-//        relTol          0;
-//    }
 }
-
-//PISO
-//{
-//    nCorrectors     2;
-//    nNonOrthogonalCorrectors 0;
-//    pRefCell        0;
-//    pRefValue       0;
-//}
 
 SIMPLE
 {

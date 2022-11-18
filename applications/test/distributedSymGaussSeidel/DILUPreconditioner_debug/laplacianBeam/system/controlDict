@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-libs            ("libDILUPreconditioner_debug.so");
+libs            (preconditioner);
 
 application     laplacianFoam;
 
