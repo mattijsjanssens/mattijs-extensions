@@ -67,7 +67,7 @@ void Foam::distributedDICPreconditioner::receive
             ppp->neighbProcNo(),
             recvBuf.data_bytes(),
             recvBuf.size_bytes(),
-            ppp->tag(),
+            ppp->tag()+70,          // random offset
             ppp->comm()
         );
     }
@@ -103,7 +103,7 @@ void Foam::distributedDICPreconditioner::send
             ppp->neighbProcNo(),
             sendBuf.cdata_bytes(),
             sendBuf.size_bytes(),
-            ppp->tag(),
+            ppp->tag()+70,          // random offset
             ppp->comm()
         );
     }
@@ -363,7 +363,7 @@ void Foam::distributedDICPreconditioner::precondition
 
     // Start writes of wA (using sendBufs)
     send(lowerNbrs_, wA);
-    UPstream::waitRequests(startOfRequests);
+    //UPstream::waitRequests(startOfRequests);
 }
 
 
