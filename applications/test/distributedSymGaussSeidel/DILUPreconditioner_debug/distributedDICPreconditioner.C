@@ -191,6 +191,7 @@ Foam::distributedDICPreconditioner::distributedDICPreconditioner
 )
 :
     lduMatrix::preconditioner(sol),
+    startOfRequests_(-1),
     rD_(sol.matrix().diag().size())
 {
     //const lduMesh& mesh = sol.matrix().mesh();
@@ -255,6 +256,18 @@ Foam::distributedDICPreconditioner::distributedDICPreconditioner
 }
 
 
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::distributedDICPreconditioner::~distributedDICPreconditioner()
+{
+    if (startOfRequests_ != -1)
+    {
+        // Clear any outstanding sends.
+        UPstream::waitRequests(startOfRequests_);
+    }
+}
+
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void Foam::distributedDICPreconditioner::precondition
@@ -285,7 +298,7 @@ void Foam::distributedDICPreconditioner::precondition
     // Forward sweep
     // ~~~~~~~~~~~~~
 
-    label startOfRequests = Pstream::nRequests();
+    startOfRequests_ = Pstream::nRequests();
 
     // Start reads (into recvBufs)
     receive(lowerNbrs_);
@@ -299,7 +312,7 @@ void Foam::distributedDICPreconditioner::precondition
     // Do 'halo' contributions from lower numbered procs
     {
         // Wait for finish. Received result in recvBufs
-        UPstream::waitRequests(startOfRequests);
+        UPstream::waitRequests(startOfRequests_);
 
         for (const label inti : lowerNbrs_)
         {
@@ -335,7 +348,7 @@ void Foam::distributedDICPreconditioner::precondition
     receive(higherNbrs_);
 
     {
-        UPstream::waitRequests(startOfRequests);
+        UPstream::waitRequests(startOfRequests_);
 
         for (const label inti : higherNbrs_)
         {
@@ -363,7 +376,7 @@ void Foam::distributedDICPreconditioner::precondition
 
     // Start writes of wA (using sendBufs)
     send(lowerNbrs_, wA);
-    //UPstream::waitRequests(startOfRequests);
+    //UPstream::waitRequests(startOfRequests_);
 }
 
 

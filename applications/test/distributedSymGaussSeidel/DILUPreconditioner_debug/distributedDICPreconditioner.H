@@ -71,6 +71,8 @@ protected:
         //- Buffers for sending and receiving data
         mutable FieldField<Field, solveScalar> sendBufs_;
         mutable FieldField<Field, solveScalar> recvBufs_;
+        mutable label startOfRequests_;
+
 
         //- Interfaces to lower coloured processors
         DynamicList<label> lowerNbrs_;
@@ -111,7 +113,7 @@ public:
 
 
     //- Destructor
-    virtual ~distributedDICPreconditioner() = default;
+    virtual ~distributedDICPreconditioner();
 
 
     // Member Functions
