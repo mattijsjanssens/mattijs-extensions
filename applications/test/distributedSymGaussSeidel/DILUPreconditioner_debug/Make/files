@@ -1,5 +1,6 @@
 processorColour.C
-distributedDICPreconditioner.C
+/* distributedDICPreconditioner.C */
+distributedDICPreconditioner-mpi.C
 /* DICPCG.C */
 DICPCG-multi-colour.C
 
