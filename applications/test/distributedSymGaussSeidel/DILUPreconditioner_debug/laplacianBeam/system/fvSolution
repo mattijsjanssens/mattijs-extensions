@@ -19,25 +19,25 @@ solvers
 {
     T
     {
-        //solver          PCG;
-        //preconditioner  distributedDIC;
+        solver          PCG;
+        preconditioner  distributedDIC2;
 
-        solver          GAMG;
-        smoother        GaussSeidel;
-        nCellsInCoarsestLevel 1;
-
-        // Explicit specify solver for coarse-level correction to override
-        // solution tolerance
-        coarsestLevelCorr
-        {
-            solver          PCG;
-            preconditioner  distributedDIC;
-        }
+        //solver          GAMG;
+        //smoother        GaussSeidel;
+        //nCellsInCoarsestLevel 1;
+        //
+        //// Explicit specify solver for coarse-level correction to override
+        //// solution tolerance
+        //coarsestLevelCorr
+        //{
+        //    solver          PCG;
+        //    preconditioner  distributedDIC;
+        //}
 
 
         tolerance       1e-06;
         relTol          0;  //0.05;
-        //maxIter         10;
+        maxIter         10;
     }
 }
 
