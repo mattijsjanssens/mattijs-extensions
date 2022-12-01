@@ -231,13 +231,13 @@ void Foam::distributedDICPreconditioner::calcReciprocalD
 
 
     // Make sure no outstanding sends
-    //wait(higherSendRequests_);
-    if (higherSendRequests_.size())
-    {
-        FatalErrorInFunction
-            << "higherSendRequests_:" << higherSendRequests_.size()
-            << exit(FatalError);
-    }
+    wait(higherSendRequests_);
+    //if (higherSendRequests_.size())
+    //{
+    //    FatalErrorInFunction
+    //        << "higherSendRequests_:" << higherSendRequests_.size()
+    //        << exit(FatalError);
+    //}
 
     // Start writes of rD (using sendBufs)
     send(higherNbrs_, rD, higherSendRequests_);
@@ -252,7 +252,7 @@ void Foam::distributedDICPreconditioner::calcReciprocalD
 
     // Wait until all finished. Necessary? Cannot interleave reciprocal
     // calc with comms anyway.
-    wait(higherSendRequests_);
+    //wait(higherSendRequests_);
 }
 
 
@@ -433,6 +433,9 @@ void Foam::distributedDICPreconditioner::precondition
 
     // Backward sweep
     // ~~~~~~~~~~~~~~
+
+    // Make sure no outstanding receives
+    wait(higherRecvRequests_);
 
     // Start receives
     receive(higherNbrs_, higherRecvRequests_);
