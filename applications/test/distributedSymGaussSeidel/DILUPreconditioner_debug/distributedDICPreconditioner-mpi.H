@@ -69,6 +69,8 @@ protected:
 
     // Protected data
 
+        labelList colours_;
+
         //- Buffers for sending and receiving data
         mutable FieldField<Field, solveScalar> sendBufs_;
         mutable FieldField<Field, solveScalar> recvBufs_;

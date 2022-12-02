@@ -28,7 +28,7 @@ License
 
 #include "distributedDICPreconditioner-mpi.H"
 #include "processorLduInterface.H"
-//#include "processorColour.H"
+#include "processorColour.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -267,7 +267,7 @@ Foam::distributedDICPreconditioner::distributedDICPreconditioner
     lduMatrix::preconditioner(sol),
     rD_(sol.matrix().diag().size())
 {
-    //const lduMesh& mesh = sol.matrix().mesh();
+    const lduMesh& mesh = sol.matrix().mesh();
     const auto& interfaces = sol.interfaces();
     const auto& interfaceBouCoeffs = sol.interfaceBouCoeffs();
 
@@ -303,8 +303,10 @@ Foam::distributedDICPreconditioner::distributedDICPreconditioner
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     //const processorColour& colours = processorColour::New(mesh);
-    //const label colouri = colours[Pstream::myProcNo()];
-    const label colouri = Pstream::myProcNo();
+    const label nColours = processorColour::colour(mesh, colours_);
+    //Pout<< "Calculated colouring with " << nColours << endl;
+    const label colouri = colours_[Pstream::myProcNo()];
+    //const label colouri = Pstream::myProcNo();
 
     forAll(interfaces, inti)
     {
@@ -314,8 +316,8 @@ Foam::distributedDICPreconditioner::distributedDICPreconditioner
             const auto* ppp = isA<const processorLduInterface>(intf);
             if (ppp)
             {
-                //const label nbrColour = colours[ppp->neighbProcNo()];
-                const label nbrColour = ppp->neighbProcNo();
+                const label nbrColour = colours_[ppp->neighbProcNo()];
+                //const label nbrColour = ppp->neighbProcNo();
                 if (nbrColour < colouri)
                 {
                     lowerNbrs_.append(inti);
