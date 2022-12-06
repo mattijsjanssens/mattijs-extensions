@@ -257,58 +257,71 @@ void Foam::distributedDICPreconditioner2::sendGlobal
     const label colouri
 ) const
 {
+    Pout<< "Evaluating interfaces:" << flatOutput(selectedInterfaces)
+        << " storing result in slot:" << colouri
+        << endl;
+
     const auto& interfaces = solver_.interfaces();
 
-    // Save old data
-    FieldField<Field, solveScalar> one(interfaces.size());
-    FieldField<Field, solveScalar> old(interfaces.size());
-    for (const label inti : selectedInterfaces)
+    if (selectedInterfaces.size())
     {
-        const auto& intf = interfaces[inti].interface();
-        const auto& fc = intf.faceCells();
-        one.set(inti, new solveScalarField(fc.size(), 1.0));
-        old.set(inti, new solveScalarField(psi, intf.faceCells()));
-    }
-    updateMatrixInterfaces
-    (
-        false,              // add to psi
-        one,
-        selectedInterfaces, //global_,
-        psi,                // send data
-        psi,                // result
-        0                   // cmpt
-    );
-
-    colourBufs_.setSize(nColours_);
-    if (!colourBufs_.set(colouri))
-    {
-        colourBufs_.set
-        (
-            colouri,
-            new FieldField<Field, solveScalar>(interfaces.size())
-        );
-    }
-    auto& colourBuf = colourBufs_[colouri];
-    colourBuf.setSize(interfaces.size());
-    for (const label inti : selectedInterfaces)
-    {
-        const auto& intf = interfaces[inti].interface();
-        const auto& fc = intf.faceCells();
-
-        if (!colourBuf.set(inti))
+        // Save old data
+        FieldField<Field, solveScalar> one(interfaces.size());
+        FieldField<Field, solveScalar> old(interfaces.size());
+        for (const label inti : selectedInterfaces)
         {
-            colourBuf.set(inti, new solveScalarField(fc.size()));
+            const auto& intf = interfaces[inti].interface();
+            const auto& fc = intf.faceCells();
+            one.set(inti, new solveScalarField(fc.size(), 1.0));
+            old.set(inti, new solveScalarField(psi, intf.faceCells()));
         }
-        auto& cb = colourBuf[inti];
-        auto& oldValues = old[inti];
+        updateMatrixInterfaces
+        (
+            false,              // add to psi
+            one,
+            selectedInterfaces, //global_,
+            psi,                // send data
+            psi,                // result
+            0                   // cmpt
+        );
 
-        forAll(cb, face)
+        colourBufs_.setSize(nColours_);
+        if (!colourBufs_.set(colouri))
         {
-            const label cell = fc[face];
-            // Store change in boundary value
-            cb[face] = psi[cell]-oldValues[face];
-            // Restore old value
-            std::swap(psi[cell], oldValues[face]);
+            colourBufs_.set
+            (
+                colouri,
+                new FieldField<Field, solveScalar>(interfaces.size())
+            );
+        }
+        auto& colourBuf = colourBufs_[colouri];
+        colourBuf.setSize(interfaces.size());
+        for (const label inti : selectedInterfaces)
+        {
+            const auto& intf = interfaces[inti].interface();
+            const auto& fc = intf.faceCells();
+
+            if (!colourBuf.set(inti))
+            {
+                colourBuf.set(inti, new solveScalarField(fc.size()));
+            }
+            auto& cb = colourBuf[inti];
+            auto& oldValues = old[inti];
+
+            forAll(cb, face)
+            {
+                const label cell = fc[face];
+                // Store change in boundary value
+                cb[face] = psi[cell]-oldValues[face];
+                // Restore old value
+                std::swap(psi[cell], oldValues[face]);
+            }
+
+
+            Pout<< "Destcolour:" << colouri
+                << " interface:" << inti
+                << " buf:" << flatOutput(cb)
+                << endl;
         }
     }
 }
@@ -419,8 +432,13 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
         Pout<< "** starting colour:" << colouri << endl;
 
         {
-            for (const label inti : lowerGlobal_[colouri])
+            for (const label inti : lowerGlobalRecv_[colouri])
             {
+                Pout<< "    for interface:" << inti
+                    << " retrieving slot:" << colouri
+                    << " vals:" << flatOutput(colourBufs_[colouri][inti])
+                    << endl;
+
                 const auto& intf = interfaces[inti].interface();
                 // TBD: do not use patch faceCells but passed-in addressing?
                 const auto& faceCells = intf.faceCells();
@@ -438,7 +456,7 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
                     rD[cell] -= bc[face]*bc[face]/recvBuf[face];
                 }
             }
-            Pout<< "** after lowerGlobal_:" << flatOutput(rD) << endl;
+            Pout<< "** after lowerGlobalRecv_:" << flatOutput(rD) << endl;
         }
 
 
@@ -448,12 +466,12 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
             const label cell = lPtr[face];
             if (cellColour_[cell] == colouri)
             {
-                rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[lPtr[face]];
+                rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[cell];
             }
         }
 
         // Store effect of exchanging rD to higher interfaces in colourBufs_
-        sendGlobal(higherGlobal_[colouri], rD, colouri);
+        sendGlobal(higherGlobalSend_[colouri], rD, higherColour_[colouri]);
 
         Pout<< "** finished colour:" << colouri << nl << endl;
     }
@@ -561,8 +579,12 @@ Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
 
 
     //global_.setSize(nColours_);
-    lowerGlobal_.setSize(nColours_);
-    higherGlobal_.setSize(nColours_);
+    lowerGlobalRecv_.setSize(nColours_);
+    lowerGlobalSend_.setSize(nColours_);
+    lowerColour_.setSize(nColours_, -1);
+    higherGlobalRecv_.setSize(nColours_);
+    higherGlobalSend_.setSize(nColours_);
+    higherColour_.setSize(nColours_, -1);
     colourBufs_.setSize(nColours_);
 Pout<< "colourBufs_ size:" << colourBufs_.size() << endl;
 
@@ -593,11 +615,13 @@ Pout<< "colourBufs_ size:" << colourBufs_.size() << endl;
                     if (AMIpp->owner())
                     {
                         // Data sent from neighbour (= higher colour)
-                        higherGlobal_[colouri].appendUniq(inti);
+                        //higherGlobalSend_[colouri].appendUniq(inti);
+                        //higherColour_[colouri] = nbrColouri;
                     }
                     else
                     {
-                        lowerGlobal_[colouri].appendUniq(inti);
+                        //lowerGlobalRecv_[colouri].appendUniq(inti);
+                        //lowerColour_[colouri] = nbrColouri;
                     }
                     Pout<< "For inti:" << inti
                         << " have colour:" << colouri << endl;
@@ -629,9 +653,37 @@ Pout<< "colourBufs_ size:" << colourBufs_.size() << endl;
             }
         }
     }
+
+    for (auto& lower : lowerGlobalRecv_)
+    {
+        lower.clear();
+    }
+    lowerGlobalRecv_[1].append(5);
+    for (auto& lower : lowerGlobalSend_)
+    {
+        lower.clear();
+    }
+    lowerGlobalSend_[1].append(4);
+    lowerColour_[1] = 0;
+
+    for (auto& higher : higherGlobalRecv_)
+    {
+        higher.clear();
+    }
+    higherGlobalSend_[0].append(4);
+    for (auto& higher : higherGlobalSend_)
+    {
+        higher.clear();
+    }
+    higherGlobalSend_[0].append(5);
+    higherColour_[0] = 1;
+
+
 //    DebugVar(global_);
-    DebugVar(lowerGlobal_);
-    DebugVar(higherGlobal_);
+    DebugVar(lowerGlobalRecv_);
+    DebugVar(lowerColour_);
+    DebugVar(higherGlobalSend_);
+    DebugVar(higherColour_);
 
     calcReciprocalD(rD_);
     DebugVar(rD_);
@@ -711,7 +763,7 @@ void Foam::distributedDICPreconditioner2::precondition
             Pout<< "** starting forward colour:" << colouri << endl;
 
             //check();
-            //for (const label inti : lowerGlobal_)
+            //for (const label inti : lowerGlobalRecv_)
             //{
             //    // Note: interfaceBouCoeffs is -upperPtr
             //    const auto& intf = interfaces[inti].interface();
@@ -733,15 +785,18 @@ void Foam::distributedDICPreconditioner2::precondition
             //(
             //    false,          // add to rD
             //    coeffs_,
-            //    lowerGlobal_,   //global_,
+            //    lowerGlobalRecv_,//global_,
             //    sendField,      // send data
             //    wA,             // result
             //    0               // cmpt
             //);
             //// Reset value to zero
-            //zeroCoeffs(lowerGlobal_);
-            for (const label inti : lowerGlobal_[colouri])
+            //zeroCoeffs(lowerGlobalRecv_);
+            for (const label inti : lowerGlobalRecv_[colouri])
             {
+                Pout<< "    for interface:" << inti
+                    << " retrieving slot:" << colouri << endl;
+
                 const auto& intf = interfaces[inti].interface();
                 const auto& faceCells = intf.faceCells();
                 const auto& recvBuf = colourBufs_[colouri][inti];
@@ -758,7 +813,7 @@ void Foam::distributedDICPreconditioner2::precondition
                     wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
                 }
             }
-            Pout<< "** after lowerGlobal_:" << flatOutput(wA) << endl;
+            Pout<< "** after lowerGlobalRecv_:" << flatOutput(wA) << endl;
 
             for (label face=0; face<nFaces; face++)
             {
@@ -766,13 +821,13 @@ void Foam::distributedDICPreconditioner2::precondition
                 if (cellColour_[cell] == colouri)
                 {
                     wAPtr[uPtr[face]] -=
-                        rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
+                        rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[cell];
                 }
             }
 
             // Store effect of exchanging rD to higher interfaces
             // in colourBufs_
-            sendGlobal(higherGlobal_[colouri], wA, colouri);
+            sendGlobal(higherGlobalSend_[colouri], wA, higherColour_[colouri]);
 
             Pout<< "** finished forward colour:" << colouri << nl << endl;
         }
@@ -817,7 +872,7 @@ void Foam::distributedDICPreconditioner2::precondition
             Pout<< "** starting backwards colour:" << colouri << endl;
 
             //check();
-            //for (const label inti : higherGlobal_[colouri])
+            //for (const label inti : higherGlobalRecv_[colouri])
             //{
             //    // Note: interfaceBouCoeffs is -upperPtr
             //    const auto& intf = interfaces[inti].interface();
@@ -845,8 +900,10 @@ void Foam::distributedDICPreconditioner2::precondition
             //);
             //// Reset value to zero
             //zeroCoeffs(higherGlobal_[colouri]);
-            for (const label inti : higherGlobal_[colouri])
+            for (const label inti : higherGlobalRecv_[colouri])
             {
+                Pout<< "    for interface:" << inti
+                    << " retrieving slot:" << colouri << endl;
                 const auto& intf = interfaces[inti].interface();
                 const auto& faceCells = intf.faceCells();
                 const auto& recvBuf = colourBufs_[colouri][inti];
@@ -863,7 +920,7 @@ void Foam::distributedDICPreconditioner2::precondition
                     wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
                 }
             }
-            Pout<< "** after higherGlobal_:" << flatOutput(wA) << endl;
+            Pout<< "** after higherGlobalRecv_:" << flatOutput(wA) << endl;
 
             for (label face=nFacesM1; face>=0; face--)
             {
@@ -871,13 +928,13 @@ void Foam::distributedDICPreconditioner2::precondition
                 if (cellColour_[cell] == colouri)
                 {
                     wAPtr[lPtr[face]] -=
-                        rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
+                        rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[cell];
                 }
             }
 
             // Store effect of exchanging rD to higher interfaces
             // in colourBufs_
-            sendGlobal(lowerGlobal_[colouri], wA, colouri);
+            sendGlobal(lowerGlobalSend_[colouri], wA, lowerColour_[colouri]);
 
             Pout<< "** finished backwards colour:" << colouri << nl << endl;
         }

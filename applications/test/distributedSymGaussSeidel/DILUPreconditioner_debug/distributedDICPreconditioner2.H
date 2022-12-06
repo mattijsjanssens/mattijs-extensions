@@ -95,10 +95,22 @@ protected:
         //- Per colour the interfaces that (might) influence it
 
             //- Interfaces to non-processor lower coupled interfaces
-            List<DynamicList<label>> lowerGlobal_;
+            List<DynamicList<label>> lowerGlobalRecv_;
+
+            //- Interfaces to non-processor lower coupled interfaces
+            List<DynamicList<label>> lowerGlobalSend_;
+
+            //- Corresponding destination colour (for lowerGlobal)
+            List<label> lowerColour_;
 
             //- Interfaces to non-processor higher coupled interfaces
-            List<DynamicList<label>> higherGlobal_;
+            List<DynamicList<label>> higherGlobalRecv_;
+
+            //- Interfaces to non-processor higher coupled interfaces
+            List<DynamicList<label>> higherGlobalSend_;
+
+            //- Corresponding destination colour (for higherGlobal)
+            List<label> higherColour_;
 
 //            //- All interfaces
 //            List<DynamicList<label>> global_;
