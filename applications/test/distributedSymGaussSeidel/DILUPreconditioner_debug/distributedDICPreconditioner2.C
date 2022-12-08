@@ -403,7 +403,8 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
             const auto& bc = interfaceBouCoeffs[inti];
 
             Pout<< "inti:" << inti
-                << " field:" << 1.0/recvBuf
+                //<< " field:" << 1.0/recvBuf
+                << " buf:" << flatOutput(recvBuf)
                 << " inserting into cells:" << flatOutput(faceCells)
                 << " with coeffs:" << flatOutput((bc*bc)())
                 << endl;
@@ -434,16 +435,18 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
         {
             for (const label inti : lowerGlobalRecv_[colouri])
             {
-                Pout<< "    for interface:" << inti
-                    << " retrieving slot:" << colouri
-                    << " vals:" << flatOutput(colourBufs_[colouri][inti])
-                    << endl;
-
                 const auto& intf = interfaces[inti].interface();
                 // TBD: do not use patch faceCells but passed-in addressing?
                 const auto& faceCells = intf.faceCells();
                 const auto& recvBuf = colourBufs_[colouri][inti];
                 const auto& bc = interfaceBouCoeffs[inti];
+
+                Pout<< "    for interface:" << inti
+                    << " retrieving slot:" << colouri
+                    << " buf:" << recvBuf
+                    << " inserting into cells:" << flatOutput(faceCells)
+                    << " with coeffs:" << flatOutput((bc*bc)())
+                    << endl;
 
                 forAll(recvBuf, face)
                 {
@@ -654,29 +657,32 @@ Pout<< "colourBufs_ size:" << colourBufs_.size() << endl;
         }
     }
 
-    for (auto& lower : lowerGlobalRecv_)
+    if (nColours_ > 1)
     {
-        lower.clear();
-    }
-    lowerGlobalRecv_[1].append(5);
-    for (auto& lower : lowerGlobalSend_)
-    {
-        lower.clear();
-    }
-    lowerGlobalSend_[1].append(4);
-    lowerColour_[1] = 0;
+        for (auto& lower : lowerGlobalRecv_)
+        {
+            lower.clear();
+        }
+        lowerGlobalRecv_[1].append(5);
+        for (auto& lower : lowerGlobalSend_)
+        {
+            lower.clear();
+        }
+        lowerGlobalSend_[1].append(4);
+        lowerColour_[1] = 0;
 
-    for (auto& higher : higherGlobalRecv_)
-    {
-        higher.clear();
+        for (auto& higher : higherGlobalRecv_)
+        {
+            higher.clear();
+        }
+        higherGlobalSend_[0].append(4);
+        for (auto& higher : higherGlobalSend_)
+        {
+            higher.clear();
+        }
+        higherGlobalSend_[0].append(5);
+        higherColour_[0] = 1;
     }
-    higherGlobalSend_[0].append(4);
-    for (auto& higher : higherGlobalSend_)
-    {
-        higher.clear();
-    }
-    higherGlobalSend_[0].append(5);
-    higherColour_[0] = 1;
 
 
 //    DebugVar(global_);
@@ -802,6 +808,13 @@ void Foam::distributedDICPreconditioner2::precondition
                 const auto& recvBuf = colourBufs_[colouri][inti];
                 const auto& bc = interfaceBouCoeffs[inti];
 
+                Pout<< "    for interface:" << inti
+                    << " retrieving slot:" << colouri
+                    << " buf:" << recvBuf
+                    << " inserting into cells:" << flatOutput(faceCells)
+                    << " with coeffs:" << flatOutput(bc)
+                    << endl;
+
                 forAll(recvBuf, face)
                 {
                     // Note:interfaceBouCoeffs is -upperPtr
@@ -857,6 +870,13 @@ void Foam::distributedDICPreconditioner2::precondition
             const auto& recvBuf = recvBufs_[inti];
             const auto& bc = interfaceBouCoeffs[inti];
 
+            Pout<< "inti:" << inti
+                //<< " field:" << 1.0/recvBuf
+                << " buf:" << flatOutput(recvBuf)
+                << " inserting into cells:" << flatOutput(faceCells)
+                << " with coeffs:" << flatOutput(bc)
+                << endl;
+
             forAll(recvBuf, face)
             {
                 // Note: interfaceBouCoeffs is -upperPtr
@@ -902,13 +922,17 @@ void Foam::distributedDICPreconditioner2::precondition
             //zeroCoeffs(higherGlobal_[colouri]);
             for (const label inti : higherGlobalRecv_[colouri])
             {
-                Pout<< "    for interface:" << inti
-                    << " retrieving slot:" << colouri << endl;
                 const auto& intf = interfaces[inti].interface();
                 const auto& faceCells = intf.faceCells();
                 const auto& recvBuf = colourBufs_[colouri][inti];
                 const auto& bc = interfaceBouCoeffs[inti];
 
+                Pout<< "    for interface:" << inti
+                    << " retrieving slot:" << colouri
+                    << " buf:" << recvBuf
+                    << " inserting into cells:" << flatOutput(faceCells)
+                    << " with coeffs:" << flatOutput(bc)
+                    << endl;
                 forAll(recvBuf, face)
                 {
                     // Note:interfaceBouCoeffs is -upperPtr
@@ -939,6 +963,11 @@ void Foam::distributedDICPreconditioner2::precondition
             Pout<< "** finished backwards colour:" << colouri << nl << endl;
         }
     }
+
+    // Problem: lower-global is being sent to but not yet consumed.
+    // -> no convergence! Add
+    // routine here to consume that by backwards sweeping.
+XXXXXXX
 
 
     Pout<< "** after backwards sweep:" << flatOutput(wA) << endl;
