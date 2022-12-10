@@ -20,7 +20,11 @@ solvers
     T
     {
         solver          PCG;
-        preconditioner  distributedDIC2;
+        preconditioner
+        {
+            preconditioner  distributedDIC2;
+            //coupled     false;
+        }
 
         //solver          GAMG;
         //smoother        GaussSeidel;
@@ -37,7 +41,7 @@ solvers
 
         tolerance       1e-06;
         relTol          0;  //0.05;
-        maxIter         3;
+        maxIter         100;
     }
 }
 

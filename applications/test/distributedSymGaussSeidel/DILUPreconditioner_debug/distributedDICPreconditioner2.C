@@ -45,58 +45,32 @@ namespace Foam
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::distributedDICPreconditioner2::meshColour
+void Foam::distributedDICPreconditioner2::walkFront
 (
     const lduMesh& lm,
+    DynamicList<label>& front,
     labelList& cellColour
 ) const
 {
+    // Colour with the (min) coupled (global) patch
+
     const lduAddressing& addr = lm.lduAddr();
     const label* const __restrict__ uPtr = addr.upperAddr().begin();
     const label* const __restrict__ lPtr = addr.lowerAddr().begin();
     const label* const __restrict__ ownStartPtr = addr.ownerStartAddr().begin();
+    const label* const __restrict__ losortStartAddrPtr =
+        addr.losortStartAddr().begin();
+    const label* const __restrict__ losortAddrPtr = addr.losortAddr().begin();
 
-    const label nCells = addr.size();
-
-    cellColour.setSize(nCells, -1);
-
-    if (nCells == 0)
-    {
-        return;
-    }
-
-    label colouri = -1;
-    label celli = 0;
+    DynamicList<label> newFront;
     while (true)
     {
-        // Find new seed
-        for (; celli<nCells; celli++)
+        newFront.clear();
+        for (const label celli : front)
         {
-            if (cellColour[celli] == -1)
+            const label colouri = cellColour[celli];
+
             {
-                break;
-            }
-        }
-
-        if (celli == -1 || celli == nCells)
-        {
-            break;
-        }
-
-        colouri++;
-
-        // Walk front
-        DynamicList<label> front;
-        front.append(celli);
-
-        DynamicList<label> newFront;
-        while (true)
-        {
-            newFront.clear();
-            for (const label celli : front)
-            {
-                cellColour[celli] = colouri;
-
                 const label fStart = ownStartPtr[celli];
                 const label fEnd = ownStartPtr[celli + 1];
 
@@ -110,19 +84,112 @@ void Foam::distributedDICPreconditioner2::meshColour
                     );
                     if (cellColour[nbr] == -1)
                     {
+                        cellColour[nbr] = colouri;
+                        newFront.append(nbr);
+                    }
+                }
+            }
+            {
+                const label fStart = losortStartAddrPtr[celli];
+                const label fEnd = losortStartAddrPtr[celli + 1];
+
+                for (label i=fStart; i<fEnd; i++)
+                {
+                    label facei = losortAddrPtr[i];
+                    const label nbr =
+                    (
+                        lPtr[facei] == celli
+                      ? uPtr[facei]
+                      : lPtr[facei]
+                    );
+                    if (cellColour[nbr] == -1)
+                    {
+                        cellColour[nbr] = colouri;
                         newFront.append(nbr);
                     }
                 }
             }
 
-            if (newFront.empty())
-            {
-                break;
-            }
+        }
 
-            front.transfer(newFront);
+        if (newFront.empty())
+        {
+            break;
+        }
+
+        front.transfer(newFront);
+    }
+}
+
+
+Foam::label Foam::distributedDICPreconditioner2::meshColour
+(
+    const lduMesh& lm,
+    labelList& cellColour,
+    labelList& patchToColour
+) const
+{
+    // Colour with the (min) coupled (global) patch. Compact to have colour 0
+    // if a single region. Problematic if same patch on multiple disconnected
+    // regions.
+
+    const lduAddressing& addr = lm.lduAddr();
+    const auto& interfaces = solver_.interfaces();
+
+    const label nCells = addr.size();
+
+    patchToColour.setSize(interfaces.size());
+    patchToColour = -1;
+    cellColour.setSize(nCells);
+    cellColour = -1;
+
+
+    label colouri = 0;
+
+    // Starting front from patch faceCells
+    DynamicList<label> front;
+    forAll(interfaces, inti)
+    {
+        if (interfaces.set(inti))
+        {
+            const auto& intf = interfaces[inti].interface();
+            if (!isA<const processorLduInterface>(intf))
+            {
+                // 'global' interface. Seed faceCells with patch index
+
+                if (patchToColour[inti] == -1)
+                {
+                    patchToColour[inti] = colouri++;
+                }
+
+                const auto& fc = intf.faceCells();
+                forAll(fc, face)
+                {
+                    const label cell = fc[face];
+                    if (cellColour[cell] != patchToColour[inti])
+                    {
+                        cellColour[cell] = patchToColour[inti];
+                        front.append(cell);
+                    }
+                }
+            }
         }
     }
+
+
+    // Walk current mesh
+    walkFront(lm, front, cellColour);
+
+
+    // Any unvisited cell is still labelMax. Put into colour 0.
+    for (auto& colour : cellColour)
+    {
+        if (colour == -1)
+        {
+            colour = 0;
+        }
+    }
+    return colouri;
 }
 
 
@@ -263,10 +330,6 @@ void Foam::distributedDICPreconditioner2::sendGlobal
     const label colouri
 ) const
 {
-    //Pout<< "Evaluating interfaces:" << flatOutput(selectedInterfaces)
-    //    << " storing result in slot:" << colouri
-    //    << endl;
-
     const auto& interfaces = solver_.interfaces();
 
     if (selectedInterfaces.size())
@@ -285,32 +348,18 @@ void Foam::distributedDICPreconditioner2::sendGlobal
         (
             false,              // add to psi
             one,
-            selectedInterfaces, //global_,
+            selectedInterfaces,
             psi,                // send data
             psi,                // result
             0                   // cmpt
         );
 
-        colourBufs_.setSize(nColours_);
-        if (!colourBufs_.set(colouri))
-        {
-            colourBufs_.set
-            (
-                colouri,
-                new FieldField<Field, solveScalar>(interfaces.size())
-            );
-        }
         auto& colourBuf = colourBufs_[colouri];
         colourBuf.setSize(interfaces.size());
         for (const label inti : selectedInterfaces)
         {
             const auto& intf = interfaces[inti].interface();
             const auto& fc = intf.faceCells();
-
-            if (!colourBuf.set(inti))
-            {
-                colourBuf.set(inti, new solveScalarField(fc.size()));
-            }
             auto& cb = colourBuf[inti];
             auto& oldValues = old[inti];
 
@@ -322,45 +371,7 @@ void Foam::distributedDICPreconditioner2::sendGlobal
                 // Restore old value
                 std::swap(psi[cell], oldValues[face]);
             }
-
-
-            Pout<< "Destcolour:" << colouri
-                << " interface:" << inti
-                << " buf:" << flatOutput(cb)
-                << endl;
         }
-    }
-}
-
-
-void Foam::distributedDICPreconditioner2::check() const
-{
-    forAll(coeffs_, inti)
-    {
-        if (coeffs_.set(inti))
-        {
-            const auto& coeff = coeffs_[inti];
-            for (const auto& c : coeff)
-            {
-                if (c != solveScalar(0.0))
-                {
-                    FatalErrorInFunction<< "int:" << inti << exit(FatalError);
-                }
-            }
-        }
-    }
-}
-
-
-void Foam::distributedDICPreconditioner2::zeroCoeffs
-(
-    const labelList& selectedInterfaces
-) const
-{
-    // Reset value to zero
-    for (const label inti : selectedInterfaces)
-    {
-        coeffs_[inti] = Zero;
     }
 }
 
@@ -409,7 +420,6 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
             const auto& bc = interfaceBouCoeffs[inti];
 
             Pout<< "inti:" << inti
-                //<< " field:" << 1.0/recvBuf
                 << " buf:" << flatOutput(recvBuf)
                 << " inserting into cells:" << flatOutput(faceCells)
                 << " with coeffs:" << flatOutput((bc*bc)())
@@ -438,8 +448,9 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
     {
         Pout<< "** starting colour:" << colouri << endl;
 
-        if (lowerGlobalRecv_[colouri].size())
+        if (cellColourPtr_.valid() && lowerGlobalRecv_[colouri].size())
         {
+            const auto& cellColour = cellColourPtr_();
             for (const label inti : lowerGlobalRecv_[colouri])
             {
                 const auto& intf = interfaces[inti].interface();
@@ -459,7 +470,7 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
                 {
                     // Note:interfaceBouCoeffs is -upperPtr
                     const label cell = faceCells[face];
-                    if (cellColour_[cell] != colouri)
+                    if (cellColour[cell] != colouri)
                     {
                         FatalErrorInFunction << " problem" << exit(FatalError);
                     }
@@ -471,17 +482,31 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
 
 
         const label nFaces = matrix.upper().size();
-        for (label face=0; face<nFaces; face++)
+        if (cellColourPtr_.valid())
         {
-            const label cell = lPtr[face];
-            if (cellColour_[cell] == colouri)
+            const auto& cellColour = cellColourPtr_();
+            for (label face=0; face<nFaces; face++)
             {
-                rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[cell];
+                const label cell = lPtr[face];
+                if (cellColour[cell] == colouri)
+                {
+                    rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[cell];
+                }
+            }
+        }
+        else
+        {
+            for (label face=0; face<nFaces; face++)
+            {
+                rD[uPtr[face]] -= upperPtr[face]*upperPtr[face]/rD[lPtr[face]];
             }
         }
 
         // Store effect of exchanging rD to higher interfaces in colourBufs_
-        sendGlobal(higherGlobalSend_[colouri], rD, higherColour_[colouri]);
+        if (cellColourPtr_.valid())
+        {
+            sendGlobal(higherGlobalSend_[colouri], rD, higherColour_[colouri]);
+        }
 
         Pout<< "** finished colour:" << colouri << nl << endl;
     }
@@ -509,21 +534,20 @@ void Foam::distributedDICPreconditioner2::calcReciprocalD
 Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
 (
     const lduMatrix::solver& sol,
-    const dictionary&
+    const dictionary& dict
 )
 :
     lduMatrix::preconditioner(sol),
+    coupled_(dict.getOrDefault<bool>("coupled", true, keyType::LITERAL)),
     rD_(sol.matrix().diag().size())
 {
     const lduMesh& mesh = sol.matrix().mesh();
     const auto& interfaces = sol.interfaces();
     const auto& interfaceBouCoeffs = sol.interfaceBouCoeffs();
 
-
     // Allocate buffers
     // ~~~~~~~~~~~~~~~~
 
-    coeffs_.setSize(interfaces.size());
     sendBufs_.setSize(interfaces.size());
     recvBufs_.setSize(interfaces.size());
     forAll(interfaceBouCoeffs, inti)
@@ -544,6 +568,7 @@ Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
     //const label myColour = colours[Pstream::myProcNo()];
     const label myColour = Pstream::myProcNo();
 
+    bool haveCyclicAMI = false;
     forAll(interfaces, inti)
     {
         if (interfaces.set(inti))
@@ -571,6 +596,10 @@ Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
                         << endl;
                 }
             }
+            else if (isA<const cyclicAMILduInterface>(intf))
+            {
+                haveCyclicAMI = true;
+            }   
         }
     }
 
@@ -578,53 +607,39 @@ Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
     // Determine local colouring/zoneing
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    meshColour(mesh, cellColour_);
-    nColours_ = max(cellColour_)+1;
-    reduce(nColours_, maxOp<label>(), mesh.comm());
-
-    Pout<< "Determining nColours:" << nColours_
-        << " cellColour_:" << flatOutput(cellColour_) << endl;
-
-
-    //global_.setSize(nColours_);
-    lowerGlobalRecv_.setSize(nColours_);
-    lowerGlobalSend_.setSize(nColours_);
-    lowerColour_.setSize(nColours_, -1);
-    higherGlobalRecv_.setSize(nColours_);
-    higherGlobalSend_.setSize(nColours_);
-    higherColour_.setSize(nColours_, -1);
-    colourBufs_.setSize(nColours_);
-Pout<< "colourBufs_ size:" << colourBufs_.size() << endl;
-
-    forAll(interfaces, inti)
+    // Start off with all cells colour 0
+    nColours_ = 1;
+    cellColourPtr_.clear();
+    if (coupled_ && haveCyclicAMI)
     {
-        if (interfaces.set(inti))
-        {
-            const auto& intf = interfaces[inti].interface();
-            const auto* AMIpp = isA<const cyclicAMILduInterface>(intf);
-            if (AMIpp)
-            {
-                // 'local' interface. Check faceCells
-                const auto& bc = interfaceBouCoeffs[inti];
-                const auto& fc = intf.faceCells();
-                forAll(fc, face)
-                {
-                    const label colouri = cellColour_[fc[face]];
-                    if (AMIpp->owner())
-                    {
-                        // Data sent from neighbour (= higher colour)
-                        //higherGlobalSend_[colouri].appendUniq(inti);
-                        //higherColour_[colouri] = nbrColouri;
-                    }
-                    else
-                    {
-                        //lowerGlobalRecv_[colouri].appendUniq(inti);
-                        //lowerColour_[colouri] = nbrColouri;
-                    }
-                    Pout<< "For inti:" << inti
-                        << " have colour:" << colouri << endl;
+        labelList patchToColour;
+        cellColourPtr_.reset(new labelList(0));
+        nColours_ = meshColour(mesh, cellColourPtr_(), patchToColour);
 
-                    // Make sure we have buffers for this colour
+        Pout<< "Determining nColours:" << nColours_
+            << " cellColour:" << flatOutput(cellColourPtr_()) << endl;
+
+        lowerGlobalRecv_.setSize(nColours_);
+        lowerGlobalSend_.setSize(nColours_);
+        lowerColour_.setSize(nColours_, -1);
+        higherGlobalRecv_.setSize(nColours_);
+        higherGlobalSend_.setSize(nColours_);
+        higherColour_.setSize(nColours_, -1);
+        colourBufs_.setSize(nColours_);
+
+        forAll(interfaces, inti)
+        {
+            if (interfaces.set(inti))
+            {
+                const auto& intf = interfaces[inti].interface();
+                const auto* AMIpp = isA<const cyclicAMILduInterface>(intf);
+                if (AMIpp)
+                {
+                    const label colouri = patchToColour[inti];
+                    const label nbrInti = AMIpp->neighbPatchID();
+                    const label nbrColouri = patchToColour[nbrInti];
+                    const auto& bc = interfaceBouCoeffs[inti];
+
                     if (!colourBufs_.set(colouri))
                     {
                         colourBufs_.set
@@ -645,38 +660,31 @@ Pout<< "colourBufs_ size:" << colourBufs_.size() << endl;
                             new solveScalarField(bc.size(), Zero)
                         );
                     }
-                }
 
-                coeffs_.set(inti, new solveScalarField(bc.size(), Zero));
+                    if (colouri < nbrColouri)
+                    {
+                        // Send to higher
+                        higherGlobalSend_[colouri].append(nbrInti);
+                        higherColour_[colouri] = nbrColouri;
+                        // Receive from higher
+                        higherGlobalRecv_[colouri].append(inti);
+                    }
+                    else
+                    {
+                        // Send to lower
+                        lowerGlobalSend_[colouri].append(nbrInti);
+                        lowerColour_[colouri] = nbrColouri;
+                        // Receive from lower
+                        lowerGlobalRecv_[colouri].append(inti);
+                    }
+                }
             }
         }
-    }
 
-    if (nColours_ > 1)
-    {
-        for (auto& lower : lowerGlobalRecv_)
-        {
-            lower.clear();
-        }
-        lowerGlobalRecv_[1].append(5);
-        for (auto& lower : lowerGlobalSend_)
-        {
-            lower.clear();
-        }
-        lowerGlobalSend_[1].append(4);
-        lowerColour_[1] = 0;
-
-        for (auto& higher : higherGlobalRecv_)
-        {
-            higher.clear();
-        }
-        higherGlobalRecv_[0].append(4);
-        for (auto& higher : higherGlobalSend_)
-        {
-            higher.clear();
-        }
-        higherGlobalSend_[0].append(5);
-        higherColour_[0] = 1;
+        DebugVar(lowerGlobalRecv_);
+        DebugVar(lowerColour_);
+        DebugVar(higherGlobalSend_);
+        DebugVar(higherColour_);
     }
 
     calcReciprocalD(rD_);
@@ -756,8 +764,9 @@ void Foam::distributedDICPreconditioner2::precondition
         {
             Pout<< "** starting forward colour:" << colouri << endl;
 
-            if (lowerGlobalRecv_[colouri].size())
+            if (cellColourPtr_.valid() && lowerGlobalRecv_[colouri].size())
             {
+                const auto& cellColour = cellColourPtr_();
                 for (const label inti : lowerGlobalRecv_[colouri])
                 {
                     Pout<< "    for interface:" << inti
@@ -779,7 +788,7 @@ void Foam::distributedDICPreconditioner2::precondition
                     {
                         // Note:interfaceBouCoeffs is -upperPtr
                         const label cell = faceCells[face];
-                        if (cellColour_[cell] != colouri)
+                        if (cellColour[cell] != colouri)
                         {
                             FatalErrorInFunction
                                 << " problem" << exit(FatalError);
@@ -790,19 +799,39 @@ void Foam::distributedDICPreconditioner2::precondition
                 Pout<< "** after lowerGlobalRecv_:" << flatOutput(wA) << endl;
             }
 
-            for (label face=0; face<nFaces; face++)
+            if (cellColourPtr_.valid())
             {
-                const label cell = lPtr[face];
-                if (cellColour_[cell] == colouri)
+                const auto& cellColour = cellColourPtr_();
+                for (label face=0; face<nFaces; face++)
+                {
+                    const label cell = lPtr[face];
+                    if (cellColour[cell] == colouri)
+                    {
+                        wAPtr[uPtr[face]] -=
+                            rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[cell];
+                    }
+                }
+            }
+            else
+            {
+                for (label face=0; face<nFaces; face++)
                 {
                     wAPtr[uPtr[face]] -=
-                        rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[cell];
+                        rDPtr[uPtr[face]]*upperPtr[face]*wAPtr[lPtr[face]];
                 }
             }
 
             // Store effect of exchanging rD to higher interfaces
             // in colourBufs_
-            sendGlobal(higherGlobalSend_[colouri], wA, higherColour_[colouri]);
+            if (cellColourPtr_.valid())
+            {
+                sendGlobal
+                (
+                    higherGlobalSend_[colouri],
+                    wA,
+                    higherColour_[colouri]
+                );
+            }
 
             Pout<< "** finished forward colour:" << colouri << nl << endl;
         }
@@ -852,8 +881,9 @@ void Foam::distributedDICPreconditioner2::precondition
         {
             Pout<< "** starting backwards colour:" << colouri << endl;
 
-            if (higherGlobalRecv_[colouri].size())
+            if (cellColourPtr_.valid() && higherGlobalRecv_[colouri].size())
             {
+                const auto& cellColour = cellColourPtr_();
                 for (const label inti : higherGlobalRecv_[colouri])
                 {
                     const auto& intf = interfaces[inti].interface();
@@ -871,7 +901,7 @@ void Foam::distributedDICPreconditioner2::precondition
                     {
                         // Note:interfaceBouCoeffs is -upperPtr
                         const label cell = faceCells[face];
-                        if (cellColour_[cell] != colouri)
+                        if (cellColour[cell] != colouri)
                         {
                             FatalErrorInFunction
                                 << " problem" << exit(FatalError);
@@ -882,20 +912,40 @@ void Foam::distributedDICPreconditioner2::precondition
                 Pout<< "** after higherGlobalRecv_:" << flatOutput(wA) << endl;
             }
 
-            for (label face=nFacesM1; face>=0; face--)
+            if (cellColourPtr_.valid())
             {
-                const label cell = uPtr[face];
-                if (cellColour_[cell] == colouri)
+                const auto& cellColour = cellColourPtr_();
+                for (label face=nFacesM1; face>=0; face--)
                 {
-                    // Note: lower cell guaranteed in same colour
+                    const label cell = uPtr[face];
+                    if (cellColour[cell] == colouri)
+                    {
+                        // Note: lower cell guaranteed in same colour
+                        wAPtr[lPtr[face]] -=
+                            rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[cell];
+                    }
+                }
+            }
+            else
+            {
+                for (label face=nFacesM1; face>=0; face--)
+                {
                     wAPtr[lPtr[face]] -=
-                        rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[cell];
+                        rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
                 }
             }
 
             // Store effect of exchanging rD to higher interfaces
             // in colourBufs_
-            sendGlobal(lowerGlobalSend_[colouri], wA, lowerColour_[colouri]);
+            if (cellColourPtr_.valid())
+            {
+                sendGlobal
+                (
+                    lowerGlobalSend_[colouri],
+                    wA,
+                    lowerColour_[colouri]
+                );
+            }
 
             Pout<< "** finished backwards colour:" << colouri << nl << endl;
         }

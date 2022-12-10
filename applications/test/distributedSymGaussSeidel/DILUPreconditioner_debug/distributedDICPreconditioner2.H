@@ -32,11 +32,21 @@ Group
 
 Description
     Version of DICpreconditioner that uses preconditioning across processor
-    boundaries. Based on 'Parallel Preconditioners' chapter from
+    (and coupled) boundaries. Based on 'Parallel Preconditioners' chapter from
     'Iterative Methods for Sparse Linear Systems' by Yousef Saad.
 
     Leaves out the handling of boundary nodes after internal nodes since
     probably not beneficial (so no overlap of comms and internal calculation)
+
+    By defaults preconditions across coupled boundaries (currently only
+    cyclicAMI). This can be disabled with
+
+        solver          PCG;
+        preconditioner
+        {
+            preconditioner  distributedDIC;
+            coupled     false;
+        }
 
 See Also
     Foam::DICPreconditioner
@@ -68,17 +78,13 @@ protected:
 
     // Protected data
 
+        //- Precondition across global coupled bc
+        const bool coupled_;
+
         //- Buffers for sending and receiving data
         mutable FieldField<Field, solveScalar> sendBufs_;
         mutable FieldField<Field, solveScalar> recvBufs_;
         mutable PtrList<FieldField<Field, solveScalar>> colourBufs_;
-
-
-        //- Work storage (sized only for non-proc coupled interfaces)
-        mutable FieldField<Field, solveScalar> coeffs_;
-
-//        //- Interfaces to non-processor coupled interfaces
-//        DynamicList<label> global_;
 
         //- Interfaces to lower coloured processors
         DynamicList<label> lowerNbrs_;
@@ -87,9 +93,10 @@ protected:
         DynamicList<label> higherNbrs_;
 
         //- Colour/zone per cell
-        labelList cellColour_;
+        autoPtr<labelList> cellColourPtr_;
 
-        //- Max colour
+        //- Number of colours (in case of multiple disconnected regions
+        //  in single mesh)
         label nColours_;
 
         //- Per colour the interfaces that (might) influence it
@@ -112,9 +119,6 @@ protected:
             //- Corresponding destination colour (for higherGlobal)
             List<label> higherColour_;
 
-//            //- All interfaces
-//            List<DynamicList<label>> global_;
-
 
         //- The reciprocal preconditioned diagonal
         solveScalarField rD_;
@@ -122,17 +126,20 @@ protected:
 
     // Private Member Functions
 
-
-//- Debug: check that coeffs are zero
-void check() const;
-        //- Helper: zero out coeffs on selected interfaces
-        void zeroCoeffs
+        //- Determine zoneing/colouring of local mesh
+        void walkFront
         (
-            const labelList& selectedInterfaces
+            const lduMesh& lm,
+            DynamicList<label>& front,
+            labelList& cellColour
         ) const;
 
-        //- Determine zoneing/colouring of local mesh
-        void meshColour(const lduMesh& lm, labelList& cellColour) const;
+        label meshColour
+        (
+            const lduMesh& lm,
+            labelList& cellColour,
+            labelList& patchToColour
+        ) const;
 
         //- Swap matrix values on selected interfaces
         void updateMatrixInterfaces
