@@ -38,17 +38,17 @@ namespace Foam
 }
 
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-Foam::processorColour::processorColour
+Foam::label Foam::processorColour::colour
 (
-    const lduMesh& mesh
+    const lduMesh& mesh,
+    labelList& procColour
 )
-:
-    MeshObject<lduMesh, Foam::MoveableMeshObject, processorColour>(mesh),
-    labelList(Pstream::nProcs(), -1),
-    nColours_(labelMax)
 {
+    procColour.resize_nocopy(Pstream::nProcs(mesh.comm()));
+    procColour = -1;
+
     // Re-use processor-topology analysis
 
     const lduInterfacePtrsList patches = mesh.interfaces();
@@ -78,17 +78,14 @@ Foam::processorColour::processorColour
         processorTopology::New<processorLduInterface, lduInterfacePtrsList>
         (
             procPatches,
-            UPstream::worldComm
+            mesh.comm()
         )
     );
 
     // Use greedy algorithm for now
     // (see e.g. https://iq.opengenus.org/graph-colouring-greedy-algorithm/)
 
-    labelList& colour = *this;
-
-
-    if (Pstream::master())
+    if (Pstream::master(mesh.comm()))
     {
         DynamicList<label> front;
         front.append(0);    // start from processor 0
@@ -101,10 +98,10 @@ Foam::processorColour::processorColour
             newFront.clear();
             for (const label proci : front)
             {
-                if (colour[proci] == -1)
+                if (procColour[proci] == -1)
                 {
                     const labelList& nbrs = pt.procNeighbours()[proci];
-                    const UIndirectList<label> nbrColour(colour, nbrs);
+                    const UIndirectList<label> nbrColour(procColour, nbrs);
 
                     for
                     (
@@ -115,14 +112,14 @@ Foam::processorColour::processorColour
                     {
                         if (!nbrColour.found(colouri))
                         {
-                            Pout<< "Processor:" << proci
-                                << " allocated colour:" << colouri
-                                << endl;
+                            //Pout<< "Processor:" << proci
+                            //    << " allocated colour:" << colouri
+                            //    << endl;
 
-                            colour[proci] = colouri;
+                            procColour[proci] = colouri;
                             for (label nbrProci : nbrs)
                             {
-                                if (colour[nbrProci] == -1)
+                                if (procColour[nbrProci] == -1)
                                 {
                                     newFront.append(nbrProci);
                                 }
@@ -137,7 +134,7 @@ Foam::processorColour::processorColour
         }
     }
 
-    Pstream::broadcast(colour);
+    Pstream::broadcast(procColour, mesh.comm());
 
 
     //if (false)
@@ -154,14 +151,28 @@ Foam::processorColour::processorColour
     //            false
     //        ),
     //        mesh,
-    //        dimensionedScalar(dimless, colour[Pstream::myProcNo()]),
+    //        dimensionedScalar(dimless, procColour[Pstream::myProcNo()]),
     //        zeroGradientFvPatchScalarField::typeName
     //    );
     //    volColour.write();
     //}
 
-    //colour_ = colour[Pstream::myProcNo()];
-    nColours_ = max(colour)+1;
+    const label nColours = max(procColour)+1;
+
+    return nColours;
+}
+
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::processorColour::processorColour(const lduMesh& mesh)
+:
+    MeshObject<lduMesh, Foam::MoveableMeshObject, processorColour>(mesh)
+{
+    nColours_ = colour(mesh, *this);
+
+    Info<< typeName << " : coloured " << Pstream::nProcs()
+        << " processors with in total " << nColours_ << " colours" << endl;
 }
 
 

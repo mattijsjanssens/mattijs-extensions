@@ -111,6 +111,11 @@ public:
             }
 
 
+        //- Calculate processor colouring from processor connectivity. Sets
+        //  colour per processor such that no neighbouring processors have the
+        //  same colour. Returns number of colours used.
+        static label colour(const lduMesh& mesh, labelList& procColour);
+
         virtual bool movePoints()
         {
             return true;
