@@ -18,6 +18,7 @@ DebugSwitches
 {
     //masterCoarsest      1;
     GAMGAgglomeration   1;
+    GAMG                1;
 }
 
 application     simpleFoam_with_masterCoarsests_multi_master;
@@ -26,9 +27,9 @@ startFrom       startTime;
 
 startTime       0;
 
-stopAt          noWriteNow; //endTime;
+stopAt          endTime;
 
-endTime         2000;
+endTime         20;
 
 deltaT          1;
 

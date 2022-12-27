@@ -59,7 +59,8 @@ DebugVar(maxLevels_);
             FatalErrorInFunction<< "nCreatedLevels:" << nCreatedLevels
                 << exit(FatalError);
         }
-        DebugVar(faceWeights);
+        //DebugVar(faceWeights);
+        Pout<< "faceWeights:" << flatOutput(faceWeights) << endl;
 
         tmp<labelField> finalAgglomPtr = agglomerate
         (
@@ -112,8 +113,8 @@ DebugVar(maxLevels_);
 
 
     DebugVar("** bvefore compating");
-//    // Shrink the storage of the levels to those created
-//    compactLevels(nCreatedLevels, false);
+    // Shrink the storage of the levels to those created
+    compactLevels(nCreatedLevels, false);
     DebugVar("** after compating");
 }
 

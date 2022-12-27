@@ -356,12 +356,13 @@ Pout<< "agglomProcIDs:" << flatOutput(agglomProcIDs) << endl;
                         comms_.last()
                     );
 
-                    for
-                    (
-                        label levelI = 0;
-                        levelI <= agglom_.size();
-                        levelI++
-                    )
+                    //for
+                    //(
+                    //    label levelI = 0;
+                    //    levelI <= agglom_.size();
+                    //    levelI++
+                    //)
+                    const label levelI = agglom_.size();
                     {
                         if (agglom_.hasMeshLevel(levelI))
                         {
@@ -383,7 +384,12 @@ Pout<< "agglomProcIDs:" << flatOutput(agglomProcIDs) << endl;
                             
                             Pout<< "**DONE weights:" << weights.size()
                                 << endl;
-                            break;
+                            //break;
+                        }
+                        else
+                        {
+                            Pout<< "level:" << levelI
+                                << " not for me" << endl;
                         }
                     }
                 }

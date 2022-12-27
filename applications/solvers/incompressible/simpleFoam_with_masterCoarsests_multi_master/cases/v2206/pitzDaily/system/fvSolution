@@ -23,11 +23,11 @@ solvers
         relTol          0.1;
         smoother        GaussSeidel;
 
-        processorAgglomerator   masterCoarsest;
+        processorAgglomerator   masterCoarsest2;
         nCellsInCoarsestLevel   1;
 
         // Multiple masters : max 5 cores per master
-        nProcessorsPerMaster    5;
+        //nProcessorsPerMaster    10;
     }
 
     "(U|k|epsilon|omega|f|v2)"

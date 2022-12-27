@@ -77,7 +77,7 @@ class masterCoarsestGAMGProcAgglomeration
 {
     // Private data
 
-        const label nProcessorsPerMaster_;
+        label nProcessorsPerMaster_;
 
         DynamicList<label> comms_;
 
