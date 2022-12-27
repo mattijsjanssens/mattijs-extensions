@@ -1,4 +1,5 @@
 GAMGAgglomeration.C
+GAMGAgglomerateLduAddressing.C
 pairGAMGAgglomeration.C
 pairGAMGAgglomerate.C
 

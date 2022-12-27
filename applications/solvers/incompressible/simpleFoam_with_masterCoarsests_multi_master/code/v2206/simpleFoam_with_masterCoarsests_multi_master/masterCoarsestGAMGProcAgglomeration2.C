@@ -395,6 +395,11 @@ Pout<< "agglomProcIDs:" << flatOutput(agglomProcIDs) << endl;
                 }
             }
         }
+
+        DebugVar("** masterCoarsestGAMGProcAgglomeration2 : bvefore compating");
+        // Shrink the storage of the levels to those created
+        dynamic_cast<pairGAMGAgglomeration&>(agglom_).compactLevels(agglom_.size(), false);
+        DebugVar("** masterCoarsestGAMGProcAgglomeration2 : after compating");
     }
 
     // Print a bit

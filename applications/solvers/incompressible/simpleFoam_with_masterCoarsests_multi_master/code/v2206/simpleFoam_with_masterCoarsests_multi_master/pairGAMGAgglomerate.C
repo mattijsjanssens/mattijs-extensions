@@ -46,6 +46,34 @@ void Foam::pairGAMGAgglomeration::agglomerate
     label nCreatedLevels = startLevel;
 
 
+    if (nCells_.size() < maxLevels_)
+    {
+        // See compactLevels. Make space if not enough
+        Pout<< "** EXTENDIGN Storage to " << maxLevels_ << endl;
+        nCells_.resize(maxLevels_);
+        restrictAddressing_.resize(maxLevels_);
+        nFaces_.resize(maxLevels_);
+        faceRestrictAddressing_.resize(maxLevels_);
+        faceFlipMap_.resize(maxLevels_);
+        nPatchFaces_.resize(maxLevels_);
+        patchFaceRestrictAddressing_.resize(maxLevels_);
+        meshLevels_.resize(maxLevels_);
+        // Have procCommunicator_ always, even if not procAgglomerating
+        procCommunicator_.resize(maxLevels_ + 1);
+        if (processorAgglomerate())
+        {
+            procAgglomMap_.resize(maxLevels_);
+            agglomProcIDs_.resize(maxLevels_);
+            procCommunicator_.resize(maxLevels_);
+            procCellOffsets_.resize(maxLevels_);
+            procFaceMap_.resize(maxLevels_);
+            procBoundaryMap_.resize(maxLevels_);
+            procBoundaryFaceMap_.resize(maxLevels_);
+        }
+    }
+
+
+
 DebugVar(nCreatedLevels);
 DebugVar(maxLevels_);
 
@@ -60,7 +88,12 @@ DebugVar(maxLevels_);
                 << exit(FatalError);
         }
         //DebugVar(faceWeights);
-        Pout<< "faceWeights:" << flatOutput(faceWeights) << endl;
+        const label comm = meshLevel(nCreatedLevels).comm();
+
+        Pout<< "** at nCreatedLevels:" << nCreatedLevels
+            << " comm:" << procCommunicator(nCreatedLevels)
+            << " comm2:" << meshLevel(nCreatedLevels).comm()
+            << " faceWeights:" << flatOutput(faceWeights) << endl;
 
         tmp<labelField> finalAgglomPtr = agglomerate
         (
@@ -69,17 +102,31 @@ DebugVar(maxLevels_);
             faceWeights
         );
 
-        if (continueAgglomerating(finalAgglomPtr().size(), nCoarseCells))
+        DebugVar(nCoarseCells);
+
+
+        if
+        (
+            continueAgglomerating
+            (
+                finalAgglomPtr().size(),
+                nCoarseCells,
+                comm
+            )
+        )
         {
             nCells_[nCreatedLevels] = nCoarseCells;
             restrictAddressing_.set(nCreatedLevels, finalAgglomPtr);
         }
         else
         {
+            Pout<< "** breaking" << endl;
             break;
         }
 
+        Pout<< "** Before agglomerateLduAddressing" << endl;
         agglomerateLduAddressing(nCreatedLevels);
+        Pout<< "** After agglomerateLduAddressing" << endl;
 
         // Agglomerate the faceWeights field for the next level
         {
@@ -98,6 +145,10 @@ DebugVar(maxLevels_);
 
             faceWeights = std::move(aggFaceWeights);
         }
+
+        Pout<< "** at nCreatedLevels:" << nCreatedLevels
+            << " next-level faceWeights:" << flatOutput(faceWeights) << endl;
+
 
         if (nPairLevels % mergeLevels_)
         {

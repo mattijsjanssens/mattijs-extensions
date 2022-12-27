@@ -66,7 +66,8 @@ class GAMGAgglomeration
 :
     public MeshObject<lduMesh, GeometricMeshObject, GAMGAgglomeration>
 {
-protected:
+//protected:
+public:
 
     // Protected data
 
@@ -158,7 +159,8 @@ protected:
         bool continueAgglomerating
         (
             const label nCells,
-            const label nCoarseCells
+            const label nCoarseCells,
+            const label comm = UPstream::worldComm
         ) const;
 
         void clearLevel(const label leveli);

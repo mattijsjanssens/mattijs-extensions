@@ -75,8 +75,6 @@ void Foam::GAMGAgglomeration::compactLevels
         procBoundaryFaceMap_.setSize(nCreatedLevels);
 
         procAgglomeratorPtr_().agglomerate();
-
-
     }
 
     // Print a bit
@@ -214,17 +212,20 @@ void Foam::GAMGAgglomeration::compactLevels
 bool Foam::GAMGAgglomeration::continueAgglomerating
 (
     const label nFineCells,
-    const label nCoarseCells
+    const label nCoarseCells,
+    const label comm
 ) const
 {
-    const label nTotalCoarseCells = returnReduce(nCoarseCells, sumOp<label>());
-    if (nTotalCoarseCells < Pstream::nProcs()*nCellsInCoarsestLevel_)
+    const label nTotalCoarseCells =
+        returnReduce(nCoarseCells, sumOp<label>(), UPstream::msgType(), comm);
+    if (nTotalCoarseCells < Pstream::nProcs(comm)*nCellsInCoarsestLevel_)
     {
         return false;
     }
     else
     {
-        const label nTotalFineCells = returnReduce(nFineCells, sumOp<label>());
+        const label nTotalFineCells =
+            returnReduce(nFineCells, sumOp<label>(), UPstream::msgType(), comm);
         return nTotalCoarseCells < nTotalFineCells;
     }
 }
