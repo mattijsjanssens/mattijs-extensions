@@ -53,34 +53,76 @@ Foam::label Foam::processorColour::colour
 
     const lduInterfacePtrsList patches = mesh.interfaces();
 
-    // Filter out the non-processor patches
-    DynamicList<label> procPatchIDs;
-    forAll(patches, patchi)
+//    // Filter out the non-processor patches
+//    DynamicList<label> procPatchIDs;
+//    forAll(patches, patchi)
+//    {
+//        if (patches.set(patchi))
+//        {
+//            if (isA<processorLduInterface>(patches[patchi]))
+//            {
+//                procPatchIDs.append(patchi);
+//            }
+//        }
+//    }
+//    lduInterfacePtrsList procPatches(procPatchIDs.size());
+//    forAll(procPatches, i)
+//    {
+//        const label patchi = procPatchIDs[i];
+//        const auto& pp = patches[patchi];
+//        procPatches.set(i, &pp);
+//    }
+//
+//    const processorTopology pt
+//    (
+//        processorTopology::New<processorLduInterface, lduInterfacePtrsList>
+//        (
+//            procPatches,
+//            mesh.comm()
+//        )
+//    );
+
+
+//XXXXX
+    labelListList procNeighbours(Pstream::nProcs(mesh.comm()));
+    // Fill my entry
     {
-        if (patches.set(patchi))
+        auto& procToProcs = procNeighbours[Pstream::myProcNo(mesh.comm())];
+        label n = 0;
+        for (const auto& pp : patches)
         {
-            if (isA<processorLduInterface>(patches[patchi]))
+            if (isA<processorLduInterface>(pp))
             {
-                procPatchIDs.append(patchi);
+                n++;
+            }
+        }
+//        forAll(patches, patchi)
+//        {
+//            if (patches.set(patchi))
+//            {
+//                if (isA<processorLduInterface>(patches[patchi]))
+//                {
+//                    n++;
+//                }
+//            }
+//        }
+        procToProcs.setSize(n);
+        n = 0;
+        for (const auto& pp : patches)
+        {
+            const auto* ppPtr = isA<processorLduInterface>(pp);
+            if (ppPtr)
+            {
+                procToProcs[n++] = ppPtr->neighbProcNo();
             }
         }
     }
-    lduInterfacePtrsList procPatches(procPatchIDs.size());
-    forAll(procPatches, i)
-    {
-        const label patchi = procPatchIDs[i];
-        const auto& pp = patches[patchi];
-        procPatches.set(i, &pp);
-    }
+    // Send to master
+    Pstream::gatherList(procNeighbours, UPstream::msgType(), mesh.comm());
 
-    const processorTopology pt
-    (
-        processorTopology::New<processorLduInterface, lduInterfacePtrsList>
-        (
-            procPatches,
-            mesh.comm()
-        )
-    );
+    DebugVar(procNeighbours);
+//XXXXX
+
 
     // Use greedy algorithm for now
     // (see e.g. https://iq.opengenus.org/graph-colouring-greedy-algorithm/)
@@ -100,7 +142,8 @@ Foam::label Foam::processorColour::colour
             {
                 if (procColour[proci] == -1)
                 {
-                    const labelList& nbrs = pt.procNeighbours()[proci];
+                    //const labelList& nbrs = pt.procNeighbours()[proci];
+                    const labelList& nbrs = procNeighbours[proci];
                     const UIndirectList<label> nbrColour(procColour, nbrs);
 
                     for
