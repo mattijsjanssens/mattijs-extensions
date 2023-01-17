@@ -171,8 +171,31 @@ void Foam::distributedDICPreconditioner::wait
     }
     requests = MPI_REQUEST_NULL;
     requests.clear();
-
 }
+
+
+//void Foam::distributedDICPreconditioner::consume
+//(
+//    solveScalarField& rD,
+//    const label inti,
+//    const auto& recvData
+//) const
+//{
+//    const auto& interfaces = solver_.interfaces();
+//    const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
+//
+//    const auto& intf = interfaces[inti].interface();
+//    // TBD: do not use patch faceCells but passed-in addressing?
+//    const auto& faceCells = intf.faceCells();
+//    const auto& recvBuf = recvBufs_[inti];
+//    const auto& bc = interfaceBouCoeffs[inti];
+//
+//    forAll(recvBuf, face)
+//    {
+//        // Note:interfaceBouCoeffs is -upperPtr
+//        rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
+//    }
+//}
 
 
 void Foam::distributedDICPreconditioner::calcReciprocalD
@@ -218,6 +241,43 @@ void Foam::distributedDICPreconditioner::calcReciprocalD
             {
                 // Note:interfaceBouCoeffs is -upperPtr
                 rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
+            }
+        }
+
+        // Alternative
+        label nOutstanding = lowerRecvRequests_.size();
+        while (nOutstanding > 0)
+        {
+            for (const label inti : lowerNbrs_)
+            {
+                int flag;
+                MPI_Test(&lowerRecvRequests_[inti], &flag, MPI_STATUS_IGNORE);
+                if (flag != 0)
+                {
+                    const auto& intf = interfaces[inti].interface();
+                    // TBD: do not use patch faceCells but passed-in addressing?
+                    const auto& faceCells = intf.faceCells();
+                    const auto& recvBuf = recvBufs_[inti];
+                    const auto& bc = interfaceBouCoeffs[inti];
+
+                    forAll(recvBuf, face)
+                    {
+                        // Note:interfaceBouCoeffs is -upperPtr
+                        rD[faceCells[face]] -=
+                            bc[face]*bc[face]/recvBuf[face];
+                    }
+                    nOutstanding--;
+
+                    if (nOutstanding == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (nOutstanding == 0)
+            {
+                break;
             }
         }
     }

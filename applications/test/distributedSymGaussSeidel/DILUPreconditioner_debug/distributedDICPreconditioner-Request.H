@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011 OpenFOAM Foundation
-    Copyright (C) 2019,2022 OpenCFD Ltd.
+    Copyright (C) 2022 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -107,10 +106,7 @@ protected:
         ) const;
 
         //- Wait for outstanding requests
-        void wait
-        (
-            DynamicList<UPstream::Request>& requests
-        ) const;
+        void wait(DynamicList<UPstream::Request>& requests) const;
 
         //- Calculate reciprocal of diagonal
         void calcReciprocalD(solveScalarField& rD) const;

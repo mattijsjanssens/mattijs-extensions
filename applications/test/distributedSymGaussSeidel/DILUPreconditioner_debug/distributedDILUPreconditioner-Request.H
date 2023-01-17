@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011 OpenFOAM Foundation
-    Copyright (C) 2019,2022 OpenCFD Ltd.
+    Copyright (C) 2022 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -50,7 +49,6 @@ SourceFiles
 #define distributedDILUPreconditioner_H
 
 #include "lduMatrix.H"
-#include <mpi.h>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -74,17 +72,17 @@ protected:
         //- Buffers for sending and receiving data
         mutable FieldField<Field, solveScalar> sendBufs_;
         mutable FieldField<Field, solveScalar> recvBufs_;
-        mutable DynamicList<MPI_Request> recvRequests_;
+        mutable DynamicList<UPstream::Request> recvRequests_;
 
         //- Interfaces to lower coloured processors
         DynamicList<label> lowerNbrs_;
-        mutable DynamicList<MPI_Request> lowerSendRequests_;
-        mutable DynamicList<MPI_Request> lowerRecvRequests_;
+        mutable DynamicList<UPstream::Request> lowerSendRequests_;
+        mutable DynamicList<UPstream::Request> lowerRecvRequests_;
 
         //- Interfaces to higher coloured processors
         DynamicList<label> higherNbrs_;
-        mutable DynamicList<MPI_Request> higherSendRequests_;
-        mutable DynamicList<MPI_Request> higherRecvRequests_;
+        mutable DynamicList<UPstream::Request> higherSendRequests_;
+        mutable DynamicList<UPstream::Request> higherRecvRequests_;
 
         //- The reciprocal preconditioned diagonal
         solveScalarField rD_;
@@ -93,18 +91,22 @@ protected:
     // Private Member Functions
 
         //- Start receiving in recvBufs_
-        void receive(const labelList& intfs, DynamicList<MPI_Request>&) const;
+        void receive
+        (
+            const labelList& intfs,
+            DynamicList<UPstream::Request>&
+        ) const;
 
         //- Start sending sendBufs_
         void send
         (
             const labelList& intfs,
             const solveScalarField& psi,
-            DynamicList<MPI_Request>&
+            DynamicList<UPstream::Request>&
         ) const;
 
         //- Wait for outstanding requests
-        void wait(DynamicList<MPI_Request>& requests) const;
+        void wait(DynamicList<UPstream::Request>& requests) const;
 
         //- Calculate reciprocal of diagonal
         void calcReciprocalD(solveScalarField& rD) const;

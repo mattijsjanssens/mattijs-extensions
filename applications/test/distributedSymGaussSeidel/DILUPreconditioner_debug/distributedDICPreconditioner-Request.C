@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2015 OpenFOAM Foundation
-    Copyright (C) 2019,2022 OpenCFD Ltd.
+    Copyright (C) 2022 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -253,10 +252,11 @@ Foam::distributedDICPreconditioner::distributedDICPreconditioner
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     //const processorColour& colours = processorColour::New(mesh);
-    const label nColours = processorColour::colour(mesh, colours_);
+    //const label nColours = 
+    processorColour::colour(mesh, colours_);
     //Pout<< "Calculated colouring with " << nColours << endl;
-    const label colouri = colours_[Pstream::myProcNo()];
-    //const label colouri = Pstream::myProcNo();
+    const label colouri = colours_[Pstream::myProcNo(mesh.comm())];
+    //const label colouri = Pstream::myProcNo(mesh.comm());
 
     forAll(interfaces, inti)
     {

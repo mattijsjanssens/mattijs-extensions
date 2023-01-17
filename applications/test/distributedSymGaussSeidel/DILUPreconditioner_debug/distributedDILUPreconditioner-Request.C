@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2015 OpenFOAM Foundation
-    Copyright (C) 2019,2022 OpenCFD Ltd.
+    Copyright (C) 2022 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -26,7 +25,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "distributedDILUPreconditioner-mpi.H"
+#include "distributedDILUPreconditioner-Request.H"
 #include "processorLduInterface.H"
 #include "processorColour.H"
 
@@ -37,8 +36,8 @@ namespace Foam
     defineTypeNameAndDebug(distributedDILUPreconditioner, 0);
 
     lduMatrix::preconditioner::
-        addsymMatrixConstructorToTable<distributedDILUPreconditioner>
-        adddistributedDILUPreconditionerSymMatrixConstructorToTable_;
+        addasymMatrixConstructorToTable<distributedDILUPreconditioner>
+        adddistributedDILUPreconditionerAsymMatrixConstructorToTable_;
 }
 
 
@@ -47,7 +46,7 @@ namespace Foam
 void Foam::distributedDILUPreconditioner::receive
 (
     const labelList& selectedInterfaces,
-    DynamicList<MPI_Request>& requests
+    DynamicList<UPstream::Request>& requests
 ) const
 {
     const auto& interfaces = solver_.interfaces();
@@ -60,37 +59,18 @@ void Foam::distributedDILUPreconditioner::receive
         const auto* ppp = isA<const processorLduInterface>(intf);
 
         auto& recvBuf = recvBufs_[inti];
-        recvBuf.setSize(interfaceBouCoeffs[inti].size());
+        recvBuf.resize_nocopy(interfaceBouCoeffs[inti].size());
 
-        //UIPstream::read
-        //(
-        //    Pstream::commsTypes::nonBlocking,
-        //    ppp->neighbProcNo(),
-        //    recvBuf.data_bytes(),
-        //    recvBuf.size_bytes(),
-        //    ppp->tag()+70,          // random offset
-        //    ppp->comm()
-        //);
-
-        requests.append(MPI_REQUEST_NULL);
-        if
+        requests.push_back(UPstream::Request());
+        UIPstream::read
         (
-            MPI_Irecv
-            (
-                recvBuf.data_bytes(),
-                recvBuf.size_bytes(),
-                MPI_BYTE,
-                ppp->neighbProcNo(),
-                ppp->tag()+70,          // random offset
-                MPI_COMM_WORLD,         //TBD: ppp->comm()
-                &requests.last()
-            )
-        )
-        {
-            FatalErrorInFunction
-                << "MPI_Irecv cannot start non-blocking receive"
-                << Foam::abort(FatalError);
-        }
+            requests.back(),
+            ppp->neighbProcNo(),
+            recvBuf.data_bytes(),
+            recvBuf.size_bytes(),
+            ppp->tag()+71,          // random offset
+            ppp->comm()
+        );
     }
 }
 
@@ -99,7 +79,7 @@ void Foam::distributedDILUPreconditioner::send
 (
     const labelList& selectedInterfaces,
     const solveScalarField& psiInternal,
-    DynamicList<MPI_Request>& requests
+    DynamicList<UPstream::Request>& requests
 ) const
 {
     const auto& interfaces = solver_.interfaces();
@@ -113,65 +93,33 @@ void Foam::distributedDILUPreconditioner::send
 
         auto& sendBuf = sendBufs_[inti];
 
-        sendBuf.setSize(faceCells.size());
+        sendBuf.resize_nocopy(faceCells.size());
         forAll(faceCells, face)
         {
             sendBuf[face] = psiInternal[faceCells[face]];
         }
 
-        //UOPstream::write
-        //(
-        //    Pstream::commsTypes::nonBlocking,
-        //    ppp->neighbProcNo(),
-        //    sendBuf.cdata_bytes(),
-        //    sendBuf.size_bytes(),
-        //    ppp->tag()+70,          // random offset
-        //    ppp->comm()
-        //);
-        requests.append(MPI_REQUEST_NULL);
-        if
+        requests.push_back(UPstream::Request());
+        UOPstream::write
         (
-            MPI_Isend
-            (
-                const_cast<char*>(sendBuf.cdata_bytes()),
-                sendBuf.size_bytes(),
-                MPI_BYTE,
-                ppp->neighbProcNo(),
-                ppp->tag()+70,          // random offset
-                MPI_COMM_WORLD,         //TBD: ppp->comm()
-                &requests.last()
-            )
-        )
-        {
-            FatalErrorInFunction
-                << "MPI_Isend cannot start non-blocking send"
-                << Foam::abort(FatalError);
-        }
+            requests.back(),
+            ppp->neighbProcNo(),
+            sendBuf.cdata_bytes(),
+            sendBuf.size_bytes(),
+            ppp->tag()+71,          // random offset
+            ppp->comm()
+        );
     }
 }
 
 
 void Foam::distributedDILUPreconditioner::wait
 (
-    DynamicList<MPI_Request>& requests
+    DynamicList<UPstream::Request>& requests
 ) const
 {
-    if
-    (
-        MPI_Waitall
-        (
-            requests.size(),
-            requests.data(),
-            MPI_STATUSES_IGNORE
-        )
-    )
-    {
-        FatalErrorInFunction
-            << "MPI_Waitall returned with error" << Foam::endl;
-    }
-    requests = MPI_REQUEST_NULL;
+    UPstream::waitRequests(requests);
     requests.clear();
-
 }
 
 
@@ -304,7 +252,8 @@ Foam::distributedDILUPreconditioner::distributedDILUPreconditioner
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     //const processorColour& colours = processorColour::New(mesh);
-    const label nColours = processorColour::colour(mesh, colours_);
+    //const label nColours =
+    processorColour::colour(mesh, colours_);
     //Pout<< "Calculated colouring with " << nColours << endl;
     const label colouri = colours_[Pstream::myProcNo()];
     //const label colouri = Pstream::myProcNo();
