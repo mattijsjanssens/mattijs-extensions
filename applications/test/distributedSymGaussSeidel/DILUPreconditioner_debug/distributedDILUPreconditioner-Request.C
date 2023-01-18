@@ -130,6 +130,7 @@ void Foam::distributedDILUPreconditioner::calcReciprocalD
 {
     const auto& interfaces = solver_.interfaces();
     const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
+    const auto& interfaceIntCoeffs = solver_.interfaceIntCoeffs();
     const auto& matrix = solver_.matrix();
     const auto& lduAddr = matrix.lduAddr();
 
@@ -162,15 +163,16 @@ void Foam::distributedDILUPreconditioner::calcReciprocalD
             const auto& faceCells = intf.faceCells();
             const auto& recvBuf = recvBufs_[inti];
             const auto& bc = interfaceBouCoeffs[inti];
+            const auto& ic = interfaceIntCoeffs[inti];
 
             forAll(recvBuf, face)
             {
-                // Note:interfaceBouCoeffs is -upperPtr
-                rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
+                // Note:interfaceBouCoeffs, interfaceIntCoeffs on the receiving
+                //      side are negated
+                rD[faceCells[face]] -= bc[face]*ic[face]/recvBuf[face];
             }
         }
     }
-
 
     const label nFaces = matrix.upper().size();
     for (label face=0; face<nFaces; face++)
@@ -178,15 +180,8 @@ void Foam::distributedDILUPreconditioner::calcReciprocalD
         rD[uPtr[face]] -= upperPtr[face]*lowerPtr[face]/rD[lPtr[face]];
     }
 
-
     // Make sure no outstanding sends
     wait(higherSendRequests_);
-    //if (higherSendRequests_.size())
-    //{
-    //    FatalErrorInFunction
-    //        << "higherSendRequests_:" << higherSendRequests_.size()
-    //        << exit(FatalError);
-    //}
 
     // Start writes of rD (using sendBufs)
     send(higherNbrs_, rD, higherSendRequests_);
@@ -198,10 +193,6 @@ void Foam::distributedDILUPreconditioner::calcReciprocalD
     {
         rD[cell] = 1.0/rD[cell];
     }
-
-    // Wait until all finished. Necessary? Cannot interleave reciprocal
-    // calc with comms anyway.
-    //wait(higherSendRequests_);
 }
 
 
@@ -367,7 +358,8 @@ void Foam::distributedDILUPreconditioner::precondition
 
             forAll(recvBuf, face)
             {
-                // Note: interfaceBouCoeffs is -upperPtr
+                // Note:interfaceBouCoeffs, interfaceIntCoeffs on the receiving
+                //      side are negated
                 const label cell = faceCells[face];
                 wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
             }

@@ -181,15 +181,10 @@ void Foam::distributedDICPreconditioner::calcReciprocalD
     // Make sure no outstanding sends
     wait(higherSendRequests_);
 
-    //if (higherSendRequests_.size())
-    //{
-    //    FatalErrorInFunction
-    //        << "higherSendRequests_:" << higherSendRequests_.size()
-    //        << exit(FatalError);
-    //}
 
     // Start writes of rD (using sendBufs)
     send(higherNbrs_, rD, higherSendRequests_);
+
 
     // Calculate the reciprocal of the preconditioned diagonal
     const label nCells = rD.size();
@@ -198,10 +193,6 @@ void Foam::distributedDICPreconditioner::calcReciprocalD
     {
         rD[cell] = 1.0/rD[cell];
     }
-
-    // Wait until all finished. Necessary? Cannot interleave reciprocal
-    // calc with comms anyway.
-    //wait(higherSendRequests_);
 }
 
 
