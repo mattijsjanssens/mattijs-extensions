@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 OpenCFD Ltd.
+    Copyright (C) 2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -40,6 +40,8 @@ Description
 #include "faceSet.H"
 #include "pointSet.H"
 #include "columnFvMesh.H"
+#include "OBJstream.H"
+#include "regionSplit.H"
 
 using namespace Foam;
 
@@ -83,7 +85,7 @@ int WhichSide
 bool TestIntersection(const polyMesh& mesh, const label C0, const label C1)
 {
     const auto& cells = mesh.cells();
-    const auto& faces = mesh.faces();
+    //const auto& faces = mesh.faces();
     const auto& points = mesh.points();
     const auto& faceAreas = mesh.faceAreas();
     const auto& faceOwner = mesh.faceOwner();
@@ -94,16 +96,23 @@ bool TestIntersection(const polyMesh& mesh, const label C0, const label C1)
     // Only try to determine if C1 is on the 'positive' side of the line.
     for (const label facei : cells[C0])
     {
-        const face& f = faces[facei];
+        //const face& f = faces[facei];
         const vector D
         (
             C0 == faceOwner[facei]
           ? faceAreas[facei]
           : -faceAreas[facei]
         );
-        if (WhichSide(points, mesh.cellPoints(C1), D, points[f[0]]) > 0)
+        const point& fc = mesh.faceCentres()[facei];
+
+        if (WhichSide(points, mesh.cellPoints(C1), D, fc) > 0)
         {
             // C1 is entirely on 'positive' side of line
+            Pout<< "cell:" << C1 << " bb:"
+                << boundBox(points, mesh.cellPoints(C1))
+                << " is completely positive of plane through fc:" << fc
+                << " direction:" << D/mag(D) << endl;
+
             return false;
         }
     }
@@ -113,16 +122,21 @@ bool TestIntersection(const polyMesh& mesh, const label C0, const label C1)
     // Only try to determine if C0 is on the 'positive' side of the line.
     for (const label facei : cells[C1])
     {
-        const face& f = faces[facei];
+        //const face& f = faces[facei];
         const vector D
         (
             C1 == faceOwner[facei]
           ? faceAreas[facei]
           : -faceAreas[facei]
         );
-        if (WhichSide(points, mesh.cellPoints(C0), D, points[f[0]]) > 0)
+        const point& fc = mesh.faceCentres()[facei];
+        if (WhichSide(points, mesh.cellPoints(C0), D, fc) > 0)
         {
             // C0 is entirely on 'positive' side of line
+            Pout<< "cell:" << C0 << " bb:"
+                << boundBox(points, mesh.cellPoints(C0))
+                << " is completely positive of plane through fc:" << fc
+                << " direction:" << D/mag(D) << endl;
             return false;
         }
     }
@@ -169,17 +183,50 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-    for (label i = 0; i < mesh.nCells()-1; i++)
-    {
-        Pout<< "C0:" << i << " cc:" << mesh.cellCentres()[i] << endl;
+    OBJstream os0(mesh.time().path()/"intersects0.obj");
+    Pout<< "Dumping intersecting cells to " << os0.name() << endl;
+    OBJstream os1(mesh.time().path()/"intersects1.obj");
+    Pout<< "Dumping intersecting cells to " << os1.name() << endl;
+    OBJstream osLines(mesh.time().path()/"intersectionLines.obj");
+    Pout<< "Dumping intersecting cells to " << osLines.name() << endl;
 
-        for (label j = i+1; j < mesh.nCells(); j++)
+    const auto& ccs = mesh.cellCentres();
+    const auto& regions = regionSplit::New(mesh);
+
+    for (label r0 = 0; r0 < regions.nRegions()-1; r0++)
+    {
+        forAll(ccs, C0)
         {
-            Pout<< "    C1:" << j << " cc:" << mesh.cellCentres()[j] << nl
-                << "    intersect:" << testIntersection(mesh, i, j) << endl;
+            if (regions[C0] == r0)
+            {
+                Pout<< "Region0 : C0:" << C0 << " cc:" << ccs[C0] << endl;
+                for (label r1 = r0+1; r1 < regions.nRegions(); r1++)
+                {
+                    forAll(ccs, C1)
+                    {
+                        if (regions[C1] == r1)
+                        {
+                            Pout<< "Region1 : C1:" << C1 << " cc:" << ccs[C1]
+                                << endl;
+                            bool intersects = TestIntersection(mesh, C0, C1);
+                            Pout<< "    intersect:" << intersects << endl;
+
+                            if (intersects)
+                            {
+                                const auto& faces = mesh.faces();
+                                const auto& points = mesh.points();
+                                const cell& C0Faces = mesh.cells()[C0];
+                                os0.write(UIndirectList<face>(faces, C0Faces)(), points, false);
+                                const cell& C1Faces = mesh.cells()[C1];
+                                os1.write(UIndirectList<face>(faces, C1Faces)(), points, false);
+                                osLines.write(linePointRef(ccs[C0], ccs[C1]));
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-
 
     return 0;
 }
