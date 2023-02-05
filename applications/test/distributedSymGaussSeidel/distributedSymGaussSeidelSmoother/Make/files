@@ -1,4 +1,4 @@
 
 distributedSymGaussSeidelSmoother.C
 
-EXE = $(FOAM_APPBIN)/distributedSymGaussSeidelSmoother
+LIB = $(FOAM_USER_LIBBIN)/libdistributedSymGaussSeidelSmoother

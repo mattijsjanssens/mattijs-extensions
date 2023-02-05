@@ -22,7 +22,7 @@ solvers
         solver          PCG;
         preconditioner
         {
-            preconditioner  distributedDIC;
+            preconditioner  distributedDIC2;
             //coupled     false;
         }
 

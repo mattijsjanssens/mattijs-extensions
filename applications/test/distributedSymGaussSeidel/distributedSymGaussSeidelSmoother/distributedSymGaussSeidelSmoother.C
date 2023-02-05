@@ -64,6 +64,8 @@ namespace Foam
 
 void Foam::distributedSymGaussSeidelSmoother::initMatrixInterfaces
 (
+    const lduMatrix& matrix,
+    const bool add,
     const boolList& validInterface,
     const FieldField<Field, scalar>& coupleCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
@@ -79,6 +81,9 @@ void Foam::distributedSymGaussSeidelSmoother::initMatrixInterfaces
             interfaces[interfacei].initInterfaceMatrixUpdate
             (
                 result,
+                add,
+                matrix.mesh().lduAddr(),
+                interfacei,
                 psiif,
                 coupleCoeffs[interfacei],
                 cmpt,
@@ -91,6 +96,8 @@ void Foam::distributedSymGaussSeidelSmoother::initMatrixInterfaces
 
 void Foam::distributedSymGaussSeidelSmoother::updateMatrixInterfaces
 (
+    const lduMatrix& matrix,
+    const bool add,
     const boolList& validInterface,
     const FieldField<Field, scalar>& coupleCoeffs,
     const lduInterfaceFieldPtrsList& interfaces,
@@ -111,6 +118,9 @@ void Foam::distributedSymGaussSeidelSmoother::updateMatrixInterfaces
             interfaces[interfacei].updateInterfaceMatrix
             (
                 result,
+                add,
+                matrix.mesh().lduAddr(),
+                interfacei,
                 psiif,
                 coupleCoeffs[interfacei],
                 cmpt,
@@ -328,6 +338,8 @@ void Foam::distributedSymGaussSeidelSmoother::smooth
     {
         initMatrixInterfaces
         (
+            mesh,
+            false,
             allInterfaces,
             mBouCoeffs,
             interfaces_,

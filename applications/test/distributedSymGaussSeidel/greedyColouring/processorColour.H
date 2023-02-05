@@ -66,6 +66,18 @@ protected:
         label nColours_;
 
 
+    // Protected Member Fucntions
+
+        static void walkFront
+        (
+            const lduMesh& mesh,
+            DynamicList<label>& front,
+            labelList& cellColour
+        );
+
+
+private:
+
         //- No copy construct
         processorColour(const processorColour&) = delete;
 
@@ -112,9 +124,19 @@ public:
 
 
         //- Calculate processor colouring from processor connectivity. Sets
-        //  colour per processor such that no neighbouring processors have the
-        //  same colour. Returns number of colours used.
+        //- colour per processor such that no neighbouring processors have the
+        //- same colour. Returns number of colours used.
         static label colour(const lduMesh& mesh, labelList& procColour);
+
+        //- Calculate (locally) per cell colour according to walking from
+        //- global patches. Returns number of colours used.
+        //- Note: asssumes all non-processor interfaces are global.
+        static label cellColour
+        (
+            const lduMesh& mesh,
+            labelList& cellColour,
+            labelList& patchToColour
+        );
 
         virtual bool movePoints()
         {

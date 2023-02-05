@@ -51,42 +51,12 @@ Foam::label Foam::processorColour::colour
 
     // Re-use processor-topology analysis
 
-    const lduInterfacePtrsList patches = mesh.interfaces();
-
-//    // Filter out the non-processor patches
-//    DynamicList<label> procPatchIDs;
-//    forAll(patches, patchi)
-//    {
-//        if (patches.set(patchi))
-//        {
-//            if (isA<processorLduInterface>(patches[patchi]))
-//            {
-//                procPatchIDs.append(patchi);
-//            }
-//        }
-//    }
-//    lduInterfacePtrsList procPatches(procPatchIDs.size());
-//    forAll(procPatches, i)
-//    {
-//        const label patchi = procPatchIDs[i];
-//        const auto& pp = patches[patchi];
-//        procPatches.set(i, &pp);
-//    }
-//
-//    const processorTopology pt
-//    (
-//        processorTopology::New<processorLduInterface, lduInterfacePtrsList>
-//        (
-//            procPatches,
-//            mesh.comm()
-//        )
-//    );
-
-
-//XXXXX
     labelListList procNeighbours(Pstream::nProcs(mesh.comm()));
+
     // Fill my entry
     {
+        const lduInterfacePtrsList patches = mesh.interfaces();
+
         auto& procToProcs = procNeighbours[Pstream::myProcNo(mesh.comm())];
         label n = 0;
         for (const auto& pp : patches)
@@ -96,16 +66,7 @@ Foam::label Foam::processorColour::colour
                 n++;
             }
         }
-//        forAll(patches, patchi)
-//        {
-//            if (patches.set(patchi))
-//            {
-//                if (isA<processorLduInterface>(patches[patchi]))
-//                {
-//                    n++;
-//                }
-//            }
-//        }
+
         procToProcs.setSize(n);
         n = 0;
         for (const auto& pp : patches)
@@ -119,9 +80,6 @@ Foam::label Foam::processorColour::colour
     }
     // Send to master
     Pstream::gatherList(procNeighbours, UPstream::msgType(), mesh.comm());
-
-    DebugVar(procNeighbours);
-//XXXXX
 
 
     // Use greedy algorithm for now
@@ -142,7 +100,6 @@ Foam::label Foam::processorColour::colour
             {
                 if (procColour[proci] == -1)
                 {
-                    //const labelList& nbrs = pt.procNeighbours()[proci];
                     const labelList& nbrs = procNeighbours[proci];
                     const UIndirectList<label> nbrColour(procColour, nbrs);
 
@@ -155,10 +112,6 @@ Foam::label Foam::processorColour::colour
                     {
                         if (!nbrColour.found(colouri))
                         {
-                            //Pout<< "Processor:" << proci
-                            //    << " allocated colour:" << colouri
-                            //    << endl;
-
                             procColour[proci] = colouri;
                             for (label nbrProci : nbrs)
                             {
@@ -202,7 +155,161 @@ Foam::label Foam::processorColour::colour
 
     const label nColours = max(procColour)+1;
 
+    if (debug)
+    {
+        Info<< typeName << " : coloured " << Pstream::nProcs(mesh.comm())
+            << " processors with in total " << nColours << " colours" << endl;
+    }
+
     return nColours;
+}
+
+
+void Foam::processorColour::walkFront
+(
+    const lduMesh& mesh,
+    DynamicList<label>& front,
+    labelList& cellColour
+)
+{
+    // Colour with the (min) coupled (global) patch
+
+    const lduAddressing& addr = mesh.lduAddr();
+    const label* const __restrict__ uPtr = addr.upperAddr().begin();
+    const label* const __restrict__ lPtr = addr.lowerAddr().begin();
+    const label* const __restrict__ ownStartPtr = addr.ownerStartAddr().begin();
+    const label* const __restrict__ losortStartAddrPtr =
+        addr.losortStartAddr().begin();
+    const label* const __restrict__ losortAddrPtr = addr.losortAddr().begin();
+
+    DynamicList<label> newFront;
+    while (true)
+    {
+        newFront.clear();
+        for (const label celli : front)
+        {
+            const label colouri = cellColour[celli];
+
+            {
+                const label fStart = ownStartPtr[celli];
+                const label fEnd = ownStartPtr[celli + 1];
+
+                for (label facei=fStart; facei<fEnd; facei++)
+                {
+                    const label nbr =
+                    (
+                        lPtr[facei] == celli
+                      ? uPtr[facei]
+                      : lPtr[facei]
+                    );
+                    if (cellColour[nbr] == -1)
+                    {
+                        cellColour[nbr] = colouri;
+                        newFront.append(nbr);
+                    }
+                }
+            }
+            {
+                const label fStart = losortStartAddrPtr[celli];
+                const label fEnd = losortStartAddrPtr[celli + 1];
+
+                for (label i=fStart; i<fEnd; i++)
+                {
+                    label facei = losortAddrPtr[i];
+                    const label nbr =
+                    (
+                        lPtr[facei] == celli
+                      ? uPtr[facei]
+                      : lPtr[facei]
+                    );
+                    if (cellColour[nbr] == -1)
+                    {
+                        cellColour[nbr] = colouri;
+                        newFront.append(nbr);
+                    }
+                }
+            }
+
+        }
+
+        if (newFront.empty())
+        {
+            break;
+        }
+
+        front.transfer(newFront);
+    }
+}
+
+
+Foam::label Foam::processorColour::cellColour
+(
+    const lduMesh& mesh,
+    labelList& cellColour,
+    labelList& patchToColour
+)
+{
+    // Colour with the (min) coupled (global) patch. Compact to have colour 0
+    // if a single region. Problematic if same patch on multiple disconnected
+    // regions.
+
+    const lduAddressing& addr = mesh.lduAddr();
+    const lduInterfacePtrsList patches = mesh.interfaces();
+
+    const label nCells = addr.size();
+
+    patchToColour.setSize(patches.size());
+    patchToColour = -1;
+    cellColour.setSize(nCells);
+    cellColour = -1;
+
+
+    label colouri = 0;
+
+    // Starting front from patch faceCells
+    DynamicList<label> front;
+    forAll(patches, inti)
+    {
+        if
+        (
+            patches.set(inti)
+        && !isA<const processorLduInterface>(patches[inti])
+        )
+        {
+            // 'global' interface. Seed faceCells with patch index
+
+            if (patchToColour[inti] == -1)
+            {
+                patchToColour[inti] = colouri++;
+            }
+
+            const auto& fc = patches[inti].faceCells();
+            forAll(fc, face)
+            {
+                const label cell = fc[face];
+                if (cellColour[cell] != patchToColour[inti])
+                {
+                    cellColour[cell] = patchToColour[inti];
+                    front.append(cell);
+                }
+            }
+        }
+    }
+
+
+    // Walk current mesh
+    walkFront(mesh, front, cellColour);
+
+
+    // Any unvisited cell is still labelMax. Put into colour 0.
+    for (auto& colour : cellColour)
+    {
+        if (colour == -1)
+        {
+            colour = 0;
+        }
+    }
+    return colouri;
 }
 
 
@@ -213,9 +320,6 @@ Foam::processorColour::processorColour(const lduMesh& mesh)
     MeshObject<lduMesh, Foam::MoveableMeshObject, processorColour>(mesh)
 {
     nColours_ = colour(mesh, *this);
-
-    Info<< typeName << " : coloured " << Pstream::nProcs()
-        << " processors with in total " << nColours_ << " colours" << endl;
 }
 
 

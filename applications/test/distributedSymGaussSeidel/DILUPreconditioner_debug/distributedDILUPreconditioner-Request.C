@@ -142,7 +142,7 @@ void Foam::distributedDILUPreconditioner::calcReciprocalD
 
     // Start with diagonal
     const scalarField& diag = matrix.diag();
-    rD.setSize(diag.size());
+    rD.resize_nocopy(diag.size());
     std::copy(diag.begin(), diag.end(), rD.begin());
 
 
@@ -246,8 +246,8 @@ Foam::distributedDILUPreconditioner::distributedDILUPreconditioner
     //const label nColours =
     processorColour::colour(mesh, colours_);
     //Pout<< "Calculated colouring with " << nColours << endl;
-    const label colouri = colours_[Pstream::myProcNo()];
-    //const label colouri = Pstream::myProcNo();
+    const label colouri = colours_[Pstream::myProcNo(mesh.comm())];
+    //const label colouri = Pstream::myProcNo(mesh.comm());
 
     forAll(interfaces, inti)
     {
