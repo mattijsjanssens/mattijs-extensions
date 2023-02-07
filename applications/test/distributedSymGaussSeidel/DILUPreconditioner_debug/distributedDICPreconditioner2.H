@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011 OpenFOAM Foundation
-    Copyright (C) 2019,2022 OpenCFD Ltd.
+    Copyright (C) 2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -59,7 +58,7 @@ SourceFiles
 #ifndef distributedDICPreconditioner2_H
 #define distributedDICPreconditioner2_H
 
-#include "lduMatrix.H"
+#include "distributedDILUPreconditioner2.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -72,154 +71,139 @@ namespace Foam
 
 class distributedDICPreconditioner2
 :
-    public lduMatrix::preconditioner
+    public distributedDILUPreconditioner2
 {
 protected:
 
     // Protected data
 
-        //- Precondition across global coupled bc
-        const bool coupled_;
-
-
-        //- Processor interface buffers and colouring
-
-            //- Buffers for sending and receiving data
-            mutable FieldField<Field, solveScalar> sendBufs_;
-            mutable FieldField<Field, solveScalar> recvBufs_;
-            mutable DynamicList<UPstream::Request> recvRequests_;
-
-            //- Interfaces to lower coloured processors
-            DynamicList<label> lowerNbrs_;
-            mutable DynamicList<UPstream::Request> lowerSendRequests_;
-            mutable DynamicList<UPstream::Request> lowerRecvRequests_;
-
-            //- Interfaces to higher coloured processors
-            DynamicList<label> higherNbrs_;
-            mutable DynamicList<UPstream::Request> higherSendRequests_;
-            mutable DynamicList<UPstream::Request> higherRecvRequests_;
-
-
-        //- Local (cell) colouring from global interfaces
-
-            //- Colour/zone per cell
-            autoPtr<labelList> cellColourPtr_;
-
-            //- Number of colours (in case of multiple disconnected regions
-            //  in single mesh)
-            label nColours_;
-
-
-        //- Global interfaces. Per colour the interfaces that (might)
-        //- influence it
-
-            mutable PtrList<FieldField<Field, solveScalar>> colourBufs_;
-
-            //- Interfaces to non-processor lower coupled interfaces
-            List<DynamicList<label>> lowerGlobalRecv_;
-
-            //- Interfaces to non-processor lower coupled interfaces
-            List<DynamicList<label>> lowerGlobalSend_;
-
-            //- Corresponding destination colour (for lowerGlobal)
-            List<label> lowerColour_;
-
-            //- Interfaces to non-processor higher coupled interfaces
-            List<DynamicList<label>> higherGlobalRecv_;
-
-            //- Interfaces to non-processor higher coupled interfaces
-            List<DynamicList<label>> higherGlobalSend_;
-
-            //- Corresponding destination colour (for higherGlobal)
-            List<label> higherColour_;
-
-
-        //- The reciprocal preconditioned diagonal
-        solveScalarField rD_;
-
-
-    // Private Member Functions
-
-//        //- Determine zoneing/colouring of local mesh
-//        void walkFront
+//        //- Precondition across global coupled bc
+//        const bool coupled_;
+//
+//
+//        //- Processor interface buffers and colouring
+//
+//            //- Buffers for sending and receiving data
+//            mutable FieldField<Field, solveScalar> sendBufs_;
+//            mutable FieldField<Field, solveScalar> recvBufs_;
+//            mutable DynamicList<UPstream::Request> recvRequests_;
+//
+//            //- Interfaces to lower coloured processors
+//            DynamicList<label> lowerNbrs_;
+//            mutable DynamicList<UPstream::Request> lowerSendRequests_;
+//            mutable DynamicList<UPstream::Request> lowerRecvRequests_;
+//
+//            //- Interfaces to higher coloured processors
+//            DynamicList<label> higherNbrs_;
+//            mutable DynamicList<UPstream::Request> higherSendRequests_;
+//            mutable DynamicList<UPstream::Request> higherRecvRequests_;
+//
+//
+//        //- Local (cell) colouring from global interfaces
+//
+//            //- Colour/zone per cell
+//            autoPtr<labelList> cellColourPtr_;
+//
+//            //- Number of colours (in case of multiple disconnected regions
+//            //  in single mesh)
+//            label nColours_;
+//
+//
+//        //- Global interfaces. Per colour the interfaces that (might)
+//        //- influence it
+//
+//            mutable PtrList<FieldField<Field, solveScalar>> colourBufs_;
+//
+//            //- Interfaces to non-processor lower coupled interfaces
+//            List<DynamicList<label>> lowerGlobalRecv_;
+//
+//            //- Interfaces to non-processor lower coupled interfaces
+//            List<DynamicList<label>> lowerGlobalSend_;
+//
+//            //- Corresponding destination colour (for lowerGlobal)
+//            List<label> lowerColour_;
+//
+//            //- Interfaces to non-processor higher coupled interfaces
+//            List<DynamicList<label>> higherGlobalRecv_;
+//
+//            //- Interfaces to non-processor higher coupled interfaces
+//            List<DynamicList<label>> higherGlobalSend_;
+//
+//            //- Corresponding destination colour (for higherGlobal)
+//            List<label> higherColour_;
+//
+//
+//        //- The reciprocal preconditioned diagonal
+//        solveScalarField rD_;
+//
+//
+//    // Private Member Functions
+//
+//        //- Variant of lduMatrix::updateMatrixInterfaces on selected interfaces
+//        void updateMatrixInterfaces
 //        (
-//            const lduMesh& lm,
-//            DynamicList<label>& front,
-//            labelList& cellColour
+//            const bool add,
+//            const FieldField<Field, solveScalar>& coupleCoeffs,
+//            const labelList& selectedInterfaces,
+//            const solveScalarField& psiif,
+//            solveScalarField& result,
+//            const direction cmpt
 //        ) const;
 //
-//        label meshColour
+//        //- Send (and store in colourBufs_[colouri]) the effect of
+//        //  doing selectedInterfaces
+//        void sendGlobal
 //        (
-//            const lduMesh& lm,
-//            labelList& cellColour,
-//            labelList& patchToColour
+//            const labelList& selectedInterfaces,
+//            solveScalarField& psi,
+//            const label colouri
+//        ) const;
+//
+//
+//        //- Start receiving in recvBufs_
+//        void receive
+//        (
+//            const labelList& selectedInterfaces,
+//            DynamicList<UPstream::Request>& requests
+//        ) const;
+//
+//        //- Start sending sendBufs_
+//        void send
+//        (
+//            const labelList& selectedInterfaces,
+//            const solveScalarField& psiInternal,
+//            DynamicList<UPstream::Request>& requests
+//        ) const;
+//
+//        //- Wait for explicit requests
+//        void wait
+//        (
+//            DynamicList<UPstream::Request>& requests
 //        ) const;
 
-        //- Variant of lduMatrix::updateMatrixInterfaces on selected interfaces
-        void updateMatrixInterfaces
-        (
-            const bool add,
-            const FieldField<Field, solveScalar>& coupleCoeffs,
-            const labelList& selectedInterfaces,
-            const solveScalarField& psiif,
-            solveScalarField& result,
-            const direction cmpt
-        ) const;
-
-        //- Send (and store in colourBufs_[colouri]) the effect of
-        //  doing selectedInterfaces
-        void sendGlobal
-        (
-            const labelList& selectedInterfaces,
-            solveScalarField& psi,
-            const label colouri
-        ) const;
-
-
-        //- Start receiving in recvBufs_
-        void receive
-        (
-            const labelList& selectedInterfaces,
-            DynamicList<UPstream::Request>& requests
-        ) const;
-
-        //- Start sending sendBufs_
-        void send
-        (
-            const labelList& selectedInterfaces,
-            const solveScalarField& psiInternal,
-            DynamicList<UPstream::Request>& requests
-        ) const;
-
-        //- Wait for explicit requests
-        void wait
-        (
-            DynamicList<UPstream::Request>& requests
-        ) const;
-
         //- Update diagonal for colour
-        void forwardInternalDiag
+        virtual void forwardInternalDiag
         (
             solveScalarField& rD,
             const label colouri
         ) const;
 
         //- Update preconditioned variable walking forward on internal faces
-        void forwardInternal
+        virtual void forwardInternal
         (
             solveScalarField& wA,
             const label colouri
         ) const;
 
-        //- Update preconditioned variable walking backward on internal faces
-        void backwardInternal
-        (
-            solveScalarField& wA,
-            const label colouri
-        ) const;
-
-        //- Calculate reciprocal of diagonal
-        void calcReciprocalD(solveScalarField& rD) const;
+//        //- Update preconditioned variable walking backward on internal faces
+//        virtual void backwardInternal
+//        (
+//            solveScalarField& wA,
+//            const label colouri
+//        ) const;
+//
+//        //- Calculate reciprocal of diagonal
+//        void calcReciprocalD(solveScalarField& rD) const;
 
 
 public:
@@ -244,13 +228,13 @@ public:
 
     // Member Functions
 
-        //- Return wA the preconditioned form of residual rA
-        virtual void precondition
-        (
-            solveScalarField& wA,
-            const solveScalarField& rA,
-            const direction cmpt=0
-        ) const;
+//        //- Return wA the preconditioned form of residual rA
+//        virtual void precondition
+//        (
+//            solveScalarField& wA,
+//            const solveScalarField& rA,
+//            const direction cmpt=0
+//        ) const;
 };
 
 

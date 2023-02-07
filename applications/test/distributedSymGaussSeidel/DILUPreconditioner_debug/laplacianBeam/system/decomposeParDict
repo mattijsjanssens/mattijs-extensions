@@ -16,8 +16,8 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 numberOfSubdomains  2;
-//method              random;
-method          hierarchical;
+method              random;
+//method          hierarchical;
 hierarchicalCoeffs
 {
     n           (2 1 1);

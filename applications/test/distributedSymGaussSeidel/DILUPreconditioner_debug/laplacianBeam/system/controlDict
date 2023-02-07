@@ -17,6 +17,12 @@ FoamFile
 
 libs            (preconditioner);
 
+DebugSwitches
+{
+    processorColour 1;
+    GAMG            1;
+}
+
 application     laplacianFoam;
 
 startFrom       startTime;

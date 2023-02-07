@@ -20,6 +20,8 @@ internalField   uniform (10 0 0);
 
 boundaryField
 {
+    #includeEtc "caseDicts/setConstraintTypes"
+
     left
     {
         type            uniformFixedValue;
@@ -36,10 +38,6 @@ boundaryField
     bottom
     {
         type            noSlip;
-    }
-    frontAndBack
-    {
-        type            empty;
     }
 }
 

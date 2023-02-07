@@ -45,6 +45,7 @@ namespace Foam
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
+/*
 void Foam::distributedDICPreconditioner2::updateMatrixInterfaces
 (
     const bool add,
@@ -236,6 +237,31 @@ void Foam::distributedDICPreconditioner2::wait
 }
 
 
+void Foam::distributedDICPreconditioner2::addInterfaceDiag
+(
+    solveScalarField& rD,
+    const label inti,
+    const Field<solveScalar>& recvBuf
+) const
+{
+    const auto& interfaces = solver_.interfaces();
+    const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
+
+    const auto& intf = interfaces[inti].interface();
+    // TBD: do not use patch faceCells but passed-in addressing?
+    const auto& faceCells = intf.faceCells();
+    const auto& bc = interfaceBouCoeffs[inti];
+
+    forAll(recvBuf, face)
+    {
+        // Note:interfaceBouCoeffs, interfaceIntCoeffs on the receiving
+        //      side are negated
+        rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
+    }
+}
+*/
+
+
 void Foam::distributedDICPreconditioner2::forwardInternalDiag
 (
     solveScalarField& rD,
@@ -315,151 +341,161 @@ void Foam::distributedDICPreconditioner2::forwardInternal
 }
 
 
-void Foam::distributedDICPreconditioner2::backwardInternal
-(
-    solveScalarField& wA,
-    const label colouri
-) const
-{
-    const auto& matrix = solver_.matrix();
-    const auto& lduAddr = matrix.lduAddr();
-
-    solveScalar* __restrict__ wAPtr = wA.begin();
-    const solveScalar* __restrict__ rDPtr = rD_.begin();
-
-    const label* const __restrict__ uPtr = lduAddr.upperAddr().begin();
-    const label* const __restrict__ lPtr = lduAddr.lowerAddr().begin();
-    const scalar* const __restrict__ upperPtr = matrix.upper().begin();
-
-    const label nFacesM1 = matrix.upper().size() - 1;
-
-    if (cellColourPtr_.valid())
-    {
-        const auto& cellColour = cellColourPtr_();
-        for (label face=nFacesM1; face>=0; face--)
-        {
-            const label cell = uPtr[face];
-            if (cellColour[cell] == colouri)
-            {
-                // Note: lower cell guaranteed in same colour
-                wAPtr[lPtr[face]] -=
-                    rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[cell];
-            }
-        }
-    }
-    else
-    {
-        for (label face=nFacesM1; face>=0; face--)
-        {
-            wAPtr[lPtr[face]] -=
-                rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
-        }
-    }
-}
-
-
-void Foam::distributedDICPreconditioner2::calcReciprocalD
-(
-    solveScalarField& rD
-) const
-{
-    const auto& interfaces = solver_.interfaces();
-    const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
-    const auto& matrix = solver_.matrix();
-
-    // Make sure no outstanding receives
-    wait(lowerRecvRequests_);
-
-    // Start reads (into recvBufs_)
-    receive(lowerNbrs_, lowerRecvRequests_);
-
-    // Start with diagonal
-    const scalarField& diag = matrix.diag();
-    rD.resize_nocopy(diag.size());
-    std::copy(diag.begin(), diag.end(), rD.begin());
+//void Foam::distributedDICPreconditioner2::backwardInternal
+//(
+//    solveScalarField& wA,
+//    const label colouri
+//) const
+//{
+//    const auto& matrix = solver_.matrix();
+//    const auto& lduAddr = matrix.lduAddr();
+//
+//    solveScalar* __restrict__ wAPtr = wA.begin();
+//    const solveScalar* __restrict__ rDPtr = rD_.begin();
+//
+//    const label* const __restrict__ uPtr = lduAddr.upperAddr().begin();
+//    const label* const __restrict__ lPtr = lduAddr.lowerAddr().begin();
+//    const scalar* const __restrict__ upperPtr = matrix.upper().begin();
+//
+//    const label nFacesM1 = matrix.upper().size() - 1;
+//
+//    if (cellColourPtr_.valid())
+//    {
+//        const auto& cellColour = cellColourPtr_();
+//        for (label face=nFacesM1; face>=0; face--)
+//        {
+//            const label cell = uPtr[face];
+//            if (cellColour[cell] == colouri)
+//            {
+//                // Note: lower cell guaranteed in same colour
+//                wAPtr[lPtr[face]] -=
+//                    rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[cell];
+//            }
+//        }
+//    }
+//    else
+//    {
+//        for (label face=nFacesM1; face>=0; face--)
+//        {
+//            wAPtr[lPtr[face]] -=
+//                rDPtr[lPtr[face]]*upperPtr[face]*wAPtr[uPtr[face]];
+//        }
+//    }
+//}
 
 
-    // Subtract coupled contributions
-    {
-        // Wait for finish. Received result in recvBufs
-        wait(lowerRecvRequests_);
-
-        for (const label inti : lowerNbrs_)
-        {
-            const auto& intf = interfaces[inti].interface();
-            // TBD: do not use patch faceCells but passed-in addressing?
-            const auto& faceCells = intf.faceCells();
-            const auto& recvBuf = recvBufs_[inti];
-            const auto& bc = interfaceBouCoeffs[inti];
-
-            forAll(recvBuf, face)
-            {
-                // Note:interfaceBouCoeffs is -upperPtr
-                rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
-            }
-        }
-    }
-
-
-    // - divide the internal mesh into domains/colour, similar to domain
-    //   decomposition
-    // - we could use subsetted bits of the mesh or just loop over only
-    //   the cells of the current domain
-    // - a domain only uses boundary values of lower numbered domains
-    // - this also limits the interfaces that need to be evaluated since
-    //   we assume an interface only changes local faceCells and these
-    //   are all of the same colour
-
-    for (label colouri = 0; colouri < nColours_; colouri++)
-    {
-        if (cellColourPtr_.valid())
-        {
-            for (const label inti : lowerGlobalRecv_[colouri])
-            {
-                const auto& intf = interfaces[inti].interface();
-                // TBD: do not use patch faceCells but passed-in addressing?
-                const auto& faceCells = intf.faceCells();
-                const auto& recvBuf = colourBufs_[colouri][inti];
-                const auto& bc = interfaceBouCoeffs[inti];
-
-                forAll(recvBuf, face)
-                {
-                    // Note:interfaceBouCoeffs is -upperPtr
-                    const label cell = faceCells[face];
-                    rD[cell] -= bc[face]*bc[face]/recvBuf[face];
-                }
-            }
-        }
-
-        forwardInternalDiag(rD, colouri);
-
-        // Store effect of exchanging rD to higher interfaces in colourBufs_
-        if (cellColourPtr_.valid())
-        {
-            sendGlobal(higherGlobalSend_[colouri], rD, higherColour_[colouri]);
-        }
-    }
-
-
-    // Make sure no outstanding sends
-    wait(higherSendRequests_);
-
-    // Start writes of rD (using sendBufs)
-    send(higherNbrs_, rD, higherSendRequests_);
-
-
-    // Calculate the reciprocal of the preconditioned diagonal
-    const label nCells = rD.size();
-
-    for (label cell=0; cell<nCells; cell++)
-    {
-        rD[cell] = 1.0/rD[cell];
-    }
-}
+//void Foam::distributedDICPreconditioner2::calcReciprocalD
+//(
+//    solveScalarField& rD
+//) const
+//{
+//    const auto& interfaces = solver_.interfaces();
+//    const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
+//    const auto& matrix = solver_.matrix();
+//
+//    // Make sure no outstanding receives
+//    wait(lowerRecvRequests_);
+//
+//    // Start reads (into recvBufs_)
+//    receive(lowerNbrs_, lowerRecvRequests_);
+//
+//    // Start with diagonal
+//    const scalarField& diag = matrix.diag();
+//    rD.resize_nocopy(diag.size());
+//    std::copy(diag.begin(), diag.end(), rD.begin());
+//
+//
+//    // Subtract coupled contributions
+//    {
+//        // Wait for finish. Received result in recvBufs
+//        wait(lowerRecvRequests_);
+//
+//        for (const label inti : lowerNbrs_)
+//        {
+//            const auto& intf = interfaces[inti].interface();
+//            // TBD: do not use patch faceCells but passed-in addressing?
+//            const auto& faceCells = intf.faceCells();
+//            const auto& recvBuf = recvBufs_[inti];
+//            const auto& bc = interfaceBouCoeffs[inti];
+//
+//            forAll(recvBuf, face)
+//            {
+//                // Note:interfaceBouCoeffs is -upperPtr
+//                rD[faceCells[face]] -= bc[face]*bc[face]/recvBuf[face];
+//            }
+//        }
+//    }
+//
+//
+//    // - divide the internal mesh into domains/colour, similar to domain
+//    //   decomposition
+//    // - we could use subsetted bits of the mesh or just loop over only
+//    //   the cells of the current domain
+//    // - a domain only uses boundary values of lower numbered domains
+//    // - this also limits the interfaces that need to be evaluated since
+//    //   we assume an interface only changes local faceCells and these
+//    //   are all of the same colour
+//
+//    for (label colouri = 0; colouri < nColours_; colouri++)
+//    {
+//        if (cellColourPtr_.valid())
+//        {
+//            for (const label inti : lowerGlobalRecv_[colouri])
+//            {
+//                const auto& intf = interfaces[inti].interface();
+//                // TBD: do not use patch faceCells but passed-in addressing?
+//                const auto& faceCells = intf.faceCells();
+//                const auto& recvBuf = colourBufs_[colouri][inti];
+//                const auto& bc = interfaceBouCoeffs[inti];
+//
+//                forAll(recvBuf, face)
+//                {
+//                    // Note:interfaceBouCoeffs is -upperPtr
+//                    const label cell = faceCells[face];
+//                    rD[cell] -= bc[face]*bc[face]/recvBuf[face];
+//                }
+//            }
+//        }
+//
+//        forwardInternalDiag(rD, colouri);
+//
+//        // Store effect of exchanging rD to higher interfaces in colourBufs_
+//        if (cellColourPtr_.valid())
+//        {
+//            sendGlobal(higherGlobalSend_[colouri], rD, higherColour_[colouri]);
+//        }
+//    }
+//
+//
+//    // Make sure no outstanding sends
+//    wait(higherSendRequests_);
+//
+//    // Start writes of rD (using sendBufs)
+//    send(higherNbrs_, rD, higherSendRequests_);
+//
+//
+//    // Calculate the reciprocal of the preconditioned diagonal
+//    const label nCells = rD.size();
+//
+//    for (label cell=0; cell<nCells; cell++)
+//    {
+//        rD[cell] = 1.0/rD[cell];
+//    }
+//}
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
+Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
+(
+    const lduMatrix::solver& sol,
+    const dictionary& dict
+)
+:
+    distributedDILUPreconditioner2(sol, dict)
+{}
+
+/*
 Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
 (
     const lduMatrix::solver& sol,
@@ -618,187 +654,137 @@ Foam::distributedDICPreconditioner2::distributedDICPreconditioner2
 
     calcReciprocalD(rD_);
 }
-
+*/
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::distributedDICPreconditioner2::precondition
-(
-    solveScalarField& wA,
-    const solveScalarField& rA,
-    const direction
-) const
-{
-    const auto& interfaces = solver_.interfaces();
-    const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
-
-    solveScalar* __restrict__ wAPtr = wA.begin();
-    const solveScalar* __restrict__ rAPtr = rA.begin();
-    const solveScalar* __restrict__ rDPtr = rD_.begin();
-
-    const label nCells = wA.size();
-
-
-    // Forward sweep
-    // ~~~~~~~~~~~~~
-
-    // Make sure no receives are still in flight (should not happen)
-    wait(lowerRecvRequests_);
-
-    // Start reads (into recvBufs)
-    receive(lowerNbrs_, lowerRecvRequests_);
-
-    // Initialise 'internal' cells
-    for (label cell=0; cell<nCells; cell++)
-    {
-        wAPtr[cell] = rDPtr[cell]*rAPtr[cell];
-    }
-
-    // Do 'halo' contributions from lower numbered procs
-    {
-        // Wait for finish. Received result in recvBufs
-        wait(lowerRecvRequests_);
-
-        for (const label inti : lowerNbrs_)
-        {
-            const auto& intf = interfaces[inti].interface();
-            // TBD: do not use patch faceCells but passed-in
-            // addressing?
-            const auto& faceCells = intf.faceCells();
-            const auto& recvBuf = recvBufs_[inti];
-            const auto& bc = interfaceBouCoeffs[inti];
-
-            forAll(recvBuf, face)
-            {
-                // Note: interfaceBouCoeffs is -upperPtr
-                const label cell = faceCells[face];
-                wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
-            }
-        }
-
-        for (label colouri = 0; colouri < nColours_; colouri++)
-        {
-            // Do non-processor boundaries for this colour
-            if (cellColourPtr_.valid())
-            {
-                for (const label inti : lowerGlobalRecv_[colouri])
-                {
-                    const auto& intf = interfaces[inti].interface();
-                    const auto& faceCells = intf.faceCells();
-                    const auto& recvBuf = colourBufs_[colouri][inti];
-                    const auto& bc = interfaceBouCoeffs[inti];
-
-                    forAll(recvBuf, face)
-                    {
-                        // Note:interfaceBouCoeffs is -upperPtr
-                        const label cell = faceCells[face];
-                        wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
-                    }
-                }
-            }
-
-            forwardInternal(wA, colouri);
-
-            // Store effect of exchanging rD to higher interfaces
-            // in colourBufs_
-            if (cellColourPtr_.valid())
-            {
-                sendGlobal
-                (
-                    higherGlobalSend_[colouri],
-                    wA,
-                    higherColour_[colouri]
-                );
-            }
-        }
-    }
-
-    // Make sure no outstanding sends from previous iteration
-    wait(higherSendRequests_);
-
-    // Start writes of wA (using sendBufs)
-    send(higherNbrs_, wA, higherSendRequests_);
-
-
-    // Backward sweep
-    // ~~~~~~~~~~~~~~
-
-    // Make sure no outstanding receives
-    wait(higherRecvRequests_);
-
-    // Start receives
-    receive(higherNbrs_, higherRecvRequests_);
-
-    {
-        // Wait until receives finished
-        wait(higherRecvRequests_);
-
-        for (const label inti : higherNbrs_)
-        {
-            const auto& intf = interfaces[inti].interface();
-            // TBD: do not use patch faceCells but passed-in
-            // addressing?
-            const auto& faceCells = intf.faceCells();
-            const auto& recvBuf = recvBufs_[inti];
-            const auto& bc = interfaceBouCoeffs[inti];
-
-            forAll(recvBuf, face)
-            {
-                // Note: interfaceBouCoeffs is -upperPtr
-                const label cell = faceCells[face];
-                wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
-            }
-        }
-
-        for (label colouri = nColours_-1; colouri >= 0; colouri--)
-        {
-            // Do non-processor boundaries for this colour
-            if (cellColourPtr_.valid())
-            {
-                const auto& cellColour = cellColourPtr_();
-                for (const label inti : higherGlobalRecv_[colouri])
-                {
-                    const auto& intf = interfaces[inti].interface();
-                    const auto& faceCells = intf.faceCells();
-                    const auto& recvBuf = colourBufs_[colouri][inti];
-                    const auto& bc = interfaceBouCoeffs[inti];
-
-                    forAll(recvBuf, face)
-                    {
-                        // Note:interfaceBouCoeffs is -upperPtr
-                        const label cell = faceCells[face];
-                        if (cellColour[cell] != colouri)
-                        {
-                            FatalErrorInFunction
-                                << " problem" << exit(FatalError);
-                        }
-                        wAPtr[cell] += rDPtr[cell]*bc[face]*recvBuf[face];
-                    }
-                }
-            }
-
-            backwardInternal(wA, colouri);
-
-            // Store effect of exchanging rD to higher interfaces
-            // in colourBufs_
-            if (cellColourPtr_.valid())
-            {
-                sendGlobal
-                (
-                    lowerGlobalSend_[colouri],
-                    wA,
-                    lowerColour_[colouri]
-                );
-            }
-        }
-    }
-
-    // Make sure no outstanding sends
-    wait(lowerSendRequests_);
-
-    // Start writes of wA (using sendBufs)
-    send(lowerNbrs_, wA, lowerSendRequests_);
-}
+//void Foam::distributedDICPreconditioner2::precondition
+//(
+//    solveScalarField& wA,
+//    const solveScalarField& rA,
+//    const direction
+//) const
+//{
+//    const auto& interfaces = solver_.interfaces();
+//    const auto& interfaceBouCoeffs = solver_.interfaceBouCoeffs();
+//
+//    solveScalar* __restrict__ wAPtr = wA.begin();
+//    const solveScalar* __restrict__ rAPtr = rA.begin();
+//    const solveScalar* __restrict__ rDPtr = rD_.begin();
+//
+//    const label nCells = wA.size();
+//
+//
+//    // Forward sweep
+//    // ~~~~~~~~~~~~~
+//
+//    // Make sure no receives are still in flight (should not happen)
+//    wait(lowerRecvRequests_);
+//
+//    // Start reads (into recvBufs)
+//    receive(lowerNbrs_, lowerRecvRequests_);
+//
+//    // Initialise 'internal' cells
+//    for (label cell=0; cell<nCells; cell++)
+//    {
+//        wAPtr[cell] = rDPtr[cell]*rAPtr[cell];
+//    }
+//
+//    // Do 'halo' contributions from lower numbered procs
+//    {
+//        // Wait for finish. Received result in recvBufs
+//        wait(lowerRecvRequests_);
+//
+//        for (const label inti : lowerNbrs_)
+//        {
+//            addInterface(wA, inti, recvBufs_[inti]);
+//        }
+//
+//        for (label colouri = 0; colouri < nColours_; colouri++)
+//        {
+//            // Do non-processor boundaries for this colour
+//            if (cellColourPtr_.valid())
+//            {
+//                for (const label inti : lowerGlobalRecv_[colouri])
+//                {
+//                    addInterface(wA, inti, colourBufs_[colouri][inti]);
+//                }
+//            }
+//
+//            forwardInternal(wA, colouri);
+//
+//            // Store effect of exchanging rD to higher interfaces
+//            // in colourBufs_
+//            if (cellColourPtr_.valid())
+//            {
+//                sendGlobal
+//                (
+//                    higherGlobalSend_[colouri],
+//                    wA,
+//                    higherColour_[colouri]
+//                );
+//            }
+//        }
+//    }
+//
+//    // Make sure no outstanding sends from previous iteration
+//    wait(higherSendRequests_);
+//
+//    // Start writes of wA (using sendBufs)
+//    send(higherNbrs_, wA, higherSendRequests_);
+//
+//
+//    // Backward sweep
+//    // ~~~~~~~~~~~~~~
+//
+//    // Make sure no outstanding receives
+//    wait(higherRecvRequests_);
+//
+//    // Start receives
+//    receive(higherNbrs_, higherRecvRequests_);
+//
+//    {
+//        // Wait until receives finished
+//        wait(higherRecvRequests_);
+//
+//        for (const label inti : higherNbrs_)
+//        {
+//            addInterface(wA, inti, recvBufs_[inti]);
+//        }
+//
+//        for (label colouri = nColours_-1; colouri >= 0; colouri--)
+//        {
+//            // Do non-processor boundaries for this colour
+//            if (cellColourPtr_.valid())
+//            {
+//                for (const label inti : higherGlobalRecv_[colouri])
+//                {
+//                    addInterface(wA, inti, colourBufs_[colouri][inti]);
+//                }
+//            }
+//
+//            backwardInternal(wA, colouri);
+//
+//            // Store effect of exchanging rD to higher interfaces
+//            // in colourBufs_
+//            if (cellColourPtr_.valid())
+//            {
+//                sendGlobal
+//                (
+//                    lowerGlobalSend_[colouri],
+//                    wA,
+//                    lowerColour_[colouri]
+//                );
+//            }
+//        }
+//    }
+//
+//    // Make sure no outstanding sends
+//    wait(lowerSendRequests_);
+//
+//    // Start writes of wA (using sendBufs)
+//    send(lowerNbrs_, wA, lowerSendRequests_);
+//}
 
 
 // ************************************************************************* //
