@@ -7,6 +7,7 @@ distributedDICPreconditioner-mpi.C
 distributedDICPreconditioner-Request.C
 distributedDILUPreconditioner-Request.C
 distributedDICPreconditioner2.C
+distributedDILUPreconditioner2.C
 /* DICPCG.C */
 DICPCG-multi-colour.C
 

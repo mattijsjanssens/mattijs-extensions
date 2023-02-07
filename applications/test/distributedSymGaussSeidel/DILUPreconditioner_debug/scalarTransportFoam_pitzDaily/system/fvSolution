@@ -19,7 +19,7 @@ solvers
     T
     {
         solver          PBiCGStab;
-        preconditioner  distributedDILU;
+        preconditioner  distributedDILU2;
         tolerance       1e-6;
         relTol          0;
         norm            default;
