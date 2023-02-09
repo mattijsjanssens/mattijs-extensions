@@ -26,6 +26,8 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "volPointInterpolation.H"
+
 #include "displacementLaplacianFvMotionSolver.H"
 #include "motionInterpolation.H"
 #include "motionDiffusivity.H"
@@ -35,6 +37,7 @@ License
 #include "meshTools.H"
 #include "mapPolyMesh.H"
 #include "fvOptions.H"
+
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -335,7 +338,7 @@ Pout<< "** displacementLaplacianFvMotionSolver::curPoints **" << endl;
                         pointPatchField<scalar>::calculatedType();
                 }
             }   
-
+            DebugVar(wantedBCs);
             // Generate field with same constraint patch override
             pointScalarField pointOne
             (
@@ -354,12 +357,38 @@ Pout<< "** displacementLaplacianFvMotionSolver::curPoints **" << endl;
                 patchTypes
             );
 
+
+            // Do the same for boundary points only
+            const volPointInterpolation& vpi = volPointInterpolation::New(mesh);
+            pointScalarField bPointOne("bPointOne", pointOne);
+            {
+                // Sum up effect of interpolating one (on boundary points only)
+                vpi.interpolateOne(vpi.normalisationPtr_(), bPointOne);
+            }
+
             // Do interpolation. End result should be 1 on all 'normal' patches.
             interpolationPtr_->interpolate
             (
                 cellOne,
                 pointOne
             );
+
+            {
+                const primitivePatch& boundary = vpi.boundaryPtr_();
+                const labelList& mp = boundary.meshPoints();
+                forAll(mp, i)
+                {
+                    const label pointi = mp[i];
+                    if (bPointOne[i] != pointOne[pointi])
+                    {
+                        Pout<< "** point:" << i
+                            << " at:" << mesh.points()[pointi]
+                            << " bPointOne:" << bPointOne[i]
+                            << " pointOne:" << pointOne[pointi]
+                            << endl;
+                    }
+                }
+            }
 
             pointDisplacement_ /= pointOne;
         }

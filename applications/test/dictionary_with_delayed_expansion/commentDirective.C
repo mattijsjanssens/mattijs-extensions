@@ -73,8 +73,8 @@ Foam::string Foam::functionEntries::commentDirective::evaluate
 
     const_cast<ISstream&>(*iss).getLine(comment, '\n');
 
-    //return string("//") + comment;
-    return comment;
+    return string("//") + comment;
+    //return comment;
 }
 
 

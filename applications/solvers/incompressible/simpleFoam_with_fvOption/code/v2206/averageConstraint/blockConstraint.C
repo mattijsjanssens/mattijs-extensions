@@ -190,6 +190,8 @@ void Foam::fv::blockConstraint::interpolate
             << " source:" << eqn.source()[celli]
             << endl;
 
+        //eqn.source()[celli] = 0.0;
+
         for (const label facei : cells[celli])
         {
             if (mesh_.isInternalFace(facei))
@@ -197,12 +199,34 @@ void Foam::fv::blockConstraint::interpolate
                 if (isSetCell[own[facei]] && !isSetCell[nei[facei]])
                 {
                     // Cut connection to neighbour
-                    eqn.lower()[facei] = 0.0;
+                    Pout<< "Cutting connection from "
+                        << mesh_.C()[celli]
+                        << " to " << mesh_.C()[nei[facei]]
+                        << endl;
+                    if (eqn.hasLower())
+                    {
+                        eqn.lower()[facei] = 0.0;
+                    }
+                    else if (eqn.symmetric() && eqn.hasUpper())
+                    {
+                        eqn.lower()[facei] = 0.0;
+                    }
                 }
                 else if (!isSetCell[own[facei]] && isSetCell[nei[facei]])
                 {
                     // Cut connection to neighbour
-                    eqn.upper()[facei] = 0.0;
+                    if (eqn.hasUpper())
+                    {
+                        eqn.upper()[facei] = 0.0;
+                    }
+                    else if (eqn.symmetric() && eqn.hasLower())
+                    {
+                        eqn.lower()[facei] = 0.0;
+                    }
+                    Pout<< "Cutting connection from "
+                        << mesh_.C()[nei[facei]]
+                        << " to " << mesh_.C()[own[facei]]
+                        << endl;
                 }
             }
             else

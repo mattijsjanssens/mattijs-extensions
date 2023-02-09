@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
     Pout<<" ** STARTING **" << endl;
     ISstream::keepComments = true;
     dictionary dict(IFstream("testDict")());
-DebugVar(dict);
+Pout << dict << endl;
     Pout<<" ** STOPPING **" << endl;
     ISstream::keepComments = false;
 

@@ -309,6 +309,13 @@ Foam::label Foam::processorColour::cellColour
             colour = 0;
         }
     }
+
+    if (debug)
+    {
+        Info<< typeName << " : coloured " << nCells
+            << " cells with in total " << colouri << " colours" << endl;
+    }
+
     return colouri;
 }
 

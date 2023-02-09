@@ -18,11 +18,11 @@ FoamFile
 DebugSwitches
 {
     cyclicAMI   1;
-    cyclicACMI  1;
+    //cyclicACMI  1;
     SolverPerformance   1;
     GAMGAgglomeration   1;
-    surfaceInterpolation    1;
-    fvMesh          1;
+    //surfaceInterpolation    1;
+    //fvMesh          1;
 }
 
 application     laplacianFoam;

@@ -1,9 +1,4 @@
-ensightReadFile.C
-calcPointCells.C
-createPolyBoundary.C
-createPolyCells.C
-meshReaderAux.C
-meshReader.C
+/* ensightReadFile.C */
 
 ensightMeshReader.C
 ensightToFoam.C

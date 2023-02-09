@@ -11,4 +11,6 @@ FoamFile
 
 //name \$WM_MPLIB;
 
+#comment //ABC
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

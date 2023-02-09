@@ -11,5 +11,5 @@
 - linear solvers: parallel reduction
 - cyclic on internal face (cyclicZone?)
 - ring version of shared pointer
-- average fvOption
+- average fvOption. Ok: applications/solvers/incompressible/simpleFoam_with_fvOption
 - gaussGrad correctBoundaryConditions - move to fvPatchField?

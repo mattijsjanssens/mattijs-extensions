@@ -27,17 +27,15 @@ Class
     Foam::dummyPrimitiveEntry
 
 Description
-    A keyword and a list of tokens comprise a primitiveEntry.
-    A primitiveEntry can be read, written and printed, and the types and
-    values of its tokens analysed.
-
-    A primitiveEntry is a high-level building block for data description.
-    It is a front-end for the token parser. A list of entries can be used
-    as a set of keyword syntax elements, for example.
+    primitiveEntry that prints contents. Used to insert e.g. comment
+    into output
 
 SourceFiles
     dummyPrimitiveEntry.C
     dummyPrimitiveEntryIO.C
+
+SeeAlso
+    commentDirective.H
 
 \*---------------------------------------------------------------------------*/
 
@@ -111,7 +109,7 @@ public:
             ITstream& tokens = stream();
             for (const auto& t : tokens)
             {
-                os.writeQuoted("//", false);
+                //os.writeQuoted("//", false);
                 os.writeQuoted(t.stringToken(), false);
                 os.write('\n');
             }

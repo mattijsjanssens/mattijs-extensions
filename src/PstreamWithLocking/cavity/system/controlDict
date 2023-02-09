@@ -49,7 +49,7 @@ functions
 {
     profiling
     {
-        type    parProfiling;
+        type            parProfiling;
     }
 }
 
