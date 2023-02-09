@@ -54,9 +54,12 @@ void Foam::GAMGAgglomeration::compactLevels
     const bool doProcessorAgglomerate
 )
 {
-    nCells_.setSize(nCreatedLevels);
+    Pout<< "GAMGAgglomeration::compactLevels : compacting/extending from:"
+        << size() << " down to " << nCreatedLevels << endl;
+
+    nCells_.setSize(nCreatedLevels, 0);
     restrictAddressing_.setSize(nCreatedLevels);
-    nFaces_.setSize(nCreatedLevels);
+    nFaces_.setSize(nCreatedLevels, 0);
     faceRestrictAddressing_.setSize(nCreatedLevels);
     faceFlipMap_.setSize(nCreatedLevels);
     nPatchFaces_.setSize(nCreatedLevels);
@@ -64,7 +67,7 @@ void Foam::GAMGAgglomeration::compactLevels
     meshLevels_.setSize(nCreatedLevels);
 
     // Have procCommunicator_ always, even if not procAgglomerating
-    procCommunicator_.setSize(nCreatedLevels + 1);
+    procCommunicator_.setSize(nCreatedLevels + 1, -1234);
     if (doProcessorAgglomerate && processorAgglomerate())
     {
         procAgglomMap_.setSize(nCreatedLevels);
@@ -80,16 +83,16 @@ void Foam::GAMGAgglomeration::compactLevels
     // Print a bit
     if (debug)
     {
-        Info<< "GAMGAgglomeration:" << nl
+        Pout<< "GAMGAgglomeration:" << nl
             << "    local agglomerator     : " << type() << nl;
         if (processorAgglomerate())
         {
-            Info<< "    processor agglomerator : "
+            Pout<< "    processor agglomerator : "
                 << procAgglomeratorPtr_().type() << nl
                 << nl;
         }
 
-        Info<< setw(36) << "nCells"
+        Pout<< setw(36) << "nCells"
             << setw(20) << "nFaces/nCells"
             << setw(20) << "nInterfaces"
             << setw(20) << "nIntFaces/nCells"
@@ -165,27 +168,38 @@ void Foam::GAMGAgglomeration::compactLevels
                 profile = fineMesh.lduAddr().band().second();
             }
 
-            label totNprocs = returnReduce(nProcs, sumOp<label>());
+            //label totNprocs = returnReduce(nProcs, sumOp<label>());
+            label totNprocs = max(1, nProcs);
 
-            label maxNCells = returnReduce(nCells, maxOp<label>());
-            label totNCells = returnReduce(nCells, sumOp<label>());
+            //label maxNCells = returnReduce(nCells, maxOp<label>());
+            label maxNCells = nCells;
+            //label totNCells = returnReduce(nCells, sumOp<label>());
+            label totNCells = nCells;
 
-            scalar maxFaceCellRatio =
-                returnReduce(faceCellRatio, maxOp<scalar>());
-            scalar totFaceCellRatio =
-                returnReduce(faceCellRatio, sumOp<scalar>());
+            //scalar maxFaceCellRatio =
+            //    returnReduce(faceCellRatio, maxOp<scalar>());
+            scalar maxFaceCellRatio = faceCellRatio;
+            //scalar totFaceCellRatio =
+            //    returnReduce(faceCellRatio, sumOp<scalar>());
+            scalar totFaceCellRatio = faceCellRatio;
 
-            label maxNInt = returnReduce(nInterfaces, maxOp<label>());
-            label totNInt = returnReduce(nInterfaces, sumOp<label>());
+            //label maxNInt = returnReduce(nInterfaces, maxOp<label>());
+            label maxNInt = nInterfaces;
+            //label totNInt = returnReduce(nInterfaces, sumOp<label>());
+            label totNInt = nInterfaces;
 
-            scalar maxRatio = returnReduce(ratio, maxOp<scalar>());
-            scalar totRatio = returnReduce(ratio, sumOp<scalar>());
+            //scalar maxRatio = returnReduce(ratio, maxOp<scalar>());
+            scalar maxRatio = ratio;
+            //scalar totRatio = returnReduce(ratio, sumOp<scalar>());
+            scalar totRatio = ratio;
 
-            scalar totProfile = returnReduce(profile, sumOp<scalar>());
+            //scalar totProfile = returnReduce(profile, sumOp<scalar>());
+            scalar totProfile = profile;
 
-            const int oldPrecision = Info.stream().precision(4);
+            //const int oldPrecision = Info.stream().precision(4);
+            const int oldPrecision = Pout.precision(4);
 
-            Info<< setw(8) << levelI
+            Pout<< setw(8) << levelI
                 << setw(8) << totNprocs
                 << "    "
                 << setw(8) << totNCells/totNprocs
@@ -202,9 +216,9 @@ void Foam::GAMGAgglomeration::compactLevels
                 << setw(12) << totProfile/totNprocs
                 << nl;
 
-            Info.stream().precision(oldPrecision);
+            Pout.precision(oldPrecision);
         }
-        Info<< endl;
+        Pout<< endl;
     }
 }
 

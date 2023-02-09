@@ -49,7 +49,8 @@ void Foam::pairGAMGAgglomeration::agglomerate
     if (nCells_.size() < maxLevels_)
     {
         // See compactLevels. Make space if not enough
-        Pout<< "** EXTENDIGN Storage to " << maxLevels_ << endl;
+        Pout<< "** pairGAMGAgglomeration : EXTENDIGN Storage to "
+            << maxLevels_ << endl;
         nCells_.resize(maxLevels_);
         restrictAddressing_.resize(maxLevels_);
         nFaces_.resize(maxLevels_);
@@ -58,8 +59,9 @@ void Foam::pairGAMGAgglomeration::agglomerate
         nPatchFaces_.resize(maxLevels_);
         patchFaceRestrictAddressing_.resize(maxLevels_);
         meshLevels_.resize(maxLevels_);
-        // Have procCommunicator_ always, even if not procAgglomerating
-        procCommunicator_.resize(maxLevels_ + 1);
+        // Have procCommunicator_ always, even if not procAgglomerating.
+        // Use value -1 to indicate nothing is proc-agglomerated
+        procCommunicator_.resize(maxLevels_ + 1, -1);
         if (processorAgglomerate())
         {
             procAgglomMap_.resize(maxLevels_);
@@ -90,7 +92,8 @@ DebugVar(maxLevels_);
         //DebugVar(faceWeights);
         const label comm = meshLevel(nCreatedLevels).comm();
 
-        Pout<< "** at nCreatedLevels:" << nCreatedLevels
+        Pout<< "** pairGAMGAgglomeration :"
+            << " at nCreatedLevels:" << nCreatedLevels
             << " comm:" << procCommunicator(nCreatedLevels)
             << " comm2:" << meshLevel(nCreatedLevels).comm()
             << " faceWeights:" << flatOutput(faceWeights) << endl;
@@ -124,9 +127,11 @@ DebugVar(maxLevels_);
             break;
         }
 
-        Pout<< "** Before agglomerateLduAddressing" << endl;
+        Pout<< "** pairGAMGAgglomeration :"
+            << " Before agglomerateLduAddressing" << endl;
         agglomerateLduAddressing(nCreatedLevels);
-        Pout<< "** After agglomerateLduAddressing" << endl;
+        Pout<< "** pairGAMGAgglomeration :"
+            << " After agglomerateLduAddressing" << endl;
 
         // Agglomerate the faceWeights field for the next level
         {
@@ -146,7 +151,8 @@ DebugVar(maxLevels_);
             faceWeights = std::move(aggFaceWeights);
         }
 
-        Pout<< "** at nCreatedLevels:" << nCreatedLevels
+        Pout<< "** pairGAMGAgglomeration :"
+            << " at nCreatedLevels:" << nCreatedLevels
             << " next-level faceWeights:" << flatOutput(faceWeights) << endl;
 
 
@@ -163,10 +169,10 @@ DebugVar(maxLevels_);
     }
 
 
-    DebugVar("** bvefore compating");
+    DebugVar("** pairGAMGAgglomeration : bvefore compating");
     // Shrink the storage of the levels to those created
     compactLevels(nCreatedLevels, false);
-    DebugVar("** after compating");
+    DebugVar("** pairGAMGAgglomeration : after compating");
 }
 
 

@@ -1,10 +1,19 @@
+GAMGProcAgglomeration.C
+
 GAMGAgglomeration.C
+GAMGAgglomerateLduAddressing.C
 pairGAMGAgglomeration.C
 pairGAMGAgglomerate.C
 
-laplacianFoam.C
+GAMGSolverAgglomerateMatrix.C
+GAMGSolver.C
+GAMGSolverInterpolate.C
+GAMGSolverScale.C
+GAMGSolverSolve.C
 
 masterCoarsestGAMGProcAgglomeration.C
 masterCoarsestGAMGProcAgglomeration2.C
+
+laplacianFoam.C
 
 EXE = $(FOAM_USER_APPBIN)/laplacianFoam_with_masterCoarsests_multi_master

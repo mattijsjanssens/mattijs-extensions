@@ -295,9 +295,6 @@ bool Foam::masterCoarsestGAMGProcAgglomeration2::agglomerate()
                 // Processor restriction map: per processor the coarse processor
                 labelList procAgglomMap(nProcs);
 
-
-DebugVar(nProcessorsPerMaster_);
-
                 if (nProcessorsPerMaster_ > 1)
                 {
                     forAll(procAgglomMap, fineProci)
@@ -315,7 +312,7 @@ DebugVar(nProcessorsPerMaster_);
                     procAgglomMap = Zero;
                 }
 
-DebugVar(procAgglomMap);
+Pout<< "levelComm:" << levelComm << endl;
 Pout<< "procAgglomMap:" << flatOutput(procAgglomMap) << endl;
 
                 // Master processor
@@ -347,6 +344,7 @@ Pout<< "agglomProcIDs:" << flatOutput(agglomProcIDs) << endl;
                 // Use processor agglomeration maps to do the actual collecting.
                 if (Pstream::myProcNo(levelComm) != -1)
                 {
+                    // Collect all levels from fineLevelIndex+1 onwards
                     GAMGProcAgglomeration::agglomerate
                     (
                         fineLevelIndex,
@@ -396,9 +394,28 @@ Pout<< "agglomProcIDs:" << flatOutput(agglomProcIDs) << endl;
             }
         }
 
+
+        const label maxAgglom = returnReduce(agglom_.size(), maxOp<label>());
+        Pout<< "masterCoarsestGAMGProcAgglomeration2 : maxAgglom:" << maxAgglom
+            << " local size:" << agglom_.size()
+            << endl;
+
+//        // Add any missing levels (on processors which have been agglomerated
+//        // away)
+//        for (label levelI = agglom_.size(); levelI <= maxAgglom; levelI++)
+//        {
+//        }
+
+
+
+
         DebugVar("** masterCoarsestGAMGProcAgglomeration2 : bvefore compating");
         // Shrink the storage of the levels to those created
-        dynamic_cast<pairGAMGAgglomeration&>(agglom_).compactLevels(agglom_.size(), false);
+        dynamic_cast<pairGAMGAgglomeration&>(agglom_).compactLevels
+        (
+            agglom_.size(),
+            false
+        );
         DebugVar("** masterCoarsestGAMGProcAgglomeration2 : after compating");
     }
 

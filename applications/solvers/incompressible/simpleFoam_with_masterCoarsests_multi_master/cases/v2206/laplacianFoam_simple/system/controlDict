@@ -21,7 +21,7 @@ DebugSwitches
 {
     masterCoarsest      2;
     masterCoarsest2     2;
-    GAMGAgglomeration   1;
+    //GAMGAgglomeration   1;
     GAMG                1;
 }
 
