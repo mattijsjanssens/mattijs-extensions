@@ -45,7 +45,8 @@ tmp<Field<Type>> restrictField
 (
     const label nCoarse,
     const labelUList& fineToCoarse,
-    const Field<Type>& fineVals
+    const Field<Type>& fineVals,
+    const Type& nullValue
 )
 {
     tmp<Field<Type>> tfld(tmp<Field<Type>>::New(nCoarse, Zero));
@@ -54,8 +55,21 @@ tmp<Field<Type>> restrictField
     // Agglomerate/restrict
     forAll(fineToCoarse, i)
     {
-        fld[fineToCoarse[i]] += fineVals[i];
+        if (fineVals[i] != nullValue)
+        {
+            fld[fineToCoarse[i]] += fineVals[i];
+        }
     }
+
+//    // Interpolate any GREAT to GREAT
+//    forAll(fineToCoarse, i)
+//    {
+//        if (fineVals[i] == nullValue)
+//        {
+//            fld[fineToCoarse[i]] = nullValue;
+//        }
+//    }
+
     return tfld;
 }
 template<class Type>
@@ -64,7 +78,8 @@ tmp<Field<Type>> restrictField
     const label nCoarse,
     const labelUList& fineToCoarse,
     const scalarField& fineWeights,
-    const Field<Type>& fineVals
+    const Field<Type>& fineVals,
+    const Type& nullValue
 )
 {
     tmp<Field<Type>> tfld(tmp<Field<Type>>::New(nCoarse, Zero));
@@ -73,8 +88,21 @@ tmp<Field<Type>> restrictField
     // Agglomerate/restrict
     forAll(fineToCoarse, i)
     {
-        fld[fineToCoarse[i]] += fineWeights[i]*fineVals[i];
+        if (fineVals[i] != nullValue)
+        {
+            fld[fineToCoarse[i]] += fineWeights[i]*fineVals[i];
+        }
     }
+
+//    // Interpolate any GREAT to GREAT
+//    forAll(fineToCoarse, i)
+//    {
+//        if (fineVals[i] == nullValue)
+//        {
+//            fld[fineToCoarse[i]] = nullValue;
+//        }
+//    }
+
     return tfld;
 }
 
@@ -242,7 +270,7 @@ void writeAgglomeration
 (
     const bool normalise,
     const fvMesh& mesh,
-    const labelList& cellToBaseMesh
+    const labelList& meshToAgglom
 )
 {
     volScalarField scalarAgglomeration
@@ -261,7 +289,7 @@ void writeAgglomeration
     scalarField& fld = scalarAgglomeration.primitiveFieldRef();
     forAll(fld, celli)
     {
-        fld[celli] = cellToBaseMesh[celli];
+        fld[celli] = meshToAgglom[celli];
     }
     if (normalise)
     {
@@ -314,13 +342,6 @@ int main(int argc, char *argv[])
     // Nearest wall info
     scalarField cellWallDistance(mesh.nCells(), GREAT);
     pointField cellNearestWall(mesh.nCells(), point::uniform(GREAT));
-    //{
-    //    const auto& wDist = wallDistAddressing::New(mesh);
-    //    cellWallDistance = wDist.y();
-    //    volVectorField wallCentre(mesh.C());
-    //    wDist.map(wallCentre, mapDistribute::transformPosition());
-    //    cellNearestWall = wallCentre.internalField();
-    //}
     for (const label patchi : patchIDs)
     {
         const auto& fvp = mesh.boundary()[patchi];
@@ -337,14 +358,13 @@ int main(int argc, char *argv[])
     }
 
 
-    // Mapping back to base (= fvMesh)
-    labelList cellToBase(identity(mesh.nCells()));
-    labelListList baseToCell(invertOneToMany(mesh.nCells(), cellToBase));
+    // Per base cell the agglomerated cell
+    labelList baseToCell(identity(mesh.nCells()));
 
     // Write initial agglomeration
     Info<< "Writing initial cell distribution to "
         << runTime.timeName() << endl;
-    writeAgglomeration(false, mesh, cellToBase);
+    writeAgglomeration(false, mesh, baseToCell);
 
     for (label level = 0; level < agglom.size(); level++)
     {
@@ -362,9 +382,9 @@ int main(int argc, char *argv[])
             << "    agglomerated size : "
             << returnReduce(coarseSize, sumOp<label>()) << endl;
 
-        if (cellToBase.size() != addr.size())
+        if (max(baseToCell)+1 != addr.size())
         {
-            FatalErrorInFunction << "cellToBase:" << cellToBase.size()
+            FatalErrorInFunction << "baseToCell:" << max(baseToCell)+1
                 << " addr.size():" << addr.size()
                 << exit(FatalError);
         }
@@ -373,6 +393,33 @@ int main(int argc, char *argv[])
         //Override faceCentres since agglomerated face centres not
         // representative
         faceCentres = interpolate(fineMesh, cellCentres);
+
+
+
+        {
+            volScalarField fld
+            (
+                IOobject
+                (
+                    "cellWallDistance",
+                    mesh.time().timeName(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE
+                ),
+                mesh,
+                dimensionedScalar(dimless, Zero)
+            );
+            forAll(baseToCell, baseCelli)
+            {
+                const label celli = baseToCell[baseCelli];
+                fld[baseCelli] = cellWallDistance[celli];
+            }
+            fld.correctBoundaryConditions();
+            Info<< "Writing seed distance to nearest cell to "
+                << runTime.timeName() << endl;
+            fld.write();
+        }
 
 
         {
@@ -421,11 +468,12 @@ int main(int argc, char *argv[])
                 mesh,
                 dimensionedScalar(dimless, Zero)
             );
-            forAll(allCellInfo, celli)
+            forAll(baseToCell, baseCelli)
             {
+                const label celli = baseToCell[baseCelli];
                 const point& wallPt = allCellInfo[celli];
                 const point& cc = cellCentres[celli];
-                fld[cellToBase[celli]] = Foam::mag(cc-wallPt);
+                fld[baseCelli] = Foam::mag(cc-wallPt);
             }
             fld.correctBoundaryConditions();
             Info<< "Writing distance to nearest cell to "
@@ -433,23 +481,10 @@ int main(int argc, char *argv[])
             fld.write();
         }
 
-        // Update adressing to/from base mesh
-        forAll(addr, fineI)
-        {
-            const labelList& cellLabels = baseToCell[fineI];
-            forAll(cellLabels, i)
-            {
-                cellToBase[cellLabels[i]] = addr[fineI];
-            }
-            cellToBase.setSize(coarseSize);
-        }
-        baseToCell = invertOneToMany(coarseSize, cellToBase);
-
-
         // Write agglomeration
         Info<< "Writing cell distribution to "
             << runTime.timeName() << endl;
-        writeAgglomeration(normalise, mesh, cellToBase);
+        writeAgglomeration(normalise, mesh, baseToCell);
 
 
 
@@ -482,7 +517,6 @@ int main(int argc, char *argv[])
                 volWeights[i] /= sumWeights[addr[i]];
             }
         }
-        //Pout<< "volWeights:" << flatOutput(volWeights) << endl;
         scalarField faceWeights;
         {
             scalarField sumWeights(faceAreas.size(), Zero);
@@ -496,22 +530,53 @@ int main(int argc, char *argv[])
                 faceWeights[i] /= sumWeights[addr[i]];
             }
         }
-        //Pout<< "faceWeights:" << flatOutput(faceWeights) << endl;
 
 
         // Update volumes, centroids for coarse level
-        cellVolumes = restrictField(coarseSize, addr, cellVolumes);
-        cellCentres = restrictField(coarseSize, addr, volWeights, cellCentres);
+        cellVolumes = restrictField(coarseSize, addr, cellVolumes, GREAT);
+        cellCentres = restrictField
+        (
+            coarseSize,
+            addr,
+            volWeights,
+            cellCentres,
+            point::uniform(GREAT)
+        );
 
         // Update face geometry for coarse level
-        faceAreas = restrictField(coarseSize, addr, faceAreas);
-        faceCentres = restrictField(coarseSize, addr, faceWeights, faceCentres);
+        faceAreas = restrictField(coarseSize, addr, faceAreas, GREAT);
+        faceCentres = restrictField
+        (
+            coarseSize,
+            addr,
+            faceWeights,
+            faceCentres,
+            point::uniform(GREAT)
+        );
 
         // Update nearest
-        cellWallDistance =
-            restrictField(coarseSize, addr, volWeights, cellWallDistance);
-        cellNearestWall =
-            restrictField(coarseSize, addr, volWeights, cellNearestWall);
+        cellWallDistance = restrictField
+        (
+            coarseSize,
+            addr,
+            volWeights,
+            cellWallDistance,
+            GREAT
+        );
+        cellNearestWall = restrictField
+        (
+            coarseSize,
+            addr,
+            volWeights,
+            cellNearestWall,
+            point::uniform(GREAT)
+        );
+
+        // Update adressing to/from base mesh
+        forAll(baseToCell, baseCelli)
+        {
+            baseToCell[baseCelli] = addr[baseToCell[baseCelli]];
+        }
 
         Info<< endl;
     }
