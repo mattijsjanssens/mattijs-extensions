@@ -60,16 +60,6 @@ tmp<Field<Type>> restrictField
             fld[fineToCoarse[i]] += fineVals[i];
         }
     }
-
-//    // Interpolate any GREAT to GREAT
-//    forAll(fineToCoarse, i)
-//    {
-//        if (fineVals[i] == nullValue)
-//        {
-//            fld[fineToCoarse[i]] = nullValue;
-//        }
-//    }
-
     return tfld;
 }
 template<class Type>
@@ -93,15 +83,43 @@ tmp<Field<Type>> restrictField
             fld[fineToCoarse[i]] += fineWeights[i]*fineVals[i];
         }
     }
+    return tfld;
+}
+template<class Type>
+tmp<Field<Type>> restrictUnnormalisedField
+(
+    const label nCoarse,
+    const labelUList& fineToCoarse,
+    const scalarField& fineWeights,
+    const Field<Type>& fineVals,
+    const Type& nullValue
+)
+{
+    tmp<Field<Type>> tfld(tmp<Field<Type>>::New(nCoarse, Zero));
+    Field<Type>& fld = tfld.ref();
+    scalarField coarseSumWeights(nCoarse, Zero);
 
-//    // Interpolate any GREAT to GREAT
-//    forAll(fineToCoarse, i)
-//    {
-//        if (fineVals[i] == nullValue)
-//        {
-//            fld[fineToCoarse[i]] = nullValue;
-//        }
-//    }
+    // Agglomerate/restrict
+    forAll(fineToCoarse, i)
+    {
+        if (fineVals[i] != nullValue)
+        {
+            fld[fineToCoarse[i]] += fineWeights[i]*fineVals[i];
+            coarseSumWeights[fineToCoarse[i]] += fineWeights[i];
+        }
+    }
+
+    forAll(fld, coarsei)
+    {
+        if (coarseSumWeights[coarsei] == scalar(Zero))
+        {
+            fld[coarsei] = nullValue;
+        }
+        else
+        {
+            fld[coarsei] /= coarseSumWeights[coarsei];
+        }
+    }
 
     return tfld;
 }
@@ -373,6 +391,8 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         const lduMesh& fineMesh = agglom.meshLevel(level);
+        const label nFineCells = fineMesh.lduAddr().size();
+        const label nFineFaces = fineMesh.lduAddr().lowerAddr().size();
         const labelList& addr = agglom.restrictAddressing(level);
         const label coarseSize = max(addr)+1;
 
@@ -388,7 +408,10 @@ int main(int argc, char *argv[])
                 << " addr.size():" << addr.size()
                 << exit(FatalError);
         }
-
+        if (addr.size() != nFineCells || cellCentres.size() != nFineCells)
+        {
+            FatalErrorInFunction << exit(FatalError);
+        }
 
         //Override faceCentres since agglomerated face centres not
         // representative
@@ -424,12 +447,9 @@ int main(int argc, char *argv[])
 
         {
             List<point> allCellInfo(addr.size(), point::uniform(GREAT));
-            List<point> allFaceInfo
-            (
-                fineMesh.lduAddr().lowerAddr().size(),
-                point::uniform(GREAT)
-            );
+            List<point> allFaceInfo(nFineFaces, point::uniform(GREAT));
 
+            OBJstream os(runTime.timePath()/"seedCells.obj");
             DynamicList<label> seedCells;
             DynamicList<point> seedInfo;
             forAll(cellNearestWall, celli)
@@ -438,6 +458,10 @@ int main(int argc, char *argv[])
                 {
                     seedCells.append(celli);
                     seedInfo.append(cellNearestWall[celli]);
+
+                    const point& cc = cellCentres[celli];
+                    const point& wallPt = cellNearestWall[celli];
+                    os.write(linePointRef(cc, wallPt));
                 }
             }
             Pout<< "** seeding " << seedCells.size()
@@ -454,6 +478,18 @@ int main(int argc, char *argv[])
                 allFaceInfo,
                 allCellInfo
             );
+
+
+            {
+                OBJstream os(runTime.timePath()/"allCellInfo.obj");
+                forAll(baseToCell, baseCelli)
+                {
+                    const label celli = baseToCell[baseCelli];
+                    const point& cc = cellCentres[celli];
+                    const point& wallPt = allCellInfo[celli];
+                    os.write(linePointRef(cc, wallPt));
+                }
+            }
 
             volScalarField fld
             (
@@ -555,7 +591,7 @@ int main(int argc, char *argv[])
         );
 
         // Update nearest
-        cellWallDistance = restrictField
+        cellWallDistance = restrictUnnormalisedField    //restrictField
         (
             coarseSize,
             addr,
@@ -563,7 +599,7 @@ int main(int argc, char *argv[])
             cellWallDistance,
             GREAT
         );
-        cellNearestWall = restrictField
+        cellNearestWall = restrictUnnormalisedField     //restrictField
         (
             coarseSize,
             addr,
