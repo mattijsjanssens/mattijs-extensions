@@ -62,6 +62,8 @@ tmp<Field<Type>> restrictField
     }
     return tfld;
 }
+
+
 template<class Type>
 tmp<Field<Type>> restrictField
 (
@@ -85,6 +87,8 @@ tmp<Field<Type>> restrictField
     }
     return tfld;
 }
+
+
 template<class Type>
 tmp<Field<Type>> restrictUnnormalisedField
 (
@@ -160,8 +164,9 @@ bool closer(const point& at, const point& origin, point& nearest)
 }
 
 
-void meshWaveNearest
+label meshWaveNearest
 (
+    const label maxIter,
     const lduMesh& mesh,
     const pointField& faceCentres,
     const pointField& cellCentres,
@@ -171,6 +176,10 @@ void meshWaveNearest
     List<point>& allCellInfo
 )
 {
+    // Walk from cell to face since boundary conditions given as initial
+    // cells.
+
+
     const lduAddressing& addr = mesh.lduAddr();
 
     if
@@ -202,7 +211,8 @@ void meshWaveNearest
     DynamicList<label> changedFaces;
     bitSet isChangedFace(addr.lowerAddr().size());
 
-    while (true)
+    label iter = 0;
+    for (;iter < maxIter; iter++)
     {
         // cell to face
         changedFaces.clear();
@@ -279,9 +289,39 @@ void meshWaveNearest
             break;
         }
     }
+    return iter;
 }
-//XXXXX
 
+
+void writeField
+(
+    const word& name,
+    const fvMesh& baseMesh,
+    const labelList& baseToCell,
+    const scalarField& coarseFld
+)
+{
+    volScalarField fld
+    (
+        IOobject
+        (
+            name,
+            baseMesh.time().timeName(),
+            baseMesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        baseMesh,
+        dimensionedScalar(dimless, Zero)
+    );
+    forAll(baseToCell, baseCelli)
+    {
+        const label celli = baseToCell[baseCelli];
+        fld[baseCelli] = coarseFld[celli];
+    }
+    fld.correctBoundaryConditions();
+    fld.write();
+}
 
 
 void writeAgglomeration
@@ -315,6 +355,19 @@ void writeAgglomeration
     }
     scalarAgglomeration.correctBoundaryConditions();
     scalarAgglomeration.write();
+}
+void writeLines
+(
+    const fileName& fName,
+    const UList<point>& start,
+    const UList<point>& end
+)
+{
+    OBJstream os(fName);
+    forAll(start, i)
+    {
+        os.write(linePointRef(start[i], end[i]));
+    }
 }
 
 
@@ -391,24 +444,29 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         const lduMesh& fineMesh = agglom.meshLevel(level);
-        const label nFineCells = fineMesh.lduAddr().size();
-        const label nFineFaces = fineMesh.lduAddr().lowerAddr().size();
-        const labelList& addr = agglom.restrictAddressing(level);
-        const label coarseSize = max(addr)+1;
+        const auto& fineAddr = fineMesh.lduAddr();
+        const label nFineCells = fineAddr.size();
+        const label nFineFaces = fineAddr.lowerAddr().size();
+        const labelList& fineToCoarse = agglom.restrictAddressing(level);
+        const label coarseSize = max(fineToCoarse)+1;
 
         Info<< "Level : " << level << endl
             << "    current size      : "
-            << returnReduce(addr.size(), sumOp<label>()) << endl
+            << returnReduce(fineToCoarse.size(), sumOp<label>()) << endl
             << "    agglomerated size : "
             << returnReduce(coarseSize, sumOp<label>()) << endl;
 
-        if (max(baseToCell)+1 != addr.size())
+        if (max(baseToCell)+1 != fineToCoarse.size())
         {
             FatalErrorInFunction << "baseToCell:" << max(baseToCell)+1
-                << " addr.size():" << addr.size()
+                << " fineToCoarse.size():" << fineToCoarse.size()
                 << exit(FatalError);
         }
-        if (addr.size() != nFineCells || cellCentres.size() != nFineCells)
+        if
+        (
+            fineToCoarse.size() != nFineCells
+         || cellCentres.size() != nFineCells
+        )
         {
             FatalErrorInFunction << exit(FatalError);
         }
@@ -418,35 +476,14 @@ int main(int argc, char *argv[])
         faceCentres = interpolate(fineMesh, cellCentres);
 
 
-
-        {
-            volScalarField fld
-            (
-                IOobject
-                (
-                    "cellWallDistance",
-                    mesh.time().timeName(),
-                    mesh,
-                    IOobject::NO_READ,
-                    IOobject::AUTO_WRITE
-                ),
-                mesh,
-                dimensionedScalar(dimless, Zero)
-            );
-            forAll(baseToCell, baseCelli)
-            {
-                const label celli = baseToCell[baseCelli];
-                fld[baseCelli] = cellWallDistance[celli];
-            }
-            fld.correctBoundaryConditions();
-            Info<< "Writing seed distance to nearest cell to "
-                << runTime.timeName() << endl;
-            fld.write();
-        }
+        // For postprocessing: mapped near-wall distance
+        Info<< "Writing cellWallDistance to " << mesh.time().timeName()
+            << endl;
+        writeField("cellWallDistance", mesh, baseToCell, cellWallDistance);
 
 
         {
-            List<point> allCellInfo(addr.size(), point::uniform(GREAT));
+            List<point> allCellInfo(fineToCoarse.size(), point::uniform(GREAT));
             List<point> allFaceInfo(nFineFaces, point::uniform(GREAT));
 
             OBJstream os(runTime.timePath()/"seedCells.obj");
@@ -470,6 +507,7 @@ int main(int argc, char *argv[])
 
             meshWaveNearest
             (
+                allCellInfo.size()+1,   // maxIter
                 fineMesh,
                 faceCentres,
                 cellCentres,
@@ -480,41 +518,21 @@ int main(int argc, char *argv[])
             );
 
 
-            {
-                OBJstream os(runTime.timePath()/"allCellInfo.obj");
-                forAll(baseToCell, baseCelli)
-                {
-                    const label celli = baseToCell[baseCelli];
-                    const point& cc = cellCentres[celli];
-                    const point& wallPt = allCellInfo[celli];
-                    os.write(linePointRef(cc, wallPt));
-                }
-            }
-
-            volScalarField fld
+            writeLines
             (
-                IOobject
-                (
-                    "allCellInfo",
-                    mesh.time().timeName(),
-                    mesh,
-                    IOobject::NO_READ,
-                    IOobject::AUTO_WRITE
-                ),
-                mesh,
-                dimensionedScalar(dimless, Zero)
+                runTime.timePath()/"allCellInfo.obj",
+                cellCentres,
+                allCellInfo
             );
-            forAll(baseToCell, baseCelli)
-            {
-                const label celli = baseToCell[baseCelli];
-                const point& wallPt = allCellInfo[celli];
-                const point& cc = cellCentres[celli];
-                fld[baseCelli] = Foam::mag(cc-wallPt);
-            }
-            fld.correctBoundaryConditions();
-            Info<< "Writing distance to nearest cell to "
-                << runTime.timeName() << endl;
-            fld.write();
+
+            Info<< "Writing allCellInfo to " << mesh.time().timeName() << endl;
+            writeField
+            (
+                "allCellInfo",
+                mesh,
+                baseToCell,
+                mag(cellCentres-allCellInfo)
+            );
         }
 
         // Write agglomeration
@@ -523,68 +541,68 @@ int main(int argc, char *argv[])
         writeAgglomeration(normalise, mesh, baseToCell);
 
 
-
         // Write lines inbetween cellCentres
-        {
-            const auto& addr = fineMesh.lduAddr();
-            const auto& lower = addr.lowerAddr();
-            const auto& upper = addr.upperAddr();
-
-            OBJstream os(runTime.timePath()/"agglomeration.obj");
-            forAll(lower, facei)
-            {
-                const point& lowerCc = cellCentres[lower[facei]];
-                const point& upperCc = cellCentres[upper[facei]];
-                os.write(linePointRef(lowerCc, upperCc));
-            }
-        }
+        writeLines
+        (
+            runTime.timePath()/"agglomeration.obj",
+            pointList(cellCentres, fineAddr.lowerAddr()),
+            pointList(cellCentres, fineAddr.upperAddr())
+        );
 
 
+        // Calculate normalised volume weights
         scalarField volWeights;
         {
             scalarField sumWeights(cellVolumes.size(), Zero);
-            forAll(addr, i)
+            forAll(fineToCoarse, i)
             {
-                sumWeights[addr[i]] += cellVolumes[i];
+                sumWeights[fineToCoarse[i]] += cellVolumes[i];
             }
             volWeights = cellVolumes;
-            forAll(addr, i)
+            forAll(fineToCoarse, i)
             {
-                volWeights[i] /= sumWeights[addr[i]];
+                volWeights[i] /= sumWeights[fineToCoarse[i]];
             }
         }
+        // Calculate normalised face-area weights
         scalarField faceWeights;
         {
             scalarField sumWeights(faceAreas.size(), Zero);
-            forAll(addr, i)
+            forAll(fineToCoarse, i)
             {
-                sumWeights[addr[i]] += faceAreas[i];
+                sumWeights[fineToCoarse[i]] += faceAreas[i];
             }
             faceWeights = faceAreas;
-            forAll(addr, i)
+            forAll(fineToCoarse, i)
             {
-                faceWeights[i] /= sumWeights[addr[i]];
+                faceWeights[i] /= sumWeights[fineToCoarse[i]];
             }
         }
 
 
         // Update volumes, centroids for coarse level
-        cellVolumes = restrictField(coarseSize, addr, cellVolumes, GREAT);
+        cellVolumes = restrictField
+        (
+            coarseSize,
+            fineToCoarse,
+            cellVolumes,
+            GREAT
+        );
         cellCentres = restrictField
         (
             coarseSize,
-            addr,
+            fineToCoarse,
             volWeights,
             cellCentres,
             point::uniform(GREAT)
         );
 
         // Update face geometry for coarse level
-        faceAreas = restrictField(coarseSize, addr, faceAreas, GREAT);
+        faceAreas = restrictField(coarseSize, fineToCoarse, faceAreas, GREAT);
         faceCentres = restrictField
         (
             coarseSize,
-            addr,
+            fineToCoarse,
             faceWeights,
             faceCentres,
             point::uniform(GREAT)
@@ -594,7 +612,7 @@ int main(int argc, char *argv[])
         cellWallDistance = restrictUnnormalisedField    //restrictField
         (
             coarseSize,
-            addr,
+            fineToCoarse,
             volWeights,
             cellWallDistance,
             GREAT
@@ -602,7 +620,7 @@ int main(int argc, char *argv[])
         cellNearestWall = restrictUnnormalisedField     //restrictField
         (
             coarseSize,
-            addr,
+            fineToCoarse,
             volWeights,
             cellNearestWall,
             point::uniform(GREAT)
@@ -611,7 +629,7 @@ int main(int argc, char *argv[])
         // Update adressing to/from base mesh
         forAll(baseToCell, baseCelli)
         {
-            baseToCell[baseCelli] = addr[baseToCell[baseCelli]];
+            baseToCell[baseCelli] = fineToCoarse[baseToCell[baseCelli]];
         }
 
         Info<< endl;
