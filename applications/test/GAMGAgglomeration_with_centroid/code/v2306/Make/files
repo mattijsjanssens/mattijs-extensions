@@ -1,3 +1,4 @@
-Test-GAMGAgglomeration_with_centroid.C
+Test-wallDist-ML.C
+/* Test-GAMGAgglomeration_with_centroid.C */
 
 EXE = $(FOAM_USER_APPBIN)/Test-GAMGAgglomeration_with_centroid
