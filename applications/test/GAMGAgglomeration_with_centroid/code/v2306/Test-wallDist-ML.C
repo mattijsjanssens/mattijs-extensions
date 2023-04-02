@@ -130,6 +130,57 @@ tmp<Field<Type>> restrictUnnormalisedField
 
 
 template<class Type>
+tmp<Field<Type>> prolongField
+(
+    const labelUList& fineToCoarse,
+    const Field<Type>& coarseVals,
+    const Type& nullValue
+)
+{
+    tmp<Field<Type>> tfld(tmp<Field<Type>>::New(fineToCoarse.size(), Zero));
+    Field<Type>& fld = tfld.ref();
+
+    // Agglomerate/restrict
+    forAll(fineToCoarse, i)
+    {
+        const auto& coarseVal = coarseVals[fineToCoarse[i]];
+        if (coarseVal != nullValue)
+        {
+            fld[i] = coarseVal;
+        }
+    }
+    return tfld;
+}
+template<class Type>
+void prolongAndAdd
+(
+    const labelUList& fineToCoarse,
+    const Field<Type>& coarseVals,
+    const Type& nullValue,
+    List<Type>& result
+)
+{
+    tmp<Field<Type>> tfld
+    (
+        prolongField
+        (
+            fineToCoarse,
+            coarseVals,
+            point::uniform(GREAT)
+        )
+    );
+    const auto& fld = tfld();
+    forAll(fld, i)
+    {
+        if (fld[i] != nullValue)
+        {
+            result[i] += fld[i];
+        }
+    }
+}
+
+
+template<class Type>
 tmp<Field<Type>> interpolate
 (
     const lduMesh& mesh,
@@ -291,6 +342,75 @@ label meshWaveNearest
     }
     return iter;
 }
+void solveWallDistance
+(
+    const label maxIter,
+    const lduMesh& mesh,
+    const pointField& cellNearestWall,
+    const pointField& faceCentres,
+    const pointField& cellCentres,
+    pointList& allFaceInfo,
+    pointList& allCellInfo,
+
+    pointField& allFaceChange,
+    pointField& allCellChange
+)
+{
+    // Solve mesh starting from boundaries
+    DynamicList<label> seedCells;
+    DynamicList<point> seedInfo;
+    forAll(cellNearestWall, celli)
+    {
+        if (cellNearestWall[celli] != point::uniform(GREAT))
+        {
+            seedCells.append(celli);
+            seedInfo.append(cellNearestWall[celli]);
+        }
+    }
+    Pout<< "** seeding " << seedCells.size()
+        << " out of " << cellNearestWall.size()
+        << endl;
+
+
+    allFaceChange = allFaceInfo;
+    allCellChange = allCellInfo;
+
+    meshWaveNearest
+    (
+        maxIter,
+        mesh,
+        faceCentres,
+        cellCentres,
+        seedCells,
+        seedInfo,
+        allFaceInfo,
+        allCellInfo
+    );
+
+    forAll(allFaceInfo, i)
+    {
+        if (allFaceInfo[i] != point::uniform(GREAT))
+        {
+            allFaceChange[i] -= allFaceInfo[i];
+        }
+        else
+        {
+            allFaceChange[i] = Zero;
+        }
+    }
+
+    forAll(allCellInfo, i)
+    {
+        if (allCellInfo[i] != point::uniform(GREAT))
+        {
+            allCellChange[i] -= allCellInfo[i];
+        }
+        else
+        {
+            allCellChange[i] = Zero;
+        }
+    }
+}
 
 
 void writeField
@@ -417,6 +537,11 @@ int main(int argc, char *argv[])
     // Nearest wall info
     List<scalarField> cellWallDistance(nLevels);
     List<pointField> cellNearestWall(nLevels);
+    // Current solved-for variables
+    List<pointList> allCellInfo(nLevels);
+    List<pointField> allCellResidual(nLevels);
+    List<pointList> allFaceInfo(nLevels);
+    List<pointField> allFaceResidual(nLevels);
 
 
     // Fill level 0 from the current mesh
@@ -445,6 +570,10 @@ int main(int argc, char *argv[])
         }
         baseToCell[0] = identity(mesh.nCells());
 
+
+        allCellInfo[0] = pointList(mesh.nCells(), point::uniform(GREAT));
+        allFaceInfo[0] = pointList(mesh.nFaces(), point::uniform(GREAT));
+
         // Write initial agglomeration
         Info<< "Writing initial cell distribution to "
             << runTime.timeName() << endl;
@@ -452,35 +581,34 @@ int main(int argc, char *argv[])
     }
 
     // Fill other levels
-    for (label level = 1; level < nLevels; level++)
+    for (label leveli = 1; leveli < nLevels; leveli++)
     {
-        const lduMesh& fineMesh = agglom.meshLevel(level);
-        const auto& fineAddr = fineMesh.lduAddr();
-        //const label nFineCells = fineAddr.size();
-        //const label nFineFaces = fineAddr.lowerAddr().size();
-        const labelList& fineToCoarseCells = agglom.restrictAddressing(level);
-        const label nCoarseCells = agglom.nCells(level);
+        const lduMesh& levelMesh = agglom.meshLevel(leveli);
+        const auto& levelAddr = levelMesh.lduAddr();
+
+        // Addressing from previous to current mesh
+        const labelList& fineToCoarseCells =
+            agglom.restrictAddressing(leveli-1);
         const labelList& fineToCoarseFaces =
-            agglom.faceRestrictAddressing(level);
-        const label nCoarseFaces = agglom.nFaces(level);
+            agglom.faceRestrictAddressing(leveli-1);
 
-        Pout<< "nFineCells:" << fineAddr.size() << endl;
-        Pout<< "fineToCoarseCells:" << flatOutput(fineToCoarseCells) << endl;
-        Pout<< "nCoarseCells:" << nCoarseCells << endl;
+        //Pout<< "nFineCells:" << levelAddr.size() << endl;
+        //Pout<< "fineToCoarseCells:" << flatOutput(fineToCoarseCells) << endl;
+        //const label nCoarseCells = agglom.nCells(leveli);
+        //Pout<< "nCoarseCells:" << nCoarseCells << endl;
 
-        Pout<< "nFineFaces:" << fineAddr.lowerAddr().size() << endl;
-        Pout<< "fineToCoarseFaces:" << flatOutput(fineToCoarseFaces) << endl;
-        Pout<< "nCoarseFaces:" << nCoarseFaces << endl;
-
-
+        //Pout<< "nFineFaces:" << levelAddr.lowerAddr().size() << endl;
+        //Pout<< "fineToCoarseFaces:" << flatOutput(fineToCoarseFaces) << endl;
+        //const label nCoarseFaces = agglom.nFaces(leveli);
+        //Pout<< "nCoarseFaces:" << nCoarseFaces << endl;
 
 
         // Update volumes, centroids for coarse level
-        cellVolumes[level] = restrictField
+        cellVolumes[leveli] = restrictField
         (
-            nCoarseCells,
+            levelAddr.size(),
             fineToCoarseCells,
-            cellVolumes[level-1],
+            cellVolumes[leveli-1],
             GREAT
         );
 
@@ -490,17 +618,17 @@ int main(int argc, char *argv[])
             forAll(fineToCoarseCells, i)
             {
                 volWeights[i] =
-                    cellVolumes[level-1][i]
-                  / cellVolumes[level][fineToCoarseCells[i]];
+                    cellVolumes[leveli-1][i]
+                  / cellVolumes[leveli][fineToCoarseCells[i]];
             }
         }
 
         // Update face geometry for coarse level
-        faceAreas[level] = restrictField
+        faceAreas[leveli] = restrictField
         (
-            nCoarseFaces,
+            levelAddr.lowerAddr().size(),
             fineToCoarseFaces,
-            faceAreas[level-1],
+            faceAreas[leveli-1],
             GREAT
         );
 
@@ -514,63 +642,151 @@ int main(int argc, char *argv[])
                 if (coarsei >= 0)
                 {
                     faceWeights[i] =
-                        faceAreas[level-1][i]
-                      / faceAreas[level][coarsei];
+                        faceAreas[leveli-1][i]
+                      / faceAreas[leveli][coarsei];
                 }
             }
         }
 
-        cellCentres[level] = restrictField
+        cellCentres[leveli] = restrictField
         (
-            nCoarseCells,
+            levelAddr.size(),
             fineToCoarseCells,
             volWeights,
-            cellCentres[level-1],
+            cellCentres[leveli-1],
             point::uniform(GREAT)
         );
 
-        //faceCentres[level] = restrictField
+        //faceCentres[leveli] = restrictField
         //(
-        //    nCoarseFaces,
+        //    levelAddr.lowerAddr().size(),
         //    fineToCoarseFaces,
         //    faceWeights,
-        //    faceCentres[level-1],
+        //    faceCentres[leveli-1],
         //    point::uniform(GREAT)
         //);
         // Override faceCentres since agglomerated face centres not
         // representative
-        faceCentres[level] = interpolate(fineMesh, cellCentres[level]);
+        faceCentres[leveli] = interpolate(levelMesh, cellCentres[leveli]);
 
 
         // Update nearest
-        cellWallDistance[level] = restrictUnnormalisedField    //restrictField
+        cellWallDistance[leveli] = restrictUnnormalisedField    //restrictField
         (
-            nCoarseCells,
+            levelAddr.size(),
             fineToCoarseCells,
             volWeights,
-            cellWallDistance[level-1],
+            cellWallDistance[leveli-1],
             GREAT
         );
-        cellNearestWall[level] = restrictUnnormalisedField     //restrictField
+        cellNearestWall[leveli] = restrictUnnormalisedField     //restrictField
         (
-            nCoarseCells,
+            levelAddr.size(),
             fineToCoarseCells,
             volWeights,
-            cellNearestWall[level-1],
+            cellNearestWall[leveli-1],
             point::uniform(GREAT)
         );
 
         // Update adressing to/from base mesh
-        baseToCell[level] = UIndirectList<label>
+        baseToCell[leveli] = UIndirectList<label>
         (
             fineToCoarseCells,
-            baseToCell[level-1]
+            baseToCell[leveli-1]
         );
+
+        allCellInfo[leveli] =
+            pointList(levelAddr.size(), point::uniform(GREAT));
+        allFaceInfo[leveli] =
+            pointList(levelAddr.lowerAddr().size(), point::uniform(GREAT));
 
         // Write agglomeration
         Info<< "Writing cell distribution to "
             << runTime.timeName() << endl;
-        writeAgglomeration(normalise, mesh, baseToCell[level]);
+        writeAgglomeration(normalise, mesh, baseToCell[leveli]);
+    }
+
+
+    // Write fields
+    forAll(baseToCell, leveli)
+    {
+        ++runTime;
+
+        Info<< "Time = " << runTime.timeName() << nl << endl;
+
+        const auto& map = baseToCell[leveli];
+
+        // Current level geometry
+        writeField("cellVolumes", mesh, map, cellVolumes[leveli]);
+        writeField("faceAreas", mesh, map, faceAreas[leveli]);
+        // Nearest wall info
+        const auto& wallDist = cellWallDistance[leveli];
+        writeField("cellWallDistance", mesh, map, wallDist);
+        //const auto& nearestWall = cellNearestWall[leveli];
+        //writeField("cellNearestWall", mesh, map, nearestWall);
+    }
+
+
+    // V cycles
+    for (label iter = 0; iter < 1; iter++)
+    {
+        // Determine wall distance on the coarsest mesh accurately
+        {
+            const label leveli = nLevels-1;
+            const lduMesh& levelMesh = agglom.meshLevel(leveli);
+            const auto& levelAddr = levelMesh.lduAddr();
+
+            solveWallDistance
+            (
+                levelAddr.size()+1, // maxIter
+                levelMesh,
+                cellNearestWall[leveli],
+                faceCentres[leveli],
+                cellCentres[leveli],
+                allFaceInfo[leveli],
+                allCellInfo[leveli],
+
+                allFaceResidual[leveli],
+                allCellResidual[leveli]
+            );
+        }
+
+
+        for (label leveli=nLevels-2; leveli>=0; leveli--)
+        {
+            const lduMesh& levelMesh = agglom.meshLevel(leveli);
+
+            // Map coarse level residual/changes to this level
+            prolongAndAdd
+            (
+                agglom.faceRestrictAddressing(leveli),
+                allFaceResidual[leveli+1],
+                point::uniform(GREAT),
+                allFaceInfo[leveli]
+            );
+            prolongAndAdd
+            (
+                agglom.restrictAddressing(leveli),
+                allCellResidual[leveli+1],
+                point::uniform(GREAT),
+                allCellInfo[leveli]
+            );
+
+            // Solve a bit less
+            solveWallDistance
+            (
+                10,                 // maxIter
+                levelMesh,
+                cellNearestWall[leveli],
+                faceCentres[leveli],
+                cellCentres[leveli],
+                allFaceInfo[leveli],
+                allCellInfo[leveli],
+
+                allFaceResidual[leveli],
+                allCellResidual[leveli]
+            );
+        }
     }
 
 
