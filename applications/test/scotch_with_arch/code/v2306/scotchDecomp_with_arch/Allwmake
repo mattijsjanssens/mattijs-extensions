@@ -1,0 +1,16 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/wmake/scripts/AllwmakeParseArguments
+. ${WM_PROJECT_DIR:?}/wmake/scripts/have_scotch
+
+#------------------------------------------------------------------------------
+
+: ${FOAM_EXT_LIBBIN:=/usr/lib$WM_COMPILER_LIB_ARCH}  # Extra safety?
+export FOAM_EXT_LIBBIN
+
+if have_scotch
+then
+    wmake $targetType
+fi
+
+#------------------------------------------------------------------------------
