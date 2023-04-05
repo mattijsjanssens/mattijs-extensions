@@ -1,3 +1,4 @@
+- mapdistribute with slicing
 - low-weightCorrection replace with stencil
 - time interpolation of multi-world
 - edges in topoSet
@@ -5,7 +6,6 @@
 - automatic decompose
 - overlapping cellZones in polyTopoChange
 - dlopen with local file system
-- linear solvers: parallel preconditioning, reordering before solving, multiple masters
 - linear solvers: run-time selection of residual checks
 - linear solvers: amgcl (see e.g. https://amgcl.readthedocs.io/en/latest/tutorial/poisson3DbMPI.html)
 - linear solvers: parallel reduction
@@ -13,3 +13,5 @@
 - ring version of shared pointer
 - average fvOption. Ok: applications/solvers/incompressible/simpleFoam_with_fvOption
 - gaussGrad correctBoundaryConditions - move to fvPatchField?
+- polyTopoChange on boundary faces only
+- overlapping zones
