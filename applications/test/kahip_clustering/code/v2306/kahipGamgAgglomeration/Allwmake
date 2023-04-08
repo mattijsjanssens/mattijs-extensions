@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/wmake/scripts/AllwmakeParseArguments
+. ${WM_PROJECT_DIR:?}/wmake/scripts/have_kahip
+
+#------------------------------------------------------------------------------
+
+if have_kahip
+then
+    wmake $targetType
+fi
+
+#------------------------------------------------------------------------------

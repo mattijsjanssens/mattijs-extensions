@@ -1,0 +1,17 @@
+EXE_INC = \
+    -Wno-old-style-cast \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(WM_THIRD_PARTY_DIR)/kahip-2.12/lib \
+    -I$(WM_THIRD_PARTY_DIR)/kahip-2.12/app \
+    -I$(WM_THIRD_PARTY_DIR)/kahip-2.12/lib/io \
+    -I$(WM_THIRD_PARTY_DIR)/kahip-2.12/lib/tools \
+    -I$(WM_THIRD_PARTY_DIR)/kahip-2.12/lib/partition \
+    -I$(KAHIP_INC_DIR)
+
+/*
+ * KaHIP is usually compiled with openmp, but may be missing the
+ * openmp link dependency.
+ */
+LIB_LIBS = \
+    -L$(KAHIP_LIB_DIR) $(LINK_OPENMP) \
+    -lkahip$(KAHIP_LIBNAME_SUFFIX)

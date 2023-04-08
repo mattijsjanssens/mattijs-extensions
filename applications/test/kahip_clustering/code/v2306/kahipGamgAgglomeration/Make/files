@@ -1,0 +1,4 @@
+kahipGAMGAgglomeration.C
+kahipGAMGAgglomerate.C
+
+LIB = $(FOAM_USER_LIBBIN)/libkahipGAMGAgglomeration
