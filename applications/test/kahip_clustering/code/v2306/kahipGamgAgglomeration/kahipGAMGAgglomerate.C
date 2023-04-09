@@ -34,6 +34,7 @@ Description
 
 #include "random_functions.h"
 #include "graph_io.h"
+#include "configuration.h"
 //#include "parse_parameters.h"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
@@ -162,12 +163,17 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
             }
         }
         {
+DebugVar("**READ**");
             graph_access G;
             graph_io::readGraphWeighted(G, graph_filename);
 
             PartitionConfig partition_config;
-            partition_config.cluster_upperbound =
-                std::numeric_limits< NodeWeight >::max()/2;
+
+            configuration cfg;
+            cfg.standard(partition_config);
+            cfg.fast_separator(partition_config);
+//            partition_config.cluster_upperbound =
+//                std::numeric_limits< NodeWeight >::max()/2;
 //
 //            bool is_graph_weighted = false;
 //            bool suppress_output   = false;
@@ -213,14 +219,19 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
             std::cout << "number of clusters/blocks  " << no_blocks << std::endl;
             std::cout << "number of edges between clusters " << qm.edge_cut(G)                 << std::endl;
 
+DebugVar("**END OF READ**");
         }
     }
 
 
 
+DebugVar("**READ**");
 
     PartitionConfig partition_config;
-    partition_config.k = 1;        // wanted cluster size
+    configuration cfg;
+    cfg.standard(partition_config);
+    cfg.fast_separator(partition_config);
+    partition_config.k = 10;        // wanted cluster size
 
     graph_access G;
     //internal_build_graph
@@ -251,8 +262,8 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
         <<  G.number_of_edges() <<  " edges"  << std::endl;
 
 
-    partition_config.cluster_upperbound =
-        std::numeric_limits< NodeWeight >::max()/2;
+//    partition_config.cluster_upperbound =
+//        std::numeric_limits< NodeWeight >::max()/2;
 
     if( partition_config.cluster_upperbound == std::numeric_limits< NodeWeight >::max()/2 ) {
             std::cout <<  "no size-constrained specified" << std::endl;
