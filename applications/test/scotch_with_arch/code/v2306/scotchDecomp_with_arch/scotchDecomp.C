@@ -339,16 +339,16 @@ Foam::label Foam::scotch2Decomp::decomposeSerial
     }
     else
     {
-        SCOTCH_Num nLevels = 2;
-        List<SCOTCH_Num> n(nLevels);
-        List<SCOTCH_Num> commWeight(nLevels);
-        n[0] = 4;
-        commWeight[0] = 100;
-        n[1] = nDomains_/4;
-        commWeight[1] = 1;
-
-Pout<< "n:" << n << endl;
-Pout<< "commWeight:" << commWeight << endl;
+//        SCOTCH_Num nLevels = 2;
+//        List<SCOTCH_Num> n(nLevels);
+//        List<SCOTCH_Num> commWeight(nLevels);
+//        n[0] = 4;
+//        commWeight[0] = 100;
+//        n[1] = nDomains_/4;
+//        commWeight[1] = 1;
+//
+//Pout<< "n:" << n << endl;
+//Pout<< "commWeight:" << commWeight << endl;
 
         check
         (
@@ -356,17 +356,17 @@ Pout<< "commWeight:" << commWeight << endl;
             "SCOTCH_archCmplt"
         );
 
-        check
-        (
-            SCOTCH_archTleaf
-            (
-                &archdat,
-                n.size(),
-                n.cdata(),
-                commWeight.cdata()
-            ),
-            "SCOTCH_archTleaf"
-        );
+//        check
+//        (
+//            SCOTCH_archTleaf
+//            (
+//                &archdat,
+//                n.size(),
+//                n.cdata(),
+//                commWeight.cdata()
+//            ),
+//            "SCOTCH_archTleaf"
+//        );
 
         //- Hack to test clustering. Note that decomp is non-compact
         //  numbers!
@@ -400,6 +400,59 @@ Pout<< "commWeight:" << commWeight << endl;
         //    ),
         //    "SCOTCH_stratGraphClusterBuild"
         //);
+    }
+
+    // Do optional tree-like/multi-level decomposition by specifying
+    // domains/weights
+    List<SCOTCH_Num> domains;
+    List<SCOTCH_Num> weights;
+    if
+    (
+        coeffsDict_.readIfPresent("domains", domains, keyType::LITERAL)
+     && coeffsDict_.readIfPresent("weights", weights, keyType::LITERAL)
+    )
+    {
+        label nTotal = 1;
+        for (const label n : domains)
+        {
+            nTotal *= n;
+        }
+
+        if (nTotal < nDomains())
+        {
+            const label sz = domains.size();
+            domains.setSize(sz+1);
+            weights.setSize(sz+1);
+            for (label i = sz-1; i >= 0; i--)
+            {
+                domains[i+1] = domains[i];
+                weights[i+1] = weights[i];
+            }
+
+            if (nDomains() % nTotal)
+            {
+                FatalErrorInFunction
+                    << "Top level decomposition specifies " << nDomains()
+                    << " domains which is not equal to the product of"
+                    << " all sub domains " << nTotal
+                    << exit(FatalError);
+            }
+
+            domains[0] = nDomains() / nTotal;
+            weights[0] = 1;
+        }
+
+        check
+        (
+            SCOTCH_archTleaf
+            (
+                &archdat,
+                SCOTCH_Num(domains.size()),
+                domains.cdata(),
+                weights.cdata()
+            ),
+            "SCOTCH_archTleaf"
+        );
     }
 
 
