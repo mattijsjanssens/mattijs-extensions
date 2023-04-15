@@ -1,11 +1,22 @@
+include $(GENERAL_RULES)/mpi-rules
+
 EXE_INC = \
+    -I$(PTSCOTCH_INC_DIR) \
     -I$(SCOTCH_INC_DIR) \
+    -I$(SCOTCH_ARCH_PATH)/include \
+    -I$(SCOTCH_ARCH_PATH)/include/$(FOAM_MPI) \
+    -I$(MPI_ARCH_PATH)/include \
+    $(PFLAGS) $(PINC) \
     -I$(LIB_SRC)/parallel/decompose/decompositionMethods/lnInclude
 
 LIB_LIBS = \
     -L$(FOAM_LIBBIN) -ldecompositionMethods \
+    -L$(WM_THIRD_PARTY_DIR)/platforms/linux64ClangDPInt32/lib \
+    -L$(WM_THIRD_PARTY_DIR)/platforms/linux64ClangDPInt32/lib/$(FOAM_MPI) \
+    -L$(PTSCOTCH_LIB_DIR) \
     -L$(SCOTCH_LIB_DIR) \
-    -lscotch$(SCOTCH_LIBNAME_SUFFIX)
+    -lscotch$(SCOTCH_LIBNAME_SUFFIX) \
+    -lptscotch$(SCOTCH_LIBNAME_SUFFIX)
 
 /* errexit, except for windows compile (already in library) */
 ifeq (,$(findstring windows,$(WM_OSTYPE)))

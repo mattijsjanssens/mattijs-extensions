@@ -16,7 +16,16 @@ FoamFile
 
 numberOfSubdomains  100;
 
-method  scotch2;
+method  ptscotch2;
+scotch2Coeffs
+{
+    domains (25);
+    domainWeights (0.01);
+}
+scotchCoeffs
+{
+    $scotch2Coeffs;
+}
 
 
 // ************************************************************************* //

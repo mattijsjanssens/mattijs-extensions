@@ -1,3 +1,4 @@
+ptscotchDecomp.C
 scotchDecomp.C
 
 LIB = $(FOAM_USER_LIBBIN)/libscotch2Decomp
