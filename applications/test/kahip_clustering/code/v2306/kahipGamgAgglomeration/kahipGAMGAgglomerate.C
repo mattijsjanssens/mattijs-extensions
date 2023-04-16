@@ -162,6 +162,8 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
                 os << nl;
             }
         }
+
+if (false)
         {
 DebugVar("**READ**");
             graph_access G;
@@ -172,8 +174,8 @@ DebugVar("**READ**");
             configuration cfg;
             cfg.standard(partition_config);
             cfg.fast_separator(partition_config);
-//            partition_config.cluster_upperbound =
-//                std::numeric_limits< NodeWeight >::max()/2;
+            partition_config.cluster_upperbound =
+                std::numeric_limits< NodeWeight >::max()/2;
 //
 //            bool is_graph_weighted = false;
 //            bool suppress_output   = false;
@@ -225,13 +227,16 @@ DebugVar("**END OF READ**");
 
 
 
-DebugVar("**READ**");
+DebugVar("**PROGRAM**");
 
     PartitionConfig partition_config;
+    partition_config.k = 1;        // wanted cluster size
     configuration cfg;
     cfg.standard(partition_config);
-    cfg.fast_separator(partition_config);
-    partition_config.k = 10;        // wanted cluster size
+    cfg.fast(partition_config);
+
+    partition_config.cluster_upperbound =
+        std::numeric_limits< NodeWeight >::max()/2;
 
     graph_access G;
     //internal_build_graph
@@ -245,7 +250,7 @@ DebugVar("**READ**");
     //    G
     //);
     G.build_from_metis(nFineCells, cellCellOffsets.begin(), cellCells.begin()); 
-    G.set_partition_count(partition_config.k); 
+    //G.set_partition_count(partition_config.k); 
     //if(vwgt != NULL) {
     //        forall_nodes(G, node) {
     //                G.setNodeWeight(node, vwgt[node]);
@@ -274,6 +279,7 @@ DebugVar("**READ**");
     partition_config.upper_bound_partition =
         partition_config.cluster_upperbound+1;
     partition_config.cluster_coarsening_factor = 1;
+    partition_config.k = 1;        // wanted cluster size
     //partition_config.seed = 0;
     srand(partition_config.seed);
     random_functions::setSeed(partition_config.seed);

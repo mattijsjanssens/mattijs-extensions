@@ -26,7 +26,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "kahipGAMGAgglomeration.H"
-//#include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
 #include "processorLduInterface.H"
 
