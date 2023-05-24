@@ -133,107 +133,40 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
     if (debug)
     {
         const label nFineFaces = fineAddressing.upperAddr().size();
-        const fileName graph_filename("graph_" + Foam::name(nFineCells) + ".grf");
+        const fileName graph_filename("graph_"+Foam::name(nFineCells)+".grf");
 
+        OFstream os(graph_filename);
+        Info<< "Dumping Metis graph file for nCells "
+            << nFineCells << " to " << os.name() << endl;
+
+        os << "% Metis graph format" << nl
+            << nFineCells << ' ' << nFineFaces << nl;
+
+        for (label celli = 0; celli < nFineCells; celli++)
         {
-            OFstream os(graph_filename);
-            Pout<< "Dumping Metis graph file for nCells "
-                << nFineCells << " to " << os.name() << endl;
+            const label start = cellCellOffsets[celli];
+            const label end = cellCellOffsets[celli+1];
 
+            // First nbr
+            os << cellCells[start]+1;
 
-            os << "% Metis graph format" << nl
-                << nFineCells << ' ' << nFineFaces << nl;
+            // Rest of nbrs
+            const SubList<label> nbrs(cellCells, end-start-1, start+1);
 
-            for (label celli = 0; celli < nFineCells; celli++)
+            for (const label nbr : nbrs)
             {
-                const label start = cellCellOffsets[celli];
-                const label end = cellCellOffsets[celli+1];
-
-                // First nbr
-                os << cellCells[start]+1;
-
-                // Rest of nbrs
-                const SubList<label> nbrs(cellCells, end-start-1, start+1);
-
-                for (const label nbr : nbrs)
-                {
-                    os  << ' ' << nbr+1;
-                }
-                os << nl;
+                os  << ' ' << nbr+1;
             }
-        }
-
-if (false)
-        {
-DebugVar("**READ**");
-            graph_access G;
-            graph_io::readGraphWeighted(G, graph_filename);
-
-            PartitionConfig partition_config;
-
-            configuration cfg;
-            cfg.standard(partition_config);
-            cfg.fast_separator(partition_config);
-            partition_config.cluster_upperbound =
-                std::numeric_limits< NodeWeight >::max()/2;
-//
-//            bool is_graph_weighted = false;
-//            bool suppress_output   = false;
-//            bool recursive         = false;
-//
-//            int argn = 0;
-//            char **argv = nullptr;
-//            int ret_code = parse_parameters(argn, argv, 
-//                                            partition_config, 
-//                                            graph_filename, 
-//                                            is_graph_weighted, 
-//                                            suppress_output, recursive); 
-
-
-
-            std::cout <<  "graph has " <<  G.number_of_nodes() <<  " nodes and " <<  G.number_of_edges() <<  " edges"  << std::endl;
-            if( partition_config.cluster_upperbound == std::numeric_limits< NodeWeight >::max()/2 ) {
-                    std::cout <<  "no size-constrained specified" << std::endl;
-            } else {
-                    std::cout <<  "size-constrained set to " <<  partition_config.cluster_upperbound << std::endl;
-            }
-
-            partition_config.upper_bound_partition = partition_config.cluster_upperbound+1;
-            partition_config.cluster_coarsening_factor = 1;
-            partition_config.k = 1;
-            srand(partition_config.seed);
-            random_functions::setSeed(partition_config.seed);
-
-            // ***************************** perform clustering ***************************************       
-            NodeID no_blocks = 0;
-            std::vector< NodeID > cluster_id(G.number_of_nodes());
-            size_constraint_label_propagation sclp;
-            sclp.label_propagation( partition_config, G, cluster_id, no_blocks);
-            Pout<< "no_blocks:" << no_blocks << endl;
-
-            // output some information about the partition that we have computed 
-            quality_metrics qm;
-            forall_nodes(G, node) {
-                    G.setPartitionIndex(node, cluster_id[node]);
-            } endfor
-
-            G.set_partition_count(no_blocks);
-            std::cout << "number of clusters/blocks  " << no_blocks << std::endl;
-            std::cout << "number of edges between clusters " << qm.edge_cut(G)                 << std::endl;
-
-DebugVar("**END OF READ**");
+            os << nl;
         }
     }
 
 
-
-DebugVar("**PROGRAM**");
-
     PartitionConfig partition_config;
-    partition_config.k = 1;        // wanted cluster size
+    //partition_config.k = 1;        // wanted cluster size
     configuration cfg;
     cfg.standard(partition_config);
-    cfg.fast(partition_config);
+    //cfg.fast(partition_config);
 
     partition_config.cluster_upperbound =
         std::numeric_limits< NodeWeight >::max()/2;
@@ -267,8 +200,8 @@ DebugVar("**PROGRAM**");
         <<  G.number_of_edges() <<  " edges"  << std::endl;
 
 
-//    partition_config.cluster_upperbound =
-//        std::numeric_limits< NodeWeight >::max()/2;
+    partition_config.cluster_upperbound = 5;    // wanted cluster size
+        //std::numeric_limits< NodeWeight >::max()/2;
 
     if( partition_config.cluster_upperbound == std::numeric_limits< NodeWeight >::max()/2 ) {
             std::cout <<  "no size-constrained specified" << std::endl;
@@ -279,8 +212,7 @@ DebugVar("**PROGRAM**");
     partition_config.upper_bound_partition =
         partition_config.cluster_upperbound+1;
     partition_config.cluster_coarsening_factor = 1;
-    partition_config.k = 1;        // wanted cluster size
-    //partition_config.seed = 0;
+    partition_config.k = 1;
     srand(partition_config.seed);
     random_functions::setSeed(partition_config.seed);
 
