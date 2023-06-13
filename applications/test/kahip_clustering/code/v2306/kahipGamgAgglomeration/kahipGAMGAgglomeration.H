@@ -67,6 +67,13 @@ class kahipGAMGAgglomeration
 
         const fvMesh& fvMesh_;
 
+        // Min, max size of agglomerated cells
+        const label maxSize_;
+
+        // Number of iterations applied to improve agglomeration consistency
+        // across processor boundaries
+        const label nProcConsistencyIter_;
+
 
     // Private Member Functions
 
@@ -136,6 +143,17 @@ public:
         (
             const lduMesh& mesh,
             const dictionary& controlDict
+        );
+
+        //- Agglomerate from a starting level. Starting level is usually 0
+        //- (initial mesh) but sometimes >0 (restarting after processor
+        //- agglomeration)
+        virtual void agglomerate
+        (
+            const label nCellsInCoarsestLevel,
+            const label startLevel,
+            const scalarField& startFaceWeights,
+            const bool doProcessorAgglomerate = true
         );
 };
 

@@ -168,9 +168,6 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
     cfg.standard(partition_config);
     //cfg.fast(partition_config);
 
-    partition_config.cluster_upperbound =
-        std::numeric_limits< NodeWeight >::max()/2;
-
     graph_access G;
     //internal_build_graph
     //(
@@ -200,13 +197,21 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
         <<  G.number_of_edges() <<  " edges"  << std::endl;
 
 
-    partition_config.cluster_upperbound = 5;    // wanted cluster size
+    partition_config.cluster_upperbound = maxSize;    // wanted cluster size
         //std::numeric_limits< NodeWeight >::max()/2;
 
-    if( partition_config.cluster_upperbound == std::numeric_limits< NodeWeight >::max()/2 ) {
-            std::cout <<  "no size-constrained specified" << std::endl;
-    } else {
-            std::cout <<  "size-constrained set to " <<  partition_config.cluster_upperbound << std::endl;
+    if
+    (
+        partition_config.cluster_upperbound
+     == std::numeric_limits< NodeWeight >::max()/2
+    )
+    {
+        std::cout <<  "no size-constrained specified" << std::endl;
+    }
+    else
+    {
+        std::cout <<  "size-constrained set to "
+            <<  partition_config.cluster_upperbound << std::endl;
     }
 
     partition_config.upper_bound_partition =
@@ -224,15 +229,13 @@ Foam::tmp<Foam::labelField> Foam::kahipGAMGAgglomeration::agglomerate
     size_constraint_label_propagation sclp;
     sclp.label_propagation( partition_config, G, cluster_id, no_blocks);
 
-    DebugVar(no_blocks);
-
-
-    forall_nodes(G, node)
-    {
-        Pout<< "    node:" << node << " cluster:" << cluster_id[node] << endl;
-        G.setPartitionIndex(node, cluster_id[node]);
-    }
-    endfor
+    //DebugVar(no_blocks);
+    //forall_nodes(G, node)
+    //{
+    //    Pout<< "    node:" << node << " cluster:" << cluster_id[node] << endl;
+    //    G.setPartitionIndex(node, cluster_id[node]);
+    //}
+    //endfor
     G.set_partition_count(no_blocks);
 
     nCoarseCells = no_blocks;

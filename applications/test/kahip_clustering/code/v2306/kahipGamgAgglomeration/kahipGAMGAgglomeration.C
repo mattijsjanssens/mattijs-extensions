@@ -170,19 +170,37 @@ Foam::kahipGAMGAgglomeration::kahipGAMGAgglomeration
 )
 :
     GAMGAgglomeration(mesh, controlDict),
-    fvMesh_(refCast<const fvMesh>(mesh))
-{
-    // Min, max size of agglomerated cells
-    label minSize(controlDict.get<label>("minSize"));
-    label maxSize(controlDict.get<label>("maxSize"));
-
-    // Number of iterations applied to improve agglomeration consistency across
-    // processor boundaries
-    label nProcConsistencyIter
+    fvMesh_(refCast<const fvMesh>(mesh)),
+    maxSize_(controlDict.get<label>("maxSize")),
+    nProcConsistencyIter_
     (
-        controlDict.get<label>("nProcConsistencyIter")
+        controlDict.getOrDefault<label>
+        (
+            "nProcConsistencyIter",
+            0
+        )
+    )
+{
+    agglomerate
+    (
+        1,  //nCellsInCoarsestLevel
+        0,
+        scalarField::null(),
+        true
     );
+}
 
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+void Foam::kahipGAMGAgglomeration::agglomerate
+(
+    const label nCellsInCoarsestLevel,
+    const label startLevel,
+    const scalarField& startFaceWeights,
+    const bool doProcessorAgglomerate
+)
+{
     // Start geometric agglomeration from the cell volumes and areas of the mesh
     scalarField* VPtr = const_cast<scalarField*>(&fvMesh_.cellVolumes());
 
@@ -224,8 +242,8 @@ Foam::kahipGAMGAgglomeration::kahipGAMGAgglomeration
         tmp<labelField> finalAgglomPtr = agglomerate
         (
             nCoarseCells,
-            minSize,
-            maxSize,
+            1,  //minSize,
+            maxSize_,
             meshLevel(nCreatedLevels).lduAddr(),
             *VPtr,
             *magSfPtr,
@@ -233,7 +251,7 @@ Foam::kahipGAMGAgglomeration::kahipGAMGAgglomeration
         );
 
         // Adjust weights only
-        for (int i=0; i<nProcConsistencyIter; i++)
+        for (int i=0; i<nProcConsistencyIter_; i++)
         {
             const lduMesh& mesh = meshLevel(nCreatedLevels);
             const lduAddressing& addr = mesh.lduAddr();
@@ -279,8 +297,8 @@ Foam::kahipGAMGAgglomeration::kahipGAMGAgglomeration
             finalAgglomPtr = agglomerate
             (
                 nCoarseCells,
-                minSize,
-                maxSize,
+                1,  //minSize,
+                maxSize_,
                 meshLevel(nCreatedLevels).lduAddr(),
                 *VPtr,
                 weights,
@@ -288,7 +306,16 @@ Foam::kahipGAMGAgglomeration::kahipGAMGAgglomeration
             );
         }
 
-        if (continueAgglomerating(finalAgglomPtr().size(), nCoarseCells))
+        if
+        (
+            continueAgglomerating
+            (
+                nCellsInCoarsestLevel_,
+                finalAgglomPtr().size(),
+                nCoarseCells,
+                meshLevel(nCreatedLevels).comm()
+            )
+        )
         {
             nCells_[nCreatedLevels] = nCoarseCells;
             restrictAddressing_.set(nCreatedLevels, finalAgglomPtr);
@@ -357,7 +384,7 @@ Foam::kahipGAMGAgglomeration::kahipGAMGAgglomeration
     }
 
     // Shrink the storage of the levels to those created
-    compactLevels(nCreatedLevels);
+    compactLevels(nCreatedLevels, true);
 
     // Delete temporary geometry storage
     if (nCreatedLevels)
