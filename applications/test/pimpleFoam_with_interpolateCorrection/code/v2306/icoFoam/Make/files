@@ -1,0 +1,9 @@
+GAMGSolverAgglomerateMatrix.C
+GAMGSolver.C
+GAMGSolverInterpolate.C
+GAMGSolverScale.C
+GAMGSolverSolve.C
+
+icoFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/icoFoam_debug
