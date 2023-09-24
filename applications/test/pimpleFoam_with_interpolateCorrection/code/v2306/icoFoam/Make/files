@@ -1,3 +1,6 @@
+GAMGAgglomerateLduAddressing.C
+GAMGAgglomeration.C
+
 GAMGSolverAgglomerateMatrix.C
 GAMGSolver.C
 GAMGSolverInterpolate.C

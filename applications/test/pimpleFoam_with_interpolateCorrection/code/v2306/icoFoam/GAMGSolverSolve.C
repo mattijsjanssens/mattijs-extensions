@@ -8,6 +8,7 @@
     Copyright (C) 2011-2017 OpenFOAM Foundation
     Copyright (C) 2016-2021,2023 OpenCFD Ltd.
     Copyright (C) 2023 Huawei (Yu Ankun)
+    Copyright (C) 2023 M. Janssens
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,6 +28,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "GAMGAgglomeration.H"
 #include "GAMGSolver.H"
 #include "SubField.H"
 #include "PrecisionAdaptor.H"
@@ -301,10 +303,11 @@ void Foam::GAMGSolver::Vcycle
 
     solveScalarField dummyField(0);
 
+    // Work storage for prolongation
+    solveScalarField work;
+
     for (label leveli = coarsestLevel - 1; leveli >= 0; leveli--)
     {
-        Pout<< "** Level:" << leveli << endl;
-
         if (coarseCorrFields.set(leveli))
         {
             // Create a field for the pre-smoothed correction field
@@ -332,90 +335,14 @@ void Foam::GAMGSolver::Vcycle
             );
 
 
-            Pout<< "PRoloninging from " << leveli + 1
-                <<" corr:" << flatOutput(coarserCorrField)
-                << " to current level:" << leveli
-                << endl;
-
-            //agglomeration_.prolongField
-            //(
-            //    coarseCorrFields[leveli],
-            //    coarserCorrField,
-            //    leveli + 1,
-            //    true
-            //);
-
-            // Replacement for prolongField that keeps scattered coarse level
-            // field
-            refPtr<scalarField> cf;
-            {
-                const label levelIndex = leveli+1;
-                const label coarseLevelIndex = levelIndex+1;
-                if (agglomeration_.hasProcMesh(coarseLevelIndex))
-                {
-                    const label coarseComm =
-                        UPstream::parent
-                        (
-                            agglomeration_.procCommunicator
-                            (
-                                coarseLevelIndex
-                            )
-                        );
-                    const List<label>& procIDs =
-                        agglomeration_.agglomProcIDs(coarseLevelIndex);
-                    const labelList& offsets =
-                        agglomeration_.cellOffsets(coarseLevelIndex);
-                    const label localSize = agglomeration_.nCells(levelIndex);
-
-                    Pout<< "coarseComm:" << coarseComm
-                        << " procIDs:" << procIDs
-                        << " offsets:" << offsets
-                        << " localSize:" << localSize << endl;
-                    Pout<< "coarserCorrField:"
-                        << flatOutput(coarserCorrField) << endl;
-
-                    cf.reset(new scalarField(localSize));
-                    globalIndex::scatter
-                    (
-                        offsets,
-                        coarseComm,
-                        procIDs,
-                        coarserCorrField,
-                        cf.ref(),
-                        UPstream::msgType(),
-                        Pstream::commsTypes::nonBlocking
-                    );
-                }
-                else
-                {
-                    cf = refPtr<scalarField>(coarserCorrField);
-                }
-
-                //Pout<< "cf:" << flatOutput(cf()) << endl;
-
-
-                // Prolong
-                {
-                    const auto& restrictAddressing =
-                        agglomeration_.restrictAddressing(levelIndex);
-
-                    Pout<< "restirctAddressing:" << restrictAddressing.size()
-                        << " coarseCorrFields[leveli]:"
-                        << coarseCorrFields[leveli].size()
-                        << endl;
-
-                    auto& ff = coarseCorrFields[leveli];
-                    forAll(restrictAddressing, i)
-                    {
-                        ff[i] = cf()[restrictAddressing[i]];
-                    }
-                }
-            }
-            Pout<< "Result from prolonging:"
-                << flatOutput(coarseCorrFields[leveli])
-                << endl;
-
-
+            // Prolong correction to leveli
+            const auto& cf = agglomeration_.prolongField
+            (
+                coarseCorrFields[leveli],   // current level
+                work,
+                coarserCorrField,           // leveli+1
+                leveli + 1
+            );
 
 
             // Create A.psi for this coarse level as a sub-field of Apsi
@@ -430,43 +357,21 @@ void Foam::GAMGSolver::Vcycle
                     ACf.operator const solveScalarField&()
                 );
 
-            if (interpolateCorrection_) //&& leveli < coarsestLevel - 2)
+            if (interpolateCorrection_)
             {
-                Pout<< "Interpolate from level:" << leveli+1
-                    << " up to fine level:" << leveli
-                    << endl;
-                if (cf)
-                {
-                    // Normal operation : have both coarse level and fine
-                    // level. No processor agglomeration
-                    interpolate
-                    (
-                        coarseCorrFields[leveli],
-                        ACfRef,
-                        matrixLevels_[leveli],
-                        interfaceLevelsBouCoeffs_[leveli],
-                        interfaceLevels_[leveli],
-                        agglomeration_.restrictAddressing(leveli + 1),
-                        cf(),
-                        cmpt
-                    );
-                }
-                else
-                {
-                    // Have no coarser level locally so interpolate on this
-                    // level only
-                    Pout<< "** local interpolation only at level:" << leveli
-                        << endl;
-                    interpolate
-                    (
-                        coarseCorrFields[leveli],
-                        ACfRef,
-                        matrixLevels_[leveli],
-                        interfaceLevelsBouCoeffs_[leveli],
-                        interfaceLevels_[leveli],
-                        cmpt
-                    );
-                }
+                // Normal operation : have both coarse level and fine
+                // level. No processor agglomeration
+                interpolate
+                (
+                    coarseCorrFields[leveli],
+                    ACfRef,
+                    matrixLevels_[leveli],
+                    interfaceLevelsBouCoeffs_[leveli],
+                    interfaceLevels_[leveli],
+                    agglomeration_.restrictAddressing(leveli + 1),
+                    cf,
+                    cmpt
+                );
             }
 
             // Scale coarse-grid correction field
