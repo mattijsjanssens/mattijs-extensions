@@ -1,0 +1,12 @@
+GAMGAgglomerateLduAddressing.C
+GAMGAgglomeration.C
+
+GAMGSolverAgglomerateMatrix.C
+GAMGSolver.C
+GAMGSolverInterpolate.C
+GAMGSolverScale.C
+GAMGSolverSolve.C
+
+pimpleFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/pimpleFoam_with_interpolateCorrection
