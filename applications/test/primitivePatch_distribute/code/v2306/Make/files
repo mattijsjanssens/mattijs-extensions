@@ -1,0 +1,4 @@
+Test-primitivePatch_distribute.C
+
+
+EXE = $(FOAM_USER_APPBIN)/Test-primitivePatch_distribute
