@@ -151,99 +151,10 @@ int main(int argc, char *argv[])
     // Construct map
     // ~~~~~~~~~~~~~
 
-    autoPtr<mapDistributeBase> mapPtr;
-    {
-        labelList nSend(UPstream::nProcs(), 0);
-        for (const label proci : destProc)
-        {
-            nSend[proci]++;
-        }
-        labelListList sendMaps(UPstream::nProcs());
-        forAll(nSend, proci)
-        {
-            sendMaps[proci].resize_nocopy(nSend[proci]);
-        }
-        nSend = 0;
+    const mapDistributeBase map(invertOneToMany(UPstream::nProcs(), destProc));
 
-        forAll(destProc, i)
-        {
-            // Decide which processor it goes to/comes from
-            const label proci = destProc[i];
-            sendMaps[proci][nSend[proci]++] = i;
-        }
-
-        // Exchange elements. TBD: build into mapDistributeBase
-        labelList nRecv(UPstream::nProcs());
-        {
-            const label startOfRequests = UPstream::nRequests();
-            for (const label proci : UPstream::allProcs())
-            {
-                if (proci != UPstream::myProcNo())
-                {
-                    UIPstream::read
-                    (
-                        UPstream::commsTypes::nonBlocking,
-                        proci,
-                        reinterpret_cast<char*>(&nRecv[proci]),
-                        sizeof(label)
-                    );
-                }
-            }
-
-            for (const label proci : UPstream::allProcs())
-            {
-                if (proci != UPstream::myProcNo())
-                {
-                    UOPstream::write
-                    (
-                        UPstream::commsTypes::nonBlocking,
-                        proci,
-                        reinterpret_cast<char*>(&nSend[proci]),
-                        sizeof(label)
-                    );
-                }
-            }
-            UPstream::waitRequests(startOfRequests);
-        }
-
-
-        // Now in constructMaps we have the data that the other processor
-        // wants. Renumber in my ordering
-        label constructi = pp.size();
-
-        labelListList receiveMaps(UPstream::nProcs());
-        forAll(receiveMaps, proci)
-        {
-            if (proci != UPstream::myProcNo())
-            {
-                labelList& receiveMap = receiveMaps[proci];
-                receiveMap.resize_nocopy(nRecv[proci]);
-                forAll(receiveMap, i)
-                {
-                    receiveMap[i] = i+constructi;
-                }
-                constructi += receiveMap.size();
-            }
-        }
-
-        Pout<< "constructi:" << constructi << endl;
-        Pout<< "sendMaps:" << flatOutput(sendMaps) << endl;
-        Pout<< "receiveMaps:" << flatOutput(receiveMaps) << endl;
-        mapPtr.reset
-        (
-            new mapDistributeBase
-            (
-                constructi,
-                std::move(sendMaps),
-                std::move(receiveMaps)
-            )
-        );
-    }
-    const auto& map = mapPtr();
-
-
-    Pout<< "subMap:" << map.subMap() << endl;
-    Pout<< "constructMap:" << map.constructMap() << endl;
+    //Pout<< "subMap:" << map.subMap() << endl;
+    //Pout<< "constructMap:" << map.constructMap() << endl;
 
 
     // Send over faces+points
