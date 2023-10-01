@@ -39,6 +39,7 @@ Description
 #include "DynamicField.H"
 #include "cyclicAMIPolyPatch.H"
 #include "columnFvMesh.H"
+#include "uindirectPrimitivePatch.H"
 
 using namespace Foam;
 
@@ -67,12 +68,16 @@ void distribute
         {
             if (map[proci].size())
             {
-                faceList subFaces(faces, map[proci]);
-                const primitivePatch subPatch
+                const uindirectPrimitivePatch subPatch
                 (
-                    SubList<face>(subFaces, subFaces.size()),
+                    UIndirectList<face>
+                    (
+                        faces,
+                        map[proci]
+                    ),
                     points
                 );
+
                 UOPstream os(proci, pBufs);
 
                 // TBD: send as compactListList?
@@ -153,6 +158,7 @@ int main(int argc, char *argv[])
 
     const mapDistributeBase map(invertOneToMany(UPstream::nProcs(), destProc));
 
+    //Pout<< "constructSize:" << map.constructSize() << endl;
     //Pout<< "subMap:" << map.subMap() << endl;
     //Pout<< "constructMap:" << map.constructMap() << endl;
 
@@ -182,11 +188,8 @@ int main(int argc, char *argv[])
 
     pointField newCentres;
     {
-        const primitivePatch newPatch
-        (
-            SubList<face>(newFaces, newFaces.size()),
-            newPoints
-        );
+        const primitivePatch newPatch(SubList<face>(newFaces), newPoints);
+
         newCentres = newPatch.faceCentres();
 
         OBJstream os(runTime.path()/"newPatch.obj");
