@@ -1,0 +1,3 @@
+decompositionGAMGAgglomeration.C
+
+LIB = $(FOAM_USER_LIBBIN)/libdecompositionGAMGAgglomeration
