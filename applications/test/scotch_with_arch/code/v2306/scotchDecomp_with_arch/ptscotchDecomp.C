@@ -134,9 +134,6 @@ Foam::label Foam::ptscotch2Decomp::decompose
         decomp_param.set(decomp_dummy);
     }
 
-
-DebugVar(coeffsDict_);
-
     if (debug & 2)
     {
         Pout<< "ptscotch2Decomp : " << numCells << " cells" << endl;
@@ -401,76 +398,30 @@ DebugVar(coeffsDict_);
             "SCOTCH_archCmpltw"
         );
     }
-    else if
-    (
-        coeffsDict_.readIfPresent("domains", domains, keyType::LITERAL)
-     && coeffsDict_.readIfPresent("domainWeights", dWeights, keyType::LITERAL)
-    )
-    {
-        // multi-level
-
-        label nTotal = 1;
-        for (const label n : domains)
-        {
-            nTotal *= n;
-        }
-
-        if (nTotal < nDomains())
-        {
-            const label sz = domains.size();
-            domains.setSize(sz+1);
-            dWeights.setSize(sz+1);
-            for (label i = sz-1; i >= 0; i--)
-            {
-                domains[i+1] = domains[i];
-                dWeights[i+1] = dWeights[i];
-            }
-
-            if (nDomains() % nTotal)
-            {
-                FatalErrorInFunction
-                    << "Top level decomposition specifies " << nDomains()
-                    << " domains which is not equal to the product of"
-                    << " all sub domains " << nTotal
-                    << exit(FatalError);
-            }
-
-            domains[0] = nDomains() / nTotal;
-            dWeights[0] = scalar(1);
-        }
-
-
-        // Note: min, not gMin since routine runs on master only.
-        const scalar minWeights = min(dWeights);
-
-        // Convert to integers.
-        List<SCOTCH_Num> weights(dWeights.size());
-
-        forAll(weights, i)
-        {
-            weights[i] = static_cast<SCOTCH_Num>
-            (
-                (dWeights[i]/minWeights - 1) + 1
-            );
-        }
-DebugVar(domains);
-DebugVar(dWeights);
-DebugVar(weights);
-
-        check
-        (
-            SCOTCH_archTleaf
-            (
-                &archdat,
-                SCOTCH_Num(domains.size()),
-                domains.cdata(),
-                weights.cdata()
-            ),
-            "SCOTCH_archTleaf"
-        );
-    }
     else
     {
+        if
+        (
+            coeffsDict_.readIfPresent
+            (
+                "domains",
+                domains,
+                keyType::LITERAL
+            )
+         && coeffsDict_.readIfPresent
+            (
+                "domainWeights",
+                dWeights,
+                keyType::LITERAL
+            )
+        )
+        {
+            WarningInFunction
+                << "Ignoring multi-level decomposition since"
+                << " not supported by ptscotch."
+                << " It is supported by scotch" << endl;
+        }
+
         if (debug & 2)
         {
             Pout<< "SCOTCH_archCmplt" << endl;
