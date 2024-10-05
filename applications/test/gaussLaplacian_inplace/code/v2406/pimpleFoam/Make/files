@@ -1,5 +1,6 @@
-gaussDivSchemes.C
-gaussGrads.C
+leastSquaresGrad2s.C
+gaussDivScheme2s.C
+gaussGrad2s.C
 pimpleFoam.C
 
 EXE = $(FOAM_USER_APPBIN)/pimpleFoam_gaussLaplacian_inplace

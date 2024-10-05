@@ -26,8 +26,9 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "gaussGrad.H"
+#include "gaussGrad2.H"
 #include "extrapolatedCalculatedFvPatchField.H"
+#include "fvcSurfaceOps.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -109,6 +110,7 @@ Foam::fv::gaussGrad2<Type>::gradf
 }
 
 
+/*
 template<class Type>
 void Foam::fv::gaussGrad2<Type>::calcGrad
 (
@@ -189,6 +191,7 @@ void Foam::fv::gaussGrad2<Type>::calcGrad
 
     gGrad.correctBoundaryConditions();
 }
+*/
 
 
 template<class Type>
@@ -230,7 +233,26 @@ Foam::fv::gaussGrad2<Type>::calcGrad
     );
     GradFieldType& gGrad = tgGrad.ref();
 
-    calcGrad(vsf, tinterpScheme_().weights(vsf), gGrad);
+    //calcGrad(vsf, tinterpScheme_().weights(vsf), gGrad);
+
+    const auto interpolator = [&]
+    (
+        const vector& area,
+        const scalar lambda,
+        const Type& ownVal,
+        const Type& neiVal
+    ) -> GradType
+    {
+        return area*(lambda*(ownVal - neiVal) + neiVal);
+    };
+
+    fvc::GaussOp
+    (
+        vsf,
+        tinterpScheme_().weights(vsf),
+        interpolator,
+        gGrad
+    );
 
     correctBoundaryConditions(vsf, gGrad);
 

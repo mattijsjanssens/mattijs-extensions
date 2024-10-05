@@ -25,7 +25,8 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "gaussDivScheme.H"
+#include "fvcSurfaceOps.H"
+#include "gaussDivScheme2.H"
 #include "fvcSurfaceIntegrate.H"
 #include "fvMatrices.H"
 
@@ -41,6 +42,7 @@ namespace fv
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+/*
 template<class Type>
 void gaussDivScheme2<Type>::fvcDiv
 (
@@ -112,6 +114,7 @@ void gaussDivScheme2<Type>::fvcDiv
     fldi /= mesh.Vsc();
     fld.correctBoundaryConditions();
 }
+*/
 
 
 template<class Type>
@@ -147,7 +150,26 @@ gaussDivScheme2<Type>::fvcDiv
     );
     DivFieldType& div = tDiv.ref();
 
-    fvcDiv(vf, this->tinterpScheme_().weights(vf), div);
+    //fvcDiv(vf, this->tinterpScheme_().weights(vf), div);
+
+    const auto interpolator = [&]
+    (
+        const vector& area,
+        const scalar lambda,
+        const Type& ownVal,
+        const Type& neiVal
+    ) -> DivType
+    {
+        return area & (lambda*(ownVal - neiVal) + neiVal);
+    };
+
+    fvc::GaussOp
+    (
+        vf,
+        this->tinterpScheme_().weights(vf),
+        interpolator,
+        div
+    );
 
     return tDiv;
 }

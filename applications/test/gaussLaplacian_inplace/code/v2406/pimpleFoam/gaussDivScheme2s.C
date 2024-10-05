@@ -25,11 +25,11 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "gaussDivScheme2.H"
 #include "fvMesh.H"
-#include "gaussGrad.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makeFvGradScheme(gaussGrad2)
+makeFvDivScheme(gaussDivScheme2)
 
 // ************************************************************************* //

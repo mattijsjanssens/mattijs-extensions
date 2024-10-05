@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
+    Copyright (C) 2024 M.Janssens
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -23,99 +23,60 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::fv::gaussDivScheme2
-
-Group
-    grpFvDivSchemes
+InNamespace
+    Foam::fvc
 
 Description
-    Basic second-order div using face-gradients and Gauss' theorem.
+    Surface integrate surfaceField creating a volField.
+    Surface sum a surfaceField creating a volField.
 
 SourceFiles
-    gaussDivScheme.C
+    fvcSurfaceIntegrate.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef gaussDivScheme2_H
-#define gaussDivScheme2_H
 
-#include "divScheme.H"
+#ifndef fvcSurfaceIntegrate_H
+#define fvcSurfaceIntegrate_H
+
+#include "primitiveFieldsFwd.H"
+#include "volFieldsFwd.H"
+#include "surfaceFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-namespace fv
-{
-
 /*---------------------------------------------------------------------------*\
-                       Class gaussDivScheme2 Declaration
+                     Namespace fvc functions Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class Type>
-class gaussDivScheme2
-:
-    public fv::divScheme<Type>
+namespace fvc
 {
-    // Private Member Functions
+    //- Interpolate to face (using cop) and apply Gauss. Note: uses V(),
+    //  not Vsc()
+    template<class Type, class ResultType, class CombineOp>
+    void GaussOp
+    (
+        const GeometricField<Type, fvPatchField, volMesh>& vf,
+        const surfaceScalarField& lambdas,
+        const CombineOp& cop,
+        GeometricField<ResultType, fvPatchField, volMesh>& result
+    );
 
-        //- No copy construct
-        gaussDivScheme2(const gaussDivScheme2&) = delete;
+    //- Interpolate to face (using cop) and apply vectors
+    template<class Type, class ResultType, class CombineOp>
+    void surfaceOp
+    (
+        const GeometricField<Type, fvPatchField, volMesh>& vf,
+        const surfaceVectorField& ownLs,
+        const surfaceVectorField& neiLs,
+        const CombineOp& cop,
+        GeometricField<ResultType, fvPatchField, volMesh>& result
+    );
+}
 
-        //- No copy assignment
-        void operator=(const gaussDivScheme2&) = delete;
-
-
-public:
-
-    //- Runtime type information
-    TypeName("Gauss2");
-
-
-    // Constructors
-
-        //- Construct null
-        gaussDivScheme2(const fvMesh& mesh)
-        :
-            divScheme<Type>(mesh)
-        {}
-
-        //- Construct from Istream
-        gaussDivScheme2(const fvMesh& mesh, Istream& is)
-        :
-            divScheme<Type>(mesh, is)
-        {}
-
-
-    // Member Functions
-
-        tmp
-        <
-            GeometricField
-            <typename innerProduct<vector, Type>::type, fvPatchField, volMesh>
-        > fvcDiv
-        (
-            const GeometricField<Type, fvPatchField, volMesh>&
-        );
-
-        //- Inplace
-        void fvcDiv
-        (
-            const GeometricField<Type, fvPatchField, volMesh>& vf,
-            const surfaceScalarField& lambdas,
-            GeometricField
-            <typename innerProduct<vector, Type>::type, fvPatchField, volMesh>&
-        );
-};
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace fv
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -124,7 +85,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "gaussDivScheme.C"
+    #include "fvcSurfaceOps.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

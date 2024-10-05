@@ -25,26 +25,23 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fv::gaussGrad2
+    Foam::fv::leastSquaresGrad2
 
 Group
     grpFvGradSchemes
 
 Description
-    Basic second-order gradient scheme using face-interpolation
-    and Gauss' theorem.
+    Second-order gradient scheme using least-squares.
 
 SourceFiles
-    gaussGrad.C
+    leastSquaresGrad.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef Foam_gaussGrad2_H
-#define Foam_gaussGrad2_H
+#ifndef leastSquaresGrad2_H
+#define leastSquaresGrad2_H
 
 #include "gradScheme.H"
-#include "surfaceInterpolationScheme.H"
-#include "linear.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -57,81 +54,45 @@ namespace fv
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class gaussGrad2 Declaration
+                      Class leastSquaresGrad2 Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class Type>
-class gaussGrad2
+class leastSquaresGrad2
 :
     public fv::gradScheme<Type>
 {
-    // Private Data
-
-        //- Interpolation scheme
-        tmp<surfaceInterpolationScheme<Type>> tinterpScheme_;
-
-
     // Private Member Functions
 
         //- No copy construct
-        gaussGrad2(const gaussGrad2&) = delete;
+        leastSquaresGrad2(const leastSquaresGrad2&) = delete;
 
         //- No copy assignment
-        void operator=(const gaussGrad2&) = delete;
+        void operator=(const leastSquaresGrad2&) = delete;
 
 
 public:
 
     //- Runtime type information
-    TypeName("Gauss2");
+    TypeName("leastSquares2");
 
 
     // Constructors
 
         //- Construct from mesh
-        gaussGrad2(const fvMesh& mesh)
+        leastSquaresGrad2(const fvMesh& mesh)
         :
-            gradScheme<Type>(mesh),
-            tinterpScheme_(new linear<Type>(mesh))
+            gradScheme<Type>(mesh)
         {}
 
-        //- Construct from mesh and Istream
-        gaussGrad2(const fvMesh& mesh, Istream& is)
+        //- Construct from Istream
+        leastSquaresGrad2(const fvMesh& mesh, Istream&)
         :
-            gradScheme<Type>(mesh),
-            tinterpScheme_(nullptr)
-        {
-            if (is.eof())
-            {
-                tinterpScheme_.reset
-                (
-                    new linear<Type>(mesh)
-                );
-            }
-            else
-            {
-                tinterpScheme_.reset
-                (
-                    surfaceInterpolationScheme<Type>::New(mesh, is)
-                );
-            }
-        }
+            gradScheme<Type>(mesh)
+        {}
 
 
     // Member Functions
-
-        //- Return the gradient of the given field
-        //- calculated using Gauss' theorem on the given surface field
-        static
-        tmp
-        <
-            GeometricField
-            <typename outerProduct<vector, Type>::type, fvPatchField, volMesh>
-        > gradf
-        (
-            const GeometricField<Type, fvsPatchField, surfaceMesh>&,
-            const word& name
-        );
 
         //- Return the gradient of the given field to the gradScheme::grad
         //- for optional caching
@@ -144,29 +105,6 @@ public:
             const GeometricField<Type, fvPatchField, volMesh>& vsf,
             const word& name
         ) const;
-
-        //- Return the gradient of the given field
-        //- calculated using Gauss' theorem on the interpolated volume field
-        static void calcGrad
-        (
-            const GeometricField<Type, fvPatchField, volMesh>&,
-            const surfaceScalarField& lambdas,
-            GeometricField
-            <
-                typename outerProduct<vector, Type>::type,
-                fvPatchField,
-                volMesh
-            >& gGrad
-        );
-
-        //- Correct the boundary values of the gradient using the patchField
-        //- snGrad functions
-        static void correctBoundaryConditions
-        (
-            const GeometricField<Type, fvPatchField, volMesh>&,
-            GeometricField
-            <typename outerProduct<vector, Type>::type, fvPatchField, volMesh>&
-        );
 };
 
 
@@ -181,7 +119,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "gaussGrad.C"
+    #include "leastSquaresGrad2.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
