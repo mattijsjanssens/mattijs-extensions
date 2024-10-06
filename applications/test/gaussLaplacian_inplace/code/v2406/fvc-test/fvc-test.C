@@ -94,111 +94,34 @@ int main(int argc, char *argv[])
         " of Newtonian fluids on a moving mesh."
     );
 
-    #include "postProcess.H"
-
     #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createDynamicFvMesh.H"
-    #include "initContinuityErrs.H"
-    #include "createDyMControls.H"
-    #include "createFields.H"
 
-    #include "createUfIfPresent.H"
-    #include "CourantNo.H"
-    #include "setInitialDeltaT.H"
+    Info<< "Reading field T\n" << endl;
+    volScalarField T
+    (
+        IOobject
+        (
+            "T",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh
+    );
+    const volScalarField T2("T2", T);
 
-    turbulence->validate();
+    tmp<volScalarField> tlaplacianT(fvc::laplacian(T));
+    Pout<< "tlaplacianT:" << tlaplacianT() << endl;
+    tmp<surfaceScalarField> tsnGradT(fvc::snGrad(T));
+    Pout<< "tsnGradT:" << tsnGradT() << endl;
 
-    if (!LTS)
-    {
-        #include "CourantNo.H"
-        #include "setInitialDeltaT.H"
-    }
-
-    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-    Info<< "\nStarting time loop\n" << endl;
-
-    while (runTime.run())
-    {
-        #include "readDyMControls.H"
-
-        if (LTS)
-        {
-            #include "setRDeltaT.H"
-        }
-        else
-        {
-            #include "CourantNo.H"
-            #include "setDeltaT.H"
-        }
-
-        ++runTime;
-
-        Info<< "Time = " << runTime.timeName() << nl << endl;
-
-        // --- Pressure-velocity PIMPLE corrector loop
-        while (pimple.loop())
-        {
-            if (pimple.firstIter() || moveMeshOuterCorrectors)
-            {
-                // Do any mesh changes
-                mesh.controlledUpdate();
-
-                if (mesh.changing())
-                {
-                    MRF.update();
-
-                    if (correctPhi)
-                    {
-                        // Calculate absolute flux
-                        // from the mapped surface velocity
-                        phi = mesh.Sf() & Uf();
-
-                        #include "correctPhi.H"
-
-                        // Make the flux relative to the mesh motion
-                        fvc::makeRelative(phi, U);
-                    }
-
-                    if (checkMeshCourantNo)
-                    {
-                        #include "meshCourantNo.H"
-                    }
-                }
-            }
-
-            #include "UEqn.H"
-
-            // --- Pressure corrector loop
-            while (pimple.correct())
-            {
-                #include "pEqn.H"
-            }
-
-
-{
-    const volScalarField p2("p2", p);
-    tmp<volScalarField> tlaplacianp2(fvc::laplacian(p2));
-    Pout<< "tlaplacianp2:" << tlaplacianp2() << endl;
-    const volScalarField p3("p3", p);
-    tmp<volScalarField> tlaplacianp3(fvc::laplacian(p3));
-    Pout<< "tlaplacianp3:" << tlaplacianp3() << endl;
-}
-
-
-            if (pimple.turbCorr())
-            {
-                laminarTransport.correct();
-                turbulence->correct();
-            }
-        }
-
-        runTime.write();
-
-        runTime.printExecutionTime(Info);
-    }
+    Pout<< "uncorrectedLaplacian" << endl;
+    tmp<volScalarField> tlaplacianT2(fvc::laplacian(T2));
+    Pout<< "tlaplacianT2:" << tlaplacianT2() << endl;
 
     Info<< "End\n" << endl;
 

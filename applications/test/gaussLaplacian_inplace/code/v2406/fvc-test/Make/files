@@ -2,6 +2,6 @@ uncorrectedGaussLaplacianSchemes.C
 leastSquaresGrad2s.C
 gaussDivScheme2s.C
 gaussGrad2s.C
-pimpleFoam.C
+fvc-test.C
 
-EXE = $(FOAM_USER_APPBIN)/pimpleFoam_gaussLaplacian_inplace
+EXE = $(FOAM_USER_APPBIN)/fvc-test

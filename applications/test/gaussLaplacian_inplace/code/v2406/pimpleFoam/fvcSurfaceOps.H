@@ -31,13 +31,13 @@ Description
     Surface sum a surfaceField creating a volField.
 
 SourceFiles
-    fvcSurfaceIntegrate.C
+    fvcSurfaceOps.C
 
 \*---------------------------------------------------------------------------*/
 
 
-#ifndef fvcSurfaceIntegrate_H
-#define fvcSurfaceIntegrate_H
+#ifndef fvcSurfaceOps_H
+#define fvcSurfaceOps_H
 
 #include "primitiveFieldsFwd.H"
 #include "volFieldsFwd.H"
@@ -54,25 +54,36 @@ namespace Foam
 
 namespace fvc
 {
+    //- Interpolate to face (using cop) and accumulate.
+    template<class Type, class ResultType, class CellToFaceOp>
+    void surfaceSum
+    (
+        const GeometricField<Type, fvPatchField, volMesh>& vf,
+        const surfaceScalarField& lambdas,
+        const CellToFaceOp& cop,
+        GeometricField<ResultType, fvPatchField, volMesh>& result,
+        const bool doCorrectBoundaryConditions = true
+    );
+
     //- Interpolate to face (using cop) and apply Gauss. Note: uses V(),
     //  not Vsc()
-    template<class Type, class ResultType, class CombineOp>
+    template<class Type, class ResultType, class CellToFaceOp>
     void GaussOp
     (
         const GeometricField<Type, fvPatchField, volMesh>& vf,
         const surfaceScalarField& lambdas,
-        const CombineOp& cop,
+        const CellToFaceOp& cop,
         GeometricField<ResultType, fvPatchField, volMesh>& result
     );
 
     //- Interpolate to face (using cop) and apply vectors
-    template<class Type, class ResultType, class CombineOp>
+    template<class Type, class ResultType, class CellToFaceOp>
     void surfaceOp
     (
         const GeometricField<Type, fvPatchField, volMesh>& vf,
         const surfaceVectorField& ownLs,
         const surfaceVectorField& neiLs,
-        const CombineOp& cop,
+        const CellToFaceOp& cop,
         GeometricField<ResultType, fvPatchField, volMesh>& result
     );
 }

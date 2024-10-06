@@ -40,13 +40,14 @@ namespace fvc
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-template<class Type, class ResultType, class CombineOp>
-void GaussOp
+template<class Type, class ResultType, class CellToFaceOp>
+void surfaceSum
 (
     const GeometricField<Type, fvPatchField, volMesh>& vf,
     const surfaceScalarField& lambdas,
-    const CombineOp& cop,
-    GeometricField<ResultType, fvPatchField, volMesh>& result
+    const CellToFaceOp& cop,
+    GeometricField<ResultType, fvPatchField, volMesh>& result,
+    const bool doCorrectBoundaryConditions
 )
 {
     const fvMesh& mesh = vf.mesh();
@@ -137,6 +138,28 @@ void GaussOp
         }
     }
 
+    if (doCorrectBoundaryConditions)
+    {
+        result.correctBoundaryConditions();
+    }
+}
+
+
+template<class Type, class ResultType, class CombineOp>
+void GaussOp
+(
+    const GeometricField<Type, fvPatchField, volMesh>& vf,
+    const surfaceScalarField& lambdas,
+    const CombineOp& cop,
+    GeometricField<ResultType, fvPatchField, volMesh>& result
+)
+{
+    const fvMesh& mesh = vf.mesh();
+
+    // Sum contributions
+    surfaceSum(vf, lambdas, cop, result, false);
+
+    auto& sfi = result.primitiveFieldRef();
     sfi /= mesh.V();
 
     result.correctBoundaryConditions();
