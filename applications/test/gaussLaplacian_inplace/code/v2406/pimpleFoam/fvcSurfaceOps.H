@@ -86,6 +86,19 @@ namespace fvc
         const CellToFaceOp& cop,
         GeometricField<ResultType, fvPatchField, volMesh>& result
     );
+
+    //- sum of snGrad with additional cell-based multiplier
+    template<class Type, class GType, class ResultType, class CellToFaceOp>
+    void surfaceSnSum
+    (
+        const GeometricField<GType, fvPatchField, volMesh>& gamma,
+        const surfaceScalarField& gammaWeights,
+        const GeometricField<Type, fvPatchField, volMesh>& vf,
+        const surfaceScalarField& deltaCoeffs,
+        const CellToFaceOp& cop,
+        GeometricField<ResultType, fvPatchField, volMesh>& result,
+        const bool doCorrectBoundaryConditions
+    );
 }
 
 

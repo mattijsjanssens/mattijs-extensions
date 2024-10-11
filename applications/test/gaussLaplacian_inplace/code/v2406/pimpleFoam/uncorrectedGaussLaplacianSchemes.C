@@ -114,6 +114,80 @@ fvcLaplacian                                                                   \
     );                                                                         \
                                                                                \
     return tLaplacian;                                                         \
+}                                                                              \
+                                                                               \
+                                                                               \
+template<>                                                                     \
+Foam::tmp<Foam::GeometricField<Foam::Type, Foam::fvPatchField, Foam::volMesh>> \
+Foam::fv::uncorrectedGaussLaplacianScheme<Foam::Type, Foam::scalar>::          \
+fvcLaplacian                                                                   \
+(                                                                              \
+    const GeometricField<scalar, fvPatchField, volMesh>& gamma,                \
+    const GeometricField<Type, fvPatchField, volMesh>& vf                      \
+)                                                                              \
+{                                                                              \
+    typedef GeometricField<Type, fvPatchField, volMesh> FieldType;             \
+                                                                               \
+    Foam::tmp<FieldType> tresult                                               \
+    (                                                                          \
+        new FieldType                                                          \
+        (                                                                      \
+            IOobject                                                           \
+            (                                                                  \
+                "laplacian(" + vf.name() + ')',                                \
+                vf.instance(),                                                 \
+                vf.mesh(),                                                     \
+                IOobject::NO_READ,                                             \
+                IOobject::NO_WRITE                                             \
+            ),                                                                 \
+            vf.mesh(),                                                         \
+            dimensioned<Type>                                                  \
+            (                                                                  \
+                gamma.dimensions()*vf.dimensions()/dimArea, Zero               \
+            ),                                                                 \
+            fvPatchFieldBase::extrapolatedCalculatedType()                     \
+        )                                                                      \
+    );                                                                         \
+    FieldType& result = tresult.ref();                                         \
+                                                                               \
+    const auto tweights(this->tinterpGammaScheme_().weights(gamma));           \
+    const auto& weights = tweights();                                          \
+    const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));           \
+    const auto& dcs = tdeltaCoeffs();                                          \
+                                                                               \
+    const auto snGrad = [&]                                                    \
+    (                                                                          \
+        const vector& Sf,                                                      \
+                                                                               \
+        const scalar weight,                                                   \
+        const scalar ownGamma,                                                 \
+        const scalar neiGamma,                                                 \
+                                                                               \
+        const scalar dc,                                                       \
+        const Type& ownVal,                                                    \
+        const Type& neiVal                                                     \
+    ) -> Type                                                                  \
+    {                                                                          \
+        const scalar faceGamma(weight*(ownGamma-neiGamma)+neiGamma);           \
+        const Type snGrad(dc*(neiVal-ownVal));                                 \
+        return mag(Sf)*faceGamma*snGrad;                                       \
+    };                                                                         \
+                                                                               \
+    fvc::surfaceSnSum                                                          \
+    (                                                                          \
+        gamma,                                                                 \
+        weights,                                                               \
+        vf,                                                                    \
+        dcs,                                                                   \
+        snGrad,                                                                \
+        result,                                                                \
+        false                                                                  \
+    );                                                                         \
+                                                                               \
+    result.primitiveFieldRef() /= vf.mesh().V();                               \
+    result.correctBoundaryConditions();                                        \
+                                                                               \
+    return tresult;                                                            \
 }
 
 

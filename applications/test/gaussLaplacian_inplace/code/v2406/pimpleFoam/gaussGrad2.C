@@ -261,13 +261,11 @@ Foam::fv::gaussGrad2<Type>::calcGrad
 
 
 template<class Type>
+template<class GradType>
 void Foam::fv::gaussGrad2<Type>::correctBoundaryConditions
 (
     const GeometricField<Type, fvPatchField, volMesh>& vsf,
-    GeometricField
-    <
-        typename outerProduct<vector, Type>::type, fvPatchField, volMesh
-    >& gGrad
+    GeometricField<GradType, fvPatchField, volMesh>& gGrad
 )
 {
     const fvMesh& mesh = vsf.mesh();

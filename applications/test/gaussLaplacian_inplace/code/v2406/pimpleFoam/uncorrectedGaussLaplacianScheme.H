@@ -64,8 +64,17 @@ class uncorrectedGaussLaplacianScheme
 {
     // Private Member Functions
 
+        //- See gaussLaplacianScheme
         tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> gammaSnGradCorr
         (
+            const surfaceVectorField& SfGammaCorr,
+            const GeometricField<Type, fvPatchField, volMesh>&
+        );
+
+        //- Using in-place gradient
+        tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> gammaSnGradCorr
+        (
+            const surfaceScalarField& weights,
             const surfaceVectorField& SfGammaCorr,
             const GeometricField<Type, fvPatchField, volMesh>&
         );
@@ -123,22 +132,50 @@ public:
             const GeometricField<Type, fvPatchField, volMesh>&
         );
 
-        tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
+        //- Helper: grad on component. Move to GaussGrad? Template on
+        //  - cell-access operator?
+        //  - cell-to-face operator?
+        //  - face-to-cell operator?
+        static void gradComponent
+        (
+            const surfaceScalarField& weights,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const direction cmpt,
+            GeometricField<Type, fvPatchField, volMesh>& gGrad
+        );
+
+        virtual tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
         (
             const GeometricField<Type, fvPatchField, volMesh>&
         );
 
-        tmp<fvMatrix<Type>> fvmLaplacian
+        virtual tmp<fvMatrix<Type>> fvmLaplacian
         (
             const GeometricField<GType, fvsPatchField, surfaceMesh>&,
             const GeometricField<Type, fvPatchField, volMesh>&
         );
 
-        tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
+        virtual tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
         (
             const GeometricField<GType, fvsPatchField, surfaceMesh>&,
             const GeometricField<Type, fvPatchField, volMesh>&
         );
+
+
+    // New: override laplacianScheme::fvcLaplacian for volField gamma
+
+        virtual tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
+        (
+            const GeometricField<GType, fvPatchField, volMesh>&,
+            const GeometricField<Type, fvPatchField, volMesh>&
+        );
+
+//        //- Helper
+//        tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
+//        (
+//            const GeometricField<GType, fvPatchField, volMesh>&,
+//            const GeometricField<Type, fvPatchField, volMesh>&
+//        );
 };
 
 
@@ -159,6 +196,14 @@ tmp<GeometricField<Type, fvPatchField, volMesh>>                               \
 uncorrectedGaussLaplacianScheme<Type, scalar>::fvcLaplacian                    \
 (                                                                              \
     const GeometricField<scalar, fvsPatchField, surfaceMesh>&,                 \
+    const GeometricField<Type, fvPatchField, volMesh>&                         \
+);                                                                             \
+                                                                               \
+template<>                                                                     \
+tmp<GeometricField<Type, fvPatchField, volMesh>>                               \
+uncorrectedGaussLaplacianScheme<Type, scalar>::fvcLaplacian                    \
+(                                                                              \
+    const GeometricField<scalar, fvPatchField, volMesh>&,                      \
     const GeometricField<Type, fvPatchField, volMesh>&                         \
 );
 

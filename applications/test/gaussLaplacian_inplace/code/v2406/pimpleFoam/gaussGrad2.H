@@ -163,11 +163,11 @@ public:
 
         //- Correct the boundary values of the gradient using the patchField
         //- snGrad functions
+        template<class GradType>
         static void correctBoundaryConditions
         (
             const GeometricField<Type, fvPatchField, volMesh>&,
-            GeometricField
-            <typename outerProduct<vector, Type>::type, fvPatchField, volMesh>&
+            GeometricField<GradType, fvPatchField, volMesh>&
         );
 };
 

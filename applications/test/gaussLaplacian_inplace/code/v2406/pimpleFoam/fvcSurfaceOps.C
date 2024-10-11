@@ -67,8 +67,8 @@ void surfaceSum
 
         for (label facei=0; facei<P.size(); facei++)
         {
-            const label ownFacei = P[facei];
-            const label neiFacei = N[facei];
+            const label ownCelli = P[facei];
+            const label neiCelli = N[facei];
 
             const ResultType faceVal
             (
@@ -76,12 +76,12 @@ void surfaceSum
                 (
                     Sfi[facei],
                     lambda[facei],
-                    vfi[ownFacei],
-                    vfi[neiFacei]
+                    vfi[ownCelli],
+                    vfi[neiCelli]
                 )
             );
-            sfi[ownFacei] += faceVal;
-            sfi[neiFacei] -= faceVal;
+            sfi[ownCelli] += faceVal;
+            sfi[neiCelli] -= faceVal;
         }
     }
 
@@ -190,20 +190,20 @@ void surfaceOp
 
         for (label facei=0; facei<P.size(); facei++)
         {
-            const label ownFacei = P[facei];
-            const label neiFacei = N[facei];
+            const label ownCelli = P[facei];
+            const label neiCelli = N[facei];
 
             const Type faceVal
             (
                 cop
                 (
                     Sfi[facei],     // needed?
-                    vfi[ownFacei],
-                    vfi[neiFacei]
+                    vfi[ownCelli],
+                    vfi[neiCelli]
                 )
             );
-            sfi[ownFacei] += ownLs[facei]*faceVal;
-            sfi[neiFacei] -= neiLs[facei]*faceVal;
+            sfi[ownCelli] += ownLs[facei]*faceVal;
+            sfi[neiCelli] -= neiLs[facei]*faceVal;
         }
     }
 
@@ -257,6 +257,140 @@ void surfaceOp
     }
 
     result.correctBoundaryConditions();
+}
+
+
+template<class Type, class GType, class ResultType, class CellToFaceOp>
+void surfaceSnSum
+(
+    const GeometricField<GType, fvPatchField, volMesh>& gamma,
+    const surfaceScalarField& gammaWeights,
+    const GeometricField<Type, fvPatchField, volMesh>& vf,
+    const surfaceScalarField& deltaCoeffs,
+    const CellToFaceOp& cop,
+    GeometricField<ResultType, fvPatchField, volMesh>& result,
+    const bool doCorrectBoundaryConditions
+)
+{
+    const fvMesh& mesh = vf.mesh();
+    const auto& Sf = mesh.Sf();
+    const auto& P = mesh.owner();
+    const auto& N = mesh.neighbour();
+
+    const auto& gammai = gamma.primitiveField();
+    const auto& vfi = vf.primitiveField();
+    auto& sfi = result.primitiveFieldRef();
+
+    // Internal field
+    {
+        const auto& Sfi = Sf.primitiveField();
+        const auto& weights = gammaWeights.primitiveField();
+        const auto& dc = deltaCoeffs.primitiveField();
+
+        for (label facei=0; facei<P.size(); facei++)
+        {
+            const label ownCelli = P[facei];
+            const label neiCelli = N[facei];
+
+            const ResultType faceVal
+            (
+                cop
+                (
+                    Sfi[facei],         // area vector
+
+                    weights[facei],     // interpolation weights
+                    gammai[ownCelli],
+                    gammai[neiCelli],
+
+                    dc[facei],          // delta coefficients
+                    vfi[ownCelli],
+                    vfi[neiCelli]
+                )
+            );
+            sfi[ownCelli] += faceVal;
+            sfi[neiCelli] -= faceVal;
+        }
+    }
+
+
+    // Boundary field
+    {
+        forAll(mesh.boundary(), patchi)
+        {
+            const auto& pFaceCells = mesh.boundary()[patchi].faceCells();
+            const auto& pSf = Sf.boundaryField()[patchi];
+            const auto& pvf = vf.boundaryField()[patchi];
+            const auto& pdc = deltaCoeffs.boundaryField()[patchi];
+            const auto& pweights = gammaWeights.boundaryField()[patchi];
+            const auto& pgamma = gamma.boundaryField()[patchi];
+
+            if (pvf.coupled())
+            {
+                auto tpnf(pvf.patchNeighbourField());
+                auto& pnf = tpnf();
+                auto tgammanf(pgamma.patchNeighbourField());
+                auto& gammanf = tgammanf();
+
+                for (label facei=0; facei<pFaceCells.size(); facei++)
+                {
+                    const label ownCelli = pFaceCells[facei];
+
+                    // Interpolate between owner-side and neighbour-side values
+                    const ResultType faceVal
+                    (
+                        cop
+                        (
+                            pSf[facei],         // area vector
+
+                            pweights[facei],
+                            gammai[ownCelli],
+                            gammanf[facei],
+
+                            pdc[facei],
+                            vfi[ownCelli],
+                            pnf[facei]
+                        )
+                    );
+
+                    sfi[ownCelli] += faceVal;
+                }
+            }
+            else
+            {
+                auto tpnf(pvf.snGrad());
+                auto& pnf = tpnf();
+
+                for (label facei=0; facei<pFaceCells.size(); facei++)
+                {
+                    const label ownCelli = pFaceCells[facei];
+
+                    // Use patch value only
+                    const ResultType faceVal
+                    (
+                        cop
+                        (
+                            pSf[facei],             // area vector
+
+                            scalar(1.0),
+                            pgamma[facei],
+                            pTraits<GType>::zero,   // not used
+
+
+                            scalar(1.0),            // use 100% of pnf
+                            pTraits<Type>::zero,
+                            pnf[facei]
+                        )
+                    );
+                    sfi[ownCelli] += faceVal;
+                }
+            }
+        }
+    }
+
+    if (doCorrectBoundaryConditions)
+    {
+        result.correctBoundaryConditions();
+    }
 }
 
 

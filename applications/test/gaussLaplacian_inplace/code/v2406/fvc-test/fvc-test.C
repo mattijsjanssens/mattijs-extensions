@@ -114,14 +114,34 @@ int main(int argc, char *argv[])
     );
     const volScalarField T2("T2", T);
 
-    tmp<volScalarField> tlaplacianT(fvc::laplacian(T));
+    volScalarField one
+    (
+        IOobject
+        (
+            "one",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensioned<scalar>(dimLength, 1.0),
+        fvPatchFieldBase::extrapolatedCalculatedType()
+    );
+    DebugVar(one);
+
+
+    tmp<volScalarField> tlaplacianT(fvc::laplacian(one, T));
     Pout<< "tlaplacianT:" << tlaplacianT() << endl;
     tmp<surfaceScalarField> tsnGradT(fvc::snGrad(T));
     Pout<< "tsnGradT:" << tsnGradT() << endl;
 
-    Pout<< "uncorrectedLaplacian" << endl;
-    tmp<volScalarField> tlaplacianT2(fvc::laplacian(T2));
+    Pout<< "** uncorrectedLaplacian **" << endl;
+
+    tmp<volScalarField> tlaplacianT2(fvc::laplacian(one, T2));
     Pout<< "tlaplacianT2:" << tlaplacianT2() << endl;
+    tmp<surfaceScalarField> tsnGradT2(fvc::snGrad(T2));
+    Pout<< "tsnGradT2:" << tsnGradT2() << endl;
 
     Info<< "End\n" << endl;
 
