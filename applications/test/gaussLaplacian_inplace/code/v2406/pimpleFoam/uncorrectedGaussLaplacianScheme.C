@@ -43,6 +43,148 @@ namespace Foam
 namespace fv
 {
 
+template<class Type, class GType>
+class tanInterpolate
+{
+public:
+
+    const direction cmpt_;
+
+    tanInterpolate(const direction cmpt)
+    :
+        cmpt_(cmpt)
+    {}
+
+    void operator()
+    (
+        const vector& Sf,
+
+        const scalar weight,
+
+        const Type& ownGrad,
+        const Type& neiGrad,
+
+        const GType& ownGamma,
+        const GType& neiGamma,
+
+        //const vector& m,
+
+        Type& result
+    ) const
+    {
+        // Interpolate grad
+        const Type faceGrad(weight*(ownGrad-neiGrad)+neiGrad);
+
+        // Interpolate gamma
+        const GType faceGamma(weight*(ownGamma-neiGamma)+neiGamma);
+
+        // Calculate normal
+        const scalar magSf(mag(Sf));
+        const vector Sn(Sf/magSf);
+
+        // Normal & tangential component of faceGamma
+        const vector SfGamma(Sf & faceGamma);
+        const scalar SfGammaSn(SfGamma & Sn);
+        const vector SfGammaCorr(SfGamma - SfGammaSn*Sn);
+
+        result[cmpt_] = (SfGammaCorr & faceGrad);
+    }
+};
+// Specialisation for scalar
+template<class GType>
+class tanInterpolate<scalar, GType>
+{
+public:
+
+    tanInterpolate(const direction cmpt)
+    {}
+
+    void operator()
+    (
+        const vector& Sf,
+
+        const scalar weight,
+
+        const scalar& ownGrad,
+        const scalar& neiGrad,
+
+        const GType& ownGamma,
+        const GType& neiGamma,
+
+        //const vector& m,
+
+        scalar& result
+    ) const
+    {
+        result = Zero;
+    }
+};
+
+
+template<class Type>
+class componentInterpolate
+{
+public:
+
+    const direction cmpt_;
+
+    componentInterpolate(const direction cmpt)
+    :
+        cmpt_(cmpt)
+    {}
+
+    Type operator()
+    (
+        const vector& area,
+        const scalar lambda,
+        const Type& ownVal,
+        const Type& neiVal
+    ) const
+    {
+        return area*(lambda*(ownVal[cmpt_] - neiVal[cmpt_]) + neiVal[cmpt_]);
+    };
+};
+// Specialisation for scalar
+template<>
+class componentInterpolate<scalar>
+{
+public:
+
+    componentInterpolate(const direction cmpt)
+    {}
+
+    scalar operator()
+    (
+        const vector& area,
+        const scalar lambda,
+        const scalar& ownVal,
+        const scalar& neiVal
+    ) const
+    {
+        return mag(area)*(lambda*(ownVal - neiVal) + neiVal);
+    };
+};
+template<>
+class componentInterpolate<sphericalTensor>
+{
+public:
+
+    componentInterpolate(const direction cmpt)
+    {}
+
+    sphericalTensor operator()
+    (
+        const vector& area,
+        const scalar lambda,
+        const sphericalTensor& ownVal,
+        const sphericalTensor& neiVal
+    ) const
+    {
+        return mag(area)*(lambda*(ownVal - neiVal) + neiVal);
+    };
+};
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<class Type, class GType>
@@ -102,28 +244,53 @@ void uncorrectedGaussLaplacianScheme<Type, GType>::gradComponent
     GeometricField<Type, fvPatchField, volMesh>& gGrad
 )
 {
-    gGrad = Zero;
+    gGrad = dimensioned<Type>(vf.dimensions()/dimLength, Zero);
 
-    const auto interpolator = [&]
-    (
-        const vector& area,
-        const scalar lambda,
-        const Type& ownVal,
-        const Type& neiVal
-    ) -> Type
-    {
-        return area*(lambda*(ownVal[cmpt] - neiVal[cmpt]) + neiVal[cmpt]);
-    };
+//    const auto interpolator = [&]
+//    (
+//        const vector& area,
+//        const scalar lambda,
+//        const Type& ownVal,
+//        const Type& neiVal
+//    ) -> Type
+//    {
+//        return area*(lambda*(ownVal[cmpt] - neiVal[cmpt]) + neiVal[cmpt]);
+//    };
 
+    // Calculate grad of vf.component(cmpt)
     fvc::GaussOp
     (
         vf,
         weights,
-        interpolator,
+//        interpolator,
+        componentInterpolate<Type>(cmpt),
         gGrad
     );
 
-    gaussGrad2<Type>::correctBoundaryConditions(vf, gGrad);
+    //gaussGrad2<Type>::correctBoundaryConditions(vf, gGrad);
+//    const fvMesh& mesh = vf.mesh();
+//    auto& gGradbf = gGrad.boundaryFieldRef();
+//
+//    forAll(vf.boundaryField(), patchi)
+//    {
+//        if (!vf.boundaryField()[patchi].coupled())
+//        {
+//            const auto& pSf = mesh.Sf().boundaryField()[patchi];
+//
+//            // Note : use snGrad on original v.s. snGrad on .component. Will
+//            //        give differences on fvPatchFields that define snGrad.
+//            const auto tsnGrad(vf.boundaryField()[patchi].snGrad());
+//            const auto& snGrad = tsnGrad();
+//            auto& pgrad = gGradbf[patchi];
+//
+//            forAll(pgrad, facei)
+//            {
+//                const vector n(pSf[facei]/mag(pSf[facei]));
+//                const auto uncorrectSnGrad(n & pgrad[facei][cmpt]);
+//                pgrad[facei] += n*(snGrad[facei][cmpt] - uncorrectSnGrad);
+//            }
+//        }
+//    }
 }
 
 
@@ -131,6 +298,7 @@ template<class Type, class GType>
 tmp<GeometricField<Type, fvsPatchField, surfaceMesh>>
 uncorrectedGaussLaplacianScheme<Type, GType>::gammaSnGradCorr
 (
+    //const surfaceScalarField& weights,
     const surfaceVectorField& SfGammaCorr,
     const GeometricField<Type, fvPatchField, volMesh>& vf
 )
@@ -154,11 +322,38 @@ uncorrectedGaussLaplacianScheme<Type, GType>::gammaSnGradCorr
            *vf.dimensions()*mesh.deltaCoeffs().dimensions()
         )
     );
-    tgammaSnGradCorr.ref().oriented() = SfGammaCorr.oriented();
+    auto& gammaSnGradCorr = tgammaSnGradCorr.ref();
+    gammaSnGradCorr.oriented() = SfGammaCorr.oriented();
+
+    //GeometricField<Type, fvPatchField, volMesh> gradCmptFld
+    //(
+    //    IOobject
+    //    (
+    //        vf.name() + ".component()",
+    //        vf.instance(),
+    //        mesh,
+    //        IOobject::NO_READ,
+    //        IOobject::NO_WRITE,
+    //        false
+    //    ),
+    //    mesh,
+    //    vf.dimensions()
+    //);
+
 
     for (direction cmpt = 0; cmpt < pTraits<Type>::nComponents; cmpt++)
     {
-        tgammaSnGradCorr.ref().replace
+        //// Calculate fvc::grad(vf.component(cmpt)) into gradCmptFld
+        //gradComponent
+        //(
+        //    weights,
+        //    vf,
+        //    cmpt,
+        //
+        //    gradCmptFld
+        //);
+
+        gammaSnGradCorr.replace
         (
             cmpt,
             fvc::dotInterpolate(SfGammaCorr, fvc::grad(vf.component(cmpt)))
@@ -172,7 +367,7 @@ tmp<GeometricField<Type, fvsPatchField, surfaceMesh>>
 uncorrectedGaussLaplacianScheme<Type, GType>::gammaSnGradCorr
 (
     const surfaceScalarField& weights,
-    const surfaceVectorField& SfGammaCorr,
+    const GeometricField<GType, fvPatchField, volMesh>& gamma,
     const GeometricField<Type, fvPatchField, volMesh>& vf
 )
 {
@@ -191,11 +386,13 @@ uncorrectedGaussLaplacianScheme<Type, GType>::gammaSnGradCorr
                 IOobject::NO_WRITE
             ),
             mesh,
-            SfGammaCorr.dimensions()
+            gamma.dimensions()
            *vf.dimensions()*mesh.deltaCoeffs().dimensions()
         )
     );
-    tgammaSnGradCorr.ref().oriented() = SfGammaCorr.oriented();
+    auto& gammaSnGradCorr = tgammaSnGradCorr.ref();
+
+    gammaSnGradCorr.oriented() = gamma.oriented();
 
 
     GeometricField<Type, fvPatchField, volMesh> gradCmptFld
@@ -218,19 +415,34 @@ uncorrectedGaussLaplacianScheme<Type, GType>::gammaSnGradCorr
 
     for (direction cmpt = 0; cmpt < pTraits<Type>::nComponents; cmpt++)
     {
+        // Calculate fvc::grad(vf.component(cmpt)) into gradCmptFld
         gradComponent
         (
             weights,
             vf,
             cmpt,
+
             gradCmptFld
         );
 
-        tgammaSnGradCorr.ref().replace
+        //gammaSnGradCorr.replace
+        //(
+        //    cmpt,
+        //    fvc::dotInterpolate(SfGammaCorr, gradCmptFld)
+        //);
+
+
+        fvc::interpolate
         (
-            cmpt,
-            //fvc::dotInterpolate(SfGammaCorr, fvc::grad(vf.component(cmpt)))
-            fvc::dotInterpolate(SfGammaCorr, gradCmptFld)
+            weights,
+
+            gradCmptFld,        // fvc::grad(vf.component(cmpt))
+
+            gamma,              // weight field
+
+            tanInterpolate<Type, GType>(cmpt),
+
+            gammaSnGradCorr
         );
     }
 
@@ -354,192 +566,12 @@ uncorrectedGaussLaplacianScheme<Type, GType>::fvcLaplacian
     const GeometricField<Type, fvPatchField, volMesh>& vf
 )
 {
-    typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+Pout<< "** default ::fvcLaplacian gamma:" << gamma.name()
+    << " vf:" << vf.name() << endl;
+    return fvcLaplacian(this->tinterpGammaScheme_().interpolate(gamma)(), vf);
 
-    tmp<FieldType> tresult
-    (
-        new FieldType
-        (
-            IOobject
-            (
-                "laplacian(" + vf.name() + ')',
-                vf.instance(),
-                vf.mesh(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            vf.mesh(),
-            dimensioned<Type>(gamma.dimensions()*vf.dimensions()/dimArea, Zero),
-            fvPatchFieldBase::extrapolatedCalculatedType()
-        )
-    );
-    FieldType& result = tresult.ref();
-
-    const auto tweights(this->tinterpGammaScheme_().weights(gamma));
-    const auto& weights = tweights();
-    const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));
-    const auto& dcs = tdeltaCoeffs();
-
-/*
-    const fvMesh& mesh = vf.mesh();
-    const auto& Sf = mesh.Sf();
-    const auto& P = mesh.owner();
-    const auto& N = mesh.neighbour();
-
-    auto& sfi = result.primitiveFieldRef();
-
-    // Internal field
-    {
-        const auto& Sfi = Sf.primitiveField();
-        const auto& dc = dcs.primitiveField();
-        const auto& weightsi = weights.primitiveField();
-        const auto& vfi = vf.primitiveField();
-        const auto& gammai = gamma.primitiveField();
-
-        for (label facei=0; facei<P.size(); facei++)
-        {
-            const label ownFacei = P[facei];
-            const label neiFacei = N[facei];
-
-            const auto ownVal = vfi[ownFacei];
-            const auto neiVal = vfi[neiFacei];
-
-            const vector Sf = Sfi[facei];
-            const scalar magSf(mag(Sf));
-            const vector Sn(Sf/magSf);
-
-            const auto ownGamma = gammai[ownFacei];
-            const auto neiGamma = gammai[neiFacei];
-
-            // Interpolated value
-            const GType faceGamma(weightsi[facei]*(ownGamma-neiGamma)+neiGamma);
-
-            // Normal & tangential component of faceGamma
-            const vector SfGamma(Sf & faceGamma);
-            const scalar SfGammaSn(SfGamma & Sn);
-            //const vector SfGammCorr(SfGamma - SfGammaSn*Sn);
-
-            const Type snGrad(dc[facei] * (neiVal-ownVal));
-
-            // Difference across face multiplied by area magnitude
-            const Type faceVal(magSf * SfGammaSn * snGrad);
-
-            sfi[ownFacei] += faceVal;
-            sfi[neiFacei] -= faceVal;
-        }
-    }
-
-
-    // Boundary field
-    {
-        forAll(mesh.boundary(), patchi)
-        {
-            const auto& pFaceCells = mesh.boundary()[patchi].faceCells();
-            const auto& pSf = Sf.boundaryField()[patchi];
-            const auto& pvf = vf.boundaryField()[patchi];
-            const auto& pdc = dcs.boundaryField()[patchi];
-            const auto& pgamma = gamma.boundaryField()[patchi];
-
-            if (pvf.coupled())
-            {
-                auto tpnf(pvf.snGrad(pdc));
-                auto& pnf = tpnf();
-
-                for (label facei=0; facei<pFaceCells.size(); facei++)
-                {
-                    const vector Sf = pSf[facei];
-                    const scalar magSf(mag(Sf));
-                    const vector Sn(Sf/magSf);
-
-                    const auto faceGamma = pgamma[facei];
-
-                    // Normal & tangential component of faceGamma
-                    const vector SfGamma(Sf & faceGamma);
-                    const scalar SfGammaSn(SfGamma & Sn);
-                    //const vector SfGammCorr(SfGamma - SfGammaSn*Sn);
-
-                    const Type faceVal(mag(pSf[facei])*SfGammaSn*pnf[facei]);
-                    sfi[pFaceCells[facei]] += faceVal;
-                }
-            }
-            else
-            {
-                auto tpnf(pvf.snGrad());
-                auto& pnf = tpnf();
-                for (label facei=0; facei<pFaceCells.size(); facei++)
-                {
-                    // Use patch value only
-                    const vector Sf = pSf[facei];
-                    const scalar magSf(mag(Sf));
-                    const vector Sn(Sf/magSf);
-
-                    const auto faceGamma = pgamma[facei];
-
-                    // Normal & tangential component of faceGamma
-                    const vector SfGamma(Sf & faceGamma);
-                    const scalar SfGammaSn(SfGamma & Sn);
-
-                    const Type faceVal(mag(pSf[facei])*SfGammaSn*pnf[facei]);
-                    sfi[pFaceCells[facei]] += faceVal;
-                }
-            }
-        }
-    }
-*/
-
-    const auto snGrad = [&]
-    (
-        const vector& Sf,
-
-        const scalar weight,
-        const GType& ownGamma,
-        const GType& neiGamma,
-
-        const scalar dc,
-        const Type& ownVal,
-        const Type& neiVal
-    ) -> Type
-    {
-        const scalar magSf(mag(Sf));
-        const vector Sn(Sf/magSf);
-        const GType faceGamma(weight*(ownGamma-neiGamma)+neiGamma);
-
-        // Normal & tangential component of faceGamma
-        const vector SfGamma(Sf & faceGamma);
-        const scalar SfGammaSn(SfGamma & Sn);
-
-        const Type snGrad(dc*(neiVal-ownVal));
-        return magSf*SfGammaSn*snGrad;
-    };
-
-    fvc::surfaceSnSum
-    (
-        gamma,
-        weights,
-
-        vf,
-        dcs,
-
-        snGrad,
-
-        result,
-        false
-    );
-
-    result.primitiveFieldRef() /= vf.mesh().V();
-    result.correctBoundaryConditions();
-
-    return tresult;
-}
-//XXXXXXXX
-//template<class Type, class GType>
-//tmp<GeometricField<Type, fvPatchField, volMesh>>
-//uncorrectedGaussLaplacianScheme<Type, GType>::fvcLaplacian
-//(
-//    const GeometricField<scalar, fvPatchField, volMesh>& gamma,
-//    const GeometricField<Type, fvPatchField, volMesh>& vf
-//)
-//{
+//    const fvMesh& mesh = this->mesh();
+//
 //    typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
 //
 //    tmp<FieldType> tresult
@@ -550,12 +582,12 @@ uncorrectedGaussLaplacianScheme<Type, GType>::fvcLaplacian
 //            (
 //                "laplacian(" + vf.name() + ')',
 //                vf.instance(),
-//                vf.mesh(),
+//                mesh,
 //                IOobject::NO_READ,
 //                IOobject::NO_WRITE
 //            ),
-//            vf.mesh(),
-//            dimensioned<Type>(vf.dimensions()/dimArea, Zero),
+//            mesh,
+//            dimensioned<Type>(gamma.dimensions()*vf.dimensions()/dimArea, Zero),
 //            fvPatchFieldBase::extrapolatedCalculatedType()
 //        )
 //    );
@@ -563,139 +595,88 @@ uncorrectedGaussLaplacianScheme<Type, GType>::fvcLaplacian
 //
 //    const auto tweights(this->tinterpGammaScheme_().weights(gamma));
 //    const auto& weights = tweights();
-//
-//
-//    // Note: cannot use fvc::GaussOp since specialised handling on boundary.
-//    // Maybe bypass for processor boundaries?
-//
 //    const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));
 //    const auto& dcs = tdeltaCoeffs();
 //
+//    //// Calculate full gradient for correction
+//    //typedef typename outerProduct<vector, Type>::type GradType;
+//    //typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
+//    //tmp<GradFieldType> tgrad(fvc::grad(vf));
 //
-//    const fvMesh& mesh = vf.mesh();
-//    const auto& Sf = mesh.Sf();
-//    const auto& P = mesh.owner();
-//    const auto& N = mesh.neighbour();
+//    const surfaceVectorField Sn(mesh.Sf()/mesh.magSf());
+//    const surfaceVectorField SfGamma(mesh.Sf() & gamma);
+//    const GeometricField<scalar, fvsPatchField, surfaceMesh> SfGammaSn
+//    (
+//        SfGamma & Sn
+//    );
+//    const surfaceVectorField SfGammaCorr(SfGamma - SfGammaSn*Sn);
 //
-//    const auto& gammai = gamma.primitiveField();
-//    const auto& vfi = vf.primitiveField();
-//    auto& sfi = result.primitiveFieldRef();
+//    tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> tgammaSnGradCorr
+//    (
+//        gammaSnGradCorr
+//        (
+//            weights,
+//            SfGammaCorr,    //gamma,  //SfGammaCorr,
+//            vf
+//        )
+//    );
 //
-//    // Internal field
+//
+//    const auto snGrad = [&]
+//    (
+//        const vector& Sf,
+//
+//        const scalar weight,
+//
+//        const GType& ownGamma,
+//        const GType& neiGamma,
+//
+//        //const GradType& ownGrad,
+//        //const GradType& neiGrad,
+//
+//        const scalar dc,
+//        const Type& ownVal,
+//        const Type& neiVal
+//    ) -> Type
 //    {
-//        const auto& Sfi = Sf.primitiveField();
-//        const auto& dc = dcs.primitiveField();
-//        const auto& weightsi = weights.primitiveField();
+//        const scalar magSf(mag(Sf));
+//        const vector Sn(Sf/magSf);
+//        const GType faceGamma(weight*(ownGamma-neiGamma)+neiGamma);
 //
-//        for (label facei=0; facei<P.size(); facei++)
-//        {
-//            const label ownFacei = P[facei];
-//            const label neiFacei = N[facei];
+//        //const GradType faceGrad(weight*(ownGrad-neiGrad)+neiGrad);
 //
-//            const auto ownVal = vfi[ownFacei];
-//            const auto neiVal = vfi[neiFacei];
+//        // Normal & tangential component of faceGamma
+//        const vector SfGamma(Sf & faceGamma);
+//        const scalar SfGammaSn(SfGamma & Sn);
+//        //const vector SfGammaCorr(SfGamma - SfGammaSn*Sn);
 //
-//            const vector Sf = Sfi[facei];
-//            const scalar magSf(mag(Sf));
+//        const Type snGrad(dc*(neiVal-ownVal));
+//        return magSf*(SfGammaSn*snGrad); // +gammaSnGradCorr(SfGammaCorr, vf);
+//        //return magSf*(SfGammaSn*snGrad + (SfGammaCorr&faceGrad));
+//    };
 //
-//            const auto ownGamma = gammai[ownFacei];
-//            const auto neiGamma = gammai[neiFacei];
+//    fvc::surfaceSnSum
+//    (
+//        weights,    // interpolation weights
 //
-//            // Interpolated value
-//            const GType faceGamma(weightsi[facei]*(ownGamma-neiGamma)+neiGamma);
+//        gamma,      // vol field0 to interpolate
+//        //tgrad(),    // vol field1 to interpolate
 //
-//            const Type snGrad(dc[facei] * (neiVal-ownVal));
+//        dcs,        // delta weights
+//        vf,         // vol field to diff
 //
-//            // Difference across face multiplied by area magnitude
-//            const Type faceVal(magSf*faceGamma*snGrad);
+//        snGrad,     // operator
 //
-//            sfi[ownFacei] += faceVal;
-//            sfi[neiFacei] -= faceVal;
-//        }
-//    }
+//        result,
+//        false
+//    );
 //
-//
-//    // Boundary field
-//    {
-//        forAll(mesh.boundary(), patchi)
-//        {
-//            const auto& pFaceCells = mesh.boundary()[patchi].faceCells();
-//            const auto& pSf = Sf.boundaryField()[patchi];
-//            const auto& pvf = vf.boundaryField()[patchi];
-//            const auto& pdc = dcs.boundaryField()[patchi];
-//            const auto& pgamma = gamma.boundaryField()[patchi];
-//
-//            if (pvf.coupled())
-//            {
-//                auto tpnf(pvf.snGrad(pdc));
-//                auto& pnf = tpnf();
-//
-//                for (label facei=0; facei<pFaceCells.size(); facei++)
-//                {
-//                    const vector Sf = pSf[facei];
-//                    const scalar magSf(mag(Sf));
-//
-//                    const auto faceGamma = pgamma[facei];
-//                    const Type faceVal(magSf*faceGamma*pnf[facei]);
-//                    sfi[pFaceCells[facei]] += faceVal;
-//                }
-//            }
-//            else
-//            {
-//                auto tpnf(pvf.snGrad());
-//                auto& pnf = tpnf();
-//                for (label facei=0; facei<pFaceCells.size(); facei++)
-//                {
-//                    // Use patch value only
-//                    const vector Sf = pSf[facei];
-//                    const scalar magSf(mag(Sf));
-//
-//                    const auto faceGamma = pgamma[facei];
-//                    const Type faceVal(magSf*faceGamma*pnf[facei]);
-//                    sfi[pFaceCells[facei]] += faceVal;
-//                }
-//            }
-//        }
-//    }
-//
-//////XXXXXXXXX
-////    const auto snGrad = [&]
-////    (
-////        const vector& Sf,
-////
-////        const scalar weight,
-////        const GType ownGamma,
-////        const GType neiGamma,
-////
-////        const scalar dc,
-////        const Type& ownVal,
-////        const Type& neiVal
-////    ) -> Type
-////    {
-////        const GType faceGamma(weight*(ownGamma-neiGamma)+neiGamma);
-////        const Type snGrad(dc*(neiVal-ownVal));
-////        return mag(Sf)*faceGamma*snGrad;
-////    };
-////
-////    fvc::surfaceSnSum
-////    (
-////        gamma,
-////        weights,
-////        vf,
-////        dcs,
-////        snGrad,
-////        result,
-////        false
-////    );
-//////XXXXXXXXX
-//
-//
-//    sfi /= mesh.V();
+//    result.primitiveFieldRef() /= vf.mesh().V();
 //    result.correctBoundaryConditions();
 //
 //    return tresult;
-//}
-//XXXXXXXX
+}
+
 
 template<class Type, class GType>
 tmp<fvMatrix<Type>>
@@ -708,7 +689,6 @@ uncorrectedGaussLaplacianScheme<Type, GType>::fvmLaplacian
     const fvMesh& mesh = this->mesh();
 
     const surfaceVectorField Sn(mesh.Sf()/mesh.magSf());
-
     const surfaceVectorField SfGamma(mesh.Sf() & gamma);
     const GeometricField<scalar, fvsPatchField, surfaceMesh> SfGammaSn
     (
@@ -723,9 +703,6 @@ uncorrectedGaussLaplacianScheme<Type, GType>::fvmLaplacian
         vf
     );
     fvMatrix<Type>& fvm = tfvm.ref();
-
-//    const auto tweights(this->tinterpGammaScheme_().weights(gamma));
-//    const auto& weights = tweights();
 
     tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> tfaceFluxCorrection
         = gammaSnGradCorr(SfGammaCorr, vf);

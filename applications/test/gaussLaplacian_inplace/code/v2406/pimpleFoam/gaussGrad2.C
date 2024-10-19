@@ -110,90 +110,6 @@ Foam::fv::gaussGrad2<Type>::gradf
 }
 
 
-/*
-template<class Type>
-void Foam::fv::gaussGrad2<Type>::calcGrad
-(
-    const GeometricField<Type, fvPatchField, volMesh>& vf,
-    const surfaceScalarField& lambdas,
-    GeometricField
-    <
-        typename outerProduct<vector, Type>::type, fvPatchField, volMesh
-    >& gGrad
-)
-{
-    typedef typename outerProduct<vector, Type>::type GradType;
-
-    const fvMesh& mesh = vf.mesh();
-    const auto& Sf = mesh.Sf();
-    const auto& P = mesh.owner();
-    const auto& N = mesh.neighbour();
-
-    auto& sfi = gGrad.primitiveFieldRef();
-
-    // See e.g. surfaceInterpolationScheme<Type>::dotInterpolate
-
-    // Internal field
-    {
-        const auto& Sfi = Sf.primitiveField();
-        const auto& vfi = vf.primitiveField();
-        const auto& lambda = lambdas.primitiveField();
-
-        for (label facei=0; facei<P.size(); facei++)
-        {
-            // Same as:
-            // Sfi[facei] * lerp(vfi[N[facei]], vfi[P[facei]], lambda[facei]);
-            // but maybe the compiler notices the fused multiply add form
-            const GradType Sfssf =
-                Sfi[facei]
-              * (lambda[facei]*(vfi[P[facei]] - vfi[N[facei]]) + vfi[N[facei]]);
-
-            sfi[P[facei]] += Sfssf;
-            sfi[N[facei]] -= Sfssf;
-        }
-    }
-
-
-    // Boundary field
-    {
-        forAll(mesh.boundary(), patchi)
-        {
-            const auto& pFaceCells = mesh.boundary()[patchi].faceCells();
-            const auto& pSf = Sf.boundaryField()[patchi];
-            const auto& pvf = vf.boundaryField()[patchi];
-            const auto& pLambda = lambdas.boundaryField()[patchi];
-
-            if (pvf.coupled())
-            {
-                auto tpnf(pvf.patchNeighbourField());
-                auto& pnf = tpnf();
-                auto tpif(pvf.patchInternalField());
-                auto& pif = tpif();
-
-                for (label facei=0; facei<pFaceCells.size(); facei++)
-                {
-                    sfi[pFaceCells[facei]] +=
-                        pSf[facei]
-                      * lerp(pif[facei], pnf[facei], pLambda[facei]);
-                }
-            }
-            else
-            {
-                for (label facei=0; facei<pFaceCells.size(); facei++)
-                {
-                    sfi[pFaceCells[facei]] += pSf[facei]*pvf[facei];
-                }
-            }
-        }
-    }
-
-    sfi /= mesh.V();
-
-    gGrad.correctBoundaryConditions();
-}
-*/
-
-
 template<class Type>
 Foam::tmp
 <
@@ -232,8 +148,6 @@ Foam::fv::gaussGrad2<Type>::calcGrad
         )
     );
     GradFieldType& gGrad = tgGrad.ref();
-
-    //calcGrad(vsf, tinterpScheme_().weights(vsf), gGrad);
 
     const auto interpolator = [&]
     (

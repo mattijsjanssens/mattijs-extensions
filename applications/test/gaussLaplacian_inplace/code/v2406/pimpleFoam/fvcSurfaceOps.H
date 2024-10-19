@@ -54,51 +54,136 @@ namespace Foam
 
 namespace fvc
 {
-    //- Interpolate to face (using cop) and accumulate.
-    template<class Type, class ResultType, class CellToFaceOp>
-    void surfaceSum
-    (
-        const GeometricField<Type, fvPatchField, volMesh>& vf,
-        const surfaceScalarField& lambdas,
-        const CellToFaceOp& cop,
-        GeometricField<ResultType, fvPatchField, volMesh>& result,
-        const bool doCorrectBoundaryConditions = true
-    );
+    // Interpolation
 
-    //- Interpolate to face (using cop) and apply Gauss. Note: uses V(),
-    //  not Vsc()
-    template<class Type, class ResultType, class CellToFaceOp>
-    void GaussOp
-    (
-        const GeometricField<Type, fvPatchField, volMesh>& vf,
-        const surfaceScalarField& lambdas,
-        const CellToFaceOp& cop,
-        GeometricField<ResultType, fvPatchField, volMesh>& result
-    );
+        //- Interpolate to face (using cop) and multiply (face value)
+        template<class Type, class FType, class ResultType, class CellToFaceOp>
+        void interpolate
+        (
+            const surfaceScalarField& lambdas,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const GeometricField<FType, fvsPatchField, surfaceMesh>& sf,
+            const CellToFaceOp& cop,
+            GeometricField<ResultType, fvsPatchField, surfaceMesh>& result
+        );
 
-    //- Interpolate to face (using cop) and apply vectors
-    template<class Type, class ResultType, class CellToFaceOp>
-    void surfaceOp
-    (
-        const GeometricField<Type, fvPatchField, volMesh>& vf,
-        const surfaceVectorField& ownLs,
-        const surfaceVectorField& neiLs,
-        const CellToFaceOp& cop,
-        GeometricField<ResultType, fvPatchField, volMesh>& result
-    );
+        //- Interpolate to face (using cop) and accumulate.
+        template
+        <
+            class Type0,
+            class Type1,
+            class ResultType,
+            class CellToFaceOp
+        >
+        void interpolate
+        (
+            const surfaceScalarField& weights,
+            const GeometricField<Type0, fvPatchField, volMesh>& vf0,
+            const GeometricField<Type1, fvPatchField, volMesh>& vf1,
+            const CellToFaceOp& cop,
+            GeometricField<ResultType, fvsPatchField, surfaceMesh>& result
+        );
 
-    //- sum of snGrad with additional cell-based multiplier
-    template<class Type, class GType, class ResultType, class CellToFaceOp>
-    void surfaceSnSum
-    (
-        const GeometricField<GType, fvPatchField, volMesh>& gamma,
-        const surfaceScalarField& gammaWeights,
-        const GeometricField<Type, fvPatchField, volMesh>& vf,
-        const surfaceScalarField& deltaCoeffs,
-        const CellToFaceOp& cop,
-        GeometricField<ResultType, fvPatchField, volMesh>& result,
-        const bool doCorrectBoundaryConditions
-    );
+
+    // Interpolation and accumulation
+
+        //- Interpolate to face (using cop) and accumulate.
+        template<class Type, class ResultType, class CellToFaceOp>
+        void surfaceSum
+        (
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const surfaceScalarField& lambdas,
+            const CellToFaceOp& cop,
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions = true
+        );
+
+        //- Interpolate to face (using cop) and apply Gauss. Note: uses V(),
+        //  not Vsc()
+        template<class Type, class ResultType, class CellToFaceOp>
+        void GaussOp
+        (
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const surfaceScalarField& lambdas,
+            const CellToFaceOp& cop,
+            GeometricField<ResultType, fvPatchField, volMesh>& result
+        );
+
+
+    // Difference and accumulation
+
+        //- sum of snGrad with additional cell-based multiplier
+        template<class Type, class GType, class ResultType, class CellToFaceOp>
+        void surfaceSnSum
+        (
+            const surfaceScalarField& gammaWeights,
+            const GeometricField<GType, fvPatchField, volMesh>& gamma,
+
+            const surfaceScalarField& deltaCoeffs,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+
+            const CellToFaceOp& cop,
+
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions
+        );
+
+        //- sum of snGrad with additional cell-based multipliers
+        template
+        <
+            class Type,
+            class GType0,
+            class GType1,
+            class ResultType,
+            class CellToFaceOp
+        >
+        void surfaceSnSum
+        (
+            const surfaceScalarField& weights,
+
+            const GeometricField<GType0, fvPatchField, volMesh>& gamma0,
+            const GeometricField<GType1, fvPatchField, volMesh>& gamma1,
+
+            const surfaceScalarField& deltaCoeffs,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+
+            const CellToFaceOp& cop,
+
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions
+        );
+
+        //- sum of snGrad with additional face-based addition
+        template<class Type, class GType, class ResultType, class CellToFaceOp>
+        void surfaceSnSum
+        (
+            const surfaceScalarField& gammaWeights,
+            const GeometricField<GType, fvPatchField, volMesh>& gamma,
+
+            const surfaceScalarField& deltaCoeffs,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+
+            const GeometricField<Type, fvsPatchField, surfaceMesh>& sadd,
+
+            const CellToFaceOp& cop,
+
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions
+        );
+
+
+    // Other
+
+        //- Interpolate to face (using cop) and apply distribution vectors
+        template<class Type, class ResultType, class CellToFaceOp>
+        void surfaceOp
+        (
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const surfaceVectorField& ownLs,
+            const surfaceVectorField& neiLs,
+            const CellToFaceOp& cop,
+            GeometricField<ResultType, fvPatchField, volMesh>& result
+        );
 }
 
 

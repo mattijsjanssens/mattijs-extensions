@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     );
     const volScalarField T2("T2", T);
 
-    volScalarField one
+    const volScalarField one
     (
         IOobject
         (

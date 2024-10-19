@@ -116,6 +116,9 @@ fvcLaplacian                                                                   \
     return tLaplacian;                                                         \
 }                                                                              \
                                                                                \
+
+
+/*
                                                                                \
 template<>                                                                     \
 Foam::tmp<Foam::GeometricField<Foam::Type, Foam::fvPatchField, Foam::volMesh>> \
@@ -175,11 +178,14 @@ fvcLaplacian                                                                   \
                                                                                \
     fvc::surfaceSnSum                                                          \
     (                                                                          \
-        gamma,                                                                 \
         weights,                                                               \
-        vf,                                                                    \
+        gamma,                                                                 \
+                                                                               \
         dcs,                                                                   \
+        vf,                                                                    \
+                                                                               \
         snGrad,                                                                \
+                                                                               \
         result,                                                                \
         false                                                                  \
     );                                                                         \
@@ -189,6 +195,208 @@ fvcLaplacian                                                                   \
                                                                                \
     return tresult;                                                            \
 }
+
+*/
+
+
+template<>                                        
+Foam::tmp
+<
+    Foam::GeometricField<Foam::scalar, Foam::fvPatchField, Foam::volMesh>
+>
+Foam::fv::uncorrectedGaussLaplacianScheme<Foam::scalar, Foam::scalar>::
+fvcLaplacian
+(
+    const GeometricField<scalar, fvPatchField, volMesh>& gamma,
+    const GeometricField<scalar, fvPatchField, volMesh>& vf
+)
+{
+    typedef scalar Type;
+    typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> SurfaceFieldType;
+    typedef typename outerProduct<vector, Type>::type GradType;
+    typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
+
+    const fvMesh& mesh = vf.mesh();
+
+    tmp<FieldType> tresult
+    (
+        new FieldType
+        (
+            IOobject
+            (
+                "laplacian(" + vf.name() + ')',
+                vf.instance(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            dimensioned<Type>
+            (
+                gamma.dimensions()*vf.dimensions()/dimArea, Zero
+            ),
+            fvPatchFieldBase::extrapolatedCalculatedType()
+        )
+    );
+    FieldType& result = tresult.ref();
+
+    const auto tweights(this->tinterpGammaScheme_().weights(gamma));
+    const auto& weights = tweights();
+    const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));
+    const auto& deltaCoeffs = tdeltaCoeffs();
+
+    if (this->tsnGradScheme_().corrected())
+    {
+Pout<< "corrected:" << this->tsnGradScheme_().type()
+    << " on field:" << vf.name()
+    << " on gamma:" << gamma.name()
+    << endl;
+
+
+        // Calculate sn gradient
+        tmp<SurfaceFieldType> tfaceGrad
+        (
+            new SurfaceFieldType
+            (
+                IOobject
+                (
+                    "snGradCorr("+vf.name()+')',
+                    vf.instance(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh,
+                vf.dimensions()
+            )
+        );
+
+        {
+            // Calculate gradient
+            tmp<GradFieldType> tgGrad
+            (
+                gradScheme<Type>::New
+                (
+                    mesh,
+                    mesh.gradScheme("grad(" + vf.name() + ')')
+                )().grad(vf, "grad(" + vf.name() + ')')
+            );
+            const auto& gGrad = tgGrad();
+
+            // Doing a dotinterpolate with nonOrthCorrectionVectors
+            const auto dotInterpolate = [&]
+            (
+                const vector& area,
+                const scalar lambda,
+
+                const GradType& ownVal,
+                const GradType& neiVal,
+
+                const vector& dotVector,
+
+                Type& result
+            )
+            {
+                result = dotVector&(lambda*(ownVal - neiVal) + neiVal);
+            };
+
+            fvc::interpolate
+            (
+                weights,                        // interpolation coefficients
+                gGrad,                          // volume field
+                mesh.nonOrthCorrectionVectors(),// surface multiplier
+                dotInterpolate,
+                tfaceGrad.ref()
+            );
+        }
+
+        const auto& faceGrad = tfaceGrad();
+
+DebugVar(faceGrad);
+
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+
+            const scalar weight,
+            const scalar ownGamma,
+            const scalar neiGamma,
+
+            const scalar dc,
+            const scalar& ownVal,
+            const scalar& neiVal,
+
+            const scalar correction
+        ) -> scalar
+        {
+            const scalar snGrad(dc*(neiVal-ownVal) + correction);
+            const scalar faceGamma(weight*(ownGamma-neiGamma)+neiGamma);
+            return mag(Sf)*faceGamma*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            weights,
+            gamma,
+
+            deltaCoeffs,
+            vf,
+
+            faceGrad,   // face-based addition
+
+            snGrad,
+
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
+    }
+    else
+    {
+Pout<< "uncorrected:" << this->tsnGradScheme_().type()
+    << " on field:" << vf.name()
+    << " on gamma:" << gamma.name()
+    << endl;
+
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+
+            const scalar weight,
+            const scalar ownGamma,
+            const scalar neiGamma,
+
+            const scalar dc,
+            const scalar& ownVal,
+            const scalar& neiVal
+        ) -> scalar
+        {
+            const scalar snGrad(dc*(neiVal-ownVal));
+            const scalar faceGamma(weight*(ownGamma-neiGamma)+neiGamma);
+            return mag(Sf)*faceGamma*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            weights,
+            gamma,
+
+            deltaCoeffs,
+            vf,
+
+            snGrad,
+
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
+    }
+
+    result.primitiveFieldRef() /= mesh.V();
+    result.correctBoundaryConditions();
+
+    return tresult;
+}
+
 
 
 declareFvmLaplacianScalarGamma(scalar);

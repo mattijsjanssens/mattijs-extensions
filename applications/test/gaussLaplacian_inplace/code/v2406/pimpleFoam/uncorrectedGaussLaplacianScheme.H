@@ -75,7 +75,7 @@ class uncorrectedGaussLaplacianScheme
         tmp<GeometricField<Type, fvsPatchField, surfaceMesh>> gammaSnGradCorr
         (
             const surfaceScalarField& weights,
-            const surfaceVectorField& SfGammaCorr,
+            const GeometricField<GType, fvPatchField, volMesh>& gamma,
             const GeometricField<Type, fvPatchField, volMesh>&
         );
 
@@ -169,13 +169,6 @@ public:
             const GeometricField<GType, fvPatchField, volMesh>&,
             const GeometricField<Type, fvPatchField, volMesh>&
         );
-
-//        //- Helper
-//        tmp<GeometricField<Type, fvPatchField, volMesh>> fvcLaplacian
-//        (
-//            const GeometricField<GType, fvPatchField, volMesh>&,
-//            const GeometricField<Type, fvPatchField, volMesh>&
-//        );
 };
 
 
@@ -197,22 +190,22 @@ uncorrectedGaussLaplacianScheme<Type, scalar>::fvcLaplacian                    \
 (                                                                              \
     const GeometricField<scalar, fvsPatchField, surfaceMesh>&,                 \
     const GeometricField<Type, fvPatchField, volMesh>&                         \
-);                                                                             \
-                                                                               \
-template<>                                                                     \
-tmp<GeometricField<Type, fvPatchField, volMesh>>                               \
-uncorrectedGaussLaplacianScheme<Type, scalar>::fvcLaplacian                    \
-(                                                                              \
-    const GeometricField<scalar, fvPatchField, volMesh>&,                      \
-    const GeometricField<Type, fvPatchField, volMesh>&                         \
 );
-
 
 defineFvmLaplacianScalarGamma(scalar);
 defineFvmLaplacianScalarGamma(vector);
 defineFvmLaplacianScalarGamma(sphericalTensor);
 defineFvmLaplacianScalarGamma(symmTensor);
 defineFvmLaplacianScalarGamma(tensor);
+
+
+template<>
+tmp<GeometricField<scalar, fvPatchField, volMesh>>
+uncorrectedGaussLaplacianScheme<scalar, scalar>::fvcLaplacian
+(
+    const GeometricField<scalar, fvPatchField, volMesh>&,
+    const GeometricField<scalar, fvPatchField, volMesh>&
+);
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
