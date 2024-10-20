@@ -7,6 +7,7 @@
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2016 OpenFOAM Foundation
     Copyright (C) 2018-2021 OpenCFD Ltd.
+    Copyright (C) 2024 M. Janssens
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.

@@ -130,6 +130,14 @@ int main(int argc, char *argv[])
     );
     DebugVar(one);
 
+{
+    tmp<volVectorField> tgradT(fvc::grad(T));
+    Pout<< "tgradT:" << tgradT() << endl;
+}
+{
+    tmp<volVectorField> tgradT2(fvc::grad(T2));
+    Pout<< "tgradT2:" << tgradT2() << endl;
+}
 
     tmp<volScalarField> tlaplacianT(fvc::laplacian(one, T));
     Pout<< "tlaplacianT:" << tlaplacianT() << endl;

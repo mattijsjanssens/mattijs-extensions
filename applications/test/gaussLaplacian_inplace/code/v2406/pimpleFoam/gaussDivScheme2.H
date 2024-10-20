@@ -30,7 +30,7 @@ Group
     grpFvDivSchemes
 
 Description
-    Basic second-order div using face-gradients and Gauss' theorem.
+    Variant of gaussDiv that avoids intermediates
 
 SourceFiles
     gaussDivScheme2.C
