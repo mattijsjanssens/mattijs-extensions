@@ -129,7 +129,120 @@ void surfaceSum
                             pSf[facei],
                             scalar(1.0),
                             pvf[facei],
-                            pTraits<Type>::one  // not used
+                            pTraits<Type>::zero  // not used
+                        )
+                    );
+                    sfi[pFaceCells[facei]] += faceVal;
+                }
+            }
+        }
+    }
+
+    if (doCorrectBoundaryConditions)
+    {
+        result.correctBoundaryConditions();
+    }
+}
+
+
+template<class Type, class FType, class ResultType, class CellToFaceOp>
+void surfaceSum
+(
+    const GeometricField<Type, fvPatchField, volMesh>& vf,
+    const surfaceScalarField& lambdas,
+    const GeometricField<FType, fvsPatchField, surfaceMesh>& sadd,
+    const CellToFaceOp& cop,
+    GeometricField<ResultType, fvPatchField, volMesh>& result,
+    const bool doCorrectBoundaryConditions
+)
+{
+    const fvMesh& mesh = vf.mesh();
+    const auto& Sf = mesh.Sf();
+    const auto& P = mesh.owner();
+    const auto& N = mesh.neighbour();
+
+    const auto& vfi = vf.primitiveField();
+    auto& sfi = result.primitiveFieldRef();
+
+    // See e.g. surfaceInterpolationScheme<Type>::dotInterpolate
+
+    // Internal field
+    {
+        const auto& Sfi = Sf.primitiveField();
+        const auto& lambda = lambdas.primitiveField();
+        const auto& saddi = sadd.primitiveField();
+
+        for (label facei=0; facei<P.size(); facei++)
+        {
+            const label ownCelli = P[facei];
+            const label neiCelli = N[facei];
+
+            const ResultType faceVal
+            (
+                cop
+                (
+                    Sfi[facei],
+                    lambda[facei],
+                    vfi[ownCelli],
+                    vfi[neiCelli],
+
+                    saddi[facei]        // additional face value
+                )
+            );
+            sfi[ownCelli] += faceVal;
+            sfi[neiCelli] -= faceVal;
+        }
+    }
+
+
+    // Boundary field
+    {
+        forAll(mesh.boundary(), patchi)
+        {
+            const auto& pFaceCells = mesh.boundary()[patchi].faceCells();
+            const auto& pSf = Sf.boundaryField()[patchi];
+            const auto& pvf = vf.boundaryField()[patchi];
+            const auto& pLambda = lambdas.boundaryField()[patchi];
+            const auto& psadd = sadd.boundaryField()[patchi];
+
+            if (pvf.coupled())
+            {
+                auto tpnf(pvf.patchNeighbourField());
+                auto& pnf = tpnf();
+
+                for (label facei=0; facei<pFaceCells.size(); facei++)
+                {
+                    // Interpolate between owner-side and neighbour-side values
+                    const ResultType faceVal
+                    (
+                        cop
+                        (
+                            pSf[facei],
+                            pLambda[facei],
+                            vfi[pFaceCells[facei]],
+                            pnf[facei],
+                            psadd[facei]
+                        )
+                    );
+
+                    sfi[pFaceCells[facei]] += faceVal;
+                }
+            }
+            else
+            {
+                for (label facei=0; facei<pFaceCells.size(); facei++)
+                {
+                    // Use patch value only
+                    const ResultType faceVal
+                    (
+                        cop
+                        (
+                            pSf[facei],
+                            scalar(1.0),
+                            pvf[facei],
+                            pTraits<Type>::zero,  // not used
+
+                            psadd[facei]
                         )
                     );
                     sfi[pFaceCells[facei]] += faceVal;
@@ -794,7 +907,7 @@ void interpolate
 
                         scalar(1.0),
                         pvf[facei],
-                        pTraits<Type>::one, // not used
+                        pTraits<Type>::zero,    // not used
 
                         psf[facei],
 
@@ -909,10 +1022,10 @@ void interpolate
                         scalar(1.0),
 
                         pvf0[facei],
-                        pTraits<Type0>::one, // not used
+                        pTraits<Type0>::zero, // not used
 
                         pvf1[facei],
-                        pTraits<Type1>::one, // not used
+                        pTraits<Type1>::zero, // not used
 
                         presult[facei]
                     );

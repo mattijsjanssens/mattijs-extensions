@@ -56,7 +56,7 @@ namespace fvc
 {
     // Interpolation
 
-        //- Interpolate to face (using cop) and multiply (face value)
+        //- Interpolate to face (using cop) and additional face field
         template<class Type, class FType, class ResultType, class CellToFaceOp>
         void interpolate
         (
@@ -67,7 +67,7 @@ namespace fvc
             GeometricField<ResultType, fvsPatchField, surfaceMesh>& result
         );
 
-        //- Interpolate to face (using cop) and accumulate.
+        //- Interpolate to face (using cop)
         template
         <
             class Type0,
@@ -98,6 +98,19 @@ namespace fvc
             const bool doCorrectBoundaryConditions = true
         );
 
+        //- Interpolate to face (using cop) and accumulate. Additional
+        //- face field
+        template<class Type, class FType, class ResultType, class CellToFaceOp>
+        void surfaceSum
+        (
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const surfaceScalarField& lambdas,
+            const GeometricField<FType, fvsPatchField, surfaceMesh>& sf,
+            const CellToFaceOp& cop,
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions = true
+        );
+
         //- Interpolate to face (using cop) and apply Gauss. Note: uses V(),
         //  not Vsc()
         template<class Type, class ResultType, class CellToFaceOp>
@@ -112,7 +125,7 @@ namespace fvc
 
     // Difference and accumulation
 
-        //- sum of snGrad with additional cell-based multiplier
+        //- sum of snGrad with additional (interpolated) volField
         template<class Type, class GType, class ResultType, class CellToFaceOp>
         void surfaceSnSum
         (
@@ -128,7 +141,7 @@ namespace fvc
             const bool doCorrectBoundaryConditions
         );
 
-        //- sum of snGrad with additional cell-based multipliers
+        //- sum of snGrad with additional (interpolated) volfields
         template
         <
             class Type,
@@ -153,7 +166,7 @@ namespace fvc
             const bool doCorrectBoundaryConditions
         );
 
-        //- sum of snGrad with additional face-based addition
+        //- sum of snGrad with additional surface field 
         template<class Type, class GType, class ResultType, class CellToFaceOp>
         void surfaceSnSum
         (

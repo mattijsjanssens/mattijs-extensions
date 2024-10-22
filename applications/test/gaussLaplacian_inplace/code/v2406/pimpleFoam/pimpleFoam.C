@@ -178,14 +178,14 @@ int main(int argc, char *argv[])
             }
 
 
-{
-    const volScalarField p2("p2", p);
-    tmp<volScalarField> tlaplacianp2(fvc::laplacian(p2));
-    Pout<< "tlaplacianp2:" << tlaplacianp2() << endl;
-    const volScalarField p3("p3", p);
-    tmp<volScalarField> tlaplacianp3(fvc::laplacian(p3));
-    Pout<< "tlaplacianp3:" << tlaplacianp3() << endl;
-}
+//{
+//    const volScalarField p2("p2", p);
+//    tmp<volScalarField> tlaplacianp2(fvc::laplacian(p2));
+//    Pout<< "tlaplacianp2:" << tlaplacianp2() << endl;
+//    const volScalarField p3("p3", p);
+//    tmp<volScalarField> tlaplacianp3(fvc::laplacian(p3));
+//    Pout<< "tlaplacianp3:" << tlaplacianp3() << endl;
+//}
 
 
             if (pimple.turbCorr())

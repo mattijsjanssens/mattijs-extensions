@@ -1,6 +1,7 @@
 gaussLaplacian2Schemes.C
 leastSquaresGrad2s.C
 gaussDivScheme2s.C
+gaussConvectionScheme2s.C
 gaussGrad2s.C
 
 pimpleFoam.C
