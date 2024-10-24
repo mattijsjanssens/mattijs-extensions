@@ -81,62 +81,9 @@ Foam::fv::leastSquaresGrad2<Type>::calcGrad
 
     // Get reference to least square vectors
     const leastSquaresVectors& lsv = leastSquaresVectors::New(mesh);
-
     const surfaceVectorField& ownLs = lsv.pVectors();
     const surfaceVectorField& neiLs = lsv.nVectors();
-/*
-    const labelUList& own = mesh.owner();
-    const labelUList& nei = mesh.neighbour();
 
-    forAll(own, facei)
-    {
-        const label ownFacei = own[facei];
-        const label neiFacei = nei[facei];
-
-        const Type deltaVsf(vsf[neiFacei] - vsf[ownFacei]);
-
-        lsGrad[ownFacei] += ownLs[facei]*deltaVsf;
-        lsGrad[neiFacei] -= neiLs[facei]*deltaVsf;
-    }
-
-    // Boundary faces
-    forAll(vsf.boundaryField(), patchi)
-    {
-        const fvsPatchVectorField& patchOwnLs = ownLs.boundaryField()[patchi];
-
-        const labelUList& faceCells =
-            vsf.boundaryField()[patchi].patch().faceCells();
-
-        if (vsf.boundaryField()[patchi].coupled())
-        {
-            const Field<Type> neiVsf
-            (
-                vsf.boundaryField()[patchi].patchNeighbourField()
-            );
-
-            forAll(neiVsf, patchFacei)
-            {
-                lsGrad[faceCells[patchFacei]] +=
-                    patchOwnLs[patchFacei]
-                   *(neiVsf[patchFacei] - vsf[faceCells[patchFacei]]);
-            }
-        }
-        else
-        {
-            const fvPatchField<Type>& patchVsf = vsf.boundaryField()[patchi];
-
-            forAll(patchVsf, patchFacei)
-            {
-                lsGrad[faceCells[patchFacei]] +=
-                     patchOwnLs[patchFacei]
-                    *(patchVsf[patchFacei] - vsf[faceCells[patchFacei]]);
-            }
-        }
-    }
-
-
-    lsGrad.correctBoundaryConditions();
-*/
     const auto differenceOp = [&]
     (
         const vector& area,

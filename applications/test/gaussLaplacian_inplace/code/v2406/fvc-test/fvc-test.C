@@ -130,26 +130,59 @@ int main(int argc, char *argv[])
     );
     DebugVar(one);
 
+
+
+cpuTime timer;
 {
-    tmp<volVectorField> tgradT(fvc::grad(T));
-    Pout<< "tgradT:" << tgradT() << endl;
+    Pout<< "tgradT:" << endl;   //<< tgradT() << endl;
+    for (label i = 0; i < 100; i++)
+    {
+        tmp<volVectorField> tgradT(fvc::grad(T));
+    }
+    Pout<< "tgradT:" << timer.cpuTimeIncrement() << endl;
 }
 {
-    tmp<volVectorField> tgradT2(fvc::grad(T2));
-    Pout<< "tgradT2:" << tgradT2() << endl;
+    Pout<< "tgradT2:" << endl;
+    for (label i = 0; i < 100; i++)
+    {
+        tmp<volVectorField> tgradT2(fvc::grad(T2));
+    }
+    Pout<< "tgradT2:" << timer.cpuTimeIncrement() << endl;
 }
 
-    tmp<volScalarField> tlaplacianT(fvc::laplacian(one, T));
-    Pout<< "tlaplacianT:" << tlaplacianT() << endl;
-    tmp<surfaceScalarField> tsnGradT(fvc::snGrad(T));
-    Pout<< "tsnGradT:" << tsnGradT() << endl;
+{
+    Pout<< "tlaplacianT:" << endl;   //<< tgradT() << endl;
+    for (label i = 0; i < 100; i++)
+    {
+        tmp<volScalarField> tlaplacianT(fvc::laplacian(one, T));
+    }
+    Pout<< "tlaplacianT:" << timer.cpuTimeIncrement() << endl;
+}
+{
+    Pout<< "tlaplacianT2:" << endl;   //<< tgradT() << endl;
+    for (label i = 0; i < 100; i++)
+    {
+        tmp<volScalarField> tlaplacianT2(fvc::laplacian(one, T2));
+    }
+    Pout<< "tlaplacianT2:" << timer.cpuTimeIncrement() << endl;
+}
 
-    Pout<< "** uncorrectedLaplacian **" << endl;
-
-    tmp<volScalarField> tlaplacianT2(fvc::laplacian(one, T2));
-    Pout<< "tlaplacianT2:" << tlaplacianT2() << endl;
-    tmp<surfaceScalarField> tsnGradT2(fvc::snGrad(T2));
-    Pout<< "tsnGradT2:" << tsnGradT2() << endl;
+{
+    Pout<< "tsnGradT:" << endl;   //<< tgradT() << endl;
+    for (label i = 0; i < 100; i++)
+    {
+        tmp<surfaceScalarField> tsnGradT(fvc::snGrad(T));
+    }
+    Pout<< "tsnGradT:" << timer.cpuTimeIncrement() << endl;
+}
+{
+    Pout<< "tsnGradT2:" << endl;   //<< tgradT() << endl;
+    for (label i = 0; i < 100; i++)
+    {
+        tmp<surfaceScalarField> tsnGradT(fvc::snGrad(T2));
+    }
+    Pout<< "tsnGradT2:" << timer.cpuTimeIncrement() << endl;
+}
 
     Info<< "End\n" << endl;
 
