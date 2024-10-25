@@ -83,6 +83,7 @@ Note
 #include "fvOptions.H"
 #include "localEulerDdtScheme.H"
 #include "fvcSmooth.H"
+#include "fvcSurfaceOps.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -98,6 +99,14 @@ int main(int argc, char *argv[])
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createDynamicFvMesh.H"
+
+
+    scalarField a(3, 123);
+    const scalarField b({1, 2, 3});
+    const scalarField c({2, 4, 5});
+
+    multiplySubtract(a, b, c);
+DebugVar(a);
 
     Info<< "Reading field T\n" << endl;
     volScalarField T

@@ -48,6 +48,30 @@ SourceFiles
 namespace Foam
 {
 
+//- In-place operations on Fields. Add to FieldFunctions.C ?
+#define INPLACE_PRODUCT_OPERATOR(product, CombineOp, Op, OpFunc)               \
+                                                                               \
+template<class Type1, class Type2>                                             \
+void OpFunc                                                                    \
+(                                                                              \
+    Field<typename product<Type1, Type2>::type>& result,                       \
+    const UList<Type1>& f1,                                                    \
+    const UList<Type2>& f2                                                     \
+)                                                                              \
+{                                                                              \
+    typedef typename product<Type1, Type2>::type resultType;                   \
+    TFOR_ALL_F_OP_F_OP_F                                                       \
+    (resultType, result, CombineOp, Type1, f1, Op, Type2, f2)                  \
+}
+
+
+INPLACE_PRODUCT_OPERATOR(outerProduct, +=, *, multiplyAdd)
+INPLACE_PRODUCT_OPERATOR(outerProduct, -=, *, multiplySubtract)
+
+#undef INPLACE_PRODUCT_OPERATOR
+
+
+
 /*---------------------------------------------------------------------------*\
                      Namespace fvc functions Declaration
 \*---------------------------------------------------------------------------*/

@@ -96,8 +96,17 @@ gaussConvectionScheme2<Type>::fvmDiv
     );
     fvMatrix<Type>& fvm = tfvm.ref();
 
-    fvm.lower() = -weights.primitiveField()*faceFlux.primitiveField();
-    fvm.upper() = fvm.lower() + faceFlux.primitiveField();
+    //fvm.lower() = -weights.primitiveField()*faceFlux.primitiveField();
+    multiplySubtract
+    (
+        fvm.lower(),
+        weights.primitiveField(),
+        faceFlux.primitiveField()
+    );
+
+    //fvm.upper() = fvm.lower() + faceFlux.primitiveField();
+    add(fvm.upper(), fvm.lower(), faceFlux.primitiveField());
+
     fvm.negSumDiag();
 
     forAll(vf.boundaryField(), patchi)
