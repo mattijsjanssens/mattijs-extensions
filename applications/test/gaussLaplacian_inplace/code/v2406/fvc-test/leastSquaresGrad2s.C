@@ -1,1 +1,0 @@
-../pimpleFoam/leastSquaresGrad2s.C

@@ -1,9 +1,7 @@
-gaussLaplacian2Schemes.C
-leastSquaresGrad2s.C
-gaussDivScheme2s.C
-gaussConvectionScheme2s.C
-gaussGrad2s.C
+fusedGaussLaplacianSchemes.C
+fusedLeastSquaresGrads.C
+fusedGaussDivSchemes.C
+fusedGaussConvectionSchemes.C
+fusedGaussGrads.C
 
-pimpleFoam.C
-
-EXE = $(FOAM_USER_APPBIN)/pimpleFoam_gaussLaplacian_inplace
+LIB = $(FOAM_USER_LIBBIN)/libfusedDiscretisation

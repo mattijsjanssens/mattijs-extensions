@@ -1,8 +1,3 @@
-gaussLaplacian2Schemes.C
-leastSquaresGrad2s.C
-gaussDivScheme2s.C
-gaussConvectionScheme2s.C
-gaussGrad2s.C
-fvc-test.C
+Test-fvc.C
 
-EXE = $(FOAM_USER_APPBIN)/fvc-test
+EXE = $(FOAM_USER_APPBIN)/Test-fvc
