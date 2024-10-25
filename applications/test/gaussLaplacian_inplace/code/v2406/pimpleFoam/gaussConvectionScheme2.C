@@ -149,30 +149,74 @@ gaussConvectionScheme2<Type>::fvcDiv
         )
     );
 
-    const auto interpolator = [&]
-    (
-        const vector& area,
-        const scalar lambda,
-        const Type& ownVal,
-        const Type& neiVal,
-
-        const scalar& faceVal
-    ) -> Type
+    if (this->tinterpScheme_().corrected())
     {
-        return faceVal*(lambda*(ownVal - neiVal) + neiVal);
-    };
+        const auto tfaceCorr(this->tinterpScheme_().correction(vf));
+        auto& faceCorr = tfaceCorr();
 
-    fvc::surfaceSum
-    (
-        vf,
-        tinterpScheme_().weights(vf),
+        const auto interpolator = [&]
+        (
+            const vector& area,
+            const scalar lambda,
 
-        faceFlux,
+            const Type& ownVal,
+            const Type& neiVal,
 
-        interpolator,
-        tConvection.ref(),
-        false
-    );
+            const scalar& faceVal,
+            const Type& correction
+
+        ) -> Type
+        {
+            return faceVal*((lambda*(ownVal - neiVal) + neiVal) + correction);
+        };
+
+        fvc::surfaceSum
+        (
+            // interpolation factors for volume field
+            this->tinterpScheme_().weights(vf),
+
+            // volume field(s)
+            vf,
+
+            // surface field(s)
+            faceFlux,
+            faceCorr,
+
+            // operation
+            interpolator,
+
+            tConvection.ref(),
+            false
+        );
+    }
+    else
+    {
+        const auto interpolator = [&]
+        (
+            const vector& area,
+            const scalar lambda,
+            const Type& ownVal,
+            const Type& neiVal,
+
+            const scalar& faceVal
+        ) -> Type
+        {
+            return faceVal*(lambda*(ownVal - neiVal) + neiVal);
+        };
+
+        fvc::surfaceSum
+        (
+            tinterpScheme_().weights(vf),
+
+            vf,
+
+            faceFlux,
+
+            interpolator,
+            tConvection.ref(),
+            false
+        );
+    }
 
     tConvection.ref().primitiveFieldRef() /= mesh.Vsc();
 

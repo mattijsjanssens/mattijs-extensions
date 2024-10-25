@@ -91,8 +91,8 @@ namespace fvc
         template<class Type, class ResultType, class CellToFaceOp>
         void surfaceSum
         (
-            const GeometricField<Type, fvPatchField, volMesh>& vf,
             const surfaceScalarField& lambdas,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
             const CellToFaceOp& cop,
             GeometricField<ResultType, fvPatchField, volMesh>& result,
             const bool doCorrectBoundaryConditions = true
@@ -103,10 +103,34 @@ namespace fvc
         template<class Type, class FType, class ResultType, class CellToFaceOp>
         void surfaceSum
         (
-            const GeometricField<Type, fvPatchField, volMesh>& vf,
             const surfaceScalarField& lambdas,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
             const GeometricField<FType, fvsPatchField, surfaceMesh>& sf,
             const CellToFaceOp& cop,
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions = true
+        );
+
+        //- Interpolate to face (using cop) and accumulate. Additional
+        //- face fields
+        template
+        <
+            class Type,
+            class FType0,
+            class FType1,
+            class ResultType,
+            class CellToFaceOp
+        >
+        void surfaceSum
+        (
+            const surfaceScalarField& lambdas,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+
+            const GeometricField<FType0, fvsPatchField, surfaceMesh>& sf0,
+            const GeometricField<FType1, fvsPatchField, surfaceMesh>& sf1,
+
+            const CellToFaceOp& cop,
+
             GeometricField<ResultType, fvPatchField, volMesh>& result,
             const bool doCorrectBoundaryConditions = true
         );
@@ -116,8 +140,8 @@ namespace fvc
         template<class Type, class ResultType, class CellToFaceOp>
         void GaussOp
         (
-            const GeometricField<Type, fvPatchField, volMesh>& vf,
             const surfaceScalarField& lambdas,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
             const CellToFaceOp& cop,
             GeometricField<ResultType, fvPatchField, volMesh>& result
         );

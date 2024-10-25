@@ -163,8 +163,8 @@ Foam::fv::gaussGrad2<Type>::calcGrad
 
     fvc::GaussOp
     (
-        vsf,
         tinterpScheme_().weights(vsf),
+        vsf,
         interpolator,
         gGrad
     );
