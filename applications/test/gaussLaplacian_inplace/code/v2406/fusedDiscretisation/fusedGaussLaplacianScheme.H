@@ -198,7 +198,21 @@ defineFvmLaplacianScalarGamma(sphericalTensor);
 defineFvmLaplacianScalarGamma(symmTensor);
 defineFvmLaplacianScalarGamma(tensor);
 
+// Unweighted laplacian
+template<>
+tmp<GeometricField<scalar, fvPatchField, volMesh>>
+fusedGaussLaplacianScheme<scalar, scalar>::fvcLaplacian
+(
+    const GeometricField<scalar, fvPatchField, volMesh>&
+);
+template<>
+tmp<GeometricField<vector, fvPatchField, volMesh>>
+fusedGaussLaplacianScheme<vector, scalar>::fvcLaplacian
+(
+    const GeometricField<vector, fvPatchField, volMesh>&
+);
 
+// Weighted laplacian
 template<>
 tmp<GeometricField<scalar, fvPatchField, volMesh>>
 fusedGaussLaplacianScheme<scalar, scalar>::fvcLaplacian

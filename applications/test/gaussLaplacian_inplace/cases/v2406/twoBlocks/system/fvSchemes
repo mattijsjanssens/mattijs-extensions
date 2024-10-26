@@ -24,22 +24,28 @@ gradSchemes
 {
     default         none;   //Gauss linear;
     grad(T)         Gauss linear;
-    grad(T2)        Gauss linear;
+    grad(T2)        fusedGauss linear;
 }
 
 divSchemes
 {
     default         none;
+    div(U)          Gauss linear;
+    div(phi,U)      Gauss linear;
+    div(U2)         fusedGauss linear;
+    div(phi,U2)     fusedGauss linear;
 }
 
 laplacianSchemes
 {
     default         none;
+    laplacian(T)    Gauss linear corrected;
     laplacian(DT,T) Gauss linear corrected;
     laplacian(DTV,T) Gauss linear corrected;
-
     laplacian(one,T)    Gauss linear corrected;
-    laplacian(one,T2)   Gauss2 linear corrected;
+
+    laplacian(T2)       fusedGauss linear corrected;
+    laplacian(one,T2)   fusedGauss linear corrected;
 }
 
 interpolationSchemes

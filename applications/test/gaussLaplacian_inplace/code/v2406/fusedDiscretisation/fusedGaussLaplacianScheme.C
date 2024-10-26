@@ -216,7 +216,9 @@ fusedGaussLaplacianScheme<Type, GType>::fvmLaplacianUncorrected
     );
     fvMatrix<Type>& fvm = tfvm.ref();
 
-    fvm.upper() = deltaCoeffs.primitiveField()*gammaMagSf.primitiveField();
+    //fvm.upper() = deltaCoeffs.primitiveField()*gammaMagSf.primitiveField();
+    add(fvm.upper(), deltaCoeffs.primitiveField(), gammaMagSf.primitiveField());
+
     fvm.negSumDiag();
 
     forAll(vf.boundaryField(), patchi)
@@ -226,17 +228,31 @@ fusedGaussLaplacianScheme<Type, GType>::fvmLaplacianUncorrected
         const fvsPatchScalarField& pDeltaCoeffs =
             deltaCoeffs.boundaryField()[patchi];
 
+        auto& intCoeffs = fvm.internalCoeffs()[patchi];
+        auto& bouCoeffs = fvm.boundaryCoeffs()[patchi];
+
         if (pvf.coupled())
         {
-            fvm.internalCoeffs()[patchi] =
-                pGamma*pvf.gradientInternalCoeffs(pDeltaCoeffs);
-            fvm.boundaryCoeffs()[patchi] =
-               -pGamma*pvf.gradientBoundaryCoeffs(pDeltaCoeffs);
+            //intCoeffs = pGamma*pvf.gradientInternalCoeffs(pDeltaCoeffs);
+            multiply
+            (
+                intCoeffs,
+                pGamma,
+                pvf.gradientInternalCoeffs(pDeltaCoeffs)()
+            );
+            //bouCoeffs = -pGamma*pvf.gradientBoundaryCoeffs(pDeltaCoeffs);
+            multiply
+            (
+                bouCoeffs,
+                pGamma,
+                pvf.gradientBoundaryCoeffs(pDeltaCoeffs)()
+            );
+            bouCoeffs.negate();
         }
         else
         {
-            fvm.internalCoeffs()[patchi] = pGamma*pvf.gradientInternalCoeffs();
-            fvm.boundaryCoeffs()[patchi] = -pGamma*pvf.gradientBoundaryCoeffs();
+            intCoeffs = pGamma*pvf.gradientInternalCoeffs();
+            bouCoeffs = -pGamma*pvf.gradientBoundaryCoeffs();
         }
     }
 
@@ -407,6 +423,7 @@ fusedGaussLaplacianScheme<Type, GType>::fvcLaplacian
 )
 {
     typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+    //typedef GeometricField<Type, fvsPatchField, surfaceMesh> SurfaceFieldType;
 
     tmp<FieldType> tresult
     (
@@ -436,73 +453,127 @@ fusedGaussLaplacianScheme<Type, GType>::fvcLaplacian
     // Maybe bypass for processor boundaries?
 
     const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));
-    const auto& lambdas = tdeltaCoeffs();
+    const auto& deltaCoeffs = tdeltaCoeffs();
 
 
     const fvMesh& mesh = vf.mesh();
-    const auto& Sf = mesh.Sf();
-    const auto& P = mesh.owner();
-    const auto& N = mesh.neighbour();
 
-    const auto& vfi = vf.primitiveField();
-    auto& sfi = result.primitiveFieldRef();
-
-    // Internal field
+    if (this->tsnGradScheme_().corrected())
     {
-        const auto& Sfi = Sf.primitiveField();
-        const auto& lambda = lambdas.primitiveField();
+        // Problem when instantiating for tensors - outerProduct not defined.
+        // scalar/vector specialisations in *Schemes.C file.
 
-        for (label facei=0; facei<P.size(); facei++)
+        FatalErrorInFunction<< "Corrected snGrad not supported for field "
+            << vf.name() << exit(FatalError);
+
+        //typedef typename outerProduct<vector, Type>::type GradType;
+        //typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
+        //// Calculate sn gradient
+        //tmp<SurfaceFieldType> tfaceGrad
+        //(
+        //    new SurfaceFieldType
+        //    (
+        //        IOobject
+        //        (
+        //            "snGradCorr("+vf.name()+')',
+        //            vf.instance(),
+        //            mesh,
+        //            IOobject::NO_READ,
+        //            IOobject::NO_WRITE
+        //        ),
+        //        mesh,
+        //        vf.dimensions()
+        //    )
+        //);
+        //
+        //{
+        //    // Calculate gradient
+        //    tmp<GradFieldType> tgGrad
+        //    (
+        //        gradScheme<Type>::New
+        //        (
+        //            mesh,
+        //            mesh.gradScheme("grad(" + vf.name() + ')')
+        //        )().grad(vf, "grad(" + vf.name() + ')')
+        //    );
+        //    const auto& gGrad = tgGrad();
+        //
+        //    // Doing a dotinterpolate with nonOrthCorrectionVectors
+        //    const auto dotInterpolate = [&]
+        //    (
+        //        const vector& area,
+        //        const scalar lambda,
+        //
+        //        const GradType& ownVal,
+        //        const GradType& neiVal,
+        //
+        //        const vector& dotVector,
+        //
+        //        Type& result
+        //    )
+        //    {
+        //        result = dotVector&(lambda*(ownVal - neiVal) + neiVal);
+        //    };
+        //
+        //    fvc::interpolate
+        //    (
+        //        mesh.surfaceInterpolation::weights(),   // linear interp
+        //        gGrad,                          // volume field
+        //        mesh.nonOrthCorrectionVectors(),// surface multiplier
+        //        dotInterpolate,
+        //        tfaceGrad.ref()
+        //    );
+        //}
+        //const auto& faceGrad = tfaceGrad();
+        //
+        //const auto snGrad = [&]
+        //(
+        //    const vector& Sf,
+        //    const scalar dc,
+        //    const Type& ownVal,
+        //    const Type& neiVal,
+        //    const Type& correction
+        //) -> Type
+        //{
+        //    const auto snGrad(dc*(neiVal-ownVal) + correction);
+        //    return mag(Sf)*snGrad;
+        //};
+        //
+        //fvc::surfaceSnSum
+        //(
+        //    deltaCoeffs,
+        //    vf,
+        //    faceGrad,   // face-based addition
+        //    snGrad,
+        //    result,
+        //    false       // avoid boundary evaluation until volume division
+        //);
+    }
+    else
+    {
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+            const scalar dc,
+            const Type& ownVal,
+            const Type& neiVal
+        ) -> Type
         {
-            const label ownFacei = P[facei];
-            const label neiFacei = N[facei];
-            const Type faceVal
-            (
-                mag(Sfi[facei])
-              * lambda[facei]
-              * (vfi[neiFacei]-vfi[ownFacei])
-            );
-            sfi[ownFacei] += faceVal;
-            sfi[neiFacei] -= faceVal;
-        }
+            const auto snGrad(dc*(neiVal-ownVal));
+            return mag(Sf)*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            deltaCoeffs,
+            vf,
+            snGrad,
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
     }
 
-
-    // Boundary field
-    {
-        forAll(mesh.boundary(), patchi)
-        {
-            const auto& pFaceCells = mesh.boundary()[patchi].faceCells();
-            const auto& pSf = Sf.boundaryField()[patchi];
-            const auto& pvf = vf.boundaryField()[patchi];
-            const auto& pLambda = lambdas.boundaryField()[patchi];
-
-            if (pvf.coupled())
-            {
-                auto tpnf(pvf.snGrad(pLambda));
-                auto& pnf = tpnf();
-
-                for (label facei=0; facei<pFaceCells.size(); facei++)
-                {
-                    const Type faceVal(mag(pSf[facei])*pnf[facei]);
-                    sfi[pFaceCells[facei]] += faceVal;
-                }
-            }
-            else
-            {
-                auto tpnf(pvf.snGrad());
-                auto& pnf = tpnf();
-                for (label facei=0; facei<pFaceCells.size(); facei++)
-                {
-                    // Use patch value only
-                    const Type faceVal(mag(pSf[facei])*pnf[facei]);
-                    sfi[pFaceCells[facei]] += faceVal;
-                }
-            }
-        }
-    }
-
-    sfi /= mesh.V();
+    result.primitiveFieldRef() /= mesh.V();
     result.correctBoundaryConditions();
 
     return tresult;

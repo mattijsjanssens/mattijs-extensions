@@ -162,6 +162,9 @@ Foam::fv::fusedGaussGrad<Type>::calcGrad
         const auto tfaceCorr(this->tinterpScheme_().correction(vf));
         auto& faceCorr = tfaceCorr();
 
+        DebugPout<< "fusedGaussGrad<Type>::calcGrad corrected interpScheme "
+            << this->tinterpScheme_().type() << endl;
+
         const auto interpolate = [&]
         (
             const vector& area,
@@ -189,6 +192,9 @@ Foam::fv::fusedGaussGrad<Type>::calcGrad
     }
     else
     {
+        DebugPout<< "fusedGaussGrad<Type>::calcGrad uncorrected interpScheme "
+            << this->tinterpScheme_().type() << endl;
+
         const auto interpolate = [&]
         (
             const vector& area,
@@ -211,6 +217,8 @@ Foam::fv::fusedGaussGrad<Type>::calcGrad
     }
 
     gGrad.primitiveFieldRef() /= mesh.V();
+
+    gGrad.correctBoundaryConditions();
 
     correctBoundaryConditions(vf, gGrad);
 

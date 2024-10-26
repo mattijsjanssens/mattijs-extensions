@@ -9,43 +9,14 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       volScalarField;
-    object      T;
+    class       dictionary;
+    object      transportProperties;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 0 0 1 0 0 0];
+transportModel  Newtonian;
 
-internalField   uniform 100;
+nu              1e-05;
 
-boundaryField
-{
-    top
-    {
-        type            zeroGradient;
-    }
-
-    bottom
-    {
-        type            zeroGradient;
-    }
-
-    left
-    {
-        type            fixedValue;
-        value           uniform 1;
-    }
-
-    right
-    {
-        type            fixedValue;
-        value           uniform 5;
-    }
-
-    frontAndBack
-    {
-        type            empty;
-    }
-}
 
 // ************************************************************************* //

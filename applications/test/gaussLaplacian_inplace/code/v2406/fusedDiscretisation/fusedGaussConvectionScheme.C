@@ -83,6 +83,9 @@ fusedGaussConvectionScheme<Type>::fvmDiv
     const GeometricField<Type, fvPatchField, volMesh>& vf
 ) const
 {
+    DebugPout<< "fusedGaussConvectionScheme<Type>::fvmDiv on " << vf.name()
+        << " with flux " << faceFlux.name() << endl;
+
     tmp<surfaceScalarField> tweights = tinterpScheme_().weights(vf);
     const surfaceScalarField& weights = tweights();
 
@@ -115,8 +118,15 @@ fusedGaussConvectionScheme<Type>::fvmDiv
         const fvsPatchScalarField& patchFlux = faceFlux.boundaryField()[patchi];
         const fvsPatchScalarField& pw = weights.boundaryField()[patchi];
 
-        fvm.internalCoeffs()[patchi] = patchFlux*psf.valueInternalCoeffs(pw);
-        fvm.boundaryCoeffs()[patchi] = -patchFlux*psf.valueBoundaryCoeffs(pw);
+        auto& intCoeffs = fvm.internalCoeffs()[patchi];
+        auto& bouCoeffs = fvm.boundaryCoeffs()[patchi];
+
+        //fvm.internalCoeffs()[patchi] = patchFlux*psf.valueInternalCoeffs(pw);
+        multiply(intCoeffs, patchFlux, psf.valueInternalCoeffs(pw)());
+
+        //fvm.boundaryCoeffs()[patchi] = -patchFlux*psf.valueBoundaryCoeffs(pw);
+        multiply(bouCoeffs, patchFlux, psf.valueBoundaryCoeffs(pw)());
+        bouCoeffs.negate();
     }
 
     if (tinterpScheme_().corrected())
@@ -136,6 +146,9 @@ fusedGaussConvectionScheme<Type>::fvcDiv
     const GeometricField<Type, fvPatchField, volMesh>& vf
 ) const
 {
+    DebugPout<< "fusedGaussConvectionScheme<Type>::fvcDiv on " << vf.name()
+        << " with flux " << faceFlux.name() << endl;
+
     typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
 
     const fvMesh& mesh = vf.mesh();
@@ -153,7 +166,13 @@ fusedGaussConvectionScheme<Type>::fvcDiv
                 IOobject::NO_WRITE
             ),
             mesh,
-            dimensioned<Type>(vf.dimensions()/dimLength, Zero),
+            dimensioned<Type>
+            (
+                faceFlux.dimensions()
+               *vf.dimensions()
+               /dimVol,
+                Zero
+            ),
             fvPatchFieldBase::extrapolatedCalculatedType()
         )
     );

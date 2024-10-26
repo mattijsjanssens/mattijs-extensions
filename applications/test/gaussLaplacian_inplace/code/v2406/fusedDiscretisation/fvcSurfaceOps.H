@@ -173,6 +173,32 @@ namespace fvc
 
     // Difference and accumulation
 
+        //- sum of snGrad
+        template<class Type, class ResultType, class CellToFaceOp>
+        void surfaceSnSum
+        (
+            const surfaceScalarField& deltaCoeffs,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+
+            const CellToFaceOp& cop,
+
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions
+        );
+        //- sum of snGrad with additional surface field 
+        template<class Type, class ResultType, class CellToFaceOp>
+        void surfaceSnSum
+        (
+            const surfaceScalarField& deltaCoeffs,
+            const GeometricField<Type, fvPatchField, volMesh>& vf,
+            const GeometricField<Type, fvsPatchField, surfaceMesh>& sadd,
+
+            const CellToFaceOp& cop,
+
+            GeometricField<ResultType, fvPatchField, volMesh>& result,
+            const bool doCorrectBoundaryConditions
+        );
+
         //- sum of snGrad with additional (interpolated) volField
         template<class Type, class GType, class ResultType, class CellToFaceOp>
         void surfaceSnSum

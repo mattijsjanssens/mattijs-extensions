@@ -9,43 +9,55 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       volScalarField;
-    object      T;
+    class       dictionary;
+    object      fvSchemes;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 0 0 1 0 0 0];
-
-internalField   uniform 100;
-
-boundaryField
+ddtSchemes
 {
-    top
-    {
-        type            zeroGradient;
-    }
-
-    bottom
-    {
-        type            zeroGradient;
-    }
-
-    left
-    {
-        type            fixedValue;
-        value           uniform 1;
-    }
-
-    right
-    {
-        type            fixedValue;
-        value           uniform 5;
-    }
-
-    frontAndBack
-    {
-        type            empty;
-    }
+    default         Euler;
 }
+
+GradScheme  fusedGauss;
+//GradScheme  Gauss;
+
+
+gradSchemes
+{
+    default         ${GradScheme} linear;
+}
+
+divSchemes
+{
+    default         none;
+
+    div(phi,U)      ${GradScheme} linearUpwind grad(U);
+
+    turbulence      ${GradScheme} upwind;
+    div(phi,k)      $turbulence;
+    div(phi,epsilon) $turbulence;
+    div(phi,nuTilda) $turbulence;
+    div(phi,R)      $turbulence;
+    div(R)          ${GradScheme} linear;
+
+    div((nuEff*dev2(T(grad(U))))) ${GradScheme} linear;
+}
+
+laplacianSchemes
+{
+    default         ${GradScheme} linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
 
 // ************************************************************************* //

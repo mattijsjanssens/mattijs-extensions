@@ -100,6 +100,21 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createDynamicFvMesh.H"
 
+    const volScalarField one
+    (
+        IOobject
+        (
+            "one",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensioned<scalar>(dimLength, 1.0),
+        fvPatchFieldBase::extrapolatedCalculatedType()
+    );
+    DebugVar(one);
 
     scalarField a(3, 123);
     const scalarField b({1, 2, 3});
@@ -121,25 +136,44 @@ DebugVar(a);
         ),
         mesh
     );
+DebugVar(T);
     const volScalarField T2("T2", T);
+DebugVar(T2);
 
-    const volScalarField one
+
+    Info<< "Reading field U\n" << endl;
+    volVectorField U
     (
         IOobject
         (
-            "one",
+            "U",
             runTime.timeName(),
             mesh,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
         ),
-        mesh,
-        dimensioned<scalar>(dimLength, 1.0),
-        fvPatchFieldBase::extrapolatedCalculatedType()
+        mesh
     );
-    DebugVar(one);
+    const volVectorField U2("U2", U);
 
+    #include "createPhi.H"
 
+    // Grad
+    Pout<< "tgradT:" << fvc::grad(T) << endl;
+    Pout<< "tgradT2:" << fvc::grad(T2) << endl;
+
+    // Div
+    Pout<< "tdivU:" << fvc::div(U) << endl;
+    Pout<< "tdivU2:" << fvc::div(U2) << endl;
+    // Convection
+    Pout<< "tdiv(phi,U):" << fvc::div(phi,U) << endl;
+    Pout<< "tdiv(phi,U2):" << fvc::div(phi,U2) << endl;
+    // Laplacian
+    Pout<< "tlaplacianT:" << fvc::laplacian(T) << endl;
+    Pout<< "tlaplacianT2:" << fvc::laplacian(T2) << endl;
+    // LeastSquares
+
+return 0;
 
 cpuTime timer;
 {

@@ -225,7 +225,7 @@ Foam::fv::fusedGaussLaplacianScheme<Foam::scalar, Foam::scalar>::fvcLaplacian
 
             fvc::interpolate
             (
-                weights,                        // interpolation coefficients
+                mesh.surfaceInterpolation::weights(),   // linear interpolation
                 gGrad,                          // volume field
                 mesh.nonOrthCorrectionVectors(),// surface multiplier
                 dotInterpolate,
@@ -256,7 +256,7 @@ Foam::fv::fusedGaussLaplacianScheme<Foam::scalar, Foam::scalar>::fvcLaplacian
 
         fvc::surfaceSnSum
         (
-            weights,
+            weights,    // gamma weights
             gamma,
 
             deltaCoeffs,
@@ -413,7 +413,7 @@ Foam::fv::fusedGaussLaplacianScheme<Foam::vector, Foam::scalar>::fvcLaplacian
 
             fvc::interpolate
             (
-                weights,                        // interpolation coefficients
+                mesh.surfaceInterpolation::weights(),   // linear interpolation
                 gGrad,                          // volume field
                 mesh.nonOrthCorrectionVectors(),// surface multiplier
                 dotInterpolate,
@@ -444,7 +444,7 @@ Foam::fv::fusedGaussLaplacianScheme<Foam::vector, Foam::scalar>::fvcLaplacian
 
         fvc::surfaceSnSum
         (
-            weights,
+            weights,    // gamma weights
             gamma,
 
             deltaCoeffs,
@@ -480,7 +480,7 @@ Foam::fv::fusedGaussLaplacianScheme<Foam::vector, Foam::scalar>::fvcLaplacian
 
         fvc::surfaceSnSum
         (
-            weights,
+            weights,    // gamma weights
             gamma,
 
             deltaCoeffs,
@@ -529,6 +529,330 @@ Foam::fv::fusedGaussLaplacianScheme<Foam::vector, Foam::scalar>::fvmLaplacian
         << "fusedGaussLaplacianScheme<vector, scalar>::fvmLaplacian"
         << " on " << vf.name() << " with gamma " << gamma.name() << endl;
     return fvmLaplacian(this->tinterpGammaScheme_().interpolate(gamma)(), vf);
+}
+
+
+template<>
+Foam::tmp
+<
+    Foam::GeometricField<Foam::scalar, Foam::fvPatchField, Foam::volMesh>
+>
+Foam::fv::fusedGaussLaplacianScheme<Foam::scalar, Foam::scalar>::fvcLaplacian
+(
+    const GeometricField<scalar, fvPatchField, volMesh>& vf
+)
+{
+    typedef scalar Type;
+
+    typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> SurfaceFieldType;
+    typedef typename outerProduct<vector, Type>::type GradType;
+    typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
+
+    const fvMesh& mesh = vf.mesh();
+
+    tmp<FieldType> tresult
+    (
+        new FieldType
+        (
+            IOobject
+            (
+                "laplacian(" + vf.name() + ')',
+                vf.instance(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            dimensioned<Type>(vf.dimensions()/dimArea, Zero),
+            fvPatchFieldBase::extrapolatedCalculatedType()
+        )
+    );
+    FieldType& result = tresult.ref();
+
+    DebugPout
+        << "fusedGaussLaplacianScheme<scalar, GType>::fvcLaplacian on "
+        << vf.name()
+        << " to generate " << result.name() << endl;
+
+
+    const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));
+    const auto& deltaCoeffs = tdeltaCoeffs();
+
+
+    if (this->tsnGradScheme_().corrected())
+    {
+        // Calculate sn gradient
+        tmp<SurfaceFieldType> tfaceGrad
+        (
+            new SurfaceFieldType
+            (
+                IOobject
+                (
+                    "snGradCorr("+vf.name()+')',
+                    vf.instance(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh,
+                vf.dimensions()
+            )
+        );
+
+        {
+            // Calculate gradient
+            tmp<GradFieldType> tgGrad
+            (
+                gradScheme<Type>::New
+                (
+                    mesh,
+                    mesh.gradScheme("grad(" + vf.name() + ')')
+                )().grad(vf, "grad(" + vf.name() + ')')
+            );
+            const auto& gGrad = tgGrad();
+
+            // Doing a dotinterpolate with nonOrthCorrectionVectors
+            const auto dotInterpolate = [&]
+            (
+                const vector& area,
+                const scalar lambda,
+
+                const GradType& ownVal,
+                const GradType& neiVal,
+
+                const vector& dotVector,
+
+                Type& result
+            )
+            {
+                result = dotVector&(lambda*(ownVal - neiVal) + neiVal);
+            };
+
+            fvc::interpolate
+            (
+                mesh.surfaceInterpolation::weights(),   // linear interpolation
+                gGrad,                          // volume field
+                mesh.nonOrthCorrectionVectors(),// surface multiplier
+                dotInterpolate,
+                tfaceGrad.ref()
+            );
+        }
+        const auto& faceGrad = tfaceGrad();
+
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+            const scalar dc,
+            const Type& ownVal,
+            const Type& neiVal,
+            const Type& correction
+        ) -> Type
+        {
+            const auto snGrad(dc*(neiVal-ownVal) + correction);
+            return mag(Sf)*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            deltaCoeffs,
+            vf,
+            faceGrad,   // face-based addition
+            snGrad,
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
+    }
+    else
+    {
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+            const scalar dc,
+            const Type& ownVal,
+            const Type& neiVal
+        ) -> Type
+        {
+            const auto snGrad(dc*(neiVal-ownVal));
+            return mag(Sf)*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            deltaCoeffs,
+            vf,
+            snGrad,
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
+    }
+
+    result.primitiveFieldRef() /= mesh.V();
+    result.correctBoundaryConditions();
+
+    return tresult;
+}
+
+
+template<>
+Foam::tmp
+<
+    Foam::GeometricField<Foam::vector, Foam::fvPatchField, Foam::volMesh>
+>
+Foam::fv::fusedGaussLaplacianScheme<Foam::vector, Foam::scalar>::fvcLaplacian
+(
+    const GeometricField<vector, fvPatchField, volMesh>& vf
+)
+{
+    typedef vector Type;
+
+    typedef GeometricField<Type, fvPatchField, volMesh> FieldType;
+    typedef GeometricField<Type, fvsPatchField, surfaceMesh> SurfaceFieldType;
+    typedef typename outerProduct<vector, Type>::type GradType;
+    typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
+
+    const fvMesh& mesh = vf.mesh();
+
+    tmp<FieldType> tresult
+    (
+        new FieldType
+        (
+            IOobject
+            (
+                "laplacian(" + vf.name() + ')',
+                vf.instance(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            dimensioned<Type>(vf.dimensions()/dimArea, Zero),
+            fvPatchFieldBase::extrapolatedCalculatedType()
+        )
+    );
+    FieldType& result = tresult.ref();
+
+    DebugPout
+        << "fusedGaussLaplacianScheme<vector, GType>::fvcLaplacian on "
+        << vf.name()
+        << " to generate " << result.name() << endl;
+
+
+    const auto tdeltaCoeffs(this->tsnGradScheme_().deltaCoeffs(vf));
+    const auto& deltaCoeffs = tdeltaCoeffs();
+
+
+    if (this->tsnGradScheme_().corrected())
+    {
+        // Calculate sn gradient
+        tmp<SurfaceFieldType> tfaceGrad
+        (
+            new SurfaceFieldType
+            (
+                IOobject
+                (
+                    "snGradCorr("+vf.name()+')',
+                    vf.instance(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh,
+                vf.dimensions()
+            )
+        );
+
+        {
+            // Calculate gradient
+            tmp<GradFieldType> tgGrad
+            (
+                gradScheme<Type>::New
+                (
+                    mesh,
+                    mesh.gradScheme("grad(" + vf.name() + ')')
+                )().grad(vf, "grad(" + vf.name() + ')')
+            );
+            const auto& gGrad = tgGrad();
+
+            // Doing a dotinterpolate with nonOrthCorrectionVectors
+            const auto dotInterpolate = [&]
+            (
+                const vector& area,
+                const scalar lambda,
+
+                const GradType& ownVal,
+                const GradType& neiVal,
+
+                const vector& dotVector,
+
+                Type& result
+            )
+            {
+                result = dotVector&(lambda*(ownVal - neiVal) + neiVal);
+            };
+
+            fvc::interpolate
+            (
+                mesh.surfaceInterpolation::weights(),   // linear interpolation
+                gGrad,                          // volume field
+                mesh.nonOrthCorrectionVectors(),// surface multiplier
+                dotInterpolate,
+                tfaceGrad.ref()
+            );
+        }
+        const auto& faceGrad = tfaceGrad();
+
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+            const scalar dc,
+            const Type& ownVal,
+            const Type& neiVal,
+            const Type& correction
+        ) -> Type
+        {
+            const auto snGrad(dc*(neiVal-ownVal) + correction);
+            return mag(Sf)*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            deltaCoeffs,
+            vf,
+            faceGrad,   // face-based addition
+            snGrad,
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
+    }
+    else
+    {
+        const auto snGrad = [&]
+        (
+            const vector& Sf,
+            const scalar dc,
+            const Type& ownVal,
+            const Type& neiVal
+        ) -> Type
+        {
+            const auto snGrad(dc*(neiVal-ownVal));
+            return mag(Sf)*snGrad;
+        };
+
+        fvc::surfaceSnSum
+        (
+            deltaCoeffs,
+            vf,
+            snGrad,
+            result,
+            false       // avoid boundary evaluation until volume division
+        );
+    }
+
+    result.primitiveFieldRef() /= mesh.V();
+    result.correctBoundaryConditions();
+
+    return tresult;
 }
 
 

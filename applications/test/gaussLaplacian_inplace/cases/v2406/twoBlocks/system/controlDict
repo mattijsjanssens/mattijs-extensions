@@ -15,12 +15,11 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-libs        (utilityFunctionObjects);
+libs            (fusedDiscretisation);
 
 DebugSwitches
 {
-//    mappedPatchBase 2;
-//    syncObjects     2;
+    fusedGauss      1;
 }
 
 
