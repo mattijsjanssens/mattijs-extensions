@@ -44,7 +44,7 @@ fvmLaplacian                                                                   \
     const GeometricField<Type, fvPatchField, volMesh>& vf                      \
 )                                                                              \
 {                                                                              \
-    DebugPout<< "fvmLaplacian on " << vf.name()                                \
+    DebugPout<< "fusedGaussLaplacianScheme::fvmLaplacian on " << vf.name()     \
         << " with scalar gamma " << gamma.name() << endl;                      \
                                                                                \
     const fvMesh& mesh = this->mesh();                                         \

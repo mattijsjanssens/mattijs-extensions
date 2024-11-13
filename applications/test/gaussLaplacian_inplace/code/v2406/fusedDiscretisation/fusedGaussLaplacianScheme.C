@@ -217,8 +217,7 @@ fusedGaussLaplacianScheme<Type, GType>::fvmLaplacianUncorrected
     fvMatrix<Type>& fvm = tfvm.ref();
 
     //fvm.upper() = deltaCoeffs.primitiveField()*gammaMagSf.primitiveField();
-    add(fvm.upper(), deltaCoeffs.primitiveField(), gammaMagSf.primitiveField());
-
+    multiply(fvm.upper(), deltaCoeffs.primitiveField(), gammaMagSf.primitiveField());
     fvm.negSumDiag();
 
     forAll(vf.boundaryField(), patchi)
@@ -251,8 +250,21 @@ fusedGaussLaplacianScheme<Type, GType>::fvmLaplacianUncorrected
         }
         else
         {
-            intCoeffs = pGamma*pvf.gradientInternalCoeffs();
-            bouCoeffs = -pGamma*pvf.gradientBoundaryCoeffs();
+            //intCoeffs = pGamma*pvf.gradientInternalCoeffs();
+            multiply
+            (
+                intCoeffs,
+                pGamma,
+                pvf.gradientInternalCoeffs()()
+            );
+            //bouCoeffs = -pGamma*pvf.gradientBoundaryCoeffs();
+            multiply
+            (
+                bouCoeffs,
+                pGamma,
+                pvf.gradientBoundaryCoeffs()()
+            );
+            bouCoeffs.negate();
         }
     }
 
