@@ -64,7 +64,7 @@ class decompositionGAMGAgglomeration
         label& nCoarseCells,
         const lduAddressing& addr,
         const scalarField& faceWeights
-    );
+    ) const;
 
 
 public:
@@ -103,6 +103,23 @@ public:
             const label startLevel,
             const scalarField& startFaceWeights,
             const bool doProcessorAgglomerate = true
+        );
+
+
+    // Helpers
+
+        static void localCellCells
+        (
+            const lduAddressing& addr,
+            const bitSet& isBlockedFace,
+            CompactListList<label>& cellCells
+        );
+        static void localCellCells
+        (
+            const lduAddressing& addr,
+            const labelList& regions,   // marker
+            const label regioni,        // which marker to keep
+            CompactListList<label>& cellCells
         );
 };
 

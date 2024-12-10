@@ -5,4 +5,6 @@ EXE_INC = \
 
 LIB_LIBS = \
     -lfiniteVolume \
-    -ldecompositionMethods
+    -ldecompositionMethods \
+    -L$(FOAM_LIBBIN)/dummy \
+    -lkahipDecomp -lmetisDecomp -lscotchDecomp

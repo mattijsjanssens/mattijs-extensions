@@ -96,18 +96,108 @@ Foam::decompositionGAMGAgglomeration::decompositionGAMGAgglomeration
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::tmp<Foam::labelField> Foam::decompositionGAMGAgglomeration::agglomerate
+void Foam::decompositionGAMGAgglomeration::localCellCells
 (
-    label& nCoarseCells,
     const lduAddressing& addr,
-    const scalarField& faceWeights
+    const bitSet& isBlockedFace,
+    CompactListList<label>& cellCells
+)
+{
+    // Since have only internal addressing cannot get global cell connectivity?
+
+    const labelUList& nbr = addr.upperAddr();
+    const labelUList& own = addr.lowerAddr();
+
+    labelList nNbrs(addr.size(), Zero);
+    forAll(nbr, facei)
+    {
+        if (!isBlockedFace[facei])
+        {
+            nNbrs[nbr[facei]]++;
+            nNbrs[own[facei]]++;
+        }
+    }
+    // Calculate&store offsets
+    cellCells.resize_nocopy(nNbrs);
+
+    auto& values = cellCells.values();
+    auto& offsets = cellCells.offsets();
+
+    // Fill in neighbours
+    nNbrs = Zero;
+    forAll(nbr, facei)
+    {
+        if (!isBlockedFace[facei])
+        {
+            const label n = nbr[facei];
+            const label o = own[facei];
+            values[offsets[n]+(nNbrs[n]++)] = o;
+            values[offsets[o]+(nNbrs[o]++)] = n;
+        }
+    }
+}
+void Foam::decompositionGAMGAgglomeration::localCellCells
+(
+    const lduAddressing& addr,
+    const labelList& regions,   // marker
+    const label regioni,        // which marker to keep
+    CompactListList<label>& cellCells
 )
 {
     const labelUList& nbr = addr.upperAddr();
     const labelUList& own = addr.lowerAddr();
 
-DebugVar(own);
-DebugVar(nbr);
+    labelList oldToNew(regions.size(), -1);
+    label nCells = 0;
+    forAll(regions, i)
+    {
+        if (regions[i] == regioni)
+        {
+            oldToNew[i] = nCells++;
+        }
+    }
+
+    labelList nNbrs(nCells, Zero);
+    forAll(nbr, facei)
+    {
+        const label n = oldToNew[nbr[facei]];
+        const label o = oldToNew[own[facei]];
+        if (n != -1 && o != -1)
+        {
+            nNbrs[n]++;
+            nNbrs[o]++;
+        }
+    }
+    // Calculate&store offsets
+    cellCells.resize_nocopy(nNbrs);
+
+    auto& values = cellCells.values();
+    auto& offsets = cellCells.offsets();
+
+    // Fill in neighbours
+    nNbrs = Zero;
+    forAll(nbr, facei)
+    {
+        const label n = oldToNew[nbr[facei]];
+        const label o = oldToNew[own[facei]];
+        if (n != -1 && o != -1)
+        {
+            values[offsets[n]+(nNbrs[n]++)] = o;
+            values[offsets[o]+(nNbrs[o]++)] = n;
+        }
+    }
+}
+
+
+Foam::tmp<Foam::labelField> Foam::decompositionGAMGAgglomeration::agglomerate
+(
+    label& nCoarseCells,
+    const lduAddressing& addr,
+    const scalarField& faceWeights
+) const
+{
+    const labelUList& nbr = addr.upperAddr();
+    //const labelUList& own = addr.lowerAddr();
 
     const globalIndex globalCells
     (
@@ -117,34 +207,25 @@ DebugVar(nbr);
     );
 
 
-    nCoarseCells = 2;
+    nCoarseCells = addr.size()/2;
+Pout<< "Agglomerating from " << addr.size() << " to " << nCoarseCells
+    << endl;
 
     // Construct globalCellCells for calling decomposition method.
     CompactListList<label> globalCellCells;
-    {
-        labelList nNbrs(addr.size(), Zero);
-        forAll(nbr, facei)
-        {
-            nNbrs[nbr[facei]]++;
-            nNbrs[own[facei]]++;
-        }
-        globalCellCells.resize_nocopy(nNbrs);
+    localCellCells(addr, bitSet(nbr.size()), globalCellCells);
 
-        auto& values = globalCellCells.values();
-        auto& offsets = globalCellCells.offsets();
-
-        nNbrs = Zero;
-        forAll(nbr, facei)
-        {
-            const label n = nbr[facei];
-            const label o = own[facei];
-            values[offsets[n]+(nNbrs[n]++)] = globalCells.toGlobal(o);
-            values[offsets[o]+(nNbrs[o]++)] = globalCells.toGlobal(n);
-        }
-    }
-
-
-    DebugVar(globalCellCells);
+    //for
+    //(
+    //    label celli = 0;
+    //    celli < globalCellCells.offsets().size()-1;
+    //    celli++
+    //)
+    //{
+    //    Pout<< "For cell:" << celli
+    //        << " nbrs:" << flatOutput(globalCellCells[celli])
+    //        << endl;
+    //}
 
 
     tmp<labelField> tfld(new labelField());
@@ -160,6 +241,112 @@ DebugVar(nbr);
     return tfld;
 }
 
+//void Foam::decompositionGAMGAgglomeration::agglomerate
+//(
+//    const lduAddressing& startMesh,
+//    const scalarField& startFaceWeights,
+//
+//    PtrList<labelList>& agglomeration
+//)
+//{
+//    decompositionMethod& decomposer = decomposerPtr_();
+//
+//    agglomeration.resize_nocopy(maxLevels_);
+//
+//
+//    const globalIndex globalCells
+//    (
+//        addr.size(),
+//        UPstream::worldComm,
+//        false           // local only
+//    );
+//
+//
+//    // Start geometric agglomeration from the given faceWeights
+//    scalarField faceWeights = startFaceWeights;
+//
+//    CompactListList<label> cellCells;
+//    localCellCells(addr, cellCells);
+//
+//    // Decompose into coarsest level
+//    decomposer.nDomains(nCoarseCells);
+//    agglomeration.set
+//    (
+//        0,
+//        decomposer.decompose
+//        (
+//            cellCells,
+//            pointField(cellCells.size(), Zero)
+//        )
+//    );
+//    const auto& agglom = agglomeration[0];
+//
+//    //// Do each resulting domain in turn (inefficient)
+//    //const label nDecomp = max(agglom);
+//    //for (label i = 0; i < nDecomp; i++)
+//    //{
+//    //    CompactListList<label> subCellCells;
+//    //    localCellCells
+//    //    (
+//    //        startMesh,
+//    //        agglom,
+//    //        i,
+//    //        subCellCells
+//    //    );
+//    //
+//    //    tmp<labelField> tsubDecomp
+//    //    (
+//    //        decomposer.decompose
+//    //        (
+//    //            subCellCells,
+//    //            pointField(subCellCells.size(), Zero)
+//    //        )
+//    //    );
+//    //    const auto& subDecomp = tsubDecomp();
+//    //}
+//
+//
+//    // Do decomposition by generating cell-cells without connections
+//    const labelUList& nbr = addr.upperAddr();
+//    const labelUList& own = addr.lowerAddr();
+//    bitSet isBlockedFace(nbr.size());
+//    forAll(nbr, facei)
+//    {
+//        const label n = nbr[facei];
+//        const label o = own[facei];
+//        if (agglom[n] != agglom[o])
+//        {
+//            isBlockedFace.set(facei);
+//        }
+//    }
+//
+//    CompactListList<label> cellCells;
+//    localCellCells
+//    (
+//        addr,
+//        isBlockedFace,
+//        cellCells
+//    );
+//
+//    decomposer.nDomains(2);
+//    tmp<labelField> tdecomp = decomposer.decompose
+//    (
+//        cellCells,
+//        pointField(cellCells.size(), Zero)
+//    );
+//
+//    forAll(agglom, celli)
+//    {
+//        agglom[celli] = decomposer.nDomains()*agglom[celli]+tdecomp()[celli];
+//    }
+//
+//    while()
+//    {
+//
+//
+//
+//    }
+
 
 void Foam::decompositionGAMGAgglomeration::agglomerate
 (
@@ -171,10 +358,6 @@ void Foam::decompositionGAMGAgglomeration::agglomerate
 {
     // Straight copy of pairGAMGAgglomeration::agglomerate without the
     // while loop.
-DebugVar(nCellsInCoarsestLevel);
-DebugVar(startLevel);
-DebugVar(startFaceWeights);
-
 
     if (nCells_.size() < maxLevels_)
     {
@@ -210,11 +393,8 @@ DebugVar(startFaceWeights);
     // is reached
     label nCreatedLevels = startLevel;
 
-    //while (nCreatedLevels < maxLevels_ - 1)
-    while (nCreatedLevels < startLevel+1)
+    while (nCreatedLevels < maxLevels_ - 1)
     {
-        DebugVar(nCreatedLevels);
-
         if (!hasMeshLevel(nCreatedLevels))
         {
             FatalErrorInFunction<< "No mesh at nCreatedLevels:"
@@ -227,6 +407,8 @@ DebugVar(startFaceWeights);
 
         label nCoarseCells = -1;
 
+        // Agglomerate single level : determine per fineMesh cell
+        // which cluster it goes to. Sets number of clusters.
         tmp<labelField> finalAgglomPtr = agglomerate
         (
             nCoarseCells,

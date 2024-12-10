@@ -27,9 +27,11 @@ solvers
         agglomerator            decomposition;
         decompositionCoeffs
         {
+            //numberOfSubdomains  2;
+            //method  hierarchical;
+            //n       (2 1 1);
             numberOfSubdomains  2;
-            method  hierarchical;
-            n       (2 1 1);
+            method  scotch;
         }
 
         tolerance       1e-06;
