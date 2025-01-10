@@ -1,0 +1,4 @@
+Test-expression_templates.C
+
+
+EXE = $(FOAM_USER_APPBIN)/Test-expression_templates
