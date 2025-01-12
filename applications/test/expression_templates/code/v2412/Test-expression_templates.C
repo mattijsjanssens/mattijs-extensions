@@ -238,7 +238,8 @@ public:
         elems(init)
     {}
 
-    // A FieldWrap can be constructed from any FieldExpression, forcing its evaluation.
+    // A FieldWrap can be constructed from any FieldExpression, forcing its
+    // evaluation.
     template <typename E>
     FieldWrap(FieldExpression<E> const& expr)
     {
@@ -362,6 +363,9 @@ operator-(FieldExpression<E1> const& u, FieldExpression<E2> const& v)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+//class volScalarFieldRefWrap;
+//typedef FieldRefWrap volScalarFieldRefWrap::PatchFieldType;
+
 template <typename E>
 class VolFieldExpression
 {
@@ -376,7 +380,7 @@ public:
     }
     size_t size() const { return static_cast<E const&>(*this).size(); }
 
-    const auto& boundary(const label i) const
+    const typename E::PatchFieldType patchField(const label i) const
     {
         return static_cast<E const&>(*this).boundaryField()[i];
     }
@@ -391,7 +395,8 @@ class volScalarFieldRefWrap
 
 public:
 
-    //typedef volScalarFieldRefWrap::Boundary Boundary;
+    //- Type to return for patchField
+    typedef FieldRefWrap PatchFieldType;
 
     static constexpr bool is_leaf = true;
 
@@ -410,7 +415,7 @@ public:
         return elems.size();
     }
 
-    const auto& boundary(const label i) const
+    const PatchFieldType patchField(const label i) const
     {
         return elems.boundaryField()[i];
     }
@@ -435,10 +440,20 @@ class volScalarFieldSum
 public:
     static constexpr bool is_leaf = false;
 
+    //- Type to return for patchField
+    typedef FieldSum
+    <
+        typename E1::PatchFieldType,
+        typename E2::PatchFieldType
+    > PatchFieldType;
+
     volScalarFieldSum(E1 const& u, E2 const& v)
     :
      _u(u), _v(v)
     {
+        Pout<< "u.size:" << u.size() << endl;
+        Pout<< "v.size:" << v.size() << endl;
+
         assert(u.size() == v.size());
     }
     decltype(auto) operator[](size_t i) const
@@ -447,9 +462,16 @@ public:
     }
     size_t size() const { return _v.size(); }
 
-    const FieldSum<E1, E2> boundary(const label i) const
+    const PatchFieldType patchField
+    (
+        const label i
+    ) const
     {
-        return FieldSum<E1, E2>(_u.boundary(i), _v.boundary(i));
+        return PatchFieldType
+        (
+            _u.patchField(i),
+            _v.patchField(i)
+        );
     }
 };
 template <typename E1, typename E2>
@@ -464,48 +486,6 @@ operator+(VolFieldExpression<E1> const& u, VolFieldExpression<E2> const& v)
 }
 
 
-//// Diff
-//// ~~~~
-//// wrapper class + operator
-//
-//template <typename E1, typename E2>
-//class volScalarFieldDiff
-//:
-//    public VolFieldExpression<volScalarFieldDiff<E1, E2> >
-//{
-//    // cref if leaf, copy otherwise
-//    typename std::conditional<E1::is_leaf, const E1&, const E1>::type _u;
-//    typename std::conditional<E2::is_leaf, const E2&, const E2>::type _v;
-//
-//public:
-//    static constexpr bool is_leaf = false;
-//
-//    volScalarFieldDiff(E1 const& u, E2 const& v)
-//    :
-//     _u(u), _v(v)
-//    {
-//        assert(u.size() == v.size());
-//    }
-//    decltype(auto) operator[](size_t i) const
-//    {
-//        return _u[i] - _v[i];
-//    }
-//    size_t size() const { return _v.size(); }
-//};
-//template <typename E1, typename E2>
-//volScalarFieldDiff<E1, E2>
-//operator-(VolFieldExpression<E1> const& u, VolFieldExpression<E2> const& v)
-//{
-//    return volScalarFieldDiff<E1, E2>
-//    (
-//        *static_cast<const E1*>(&u),
-//        *static_cast<const E2*>(&v)
-//    );
-//}
-
-
-
-
 // Main
 // ~~~~
 
@@ -515,6 +495,7 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
+if (false)
 {
     FieldWrap v0({23.4,  12.5,  144.56});
     FieldWrap v1({67.12, 34.8,  90.34});
@@ -537,6 +518,7 @@ int main(int argc, char *argv[])
     Pout<< "result:" << result << endl;
 }
 
+if (false)
 {
     const scalarField v0Data({23.4,  12.5,  144.56});
     const scalarField v1Data({67.12, 34.8,  90.34});
@@ -604,17 +586,34 @@ int main(int argc, char *argv[])
     
     // To avoid creating any extra storage, other than v0, v1, v2
     // one can do the following (Tested with C++11 on GCC 5.3.0)
-    auto sum = wfld0 + wfld1;   // - wfld2;
+    auto sum = wfld0 + wfld1;   // + wfld2;
 
     for (size_t i = 0; i < sum.size(); ++i)
     {
         std::cout << sum[i] << std::endl;
     }
 
-    for (size_t i = 0; i < sum.boundary(i).size(); ++i)
+    const label n = fld0.boundaryField().size();
+
+    for (label i = 0; i < n; ++i)
     {
-        Pout<< "i:" << endl;
+        Pout<< "Patch:" << i << endl;
+
+        auto patchSum = sum.patchField(i);
+
+        Pout<< "Patch size:" << patchSum.size() << endl;
+
+        for (size_t i = 0; i < patchSum.size(); ++i)
+        {
+            std::cout << patchSum[i] << std::endl;
+        }
     }
+
+
+//    for (size_t i = 0; i < sum.boundary(i).size(); ++i)
+//    {
+//        Pout<< "i:" << endl;
+//    }
 }
     return 0;
 }
