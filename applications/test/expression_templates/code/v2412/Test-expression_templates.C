@@ -48,143 +48,6 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-template <typename E>
-class VecExpression
-{
-public:
-    static constexpr bool is_leaf = false;
-
-    double operator[](size_t i) const
-    {
-        // Delegation to the actual expression type. This avoids dynamic
-        // polymorphism (a.k.a. virtual functions in C++)
-        return static_cast<E const&>(*this)[i];
-    }
-    size_t size() const { return static_cast<E const&>(*this).size(); }
-};
-
-
-class Vec
-:
-    public VecExpression<Vec>
-{
-    std::array<double, 3> elems;
-
-public:
-    static constexpr bool is_leaf = true;
-
-    decltype(auto) operator[](size_t i) const
-    {
-        return elems[i];
-    }
-//    decltype(auto) &operator[](size_t i)
-//    {
-//        return elems[i];
-//    }
-    size_t size() const
-    {
-        return elems.size();
-    }
-
-    // construct Vec using initializer list 
-    Vec(std::initializer_list<double> init)
-    {
-        std::copy(init.begin(), init.end(), elems.begin());
-    }
-
-    // A Vec can be constructed from any VecExpression, forcing its evaluation.
-    template <typename E>
-    Vec(VecExpression<E> const& expr)
-    {
-        for (size_t i = 0; i != expr.size(); ++i)
-        {
-            elems[i] = expr[i];
-        }
-    }
-};
-
-
-// Sum
-// ~~~
-// wrapper class + operator
-
-template <typename E1, typename E2>
-class VecSum
-:
-    public VecExpression<VecSum<E1, E2> >
-{
-    // cref if leaf, copy otherwise
-    typename std::conditional<E1::is_leaf, const E1&, const E1>::type _u;
-    typename std::conditional<E2::is_leaf, const E2&, const E2>::type _v;
-
-public:
-    static constexpr bool is_leaf = false;
-
-    VecSum(E1 const& u, E2 const& v)
-    :
-     _u(u), _v(v)
-    {
-        assert(u.size() == v.size());
-    }
-    decltype(auto) operator[](size_t i) const
-    {
-        return _u[i] + _v[i];
-    }
-    size_t size() const { return _v.size(); }
-};
-
-template <typename E1, typename E2>
-VecSum<E1, E2>
-operator+(VecExpression<E1> const& u, VecExpression<E2> const& v)
-{
-    return VecSum<E1, E2>
-    (
-        *static_cast<const E1*>(&u),
-        *static_cast<const E2*>(&v)
-    );
-}
-
-
-// Diff
-// ~~~~
-// wrapper class + operator
-
-template <typename E1, typename E2>
-class VecDiff
-:
-    public VecExpression<VecDiff<E1, E2> >
-{
-    // cref if leaf, copy otherwise
-    typename std::conditional<E1::is_leaf, const E1&, const E1>::type _u;
-    typename std::conditional<E2::is_leaf, const E2&, const E2>::type _v;
-
-public:
-    static constexpr bool is_leaf = false;
-
-    VecDiff(E1 const& u, E2 const& v)
-    :
-     _u(u), _v(v)
-    {
-        assert(u.size() == v.size());
-    }
-    decltype(auto) operator[](size_t i) const
-    {
-        return _u[i] - _v[i];
-    }
-    size_t size() const { return _v.size(); }
-};
-
-template <typename E1, typename E2>
-VecDiff<E1, E2>
-operator-(VecExpression<E1> const& u, VecExpression<E2> const& v)
-{
-    return VecDiff<E1, E2>
-    (
-        *static_cast<const E1*>(&u),
-        *static_cast<const E2*>(&v)
-    );
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Try fields
 
@@ -212,6 +75,8 @@ class FieldWrap
 
 public:
     static constexpr bool is_leaf = true;
+
+    FieldWrap(const FieldWrap&) = default;
 
     // returns the underlying data
     const scalarField& data() const
@@ -256,7 +121,8 @@ class FieldRefWrap
     const scalarField& elems;
 
 public:
-    static constexpr bool is_leaf = true;
+    // ! Store as copy (since holds reference)
+    static constexpr bool is_leaf = false;
 
     // returns the underlying data
     const scalarField& data() const
@@ -307,7 +173,7 @@ public:
     {
         return _u[i] + _v[i];
     }
-    size_t size() const { return _v.size(); }
+    size_t size() const { return _u.size(); }
 };
 template <typename E1, typename E2>
 FieldSum<E1, E2>
@@ -315,8 +181,8 @@ operator+(FieldExpression<E1> const& u, FieldExpression<E2> const& v)
 {
     return FieldSum<E1, E2>
     (
-        *static_cast<const E1*>(&u),
-        *static_cast<const E2*>(&v)
+        static_cast<const E1&>(u),
+        static_cast<const E2&>(v)
     );
 }
 
@@ -363,14 +229,13 @@ operator-(FieldExpression<E1> const& u, FieldExpression<E2> const& v)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-//class volScalarFieldRefWrap;
-//typedef FieldRefWrap volScalarFieldRefWrap::PatchFieldType;
-
-template <typename E>
+template <typename E, typename WrapType>
 class VolFieldExpression
 {
 public:
     static constexpr bool is_leaf = false;
+
+    typedef WrapType wrapType;
 
     double operator[](size_t i) const
     {
@@ -379,26 +244,21 @@ public:
         return static_cast<E const&>(*this)[i];
     }
     size_t size() const { return static_cast<E const&>(*this).size(); }
-
-    const typename E::PatchFieldType patchField(const label i) const
-    {
-        return static_cast<E const&>(*this).boundaryField()[i];
-    }
 };
 
 
 class volScalarFieldRefWrap
 :
-    public VolFieldExpression<volScalarFieldRefWrap>
+    public VolFieldExpression<volScalarFieldRefWrap, FieldRefWrap>
 {
     const volScalarField& elems;
 
 public:
 
-    //- Type to return for patchField
-    typedef FieldRefWrap PatchFieldType;
-
     static constexpr bool is_leaf = true;
+
+    //- Type to return for patchField
+    typedef FieldRefWrap wrapType;
 
     // returns the underlying data
     const volScalarField& data() const
@@ -415,7 +275,7 @@ public:
         return elems.size();
     }
 
-    const PatchFieldType patchField(const label i) const
+    wrapType patchField(const label i) const
     {
         return elems.boundaryField()[i];
     }
@@ -431,7 +291,15 @@ public:
 template <typename E1, typename E2>
 class volScalarFieldSum
 :
-    public VolFieldExpression<volScalarFieldSum<E1, E2> >
+    public VolFieldExpression
+    <
+        volScalarFieldSum<E1, E2>,
+        FieldSum
+        <
+            typename E1::wrapType,
+            typename E2::wrapType
+        >
+    >
 {
     // cref if leaf, copy otherwise
     typename std::conditional<E1::is_leaf, const E1&, const E1>::type _u;
@@ -443,17 +311,14 @@ public:
     //- Type to return for patchField
     typedef FieldSum
     <
-        typename E1::PatchFieldType,
-        typename E2::PatchFieldType
-    > PatchFieldType;
+        typename E1::wrapType,
+        typename E2::wrapType
+    > wrapType;
 
     volScalarFieldSum(E1 const& u, E2 const& v)
     :
      _u(u), _v(v)
     {
-        Pout<< "u.size:" << u.size() << endl;
-        Pout<< "v.size:" << v.size() << endl;
-
         assert(u.size() == v.size());
     }
     decltype(auto) operator[](size_t i) const
@@ -462,23 +327,78 @@ public:
     }
     size_t size() const { return _v.size(); }
 
-    const PatchFieldType patchField
-    (
-        const label i
-    ) const
+    wrapType patchField(const label i) const
     {
-        return PatchFieldType
-        (
-            _u.patchField(i),
-            _v.patchField(i)
-        );
+        return wrapType(_u.patchField(i), _v.patchField(i));
     }
 };
 template <typename E1, typename E2>
 volScalarFieldSum<E1, E2>
-operator+(VolFieldExpression<E1> const& u, VolFieldExpression<E2> const& v)
+operator+
+(
+    VolFieldExpression<E1, typename E1::wrapType> const& u,
+    VolFieldExpression<E2, typename E2::wrapType> const& v
+)
 {
     return volScalarFieldSum<E1, E2>
+    (
+        *static_cast<const E1*>(&u),
+        *static_cast<const E2*>(&v)
+    );
+}
+template <typename E1, typename E2>
+class volScalarFieldDiff
+:
+    public VolFieldExpression
+    <
+        volScalarFieldDiff<E1, E2>,
+        FieldDiff
+        <
+            typename E1::wrapType,
+            typename E2::wrapType
+        >
+    >
+{
+    // cref if leaf, copy otherwise
+    typename std::conditional<E1::is_leaf, const E1&, const E1>::type _u;
+    typename std::conditional<E2::is_leaf, const E2&, const E2>::type _v;
+
+public:
+    static constexpr bool is_leaf = false;
+
+    //- Type to return for patchField
+    typedef FieldDiff
+    <
+        typename E1::wrapType,
+        typename E2::wrapType
+    > wrapType;
+
+    volScalarFieldDiff(E1 const& u, E2 const& v)
+    :
+     _u(u), _v(v)
+    {
+        assert(u.size() == v.size());
+    }
+    decltype(auto) operator[](size_t i) const
+    {
+        return _u[i] - _v[i];
+    }
+    size_t size() const { return _v.size(); }
+
+    wrapType patchField(const label i) const
+    {
+        return wrapType(_u.patchField(i), _v.patchField(i));
+    }
+};
+template <typename E1, typename E2>
+volScalarFieldDiff<E1, E2>
+operator-
+(
+    VolFieldExpression<E1, typename E1::wrapType> const& u,
+    VolFieldExpression<E2, typename E2::wrapType> const& v
+)
+{
+    return volScalarFieldDiff<E1, E2>
     (
         *static_cast<const E1*>(&u),
         *static_cast<const E2*>(&v)
@@ -581,12 +501,12 @@ if (false)
 
     const volScalarFieldRefWrap wfld0(fld0);
     const volScalarFieldRefWrap wfld1(fld1);
-    //const volScalarFieldRefWrap wfld2(fld2);
+    const volScalarFieldRefWrap wfld2(fld2);
 
     
     // To avoid creating any extra storage, other than v0, v1, v2
     // one can do the following (Tested with C++11 on GCC 5.3.0)
-    auto sum = wfld0 + wfld1;   // + wfld2;
+    auto sum = wfld0 + wfld1 - wfld2;
 
     for (size_t i = 0; i < sum.size(); ++i)
     {
@@ -599,6 +519,13 @@ if (false)
     {
         Pout<< "Patch:" << i << endl;
 
+        // 1. Repeat expression : works
+        //auto patchSum =
+        //    FieldRefWrap(fld0.boundaryField()[i])
+        //  + FieldRefWrap(fld1.boundaryField()[i]);
+
+
+        // 2. Use original class member function
         auto patchSum = sum.patchField(i);
 
         Pout<< "Patch size:" << patchSum.size() << endl;
@@ -608,12 +535,6 @@ if (false)
             std::cout << patchSum[i] << std::endl;
         }
     }
-
-
-//    for (size_t i = 0; i < sum.boundary(i).size(); ++i)
-//    {
-//        Pout<< "i:" << endl;
-//    }
 }
     return 0;
 }
