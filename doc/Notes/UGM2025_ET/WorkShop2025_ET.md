@@ -189,7 +189,7 @@ expression.evaluate(wc);
 ---
 
 - only explicit finiteVolume discretisation
-- has already small CPU benefit
+- has already small CPU benefit. Picture
 
   pitzDaily tutorial:
 
