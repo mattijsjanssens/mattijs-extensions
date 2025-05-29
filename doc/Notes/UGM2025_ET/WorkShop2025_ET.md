@@ -86,11 +86,20 @@ special handling of the boundary ('fvPatchFields')
 - has already small CPU benefit
 
 
+pitzDaily tutorial:
+
+| Gauss| fusedGauss|
+|------|-----------|
+| 8.22 |  7.62     |
+
+(identical residuals at 6 digits)
+
+
 ## Other wrappers:
 - constant
 - tmp
 - fvMatrix (linear operations only)
-- GeometricField linear interpolation
+- discretisation : cell-to-face linear interpolation
 
 
 ## Wrapping it up
@@ -108,7 +117,7 @@ special handling of the boundary ('fvPatchFields')
 
 ## Adapt for GPU
 - std::execution::par_unseq
-- requires random-access iterators
+- requires random-access iterators (or legacy-forward-iterators?)
 
 
 ## Future work
