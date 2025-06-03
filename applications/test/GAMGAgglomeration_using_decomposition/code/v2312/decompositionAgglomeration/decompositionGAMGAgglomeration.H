@@ -66,6 +66,19 @@ class decompositionGAMGAgglomeration
         const scalarField& faceWeights
     ) const;
 
+    label regionSplit
+    (
+        const lduAddressing& addr,
+        const bitSet& isBlockedFace,
+        labelList& cellRegion
+    ) const;
+
+    static bitSet blockedFaces
+    (
+        const lduAddressing& addr,
+        const labelUList& region        // region per cell
+    );
+
 
 public:
 
