@@ -1,0 +1,59 @@
+/* @theme your-theme */
+
+@import 'default';
+
+:root {
+  font-size: 24px;
+}
+
+h1 {
+  color: rgb(2, 0, 133);
+}
+
+.columns {
+  display: flex;
+  gap: 1rem;
+}
+.columns > div {
+  flex: 1 1 0;
+}
+
+
+/* Add "Page" prefix and total page number */
+section::after {
+  /* font-weight: bold; */
+  /* text-shadow: 1px 1px 0 #9b9696; */
+  content: 'Page ' attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
+}
+
+header,
+footer {
+  position: absolute;
+  left: 50px;
+  right: 50px;
+  height: 20px;
+}
+
+header {
+  top: 30px;
+}
+
+footer {
+  bottom: 30px;
+}
+
+/* section {
+  position: relative;
+  height: 100%;
+  padding-left: 20%;
+}
+section::before {
+ content: "";
+ position: absolute;
+ top: 0;
+ left: 0;
+ height: 100%;
+ width: 15%;
+ background-color: #e90029;
+} */
+

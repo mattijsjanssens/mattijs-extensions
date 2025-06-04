@@ -1,26 +1,59 @@
+---
+marp: true
+theme: ESI
+paginate: true
+_header: ""
+footer: Mattijs Janssens, OpenFOAM Workshop 2025
+title:  Expression Templates
+header: Expression Templates
+auto-scaling: false
+
+
+---
+
 # Expression templates
 
 - OpenFOAM is field-based syntax
-- hides complex structures in formula-like syntax
+- hides complex structures in formula-like syntax:
+```
+volScalarField c(...);
+c = a + sqrt(b);
+```
 - all fields are a set of values for internal fields and
 special handling of the boundary ('fvPatchFields')
 - *lots* of intermediate fields: show example
-- remarkably little overhead on CPU (few %)
+- remarkably little overhead on CPU (`kcachegrind`, few %)
 
+---
 
 ## Expression templates
-- https:// expression templates. Have operator[]
-- show class structure
+- [Expression Templates](https://en.wikipedia.org/wiki/Expression_templates) : define `operator[]` that encodes the whole operation:
+  ```
+  scalar add<field, sum<sqrt<field>>>::operator[i]
+  {
+       return a[i] + sqrt[b[i]];
+  }
+  ```
+  and use it to evaluate:
+  ```
+  forAll(c, i)
+  {
+      c[i] = add<field, sum<sqrt<field>>>::operator[](i);
+  }
+  ```
+---
+
 - advantages
   - avoid intermediate storage (memory allocation)
   - avoid out-of-band access
   - easier to multi-thread
 - disadvantages
   - hard to debug
-  - does not allow boundary conditions on e.g. surface fields
+  - does not allow boundary conditions on removed intermediate fields (e.g. surface fields)
 
 - timing of Field algebra
 
+---
 
 ## GeometricFields as expression templates
 - already has operator[] ...
@@ -30,6 +63,7 @@ special handling of the boundary ('fvPatchFields')
 - and boundary conditions
 - how to do I/O?
 
+---
 
 ## (v2412) Expression template wrapper
 - reference to GeometricField
@@ -42,8 +76,21 @@ special handling of the boundary ('fvPatchFields')
     - indirect access of internal field
     - straight list of patch values
 
-- show wrapper syntax:
+---
 
+- wrapper syntax:
+```
+// Construct expression
+Expression::GeometricFieldConstRefWrap<volScalarField> wa(a);
+Expression::GeometricFieldConstRefWrap<volScalarField> wb(b);
+const auto expression(wa + sqrt(wb));
+
+// Evaluate expression into field c
+Expression::GeometricFieldRefWrap<volScalarField> wc(c);
+expression.evaluate(wc);
+```
+
+---
 
 ## 'fused' discretisation
 - exactly same purpose:
@@ -82,18 +129,21 @@ special handling of the boundary ('fvPatchFields')
         false       // avoid boundary evaluation until volume division
     );
     ```
+
+---
+
 - only explicit finiteVolume discretisation
 - has already small CPU benefit
 
+  pitzDaily tutorial:
 
-pitzDaily tutorial:
+  | Gauss| fusedGauss|
+  |------|-----------|
+  | 8.22 |  7.62     |
 
-| Gauss| fusedGauss|
-|------|-----------|
-| 8.22 |  7.62     |
+  (identical residuals at 6 digits)
 
-(identical residuals at 6 digits)
-
+---
 
 ## Other wrappers:
 - constant
@@ -101,12 +151,14 @@ pitzDaily tutorial:
 - fvMatrix (linear operations only)
 - discretisation : cell-to-face linear interpolation
 
+---
 
 ## Wrapping it up
 - .expr() syntax
 - assignment
 - example of F1 function
 
+---
 
 ## More timings
 - volField operations
@@ -114,12 +166,16 @@ pitzDaily tutorial:
   - compile with threads
 - compare F1
 
+---
 
 ## Adapt for GPU
 - std::execution::par_unseq
 - requires random-access iterators (or legacy-forward-iterators?)
 
+---
 
 ## Future work
 - apply .expr() to code
 - have _expr functions for finiteVolume discretisation?
+
+---
