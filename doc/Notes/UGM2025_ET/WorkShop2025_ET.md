@@ -21,6 +21,11 @@ c = a + sqrt(b);
 ```
 - all fields are a set of values for internal fields and
 special handling of the boundary ('fvPatchFields')
+- above expression does
+  - allocate new temporary field
+  - fill with sqrt(b)
+  - in-place add a
+  - copy values to c
 - *lots* of intermediate fields: show example
 - remarkably little overhead on CPU (`kcachegrind`, few %)
 
@@ -51,7 +56,22 @@ special handling of the boundary ('fvPatchFields')
   - hard to debug
   - does not allow boundary conditions on removed intermediate fields (e.g. surface fields)
 
-- timing of Field algebra
+---
+
+- simple field algebra:
+
+  - adding two fields (c = a + b)
+  - Intel E5-2620
+
+  | Size     | Intermediate field| Expression templates|
+  |----------|-------------------|---------------------|
+  | 100000   |  0.000097         | 0.000083 |
+  | 1000000  |  0.00287519       | 0.00110006 |
+  | 10000000 |  0.0268587        | 0.014261 |
+
+---
+
+![Simple algebra](./figures/simple_algebra.png "Simple algebra")
 
 ---
 
@@ -154,9 +174,52 @@ expression.evaluate(wc);
 ---
 
 ## Wrapping it up
-- .expr() syntax
-- assignment
-- example of F1 function
+- `.expr()` to create the wrapper
+- assignment to evaluate the wrapper
+  ```
+  c = a.expr() + sqrt(b.expr());
+  ```
+
+---
+
+- expression generators
+
+| Class| Expression | Assignment |
+|------|-----------|-------------|
+| List | .expr() | 	yes |
+| Field | 	.expr() | 	yes |
+| GeometricField (e.g. volScalarField) | 	.expr() | 	yes |
+| tmp\<Field\> | 	.expr() | 	no |
+| tmp\<GeometricField\> |	.expr() | 	no |
+| DimensionedType (for constant Field) | 	.expr(\<size\>) | 	no |
+| DimensonedType (for constant GeometricField) | 	.expr(\<GeoField\>) | 	no |
+| fvMatrix | 	.expr() | 	yes |
+
+---
+
+## Detail : constants
+
+- when used in `Field` expression : only size (and value) required:
+  ```
+  const Expression::UniformListWrap<scalar> two(mesh.nCells(), 2.0);
+  ```
+  or
+  ```
+  const auto two(dimensionedScalar(dimless, 2.0).expr(mesh.nCells()));
+  ```
+- when used in `GeometricField` expression : needs GeometricField reference:
+  ```
+  const auto two(dimensionedScalar(dimless, 2.0).expr(mesh.magSf()));
+  ```
+
+---
+
+## Discretisation
+
+| Function | 	Returns |
+|----------|----------|
+| Interpolation	|  expression template |
+| uncorrected Gauss Laplacian	|  fvMatrix |
 
 ---
 
@@ -164,17 +227,55 @@ expression.evaluate(wc);
 - volField operations
   - no threads
   - compile with threads
-- compare F1
 
 ---
 
-## Adapt for GPU
-- std::execution::par_unseq
-- requires random-access iterators (or legacy-forward-iterators?)
+## Typical application: kOmegaSST F1 function
+```
+auto arg1 = min
+(
+    min
+    (
+        max
+        (
+            (one/betaStar)*sqrt(k_.expr())/(omega_.expr()*y_.expr()),
+            fiveHundred
+           *(this→mu().expr()/this→rho_.expr())
+           /(sqr(y_.expr())*omega_.expr())
+        ),
+        fourAlphaOmega2*k_.expr()/(CDkOmegaPlus*sqr(y_.expr()))
+    ),
+    ten
+);
+return tanh(pow4(arg1));
+```
+
+---
+
+## Adapt for offloading
+- bottom level evaluation is
+  ```
+  for (label i = 0; i < lst.size(); ++i)
+  {
+      lst[i] = operator[](i);
+  }
+- replace with
+  ```
+  std::copy
+  (
+      std::execution::par_unseq,
+      static_cast<E const&>(*this).cbegin(),
+      static_cast<E const&>(*this).cend(),
+      lst.begin()
+  );
+  ```
+- requires random-access iterators
 
 ---
 
 ## Future work
+- extend to all operators, functions
+- handle type-changing code (scalar*vector)
 - apply .expr() to code
 - have _expr functions for finiteVolume discretisation?
 
