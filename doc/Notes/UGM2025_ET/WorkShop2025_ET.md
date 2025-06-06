@@ -52,6 +52,7 @@ special handling of the boundary ('fvPatchFields')
   - avoid intermediate storage (memory allocation)
   - avoid out-of-band access
   - easier to multi-thread
+  - at evaluation time decide if bc's are required
 - disadvantages
   - hard to debug
   - does not allow boundary conditions on removed intermediate fields (e.g. surface fields)
@@ -165,6 +166,7 @@ expression.evaluate(wc);
 
 ---
 
+<!----
 ## Other wrappers:
 - constant
 - tmp
@@ -172,6 +174,8 @@ expression.evaluate(wc);
 - discretisation : cell-to-face linear interpolation
 
 ---
+
+--->
 
 ## Wrapping it up
 - `.expr()` to create the wrapper
@@ -182,7 +186,7 @@ expression.evaluate(wc);
 
 ---
 
-- expression generators
+- wrapper generators
 
 | Class| Expression | Assignment |
 |------|-----------|-------------|
@@ -275,8 +279,9 @@ return tanh(pow4(arg1));
 
 ## Future work
 - extend to all operators, functions
+- fix fvMatrix source terms
 - handle type-changing code (scalar*vector)
-- apply .expr() to code
 - have _expr functions for finiteVolume discretisation?
+- apply!
 
 ---
