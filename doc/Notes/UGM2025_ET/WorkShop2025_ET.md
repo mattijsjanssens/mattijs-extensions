@@ -71,8 +71,18 @@ special handling of the boundary ('fvPatchFields')
   | 10000000 |  0.0268587        | 0.014261 |
 
 ---
-
+```
+c = a + b
+```
 ![Simple algebra](./figures/simple_algebra.png "Simple algebra")
+
+---
+
+- more complex algebra
+```
+c = cos(a + 0.5*sqrt(b-sin(a)))
+```
+![Complex algebra](./figures/complex_algebra.png "Complex algebra")
 
 ---
 
@@ -215,15 +225,36 @@ expression.evaluate(wc);
   ```
   const auto two(dimensionedScalar(dimless, 2.0).expr(mesh.magSf()));
   ```
+  (GeometricField needs to be 'live' at evaluation time)
 
 ---
 
 ## Discretisation
 
-| Function | 	Returns |
-|----------|----------|
-| Interpolation	|  expression template |
-| uncorrected Gauss Laplacian	|  fvMatrix |
+| Function | 	Input   | Output |
+|----------|----------|--------|
+| Interpolation	| expression template | expression template |
+| uncorrected Gauss Laplacian	| fvMatrix, expression template | fvMatrix |
+
+---
+
+## Detail : Gauss Laplacian
+
+```
+// Get expression for difference weights
+const auto deltaCoeffs = this->tsnGradScheme_().deltaCoeffs(vf).expr();
+
+// Get expression for interpolation weights
+const auto weights = this->tinterpGammaScheme_().weights(gamma).expr();
+
+// Interpolate gamma field and multiply with face-area magnitude
+const auto gammaMagSf =
+    Expression::lerp(gamma.expr(), weights, mesh)
+  * mesh.magSf().expr();
+
+// Create upper
+fvm.upper() = deltaCoeffs.internalField()*gammaMagSf.internalField()
+```
 
 ---
 
