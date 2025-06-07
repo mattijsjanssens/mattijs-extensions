@@ -1,0 +1,6 @@
+{
+    "markdown.marp.html": "all",
+    "css.customData": [
+        "themes/esi.css"
+    ]
+}

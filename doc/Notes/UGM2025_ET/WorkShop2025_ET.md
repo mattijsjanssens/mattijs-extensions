@@ -31,6 +31,28 @@ special handling of the boundary ('fvPatchFields')
 
 ---
 
+## Intermediate fields
+```
+DebugSwitches
+{
+    volScalarField  1;
+    volVectorField  1;
+    volShericalTensorField  1;
+    volSymmTensorField  1;
+    volTensorField  1;
+}
+```
+- read: 5
+  ```
+  p, U, nut, k, epsilon
+  ```
+- intermediate: 60
+  ```
+  (1|A(U)), grad(U), surfaceIntegrate(..)
+  ```
+
+---
+
 ## Expression templates
 - [Expression Templates](https://en.wikipedia.org/wiki/Expression_templates) : define `operator[]` that encodes the whole operation:
   ```
@@ -55,6 +77,7 @@ special handling of the boundary ('fvPatchFields')
   - at evaluation time decide if bc's are required
 - disadvantages
   - hard to debug
+  - compilation time
   - does not allow boundary conditions on removed intermediate fields (e.g. surface fields)
 
 ---
@@ -62,7 +85,7 @@ special handling of the boundary ('fvPatchFields')
 - simple field algebra:
 
   - adding two fields (c = a + b)
-  - Intel E5-2620
+  - Intel E5-2620 (15MB cache, 8 GB/s memory bandwidth)
 
   | Size     | Intermediate field| Expression templates|
   |----------|-------------------|---------------------|
@@ -83,6 +106,12 @@ c = a + b
 c = cos(a + 0.5*sqrt(b-sin(a)))
 ```
 ![Complex algebra](./figures/complex_algebra.png "Complex algebra")
+
+---
+
+- constant factor (2*) so scales with size
+- but memory allocation time is independent of size
+- access time
 
 ---
 
@@ -123,7 +152,7 @@ expression.evaluate(wc);
 
 ---
 
-## 'fused' discretisation
+## 'fused' discretisation (v2412)
 - exactly same purpose:
   - avoid intermediate surface fields
   - write single loop over complex expression
@@ -233,7 +262,7 @@ expression.evaluate(wc);
 
 | Function | 	Input   | Output |
 |----------|----------|--------|
-| Interpolation	| expression template | expression template |
+| linear interpolation	| expression template | expression template |
 | uncorrected Gauss Laplacian	| fvMatrix, expression template | fvMatrix |
 
 ---
@@ -287,6 +316,24 @@ return tanh(pow4(arg1));
 
 ---
 
+## Caveats
+
+- coupled boundary condition always uses indirect list into internal
+- no conditionals / in-place operations
+  - original code:
+    ```
+    tmp<volScalarField> f23(F2());
+
+    if (F3_)
+    {
+        f23.ref() *= F3();
+    }
+    ```
+  - move condition to non-templated code or
+  - always evaluate F3 but with scalar
+
+---
+
 ## Adapt for offloading
 - bottom level evaluation is
   ```
@@ -310,9 +357,49 @@ return tanh(pow4(arg1));
 
 ## Future work
 - extend to all operators, functions
+- have 'expr()' for UIndirectList
 - fix fvMatrix source terms
 - handle type-changing code (scalar*vector)
 - have _expr functions for finiteVolume discretisation?
 - apply!
 
 ---
+
+Complex expression templates timings
+
+  | Size     | Intermediate field| Expression templates|
+  |----------|-------------------|---------------------|
+  | 100000   |  0.0013081        | 0.00082692 |
+  | 1000000  | 0.012962          | 0.00867148 |
+  | 10000000 | 0.154202          | 0.087044 |
+
+---
+
+# OpenCFD (Keysight)
+
+A unique opportunity to join our well established core development team, to contribute to the OpenFOAM 6-monthly release cycles, close interaction with international Customers and on-site support engineers.
+
+## Requirements
+
+Minimum 3 years experience in core OpenFOAM Development
+Intermediate to advanced knowledge of C++
+Applicants must be eligible to work in the UK
+
+## Desirable
+
+Solver experience; segregated and coupled solver
+Physics Modelling experience in Heat Transfer, Combustion, Radiation
+Scripting e.g. bash, ruby, python
+Understanding of meshing concepts, computer architectures, HPC and parallelism
+GPU
+
+## Location
+
+Bracknell, UK
+
+
+## Remuneration
+
+Competitive UK-based salary relative to experience
+Standard bank holidays + 25 days vacation
+Benefits include company pension contribution, private health care and in-service life insurance
