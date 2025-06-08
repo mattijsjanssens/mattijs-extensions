@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: ESI
+theme: esi
 paginate: true
 _header: ""
 footer: Mattijs Janssens, OpenFOAM Workshop 2025
@@ -8,21 +8,20 @@ title:  Expression Templates
 header: Expression Templates
 auto-scaling: false
 
-
 ---
 
 # Expression templates
 
 - OpenFOAM is field-based syntax
 - hides complex structures in formula-like syntax:
-```
-volScalarField c(...);
-c = a + sqrt(b);
-```
+  ```
+  volScalarField c(...);
+  c = a + sqrt(b);
+  ```
 - all fields are a set of values for internal fields and
 special handling of the boundary ('fvPatchFields')
 - above expression does
-  - allocate new temporary field
+  - allocate new temporary field (internal field + patch fields)
   - fill with sqrt(b)
   - in-place add a
   - copy values to c
@@ -36,25 +35,22 @@ special handling of the boundary ('fvPatchFields')
 DebugSwitches
 {
     volScalarField  1;
-    volVectorField  1;
-    volShericalTensorField  1;
-    volSymmTensorField  1;
-    volTensorField  1;
+    surfaceTensorField  1;
 }
 ```
 - read: 5
   ```
   p, U, nut, k, epsilon
   ```
-- intermediate: 60
+- intermediate: 80
   ```
-  (1|A(U)), grad(U), surfaceIntegrate(..)
+  (1|A(U)), grad(U), surfaceIntegrate(..), linearInterpolate(..)
   ```
 
 ---
 
 ## Expression templates
-- [Expression Templates](https://en.wikipedia.org/wiki/Expression_templates) : define `operator[]` that encodes the whole operation:
+- [(https://en.wikipedia.org/wiki/Expression_templates](https://en.wikipedia.org/wiki/Expression_templates) : define `operator[]` that encodes the whole operation:
   ```
   scalar add<field, sum<sqrt<field>>>::operator[i]
   {
@@ -74,7 +70,7 @@ DebugSwitches
   - avoid intermediate storage (memory allocation)
   - avoid out-of-band access
   - easier to multi-thread
-  - at evaluation time decide if bc's are required
+  - at evaluation time decide if boundary conditions are required
 - disadvantages
   - hard to debug
   - compilation time
@@ -373,6 +369,58 @@ Complex expression templates timings
   | 1000000  | 0.012962          | 0.00867148 |
   | 10000000 | 0.154202          | 0.087044 |
 
+---
+
+```
+Test-expressionTemplates-volFields.o:Test-expressionTemplates-volFields.C:funct
+ion void tbb::detail::d1::dynamic_grainsize_mode<tbb::detail::d1::adaptive_mode
+<tbb::detail::d1::auto_partition_type> >::work_balance<tbb::detail::d1::start_f
+or<tbb::detail::d1::blocked_range<Foam::Expression::List_add<Foam::Expression::
+ListConstRefWrap<double>, Foam::Expression::ListConstRefWrap<double> >::const_i
+terator>, __pstl::__tbb_backend::__parallel_for_body<Foam::Expression::List_add
+<Foam::Expression::ListConstRefWrap<double>, Foam::Expression::ListConstRefWrap
+<double> >::const_iterator, __pstl::__internal::__pattern_walk2_brick<__pstl::e
+xecution::v1::parallel_unsequenced_policy const&, Foam::Expression::List_add<Fo
+am::Expression::ListConstRefWrap<double>, Foam::Expression::ListConstRefWrap<do
+uble> >::const_iterator, double*, std::copy<__pstl::execution::v1::parallel_uns
+equenced_policy const&, Foam::Expression::List_add<Foam::Expression::ListConstR
+efWrap<double>, Foam::Expression::ListConstRefWrap<double> >::const_iterator, d
+ouble*>(__pstl::execution::v1::parallel_unsequenced_policy const&, Foam::Expres
+sion::List_add<Foam::Expression::ListConstRefWrap<double>, Foam::Expression::Li
+stConstRefWrap<double> >::const_iterator, Foam::Expression::List_add<Foam::Expr
+ession::ListConstRefWrap<double>, Foam::Expression::ListConstRefWrap<double> >:
+:const_iterator, double*)::{lambda(Foam::Expression::List_add<Foam::Expression:
+:ListConstRefWrap<double>, Foam::Expression::ListConstRefWrap<double> >::const_
+iterator, Foam::Expression::List_add<Foam::Expression::ListConstRefWrap<double>
+, Foam::Expression::ListConstRefWrap<double> >::const_iterator, double*)#1}>(__
+pstl::execution::v1::parallel_unsequenced_policy const&, Foam::Expression::List
+_add<Foam::Expression::ListConstRefWrap<double>, Foam::Expression::ListConstRef
+Wrap<double> >::const_iterator, Foam::Expression::List_add<Foam::Expression::Li
+stConstRefWrap<double>, Foam::Expression::ListConstRefWrap<double> >::const_ite
+rator, double*, std::copy<__pstl::execution::v1::parallel_unsequenced_policy co
+nst&, Foam::Expression::List_add<Foam::Expression::ListConstRefWrap<double>, Fo
+am::Expression::ListConstRefWrap<double> >::const_iterator, double*>(__pstl::ex
+ecution::v1::parallel_unsequenced_policy const&, Foam::Expression::List_add<Foa
+m::Expression::ListConstRefWrap<double>, Foam::Expression::ListConstRefWrap<
+> >::const_iterator, Foam::Expression::List_add<Foam::Expression::ListConstRefW
+rap<double>, Foam::Expression::ListConstRefWrap<double> >::const_iterator, doub
+le*)::{lambda(Foam::Expression::List_add<Foam::Expression::ListConstRefWrap<dou
+ble>, Foam::Expression::ListConstRefWrap<double> >::const_iterator, Foam::Expre
+ssion::List_add<Foam::Expression::ListConstRefWrap<double>, Foam::Expression::L
+istConstRefWrap<double> >::const_iterator, double*)#1}, std::integral_constant<
+bool, true>)::{lambda()#1}::operator()() const::{lambda(Foam::Expression::List_
+add<Foam::Expression::ListConstRefWrap<double>, Foam::Expression::ListConstRefW
+rap<double> >::const_iterator, Foam::Expression::List_add<Foam::Expression::Lis
+tConstRefWrap<double>, Foam::Expression::ListConstRefWrap<double> >::const_iter
+ator)#1}>, tbb::detail::d1::auto_partitioner const>, tbb::detail::d1::blocked_r
+ange<Foam::Expression::List_add<Foam::Expression::ListConstRefWrap<double>, Foa
+m::Expression::ListConstRefWrap<double> >::const_iterator> >(__pstl::execution
+v1::parallel_unsequenced_policy const&, tbb::detail::d1::blocked_range<Foam::Ex
+pression::List_add<Foam::Expression::ListConstRefWrap<double>, Foam::Expression
+::ListConstRefWrap<double> >::const_iterator>&, tbb::detail::d1::execution_data
+&): error: undefined reference to 'tbb::detail::r1::allocate(tbb::detail::d1::s
+mall_object_pool*&, unsigned long, tbb::detail::d1::execution_data const&)
+```
 ---
 
 # OpenCFD (Keysight)
