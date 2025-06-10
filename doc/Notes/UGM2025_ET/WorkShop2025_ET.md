@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: esi
+theme: ESI
 paginate: true
 _header: ""
 footer: Mattijs Janssens, OpenFOAM Workshop 2025
@@ -25,8 +25,13 @@ special handling of the boundary ('fvPatchFields')
   - fill with sqrt(b)
   - in-place add a
   - copy values to c
-- *lots* of intermediate fields: show example
+- *lots* of intermediate fields
 - remarkably little overhead on CPU (`kcachegrind`, few %)
+
+---
+
+## kcachegrind
+
 
 ---
 
@@ -72,6 +77,7 @@ DebugSwitches
   - easier to multi-thread
   - at evaluation time decide if boundary conditions are required
 - disadvantages
+  - changes truncation error
   - hard to debug
   - compilation time
   - does not allow boundary conditions on removed intermediate fields (e.g. surface fields)
@@ -90,18 +96,30 @@ DebugSwitches
   | 10000000 |  0.0268587        | 0.014261 |
 
 ---
+
+<div class="columns">
+<div>
+
 ```
 c = a + b
 ```
+
 ![Simple algebra](./figures/simple_algebra.png "Simple algebra")
 
----
+</div>
+
+<div>
 
 - more complex algebra
+
 ```
 c = cos(a + 0.5*sqrt(b-sin(a)))
 ```
+
 ![Complex algebra](./figures/complex_algebra.png "Complex algebra")
+
+</div>
+</div>
 
 ---
 
@@ -188,8 +206,10 @@ expression.evaluate(wc);
 
 ---
 
-- only explicit finiteVolume discretisation
-- has already small CPU benefit. Picture
+## 'fused' discretisation (2)
+- only explicit finiteVolume discretisation (Gauss laplacian, div, grad)
+- changes truncation error
+- has already small CPU benefit
 
   pitzDaily tutorial:
 
@@ -352,11 +372,13 @@ return tanh(pow4(arg1));
 ---
 
 ## Future work
-- extend to all operators, functions
-- have 'expr()' for UIndirectList
-- fix fvMatrix source terms
-- handle type-changing code (scalar*vector)
+- 90% solution
+  - extend to all operators, functions
+  - have 'expr()' for UIndirectList
+  - fix fvMatrix source terms
+  - handle type-changing code (scalar*vector)
 - have _expr functions for finiteVolume discretisation?
+- test with GPU
 - apply!
 
 ---
