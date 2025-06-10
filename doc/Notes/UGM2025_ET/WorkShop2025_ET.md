@@ -32,6 +32,7 @@ special handling of the boundary ('fvPatchFields')
 
 ## kcachegrind
 
+![malloc](./figures/malloc_kcachegrind.png "Malloc")
 
 ---
 
@@ -40,6 +41,7 @@ special handling of the boundary ('fvPatchFields')
 DebugSwitches
 {
     volScalarField  1;
+    ..
     surfaceTensorField  1;
 }
 ```
@@ -47,7 +49,7 @@ DebugSwitches
   ```
   p, U, nut, k, epsilon
   ```
-- intermediate: 80
+- intermediate: ~80 (`simpleFoam`, `kEpsilon`)
   ```
   (1|A(U)), grad(U), surfaceIntegrate(..), linearInterpolate(..)
   ```
@@ -100,6 +102,8 @@ DebugSwitches
 <div class="columns">
 <div>
 
+- simple algebra:
+
 ```
 c = a + b
 ```
@@ -123,9 +127,27 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 
 ---
 
-- constant factor (2*) so scales with size
+<div class="columns">
+<div>
+
+- constant factor (~2), scales with size
+- (maybe due to only having 3 patches)
 - but memory allocation time is independent of size
-- access time
+- access time?
+  - 10M * 8 bytes = 80 Mb = 10ms
+
+</div>
+
+<div>
+
+| Size     | Intermediate field| Expression templates|
+|----------|-------------------|---------------------|
+| 100000   |  0.0013081        | 0.00082692 |
+| 1000000  | 0.012962          | 0.00867148 |
+| 10000000 | 0.154202          | 0.087044 |
+
+</div>
+</div>
 
 ---
 
@@ -135,7 +157,7 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 - no registration
 - is just expression of field operation
 - and boundary conditions
-- how to do I/O?
+- how to do I/O? State?
 
 ---
 
@@ -221,17 +243,6 @@ expression.evaluate(wc);
 
 ---
 
-<!----
-## Other wrappers:
-- constant
-- tmp
-- fvMatrix (linear operations only)
-- discretisation : cell-to-face linear interpolation
-
----
-
---->
-
 ## Wrapping it up
 - `.expr()` to create the wrapper
 - assignment to evaluate the wrapper
@@ -271,6 +282,24 @@ expression.evaluate(wc);
   const auto two(dimensionedScalar(dimless, 2.0).expr(mesh.magSf()));
   ```
   (GeometricField needs to be 'live' at evaluation time)
+
+---
+
+## Detail : fvMatrix
+
+- limited: expression evaluation of matrix components (upper, lower etc)
+```
+// Wrap fvMatrix from time derivative discretisation
+const auto ddtExpr = fvm::ddt(U)().expr();
+
+// Wrap fvMatrix from convection discretisation
+const auto divExpr = fvm::div(phi, U)().expr();
+
+// Create new fvMatrix
+fvVectorMatrix m(.., ddtExpr + divExpr)
+
+```
+- linear operations only (+-*/)
 
 ---
 
@@ -346,7 +375,7 @@ return tanh(pow4(arg1));
     }
     ```
   - move condition to non-templated code or
-  - always evaluate F3 but with scalar
+  - always evaluate F3 but with scalar 0-1 multiplier
 
 ---
 
