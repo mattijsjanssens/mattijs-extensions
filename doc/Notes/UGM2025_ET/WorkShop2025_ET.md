@@ -89,13 +89,13 @@ DebugSwitches
 - simple field algebra:
 
   - adding two fields (c = a + b)
-  - Intel E5-2620 (15MB cache, 8 GB/s memory bandwidth)
+  - Intel E5-2620 (15MB cache, 40 GB/s memory bandwidth, 6 cores)
 
-  | Size     | Intermediate field| Expression templates|
-  |----------|-------------------|---------------------|
-  | 100000   |  0.000097         | 0.000083 |
-  | 1000000  |  0.00287519       | 0.00110006 |
-  | 10000000 |  0.0268587        | 0.014261 |
+  | Size     | Intermediate field| Expression templates| Factor |
+  |----------|-------------------|---------------------|--------|
+  | 100000   |  0.000097         | 0.000083 | 1.2 |
+  | 1000000  |  0.00287519       | 0.00110006 | 2.6 |
+  | 10000000 |  0.0268587        | 0.014261 | 1.9 |
 
 ---
 
@@ -140,16 +140,19 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 
 <div>
 
-| Size     | Intermediate field| Expression templates|
-|----------|-------------------|---------------------|
-| 100000   |  0.0013081        | 0.00082692 |
-| 1000000  | 0.012962          | 0.00867148 |
-| 10000000 | 0.154202          | 0.087044 |
+| Size     | Intermediate field| Expression templates| Factor |
+|----------|-------------------|---------------------|--------|
+| 100000   |  0.0013081        | 0.00082692 | 1.6 |
+| 1000000  | 0.012962          | 0.00867148 | 1.5 |
+| 10000000 | 0.154202          | 0.087044 | 1.8 |
 
 </div>
 </div>
 
 ---
+
+<div class="columns">
+<div>
 
 ## GeometricFields as expression templates
 - already has operator[] ...
@@ -159,7 +162,8 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 - and boundary conditions
 - how to do I/O? State?
 
----
+</div>
+<div>
 
 ## (v2412) Expression template wrapper
 - reference to GeometricField
@@ -168,9 +172,9 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 - constructs expressions on this GeometricField
   - internal field : (operator on) straight list of values
   - uncoupled patch field : straight list of patch values
-  - coupled patch field : blending of
-    - indirect access of internal field
-    - straight list of patch values
+  - coupled patch field : straight list of patch values
+
+</div>
 
 ---
 
@@ -309,6 +313,21 @@ fvVectorMatrix m(.., ddtExpr + divExpr)
 |----------|----------|--------|
 | linear interpolation	| expression template | expression template |
 | uncorrected Gauss Laplacian	| fvMatrix, expression template | fvMatrix |
+
+---
+
+## Detail : linear interpolation
+
+- from cell to face
+- internal field :
+  - weighted accumulation of
+  - indirect using `owner`
+  - indirect using `neighbour`
+- uncoupled patch field : straight list of patch values
+- coupled patch field : weighted 
+  - weighted accumulation of
+  - indirect using `faceCells`
+  - straight list of `patchNeighbourField()`
 
 ---
 
