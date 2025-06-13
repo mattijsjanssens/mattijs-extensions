@@ -134,7 +134,13 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 - (maybe due to only having 3 patches)
 - but memory allocation time is independent of size
 - access time?
-  - 10M * 8 bytes = 80 Mb = 10ms
+  - 10M * 8 bytes = 80 Mb
+- stream:
+
+| Function | Best Rate MB/s  | Avg time | Min time | Max time  |
+|----------|-------------------|--------|-------------|--------|
+Copy:      | 11807.2           | 0.013606 | 0.013551 |   0.013806 |
+
 
 </div>
 
