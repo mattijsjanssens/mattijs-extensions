@@ -177,8 +177,7 @@ Copy:      | 11807.2           | 0.013606 | 0.013551 |   0.013806 |
     (dimensions, oriented)
 - constructs expressions on this GeometricField
   - internal field : (operator on) straight list of values
-  - uncoupled patch field : straight list of patch values
-  - coupled patch field : straight list of patch values
+  - patch field : straight list of patch values
 
 </div>
 
@@ -260,8 +259,6 @@ expression.evaluate(wc);
   c = a.expr() + sqrt(b.expr());
   ```
 
----
-
 - wrapper generators
 
 | Class| Expression | Assignment |
@@ -330,7 +327,7 @@ fvVectorMatrix m(.., ddtExpr + divExpr)
   - indirect using `owner`
   - indirect using `neighbour`
 - uncoupled patch field : straight list of patch values
-- coupled patch field : weighted 
+- coupled patch field :
   - weighted accumulation of
   - indirect using `faceCells`
   - straight list of `patchNeighbourField()`
@@ -338,6 +335,24 @@ fvVectorMatrix m(.., ddtExpr + divExpr)
 ---
 
 ## Detail : Gauss Laplacian
+
+
+<div class="columns">
+<div>
+
+```
+// Get expression for difference weights
+const auto deltaCoeffs = this->tsnGradScheme_().deltaCoeffs(vf);
+
+// Interpolate gamma field and multiply with face-area magnitude
+const auto gammaMagSf(tinterpGammaScheme_().interpolate(gamma)()*mesh.magSf());
+
+// Create upper
+fvm.upper() = deltaCoeffs.primitiveField()*gammaMagSf.primitiveField();
+```
+
+</div>
+<div>
 
 ```
 // Get expression for difference weights
@@ -355,12 +370,7 @@ const auto gammaMagSf =
 fvm.upper() = deltaCoeffs.internalField()*gammaMagSf.internalField()
 ```
 
----
-
-## More timings
-- volField operations
-  - no threads
-  - compile with threads
+</div>
 
 ---
 
@@ -428,22 +438,13 @@ return tanh(pow4(arg1));
 ## Future work
 - 90% solution
   - extend to all operators, functions
+  - handle type-changing code (scalar*vector)
   - have 'expr()' for UIndirectList
   - fix fvMatrix source terms
-  - handle type-changing code (scalar*vector)
 - have _expr functions for finiteVolume discretisation?
+  - e.g. `fvMatrix<Type>::H_expr()`, `flux_expr()`
 - test with GPU
 - apply!
-
----
-
-Complex expression templates timings
-
-  | Size     | Intermediate field| Expression templates|
-  |----------|-------------------|---------------------|
-  | 100000   |  0.0013081        | 0.00082692 |
-  | 1000000  | 0.012962          | 0.00867148 |
-  | 10000000 | 0.154202          | 0.087044 |
 
 ---
 
