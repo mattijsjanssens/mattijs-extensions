@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: ESI
+theme: KEYSIGHT
 paginate: true
 _header: ""
 footer: Mattijs Janssens, OpenFOAM Workshop 2025
@@ -10,7 +10,31 @@ auto-scaling: false
 
 ---
 
-# Expression templates
+#   Expression Templates in OpenFOAM
+
+### Mattijs Janssens, Keysight(OpenCFD)
+
+- [Field based algebra](#field-based-algebra)
+  - [kcachegrind](#kcachegrind)
+  - [Intermediate fields](#intermediate-fields)
+- [Expression templates](#expression-templates)
+  - [GeometricFields as expression templates](#geometricfields-as-expression-templates)
+  - [(v2412) Expression template wrapper](#v2412-expression-template-wrapper)
+  - ['fused' discretisation (v2412)](#fused-discretisation-v2412)
+  - ['fused' discretisation (2)](#fused-discretisation-2)
+  - [Wrapping it up](#wrapping-it-up)
+  - [Detail : constants, fvMatrix](#detail--constants)
+  - [Discretisation](#discretisation)
+  - [Detail : linear interpolation, Gauss Laplacian](#detail--gauss-laplacian)
+  - [Typical application: kOmegaSST F1 function](#typical-application-komegasst-f1-function)
+  - [Caveats](#caveats)
+  - [Adapt for offloading](#adapt-for-offloading)
+  - [Future work](#)
+
+
+---
+
+# Field based algebra
 
 - OpenFOAM is field-based syntax
 - hides complex structures in formula-like syntax:
@@ -56,7 +80,7 @@ DebugSwitches
 
 ---
 
-## Expression templates
+# Expression templates
 - [(https://en.wikipedia.org/wiki/Expression_templates](https://en.wikipedia.org/wiki/Expression_templates) : define `operator[]` that encodes the whole operation:
   ```
   scalar add<field, sum<sqrt<field>>>::operator[i]
@@ -258,7 +282,6 @@ expression.evaluate(wc);
   ```
   c = a.expr() + sqrt(b.expr());
   ```
-
 - wrapper generators
 
 | Class| Expression | Assignment |
@@ -447,6 +470,8 @@ return tanh(pow4(arg1));
 - apply!
 
 ---
+
+## Debugging ...
 
 ```
 Test-expressionTemplates-volFields.o:Test-expressionTemplates-volFields.C:funct

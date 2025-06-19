@@ -2,6 +2,6 @@
     "markdown.marp.themes": [
         "./themes",
         "./themes/esi.css",
-        "./themes/theme.css"
+        "./themes/keysight.css",
     ]
 }
