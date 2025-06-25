@@ -21,7 +21,6 @@ auto-scaling: false
   - [GeometricFields as expression templates](#geometricfields-as-expression-templates)
   - [(v2412) Expression template wrapper](#v2412-expression-template-wrapper)
   - ['fused' discretisation (v2412)](#fused-discretisation-v2412)
-  - ['fused' discretisation (2)](#fused-discretisation-2)
   - [Wrapping it up](#wrapping-it-up)
   - [Detail : constants, fvMatrix](#detail--constants)
   - [Discretisation](#discretisation)
@@ -83,7 +82,7 @@ DebugSwitches
 # Expression templates
 - [(https://en.wikipedia.org/wiki/Expression_templates](https://en.wikipedia.org/wiki/Expression_templates) : define `operator[]` that encodes the whole operation:
   ```
-  scalar add<field, sum<sqrt<field>>>::operator[i]
+  scalar add<field, sum<sqrt<field>>>::operator[](const int i)
   {
        return a[i] + sqrt[b[i]];
   }
@@ -164,6 +163,7 @@ c = cos(a + 0.5*sqrt(b-sin(a)))
 | Function | Best Rate MB/s  | Avg time | Min time | Max time  |
 |----------|-------------------|--------|-------------|--------|
 Copy:      | 11807.2           | 0.013606 | 0.013551 |   0.013806 |
+- 12Gb/s for 80Mb = 0.007s
 
 
 </div>
@@ -209,6 +209,11 @@ Copy:      | 11807.2           | 0.013606 | 0.013551 |   0.013806 |
 
 - wrapper syntax:
 ```
+// GeometricFields (storage)
+const volScalarField a(..);
+const volScalarField b(..);
+volScalarField c(..);
+
 // Construct expression
 Expression::GeometricFieldConstRefWrap<volScalarField> wa(a);
 Expression::GeometricFieldConstRefWrap<volScalarField> wb(b);
@@ -359,7 +364,6 @@ fvVectorMatrix m(.., ddtExpr + divExpr)
 
 ## Detail : Gauss Laplacian
 
-
 <div class="columns">
 <div>
 
@@ -398,6 +402,31 @@ fvm.upper() = deltaCoeffs.internalField()*gammaMagSf.internalField()
 ---
 
 ## Typical application: kOmegaSST F1 function
+
+<div class="columns">
+<div>
+
+```
+tmp<volScalarField> arg1 = min
+(
+    min
+    (
+        max
+        (
+            (scalar(1)/betaStar_)*sqrt(k_)/(omega_*y_),
+            scalar(500)*(this->mu()/this->rho_)/(sqr(y_)*omega_)
+        ),
+        (4*alphaOmega2_)*k_/(CDkOmegaPlus*sqr(y_))
+    ),
+    scalar(10)
+);
+
+return tanh(pow4(arg1));
+```
+
+</div>
+<div>
+
 ```
 auto arg1 = min
 (
@@ -416,6 +445,8 @@ auto arg1 = min
 );
 return tanh(pow4(arg1));
 ```
+
+</div>
 
 ---
 
