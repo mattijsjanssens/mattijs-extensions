@@ -127,7 +127,7 @@ public:
             const bitSet& isBlockedFace,
             CompactListList<label>& cellCells
         );
-        static void localCellCells
+        static labelList localCellCells
         (
             const lduAddressing& addr,
             const labelList& regions,   // marker
