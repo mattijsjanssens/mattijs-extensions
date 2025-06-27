@@ -304,15 +304,21 @@ expression.evaluate(wc);
 
 ## Detail : constants
 
+- usual : value (and dimensions):
+  ```
+  dimensionedScalar two(dimless, 2.0);
+  ```
 - when used in `Field` expression : only size (and value) required:
   ```
   const Expression::UniformListWrap<scalar> two(mesh.nCells(), 2.0);
   ```
-  or
+  or using .expr() syntax:
   ```
   const auto two(dimensionedScalar(dimless, 2.0).expr(mesh.nCells()));
   ```
-- when used in `GeometricField` expression : needs GeometricField reference:
+- when used in `GeometricField` expression :
+  - needs dimensions (no oriented flag)
+  - needs patch sizing : through GeometricField reference
   ```
   const auto two(dimensionedScalar(dimless, 2.0).expr(mesh.magSf()));
   ```
@@ -342,7 +348,8 @@ fvVectorMatrix m(.., ddtExpr + divExpr)
 
 | Function | 	Input   | Output |
 |----------|----------|--------|
-| linear interpolation	| expression template | expression template |
+| interpolation	| expression template | expression template |
+| distance-weighted interpolation	| expression template | expression template |
 | uncorrected Gauss Laplacian	| fvMatrix, expression template | fvMatrix |
 
 ---
@@ -390,7 +397,7 @@ const auto weights = this->tinterpGammaScheme_().weights(gamma).expr();
 
 // Interpolate gamma field and multiply with face-area magnitude
 const auto gammaMagSf =
-    Expression::lerp(gamma.expr(), weights, mesh)
+    Expression::interpolate(gamma.expr(), weights, mesh)
   * mesh.magSf().expr();
 
 // Create upper
