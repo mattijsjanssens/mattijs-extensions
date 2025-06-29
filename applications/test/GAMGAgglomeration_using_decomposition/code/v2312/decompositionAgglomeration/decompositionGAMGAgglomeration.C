@@ -30,6 +30,7 @@ License
 //#include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
 #include "decompositionMethod.H"
+#include "labelPairHashes.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -737,6 +738,10 @@ void Foam::decompositionGAMGAgglomeration::agglomerate
 
     while (nCreatedLevels < maxLevels_ - 1)
     {
+        Pout<< "nCreatedLevels:" << nCreatedLevels << endl;
+        Pout<< "maxLevels_:" << maxLevels_ << endl;
+
+
         const lduMesh& mesh =
         (
             nCreatedLevels == startLevel
@@ -758,9 +763,13 @@ void Foam::decompositionGAMGAgglomeration::agglomerate
         (
             nCreatedLevels == startLevel
           ? dummyAgglom
-          : agglomeration[nCreatedLevels]
+          : agglomeration[nCreatedLevels-1]
         );
-        const label nRegions = max(fineAgglom);
+        DebugVar(fineAgglom.size());
+        DebugVar(mesh.lduAddr().size());
+
+        const label nRegions = max(fineAgglom)+1;
+        DebugVar(nRegions);
 
         labelList thisAgglom(mesh.lduAddr().size());
 
@@ -820,6 +829,7 @@ void Foam::decompositionGAMGAgglomeration::agglomerate
             const auto& agglom = agglomeration.last();
             const auto& lower = mesh.lduAddr().lowerAddr();
             const auto& upper = mesh.lduAddr().upperAddr();
+            labelPairHashSet doneCellCell(lower.size());
 
             labelList faceMap(lower.size(), -1);
             labelList coarseLower(lower.size());
@@ -834,17 +844,23 @@ void Foam::decompositionGAMGAgglomeration::agglomerate
 
                     if (l < u)
                     {
-                        const label coarseFacei = nCoarseFaces++;
-                        faceMap[facei] = coarseFacei;
-                        coarseLower[coarseFacei] = l;
-                        coarseUpper[coarseFacei] = u;
+                        if (doneCellCell.insert(labelPair(l, u)))
+                        {
+                            const label coarseFacei = nCoarseFaces++;
+                            faceMap[facei] = coarseFacei;
+                            coarseLower[coarseFacei] = l;
+                            coarseUpper[coarseFacei] = u;
+                        }
                     }
                     else if (u < l)
                     {
-                        const label coarseFacei = nCoarseFaces++;
-                        faceMap[facei] = coarseFacei;
-                        coarseLower[coarseFacei] = u;
-                        coarseUpper[coarseFacei] = l;
+                        if (doneCellCell.insert(labelPair(u, l)))
+                        {
+                            const label coarseFacei = nCoarseFaces++;
+                            faceMap[facei] = coarseFacei;
+                            coarseLower[coarseFacei] = u;
+                            coarseUpper[coarseFacei] = l;
+                        }
                     }
                 }
             }
@@ -869,6 +885,24 @@ void Foam::decompositionGAMGAgglomeration::agglomerate
                     true
                 )
             );
+
+            // Debug
+            {
+                const auto& coarseMesh = levelMeshPtr();
+                Pout<< "CoarseMesh:" << coarseMesh.lduAddr().size() << endl;
+                forAll(coarseMesh.lduAddr().lowerAddr(), facei)
+                {
+                    Pout<< "    coarseface:" << facei
+                        << " owner:" << coarseMesh.lduAddr().lowerAddr()[facei]
+                        << " neighbour:"
+                        << coarseMesh.lduAddr().upperAddr()[facei]
+                        << endl;
+                }
+                Pout<< endl;
+            }
+
+
+
         }
 //XXXX
         nCreatedLevels++;
