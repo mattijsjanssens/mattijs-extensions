@@ -2,7 +2,7 @@
    =========                 |
    \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
     \\    /   O peration     |
-     \\  /    A nd           | Copyright (C) 2024 Mattijs Janssens
+     \\  /    A nd           | Copyright (C) 2026 Mattijs Janssens
       \\/     M anipulation  |
  -------------------------------------------------------------------------------
 License
@@ -42,6 +42,8 @@ Usage
 #include "meshTools.H"
 #include "triSurface.H"
 #include "triSurfaceMesh.H"
+#include "topoSet.H"
+#include "processorMeshes.H"
 
 // CGAL includes
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -50,6 +52,9 @@ Usage
 #include <CGAL/Polyhedral_mesh_domain_with_features_3.h>
 #include <CGAL/make_mesh_3.h>
 #include <CGAL/Mesh_criteria_3.h>
+
+// Mesh tools
+#include "polyTopoChange.H"
 
 #include <algorithm>
 #include <fstream>
@@ -365,7 +370,6 @@ void cgalToPolyMesh
 }
 */
 
-//XXXXXXX
 autoPtr<polyMesh> cgalToPolyMesh
 (
     const IOobject& meshIOObj,
@@ -422,7 +426,7 @@ autoPtr<polyMesh> cgalToPolyMesh
         // const typename K::Point_3& p1 = v1->point().point();
         // const typename K::Point_3& p2 = v2->point().point();
         // const typename K::Point_3& p3 = v3->point().point();
-        Pout<< "cell:" << celli << " verts:" << cells[celli] << endl;
+        // Pout<< "cell:" << celli << " verts:" << cells[celli] << endl;
         // celli++;
     }
     // cells.setSize(celli);
@@ -441,7 +445,6 @@ autoPtr<polyMesh> cgalToPolyMesh
         wordList()
     );
 }
-//XXXXXXX
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -466,6 +469,10 @@ int main(int argc, char *argv[])
     Info<< "Converting CGAL mesh to OpenFOAM polyMesh" << nl;
     Info<< "Input file: " << importName << nl;
 
+    const word oldInstance = runTime.instance();
+    DebugVar(oldInstance);
+
+
     // // Create constant directory
     // fileName constantDir = runTime.path()/"constant";
     // fileName meshDir = constantDir/polyMesh::meshSubDir;
@@ -474,27 +481,6 @@ int main(int argc, char *argv[])
 
    // Read input geometry
    // ~~~~~~~~~~~~~~~~~~~
-
-    Polyhedron polyhedron;
-
-    // {
-    //     std::ifstream input(importName);
-    //     if (!input || !input.good())
-    //     {
-    //         FatalErrorInFunction
-    //             << "Cannot open file: " << importName
-    //             << exit(FatalError);
-    //     }
-    //     input >> polyhedron;
-
-    //     if (input.fail() || !CGAL::is_triangle_mesh(polyhedron))
-    //     {
-    //         FatalErrorInFunction
-    //             << "Input geometry is not a valid triangle mesh: "
-    //             << importName
-    //             << exit(FatalError);
-    //     }
-    // }
 
     const triSurfaceMesh surf
     (
@@ -510,13 +496,14 @@ int main(int argc, char *argv[])
     );
     
     // Convert triSurface to Polyhedron for CGAL meshing
+    Polyhedron polyhedron;
     triSurfaceToPolyhedron(surf, polyhedron);
-
 
 
     Info<< "Read geometry from " << importName << nl;
     Info<< "Number of vertices: "
-        << std::distance(polyhedron.points_begin(), polyhedron.points_end()) << nl;
+        << std::distance(polyhedron.points_begin(), polyhedron.points_end())
+        << nl;
 
 
     // Generate mesh
@@ -558,9 +545,128 @@ int main(int argc, char *argv[])
             c3t3
         )
     );
+    auto& mesh = *meshPtr;
 
-    meshPtr->write();
 
+    Info<< "Finding correspondence to surface" << nl;
+
+    pointField bfc
+    (
+        SubList<point>
+        (
+            mesh.faceCentres(),
+            mesh.nBoundaryFaces(),
+            mesh.nInternalFaces()
+        )
+    );
+    List<pointIndexHit> info;
+    surf.findNearest
+    (
+        bfc,
+        scalarField(bfc.size(), mesh.bounds().magSqr()),
+        info
+    );
+    labelList surfaceFaceIDs(mesh.nBoundaryFaces(), -1);
+    // Per boundary faces the patch. Start from patch0 (=defaultFaces)
+    labelList surfaceRegionIDs(mesh.nBoundaryFaces(), 0);
+    forAll(info, i)
+    {
+        if (info[i].hit())
+        {
+            surfaceFaceIDs[i] = info[i].index();
+            const labelledTri& tri =
+                static_cast<const triSurface&>(surf)[surfaceFaceIDs[i]];
+            surfaceRegionIDs[i] = tri.region();
+        }
+    }
+
+
+
+    // Add zero-sized patches
+    // ~~~~~~~~~~~~~~~~~~~~~~
+
+    Info<< "Adding zero-sized patches" << nl;
+
+    const auto& surfPatches = surf.patches();
+    polyPatchList patches(surfPatches.size());
+    label startFace = mesh.nInternalFaces();
+    label nFaces = mesh.nBoundaryFaces();
+    forAll(surfPatches, patchi)
+    {
+        const auto& surfPatch = surfPatches[patchi];
+
+        Info<< "    adding patch " << surfPatch.name() << nl;
+        patches.set
+        (
+            patchi,
+            new polyPatch
+            (
+                surfPatch.name(),
+                nFaces,
+                startFace,
+                patchi,
+                mesh.boundaryMesh(),
+                surfPatch.geometricType()
+            )
+        );
+        startFace += nFaces;
+        nFaces = 0;
+    }
+    mesh.removeBoundary();
+    mesh.addPatches(patches);
+
+
+
+    // Move boundary faces to correct patches
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Info<< "Moving boundary faces to correct patches" << nl;
+
+    polyTopoChange meshMod(mesh);
+
+    DynamicList<label> zones;
+    DynamicList<bool> flips;
+    forAll(surfaceRegionIDs, i)
+    {
+        const label facei = i + mesh.nInternalFaces();
+        const label patchi = surfaceRegionIDs[i];
+        meshMod.faceZones(facei, zones, flips);
+
+        // Modify the face with new patch assignment
+        meshMod.modifyFace
+        (
+            mesh.faces()[facei],
+            facei,
+            mesh.faceOwner()[facei],
+            -1,
+            false,  // flipFaceFlux
+            patchi,
+            zones,
+            flips
+        );
+    }
+
+
+    // Create mesh, return map from old to new mesh.
+    autoPtr<mapPolyMesh> map = meshMod.changeMesh(mesh, false);
+
+    // Update fields
+    mesh.updateMesh(map());
+
+    // Optionally inflate mesh
+    if (map().hasMotionPoints())
+    {
+        mesh.movePoints(map().preMotionPoints());
+    }
+
+    // mesh.setInstance(oldInstance);
+    mesh.setInstance(runTime.constant());
+
+    Info<< "Writing mesh to " << mesh.pointsInstance() << endl;
+
+    mesh.write();
+    topoSet::removeFiles(mesh);
+    processorMeshes::removeFiles(mesh);
 
     Info<< nl << "End" << endl;
 
