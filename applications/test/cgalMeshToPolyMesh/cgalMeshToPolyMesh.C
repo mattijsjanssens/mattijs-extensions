@@ -63,11 +63,11 @@ Usage
 #include <set>
 
 using namespace Foam;
+// To avoid verbose function and named parameters call
+using namespace CGAL::parameters;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // Helper functions
-
-namespace CGALParams = CGAL::parameters;
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Mesh_polyhedron_3<K>::type Polyhedron;
@@ -511,17 +511,71 @@ int main(int argc, char *argv[])
 
     // Create domain and detect features
     Mesh_domain domain(polyhedron);
-    domain.detect_features();
+    // domain.detect_features();
 
     Info<< "Features detected" << nl;
 
+    // Example: iterate over surf.edges() and add as explicit features
+    {
+        typedef K::Point_3 Point;
+        
+        // Collect all edges as polylines (each edge is a polyline with 2 points)
+        std::vector<std::vector<Point>> featurePolylines;
+        featurePolylines.reserve(surf.nEdges());
+        
+        forAll(surf.edges(), edgeI)
+        {
+            const edge& e = surf.edges()[edgeI];
+            const point& p0 = surf.localPoints()[e[0]];
+            const point& p1 = surf.localPoints()[e[1]];
+
+            featurePolylines.push_back
+            ({
+                Point(p0.x(), p0.y(), p0.z()),
+                Point(p1.x(), p1.y(), p1.z())
+            });
+        }
+        
+        // Add the polylines as features to the domain
+        domain.add_features(featurePolylines.begin(), featurePolylines.end());
+    }
     // Mesh criteria (similar to CGAL example)
     
+    IOdictionary meshDict
+    (
+        IOobject
+        (
+            "meshCriteria",
+            runTime.system(),
+            runTime.system(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        dictionary::null
+    );
+
+DebugVar(meshDict);
+
+    // Get criteria values from dictionary with defaults
+    const scalar facetAngle =
+        meshDict.lookupOrDefault<scalar>("facetAngle", 25);
+    const scalar facetSize =
+        meshDict.lookupOrDefault<scalar>("facetSize", 0.005);
+    const scalar facetDistance =
+        meshDict.lookupOrDefault<scalar>("facetDistance", 0.001);
+    const scalar cellRadiusEdgeRatio =
+        meshDict.lookupOrDefault<scalar>("cellRadiusEdgeRatio", 2.5);
+    const scalar cellSize =
+        meshDict.lookupOrDefault<scalar>("cellSize", 1);
+
+    // Build criteria using dictionary values
     Mesh_criteria criteria
     (
-        CGALParams::edge_size(0.025).
-        facet_angle(25).facet_size(0.05).facet_distance(0.005).
-        cell_radius_edge_ratio(3).cell_size(0.05)
+        CGAL::parameters::facet_angle(facetAngle),
+        CGAL::parameters::facet_size(facetSize),
+        CGAL::parameters::facet_distance(facetDistance),
+        CGAL::parameters::cell_radius_edge_ratio(cellRadiusEdgeRatio),
+        CGAL::parameters::cell_size(cellSize)
     );
 
     // Generate mesh
