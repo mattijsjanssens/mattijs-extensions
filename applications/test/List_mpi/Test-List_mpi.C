@@ -306,7 +306,7 @@ void gather
                 {
                     // Finished. Do something with the data...
                     const label offset = all_sizes.offsets()[proci];
-                    const label count = all_sizes.localSizes(proci);
+                    const label count = all_sizes.localSize(proci);
                     Pout<< "** from:" << proci
                         << ":received:"
                         << SubList<label>(my_data.labels_, count, offset)
@@ -478,7 +478,59 @@ void inplaceGather
     }
 }
 
-//XXXXXXX
+
+//- Single chunk
+void inplaceScatter
+(
+    some_data& my_data,
+    List<UPstream::Request>& sendReq,           // master only
+    UPstream::Request& recvReq,                 // slave only
+    const globalIndex& all_sizes,               // master only
+    void* data,
+    const std::streamsize byteSize,
+    const label elemSize,
+    const int tag = UPstream::msgType(),
+    const int comm = UPstream::worldComm
+)
+{
+    if (!UPstream::master(comm))
+    {
+        UIPstream::read
+        (
+            recvReq,
+            UPstream::masterNo(),
+            reinterpret_cast<char*>(data),
+            byteSize,
+            tag,
+            comm
+        );
+    }
+    else
+    {
+        sendReq.resize_nocopy(UPstream::nProcs(comm));
+
+        // Start sending to all sub-procs
+        label offset = all_sizes.localSize();
+        for (const int proci : UPstream::subProcs(comm))
+        {
+            const std::streamsize nBytes = elemSize*all_sizes.localSize(proci);
+            char* sendData = reinterpret_cast<char*>(data)+elemSize*offset;
+
+            UOPstream::write
+            (
+                sendReq[proci],
+                proci,
+                sendData,
+                nBytes,
+                tag,
+                comm
+            );
+
+            offset += all_sizes.localSize(proci);
+        }
+    }
+}
+//- Multiple same-size chunks
 void inplaceScatter
 (
     some_data& my_data,
@@ -536,11 +588,11 @@ void inplaceScatter
         }
     }
 }
-//XXXXXXX
+//- Multiple same-size chunks
 void inplaceScatter
 (
     some_data& my_data,
-    const globalIndex& all_sizes,
+    const globalIndex& all_sizes,       // assume all the same size
     const int tag = UPstream::msgType(),
     const int comm = UPstream::worldComm
 )
@@ -550,68 +602,6 @@ void inplaceScatter
     DynamicList<std::streamsize> byteSizes;
     DynamicList<label> elemSizes;
     my_data.data(datas, byteSizes, elemSizes);
-
-
-    // if (!UPstream::master(comm))
-    // {
-    //     DynamicList<UPstream::Request> recvReq;
-    //     forAll(datas, i)
-    //     {
-    //         // Pout<< " recieving from master: " << byteSizes[i] << " bytes" << endl;
-    //         // Pout<< " into storage: " << long(datas[i]) << endl;
-    //         UIPstream::read
-    //         (
-    //             recvReq.emplace_back(),
-    //             UPstream::masterNo(),
-    //             reinterpret_cast<char*>(datas[i]),
-    //             byteSizes[i],
-    //             tag,
-    //             comm
-    //         );
-    //     }
-    //     Pout<< " waiting for all recvs: " << recvReq.size() << " to finish..."
-    //         << endl;
-    //     // Can do something here with the data if recvReq has finised...
-    //     UPstream::waitRequests(recvReq);
-    // }
-    // else
-    // {
-    //     List<DynamicList<UPstream::Request>> sendReq(UPstream::nProcs(comm));
-
-    //     // Start sending to all sub-procs
-    //     label offset = all_sizes.localSize();
-    //     for (const int proci : UPstream::subProcs(comm))
-    //     {
-    //         for (label i = 0; i < datas.size(); ++i)
-    //         {
-    //             const std::streamsize nBytes =
-    //                 elemSizes[i]*all_sizes.localSize(proci);
-    //             char* sendData =
-    //                 reinterpret_cast<char*>(datas[i])+elemSizes[i]*offset;
-
-    //             UOPstream::write
-    //             (
-    //                 sendReq[proci].emplace_back(),
-    //                 proci,
-    //                 sendData,
-    //                 nBytes,
-    //                 tag,
-    //                 comm
-    //             );
-    //         }
-    //         offset += all_sizes.localSize(proci);
-    //     }
-
-    //     // Wait. Do consumption here.
-    //     for (const int proci : UPstream::subProcs(comm))
-    //     {
-    //         UPstream::waitRequests(sendReq[proci]);
-    //     }
-
-    //     // Trucate to local size
-    //     my_data.labels_.resize(all_sizes.localSize());
-    //     my_data.scalars_.resize(all_sizes.localSize());
-    // }
 
     List<DynamicList<UPstream::Request>> sendReq;
     DynamicList<UPstream::Request> recvReq;
@@ -636,8 +626,11 @@ void inplaceScatter
     }
 
     // Trucate to local size
-    my_data.labels_.resize(all_sizes.localSize());
-    my_data.scalars_.resize(all_sizes.localSize());
+    if (UPstream::master(comm))
+    {
+        my_data.labels_.resize(all_sizes.localSize());
+        my_data.scalars_.resize(all_sizes.localSize());
+    }
 }
 
 
@@ -659,10 +652,11 @@ int main(int argc, char *argv[])
     }
 
     // Gather sizes on master
+    const label my_size = my_data.labels_.size();
     const globalIndex all_sizes
     (
         globalIndex::gatherOnly{},
-        my_data.labels_.size()
+        my_size
     );
 
     Pout<< "** before:" << flatOutput(my_data.labels_) << endl;
@@ -681,7 +675,7 @@ int main(int argc, char *argv[])
     inplaceGather(my_data, all_sizes);
     Info<< "** after inplaceGather:" << flatOutput(my_data.labels_) << endl;
 
-    // Some testdata to make sure the data is actually coming from master
+    // Change testdata to make sure the data is actually coming from master
     if (!UPstream::master())
     {
         my_data.labels_ = -1;
@@ -689,8 +683,76 @@ int main(int argc, char *argv[])
     }
 
     Pout<< "** before inplaceScatter:" << flatOutput(my_data.labels_) << endl;
-    inplaceScatter(my_data, all_sizes);
-    Pout<< "** after inplaceScatter:" << flatOutput(my_data.labels_) << endl;
+    //inplaceScatter(my_data, all_sizes);
+    {
+        // Get my data as contiguous memory chunks
+        DynamicList<void*> datas;
+        DynamicList<std::streamsize> byteSizes;
+        DynamicList<label> elemSizes;
+        my_data.data(datas, byteSizes, elemSizes);
+
+        // Insert comms
+        List<DynamicList<UPstream::Request>> sendReqs(UPstream::nProcs());
+        DynamicList<UPstream::Request> recvReqs;
+
+        // Work
+        List<UPstream::Request> procToSendReq(UPstream::nProcs());
+
+        forAll(datas, i)
+        {
+            // Or assume all data elements have same size (in number
+            // of elements)?
+            const globalIndex all_sizes
+            (
+                globalIndex::gatherOnly{},
+                (
+                    UPstream::master()
+                  ? my_size
+                  : byteSizes[i]/elemSizes[i]
+                )
+            );
+
+            procToSendReq = UPstream::Request();
+            UPstream::Request recvReq;
+            inplaceScatter
+            (
+                my_data,
+                procToSendReq,  // master only
+                recvReq,        // slave only
+                all_sizes,      // master only
+                datas[i],
+                byteSizes[i],
+                elemSizes[i]
+            );
+
+            // Append to overall
+            forAll(procToSendReq, proci)
+            {
+                if (procToSendReq[proci].good())
+                {
+                    sendReqs[proci].append(procToSendReq[proci]);
+                }
+            }
+            if (recvReq.good())
+            {
+                recvReqs.append(recvReq);
+            }
+        }
+        // Wait. Do consumption here.
+        UPstream::waitRequests(recvReqs);
+        for (auto& req : sendReqs)
+        {
+            UPstream::waitRequests(req);
+        }
+
+        // Trucate to local size
+        if (UPstream::master())
+        {
+            my_data.labels_.resize(all_sizes.localSize());
+            my_data.scalars_.resize(all_sizes.localSize());
+        }
+        Pout<< "** after inplaceScatter:" << flatOutput(my_data.labels_) << endl;
+    }
 
     return 0;
 }
